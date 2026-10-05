@@ -12,7 +12,7 @@
 # below therefore names its arch explicitly.
 #
 # A unix half runs inside the wine loader's own process, so UNIX_ARCH is whichever
-# arch that loader is: x86_64 for the rosetta CrossOver build, arm64 for the FEX one.
+# arch that loader is: x86_64, since the Dormison loader runs under Rosetta.
 # It has to match the tree WINE_BUILD points at, because the ntdll.so it links
 # against comes from there.
 #
@@ -47,7 +47,7 @@ set -eu
 here=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$here/.." && pwd)
 
-WINE_BUILD=${WINE_BUILD:-$repo/scratch/wine-build-dual}
+WINE_BUILD=${WINE_BUILD:-$repo/scratch/dormison-build}
 # Mach-O spells the arm64 arch arm64 and wine spells its directory aarch64-unix, so
 # both names are kept rather than derived from each other at every use.
 UNIX_ARCH=${UNIX_ARCH:-x86_64}
@@ -58,7 +58,7 @@ case "$UNIX_ARCH" in
 esac
 # Relative because it lands in the debug info. Keep the default sibling layout so
 # a rebuild stays comparable to the shipped binary.
-WINE_SRC_REL=${WINE_SRC_REL:-../wine}
+WINE_SRC_REL=${WINE_SRC_REL:-../dormison-src}
 # The complete tree, unlike $here, which holds only the authored files.
 TREE=${TREE:-$repo/build/lsteamclient}
 # The cloned runner, not the user's installed CrossOver. --install writes into this
@@ -86,7 +86,7 @@ out=$dll/lsteamclient.so
 
 if [ ! -d "$WINE_BUILD/$dll" ]; then
 	echo "==> no wine build tree at $WINE_BUILD/$dll"
-	echo "    the tree is a configured CrossOver 11.0 source drop, see ALIGNMENT.md"
+	echo "    run bridge/setup-wine-tree.sh to configure the Dormison source tree"
 	exit 1
 fi
 

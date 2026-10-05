@@ -446,23 +446,19 @@ deploy: $(TARGET) dylib-install sigdb-install helpers-install
 		echo "==> warning: launching it reverts this deploy, so rebuild it with 'make app'"; \
 	done
 
-WINE_BUILD := scratch/wine-build-dual
-
-WINE_BUILD_ARM64 := scratch/wine-build-arm64
+# The Dormison source tree at the engine release's commit, see bridge/setup-wine-tree.sh.
+# Dormison's loader is x86_64 only, so there is no arm64 tree.
+WINE_BUILD := scratch/dormison-build
 
 BRIDGE_FILES := \
 	$(WINE_BUILD)/programs/steam.exe/x86_64-windows/steam.exe:steam.exe \
 	$(WINE_BUILD)/dlls/lsteamclient/x86_64-windows/lsteamclient.dll:x86_64-windows-lsteamclient.dll \
 	$(WINE_BUILD)/dlls/lsteamclient/lsteamclient.so:x86_64-unix-lsteamclient.so \
-	$(WINE_BUILD_ARM64)/dlls/lsteamclient/lsteamclient.so:aarch64-unix-lsteamclient.so \
 	$(WINE_BUILD)/dlls/lsteamclient/i386-windows/lsteamclient.dll:i386-windows-lsteamclient.dll
 
 bridge:
 	bridge/setup-wine-tree.sh
-	WINE_BUILD="$(CURDIR)/$(WINE_BUILD_ARM64)" HOST=aarch64-apple-darwin \
-		HOST_CC="clang -arch arm64" HOST_CXX="clang++ -arch arm64" bridge/setup-wine-tree.sh
 	lsteamclient/build.sh
-	UNIX_ARCH=arm64 WINE_BUILD="$(CURDIR)/$(WINE_BUILD_ARM64)" lsteamclient/build.sh --unix
 	steam-shim/build.sh
 	@echo "==> Built the bridge, now run: $(MAKE) app-payload"
 

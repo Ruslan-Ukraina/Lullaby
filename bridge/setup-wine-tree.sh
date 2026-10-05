@@ -3,37 +3,42 @@
 #
 #   ./setup-wine-tree.sh   create and configure, skipping whatever is already done
 #
-# CrossOver ships a runtime-only Wine with no winegcc or winebuild, so lsteamclient
-# and the steam.exe shim are built in a wine source tree and staged into the bridge
-# unsigned.
+# The engine is Dormison, and its release ships a runtime-only Wine with no winegcc
+# or winebuild, so lsteamclient and the steam.exe shim are built in a wine source
+# tree and staged into the bridge unsigned.
 #
-# The base is stock Wine 11.15, the version the CrossOver runtime is built from
-# (wine-11.15-8895-g32f409fef6a). ntdll from a different vintage speaks a different
-# server protocol and the shipped loader refuses to boot it.
+# The base is Dormison's own source at the commit its release was built from
+# (engine-info.json -> commit; dormison-b1 is 52c2a4b918d6). ntdll from a different
+# vintage speaks a different server protocol, and lsteamclient.so links against the
+# ntdll.so built here, so the tree has to be that commit and nothing else.
 #
-# A unix half loads into the wine loader's own process and has to match its arch. The
-# rosetta loader is x86_64, which on an Apple Silicon host needs the cross configure
-# that HOST and the two compilers below provide. The FEX loader is arm64 and wants a
-# native tree, so each gets its own build directory. The PE halves come from mingw.
+# The source is a detached git worktree of DORMISON_REPO, so the checkout there is
+# never touched. A missing commit is fetched from DORMISON_URL first.
+#
+# A unix half loads into the wine loader's own process and has to match its arch.
+# Dormison's loader is x86_64 (Rosetta), which on an Apple Silicon host needs the
+# cross configure that HOST and the two compilers below provide. Dormison builds
+# with -std=gnu23 (build-macos/configure.sh), so the compilers here do too. The PE
+# halves come from mingw.
 set -eu
 
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/.." && pwd)"
 
-WINE_URL="${WINE_URL:-https://gitlab.winehq.org/wine/wine.git}"
-WINE_TAG="${WINE_TAG:-wine-11.15}"
-# A shallow clone of a mutable tag records nothing about what it resolved to, so a
-# tag moved upstream would change what gets built here with no signal.
-WINE_COMMIT="${WINE_COMMIT:-2df1ee28039cf84776eb1421ed90bd154cebb65f}"
-WINE_SRC="${WINE_SRC:-$repo/scratch/wine}"
-WINE_BUILD="${WINE_BUILD:-$repo/scratch/wine-build-dual}"
+DORMISON_REPO="${DORMISON_REPO:-$HOME/Projects/dormison}"
+DORMISON_URL="${DORMISON_URL:-https://github.com/kageroumado/dormison.git}"
+# The commit dormison-b1 was built from. A worktree records what it resolved to,
+# so a moved branch can never change what gets built here without a signal.
+WINE_COMMIT="${WINE_COMMIT:-52c2a4b918d6ec5f469ed4e5f58777598c9378ff}"
+WINE_SRC="${WINE_SRC:-$repo/scratch/dormison-src}"
+WINE_BUILD="${WINE_BUILD:-$repo/scratch/dormison-build}"
 # i386 is built because a 32 bit game needs the i386 PE halves. freetype and X are
 # off because nothing built here uses either.
 CONFIGURE_OPTS="${CONFIGURE_OPTS:---enable-archs=i386,x86_64 --without-freetype --without-x}"
 HOST="${HOST:-x86_64-apple-darwin}"
 # Taken from HOST rather than spelled out twice, since configure normalises it.
 HOST_CPU="${HOST%%-*}"
-HOST_CC="${HOST_CC:-clang -arch x86_64}"
+HOST_CC="${HOST_CC:-clang -arch x86_64 -std=gnu23}"
 HOST_CXX="${HOST_CXX:-clang++ -arch x86_64}"
 
 # The bison and autoconf macOS ships are too old for wine's configure.
@@ -50,9 +55,18 @@ if [ -n "$missing" ]; then
     exit 1
 fi
 
-if [ ! -d "$WINE_SRC/.git" ]; then
-    echo "==> cloning $WINE_TAG into $WINE_SRC"
-    git clone --depth 1 --branch "$WINE_TAG" "$WINE_URL" "$WINE_SRC"
+if [ ! -e "$WINE_SRC/.git" ]; then
+    [ -d "$DORMISON_REPO/.git" ] || {
+        echo "==> no Dormison checkout at $DORMISON_REPO" >&2
+        echo "    git clone --filter=blob:none $DORMISON_URL $DORMISON_REPO" >&2
+        exit 1
+    }
+    if ! git -C "$DORMISON_REPO" cat-file -e "$WINE_COMMIT^{commit}" 2>/dev/null; then
+        echo "==> fetching $WINE_COMMIT into $DORMISON_REPO"
+        git -C "$DORMISON_REPO" fetch "$DORMISON_URL" "$WINE_COMMIT"
+    fi
+    echo "==> adding a worktree of $DORMISON_REPO at $WINE_COMMIT: $WINE_SRC"
+    git -C "$DORMISON_REPO" worktree add --detach "$WINE_SRC" "$WINE_COMMIT"
 else
     echo "==> source tree present, leaving it alone: $WINE_SRC"
 fi
@@ -60,8 +74,8 @@ fi
 head="$(git -C "$WINE_SRC" rev-parse HEAD)"
 if [ "$head" != "$WINE_COMMIT" ]; then
     echo "==> $WINE_SRC is at $head, not the pinned $WINE_COMMIT" >&2
-    echo "    Either $WINE_TAG has moved upstream or this tree came from elsewhere." >&2
-    echo "    Set WINE_COMMIT to adopt it, once the loader is known to boot its ntdll." >&2
+    echo "    It is not the commit the engine release was built from." >&2
+    echo "    Set WINE_COMMIT to the engine's engine-info.json commit." >&2
     exit 1
 fi
 echo "==> source tree at pinned $WINE_COMMIT"
