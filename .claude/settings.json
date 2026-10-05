@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(sudo *)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(brew uninstall *)",
+      "Read(~/.ssh/**)",
+      "Edit(~/.zshrc)",
+      "Edit(~/.zprofile)"
+    ]
+  }
+}
