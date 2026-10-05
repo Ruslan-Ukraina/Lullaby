@@ -31,6 +31,14 @@ PINNED = {
          'exports': {'LdrGetDllHandle': 0x7bc2a6b0, 'LdrLoadDll': 0x7bc286d0,
                      'NtProtectVirtualMemory': 0x7bc4d020, 'NtOpenFile': 0x7bc4ce50,
                      'NtReadFile': 0x7bc4cb80, 'NtClose': 0x7bc4cc10}},
+    # Dormison b1 (52c2a4b918d6), x86_64 only: its i386 cave is 368 bytes, too small
+    '4af19ee639705f9199cabbde237f2672d5495d2a184f4986de5a7a4e29d929de':
+        {'hookRVA': 0x52f36, 'stolen': '4883bc24f000000000', 'caveRVA': 0x82760, 'caveSize': 2208,
+         'wm': 'rsi', 'resume': 0x52f3f, 'load_path': 0xd0,
+         'payload': 'b363a77db164d9c99e1ff108a4f0d8b327b9bfbda95453d282bdd95a4823115c',
+         'exports': {'LdrGetDllHandle': 0x170017910, 'LdrLoadDll': 0x1700184c0,
+                     'NtProtectVirtualMemory': 0x17000f640, 'NtOpenFile': 0x17000f2a0,
+                     'NtReadFile': 0x17000ed00, 'NtClose': 0x17000ee20}},
     '7823d71fbce6c9947163bf8b96beb299eabb02878245bcaf6759f2a22e81f071':
         {'caveRVA': 0xf1185, 'caveSize': 61051,
          # This image carries the loader twice, once for the native side and once for the
