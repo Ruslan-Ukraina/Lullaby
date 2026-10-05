@@ -142,7 +142,7 @@ merge_user_dir() {
     dst_dir="$dst$rest"
     if [ ! -r "$src_dir" ] || [ ! -x "$src_dir" ]; then failed=1; continue; fi
     if [ -L "$dst_dir" ] && [ ! -e "$dst_dir" ]; then
-      rm -f "$dst_dir" 2>/dev/null || true
+      rm -f "${dst_dir:?}" 2>/dev/null || true
     fi
     probe=$dst_dir
     through=
@@ -166,15 +166,15 @@ merge_user_dir() {
       fi
       landing="$dst_dir/$name"
       if [ -e "$landing" ]; then continue; fi
-      if [ -L "$landing" ]; then rm -f "$landing" 2>/dev/null || true; fi
+      if [ -L "$landing" ]; then rm -f "${landing:?}" 2>/dev/null || true; fi
       if [ -L "$entry" ]; then
         if ! cp -Pp "$entry" "$landing" 2>/dev/null; then
-          rm -f "$landing" 2>/dev/null || true
+          rm -f "${landing:?}" 2>/dev/null || true
           failed=1
         fi
       else
         if ! cp -p "$entry" "$landing" 2>/dev/null; then
-          rm -f "$landing" 2>/dev/null || true
+          rm -f "${landing:?}" 2>/dev/null || true
           failed=1
         fi
         chmod u+w "$landing" 2>/dev/null || true
@@ -198,7 +198,7 @@ migrate_user_paths() {
     old="$profile/$old_rel"
     new="$profile/$new_rel"
     case "$(readlink "$new" 2>/dev/null || true)" in
-      *"drive_c/users/steamuser/$old_rel") rm -f "$new" 2>/dev/null || true ;;
+      *"drive_c/users/steamuser/$old_rel") rm -f "${new:?}" 2>/dev/null || true ;;
     esac
     if [ -L "$new" ]; then
       echo "=== $new_rel is a link, rebuild the prefix for cloud saves ===" \
@@ -239,7 +239,7 @@ migrate_user_paths() {
         || echo "=== $old_rel could not be aliased onto $new_rel ===" >> "$log" 2>&1 \
         || true
     elif [ -L "$old" ] && [ "$(readlink "$old")" != "$link" ]; then
-      rm -f "$old" 2>/dev/null || true
+      rm -f "${old:?}" 2>/dev/null || true
       ln -s "$link" "$old" 2>/dev/null \
         || echo "=== $old_rel could not be aliased onto $new_rel ===" >> "$log" 2>&1 \
         || true
@@ -267,7 +267,7 @@ lay_out_proton_profile() {
   done
   migrate_user_paths "$profile"
   if [ -L "$users/crossover" ] && [ ! -e "$users/crossover" ]; then
-    rm -f "$users/crossover" 2>/dev/null || true
+    rm -f "${users:?}/crossover" 2>/dev/null || true
   fi
   if [ ! -e "$users/crossover" ] \
     && ln -s steamuser "$users/crossover" 2>/dev/null; then
@@ -399,7 +399,7 @@ if [ -d "$bridge_src" ] && [ -n "$WINEPREFIX" ]; then
     [ -f "$f" ] || continue
     case " $bridge_files " in
       *" $(basename "$f") "*) ;;
-      *) rm -f "$f" && echo "=== pruned stale $(basename "$f") ===" >> "$log" 2>&1 ;;
+      *) rm -f "${f:?}" && echo "=== pruned stale $(basename "$f") ===" >> "$log" 2>&1 ;;
     esac
   done
   verify_runner
@@ -468,7 +468,7 @@ game_name_xml=$(printf '%s' "$game_name" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g
 loader_root="$HOME/Library/Application Support/notproton/launchers/$app_id"
 mkdir -p "$loader_root"
 loader_app="$loader_root/$bundle_name.app"
-rm -rf "$loader_root"/*.app
+rm -rf "${loader_root:?}"/*.app
 loader_contents="$loader_app/Contents"
 loader_macos="$loader_contents/MacOS"
 loader_res="$loader_contents/Resources"
@@ -483,8 +483,8 @@ resolve_icon() {
   if [ -n "$meta_clienticon" ]; then
     ico="$loader_root/clienticon-$meta_clienticon.ico"
     absent="$loader_root/clienticon-$meta_clienticon.absent"
-    find "$loader_root" -maxdepth 1 -name 'clienticon-*'   ! -name "clienticon-$meta_clienticon.*" -delete 2>/dev/null || true
-    find "$absent" -mtime +14 -delete 2>/dev/null || true
+    find "${loader_root:?}" -maxdepth 1 -name 'clienticon-*'   ! -name "clienticon-$meta_clienticon.*" -delete 2>/dev/null || true
+    find "${absent:?}" -mtime +14 -delete 2>/dev/null || true
     if [ ! -s "$ico" ] && [ ! -f "$absent" ]; then
       url="https://shared.fastly.steamstatic.com/community_assets/images/apps/$app_id/$meta_clienticon.ico"
       code=$(curl -fsL --connect-timeout 5 --max-time 20 -w '%{http_code}' -o "$ico.new" "$url" 2>>"$log")
@@ -493,7 +493,7 @@ resolve_icon() {
         mv -f "$ico.new" "$ico"
         echo "fetched client icon $meta_clienticon" >> "$log" 2>&1 || true
       else
-        rm -f "$ico.new"
+        rm -f "${ico:?}.new"
         if [ "$code" = "404" ]; then
           : > "$absent"
           echo "no client icon published for $meta_clienticon" >> "$log" 2>&1 || true
@@ -540,7 +540,7 @@ resolve_icon() {
     elif [ "$art" = "$ico" ]; then
       # A cached .ico that iconmaker rejects is corrupt and passes the size
       # guard on every launch, so drop it to force a clean fetch next time.
-      rm -f "$ico"
+      rm -f "${ico:?}"
       echo "discarded unreadable client icon $meta_clienticon" >> "$log" 2>&1 || true
     fi
   fi

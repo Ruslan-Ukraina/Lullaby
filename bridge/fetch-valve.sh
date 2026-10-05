@@ -56,10 +56,10 @@ get_pkg() {
             fi
             echo "    sha256 mismatch: got $got" >&2
             echo "    wanted           $want" >&2
-            rm -f "$out.part"
+            rm -f "${out:?}.part"
         fi
     done
-    rm -f "$out.part"
+    rm -f "${out:?}.part"
     echo "==> could not fetch $name from any base" >&2
     return 1
 }
@@ -71,7 +71,7 @@ done
 
 # Extracted fresh every run so a stale extract cannot pass the hash check by luck.
 EX="$WORK/extract"
-rm -rf "$EX"
+rm -rf "${EX:?}"
 mkdir -p "$EX"
 for spec in $FILES; do
     inner="$(echo "$spec" | cut -d'|' -f3)"

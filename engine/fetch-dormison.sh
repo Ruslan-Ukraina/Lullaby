@@ -110,7 +110,7 @@ if [ -d "$dest" ]; then
 	echo "==> $dest already unpacked, leaving it alone"
 else
 	partial=$RUNNERS/.$version.partial
-	rm -rf "$partial"
+	rm -rf "${partial:?}"
 	mkdir -p "$partial"
 	# bsdtar refuses absolute paths and .. components unless told otherwise (-P).
 	tar -xJf "$tarball" -C "$partial" --strip-components 1 "$version/"

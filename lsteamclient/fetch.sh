@@ -35,7 +35,7 @@ unix_steam_input_manual.cpp
 unixlib.cpp"
 
 if [ "${1:-}" = "--refetch" ]; then
-	rm -rf "$WORK" "$TREE"
+	rm -rf "${WORK:?}" "${TREE:?}"
 elif [ $# -ne 0 ]; then
 	echo "==> unknown argument $1" >&2
 	exit 1
@@ -81,7 +81,7 @@ echo "==> baseline verified: Proton $PROTON_COMMIT, $count files"
 
 # Rebuilt from the baseline each time so a removed authored file cannot leave a stale
 # copy behind, and so the overlay below is always the only divergence.
-rm -rf "$TREE"
+rm -rf "${TREE:?}"
 mkdir -p "$(dirname "$TREE")"
 cp -c -R "$base" "$TREE" 2>/dev/null || cp -R "$base" "$TREE"
 

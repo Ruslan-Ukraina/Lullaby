@@ -116,7 +116,7 @@ fi
 
 if [ "$prune" -eq 1 ] && [ "$unexpected" -gt 0 ]; then
     # Moving files leaves the directories that held them behind.
-    ( cd "$BRIDGE_DIR" && find . -mindepth 1 -type d -empty -delete )
+    ( cd "${BRIDGE_DIR:?}" && find . -mindepth 1 -type d -empty -delete )
     unexpected=0
 fi
 

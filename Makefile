@@ -191,7 +191,7 @@ peicon-fixtures:
 	$(MAKE) -s $(PEICON_CHECK) || exit 1; \
 	tmp=$$(mktemp -d); \
 	$(PEICON_CHECK) "$$tmp"; rc=$$?; \
-	rm -rf "$$tmp"; \
+	rm -rf "$${tmp:?}"; \
 	if [ $$rc -eq 9 ]; then \
 		echo "peicon-check ran out of time, so a hostile resource tree is unbounded"; fi; \
 	exit $$rc
@@ -223,7 +223,7 @@ webpatch-fixtures:
 			if [ $$rc -ne 0 ]; then fail=1; fi; \
 		done; \
 	done; \
-	rm -rf $$tmp; \
+	rm -rf "$${tmp:?}"; \
 	if [ $$fail -ne 0 ]; then exit 1; fi; \
 	echo "==> gate table and $$n webpatch fixtures: anchors intact, drift refused"
 
@@ -240,7 +240,7 @@ SPAWN_LIVE := dylib/tests/spawn-live
 
 spawn-live: $(TARGET)
 	@if [ ! -d $(SPAWN_LIVE) ]; then $(call SKIP,spawn-live,$(SPAWN_LIVE)); exit 0; fi; \
-	tmp=$$(mktemp -d); trap 'rm -rf $$tmp' EXIT; mkdir -p $$tmp/sub; \
+	tmp=$$(mktemp -d); trap 'rm -rf "$${tmp:?}"' EXIT; mkdir -p $$tmp/sub; \
 	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -O1 -Wall -Wextra \
 	  -o $$tmp/child $(SPAWN_LIVE)/child.c || exit 1; \
 	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -O1 -Wall -Wextra \

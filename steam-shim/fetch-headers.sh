@@ -38,7 +38,7 @@ openvr $OPENVR_COMMIT src/ivrclientcore.h openvr/src/ivrclientcore.h 07c8ce981a5
 wine $WINE_COMMIT include/wine/heap.h wine/include/wine/heap.h e51df7c87744e3cbea4cd03d1e08573205252eb275166c0d01f87340991550e7"
 
 if [ "${1:-}" = "--refetch" ]; then
-	rm -rf "$CACHE" "$OUT"
+	rm -rf "${CACHE:?}" "${OUT:?}"
 elif [ $# -ne 0 ]; then
 	echo "==> unknown argument $1" >&2
 	exit 1
@@ -73,7 +73,7 @@ done
 	echo "==> no $LSC_TREE/steamworks_sdk_142, run lsteamclient/fetch.sh first" >&2
 	exit 1
 }
-rm -rf "$OUT/steamworks_sdk_142"
+rm -rf "${OUT:?}/steamworks_sdk_142"
 mkdir -p "$OUT"
 cp -c -R "$LSC_TREE/steamworks_sdk_142" "$OUT/steamworks_sdk_142" 2>/dev/null \
 	|| cp -R "$LSC_TREE/steamworks_sdk_142" "$OUT/steamworks_sdk_142"

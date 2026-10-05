@@ -101,7 +101,7 @@ echo "==> syncing the assembled tree into $WINE_SRC_REL/$dll"
 # lsteamclient.spec, because MODULE is lsteamclient.dll.
 # Unchanged files keep their mtime so the staleness checks below do not rebuild the
 # world.
-rsync -a --delete "$TREE/" "$src/"
+rsync -a --delete "${TREE:?}/" "${src:?}/"
 
 pe_info=$here/../bridge/pe-info.py
 
