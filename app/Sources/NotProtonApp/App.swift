@@ -12,6 +12,7 @@ struct NotProtonApp: App {
 
     init() {
         AppLog.start()
+        DormisonEngine().ensureEnvironmentFile()
         HeadlessInstall.runIfRequested()
     }
 

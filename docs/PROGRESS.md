@@ -264,3 +264,11 @@
 - **Окно «Настройки игры»** (`Views/GameSettingsView.swift`, кнопка в панели и пункт контекстного меню Prefixes): изменяемое окно, апскейлер (off/lanczos/MetalFX), финальный фильтр, FPS, график, raw mouse, удержание курсора, лимит ядер, msync+ (отладка через `notproton-msync`), подсказка (i) у каждого пункта. Модель — `Model/GameSettings.swift`, 5 тестов.
 - Проверки: `make runcheck compatcheck` — 0; `make app-tests` — 0, 373 теста; `make app` — 0, `out/NotProton.app`.
 - **Не сделано в Фазе 2:** выбор рендерера (DXMT/DXVK/wined3d), шейдерные апскейлеры Anime4K/CuNNy (нужен SEVO_SHADER_DIR), `EngineProvider`, замена тестов CrossOver, бэклог 6 (сторож первого кадра), ручная проверка окна на реальной игре (нужен клик в приложении).
+
+## 2026-10-06 — Фаза 2: EngineProvider
+
+- `Model/EngineProvider.swift`: протокол `EngineProvider` (`wineloader`, `wineserver`, `unixLoader`, `dllPaths(arch:)`, `version`, `capabilities`) и `DormisonEngine` (раскладка `wine/bin/wine`, `wine/lib/wine/<arch>-windows`, `engine-info.json`). 5 тестов.
+- `notproton-engine.env` (в реальной папке движка, пути этой папки): пишет приложение при старте (`DormisonEngine().ensureEnvironmentFile()` в `App.init`); `compat_run.sh` читает его как данные (`engine_env_get`, без `source`) и берёт загрузчик, сервер и unix-каталог оттуда; без файла — прежние жёсткие пути. Проверено вручную: значение с апострофом читается верно.
+- `PrefixTools.layout` и `RunnerStore` берут раскладку и версию у `DormisonEngine`.
+- `make runcheck compatcheck` — 0, `make app-tests` — 0 (378 тестов), `make app` — 0.
+- Не сделано: удаление CrossOver-кода (`CrossOverSource/License`, `RunnerInstaller/Setup/Patcher`, `SupportedRunner`, FEX-ресурсы) и замена их тестов; установка движка из тарбола (`EngineSetup`) — Фаза 2/4; `dllPaths` пока не используется run-скриптом (WINEDLLPATH = только мост, как в спайке).

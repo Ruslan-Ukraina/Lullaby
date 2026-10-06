@@ -84,15 +84,11 @@ enum PrefixTools {
 
         // Dormison, the paths compat_run.sh uses: the front door loader and the arm64
         // server in wine/bin, the unix modules under wine/lib/wine.
-        let engineBin = runner.appending(path: "wine/bin")
-        if executable(engineBin.appending(path: "wine")),
-           executable(engineBin.appending(path: "wineserver")) {
+        let dormison = DormisonEngine(root: runner)
+        if dormison.isUsable {
             return WineLayout(
-                loader: engineBin.appending(path: "wine"),
-                server: engineBin.appending(path: "wineserver"),
-                unixDir: runner.appending(path: "wine/lib/wine/x86_64-unix"),
-                isEngine: true
-            )
+                loader: dormison.wineloader, server: dormison.wineserver,
+                unixDir: dormison.unixDirectory, isEngine: true)
         }
 
         let arm = runner.appending(path: "lib/wine/aarch64-unix")

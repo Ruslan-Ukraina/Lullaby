@@ -48,7 +48,8 @@ enum RunnerStore {
         let resolved = current.deletingLastPathComponent().appending(path: target).standardizedFileURL
         if target.hasPrefix("dormison-"),
            fm.fileExists(atPath: resolved.appending(path: "wine/lib/wine").path(percentEncoded: false)) {
-            return .engine(version: target)
+            let version = DormisonEngine(root: resolved).version
+            return .engine(version: version.hasPrefix("dormison-") ? version : target)
         }
         guard fm.fileExists(atPath: resolved.appending(path: "lib/wine").path(percentEncoded: false)) else {
             return .broken(detail: "runners/current points at \(target), which has no lib/wine.")
