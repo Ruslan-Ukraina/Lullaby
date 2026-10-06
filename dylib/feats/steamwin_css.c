@@ -66,9 +66,19 @@ int np_steamwin_css_should_patch(const char *path) {
 // Valve draws its traffic lights as `.TitleBar.OSX .title-bar-actions.window-controls`
 // (library.js, TitleBar). Hidden, not removed: the row keeps their width, and the
 // real buttons sit in that place.
+//
+// The real buttons sit 13-27 pt from the top. In the compact windows Steam starts
+// its content higher than that, under the buttons, so that content moves down; the
+// main window, where the row lines up, is not touched:
+//   friends list   its header (avatar, name) is `.friendListHeaderContainer
+//                  .titleBarContainer.OSX`, which has no padding of its own;
+//   dialog popups  servers, players and the like put their title in a DialogHeader
+//                  inside `.ModalDialogPopup`.
 const char NP_STEAMWIN_CSS[] =
     "\n/* NotProton: native Steam windows */\n"
-    ".TitleBar.OSX .title-bar-actions.window-controls{visibility:hidden!important}\n";
+    ".TitleBar.OSX .title-bar-actions.window-controls{visibility:hidden!important}\n"
+    ".friendListHeaderContainer.titleBarContainer.OSX{padding-top:12px!important}\n"
+    ".ModalDialogPopup .DialogHeader{margin-top:20px!important}\n";
 
 static const char ANCHOR[] = ".title-bar-actions";
 

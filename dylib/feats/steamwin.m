@@ -47,6 +47,50 @@ static NSString *class_chain(id object) {
     return [names componentsJoinedByString:@" < "];
 }
 
+static NSString *behavior_names(NSWindowCollectionBehavior b) {
+    static const struct { NSWindowCollectionBehavior bit; const char *name; } names[] = {
+        {NSWindowCollectionBehaviorCanJoinAllSpaces, "canJoinAllSpaces"},
+        {NSWindowCollectionBehaviorMoveToActiveSpace, "moveToActiveSpace"},
+        {NSWindowCollectionBehaviorManaged, "managed"},
+        {NSWindowCollectionBehaviorTransient, "transient"},
+        {NSWindowCollectionBehaviorStationary, "stationary"},
+        {NSWindowCollectionBehaviorParticipatesInCycle, "participatesInCycle"},
+        {NSWindowCollectionBehaviorIgnoresCycle, "ignoresCycle"},
+        {NSWindowCollectionBehaviorFullScreenPrimary, "fullScreenPrimary"},
+        {NSWindowCollectionBehaviorFullScreenAuxiliary, "fullScreenAuxiliary"},
+        {NSWindowCollectionBehaviorFullScreenNone, "fullScreenNone"},
+        {NSWindowCollectionBehaviorFullScreenAllowsTiling, "allowsTiling"},
+        {NSWindowCollectionBehaviorFullScreenDisallowsTiling, "disallowsTiling"},
+        {NSWindowCollectionBehaviorPrimary, "primary"},
+        {NSWindowCollectionBehaviorAuxiliary, "auxiliary"},
+        {NSWindowCollectionBehaviorCanJoinAllApplications, "canJoinAllApplications"},
+    };
+    NSMutableArray *out = [NSMutableArray array];
+    for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); i++)
+        if (b & names[i].bit)
+            [out addObject:@(names[i].name)];
+    return out.count ? [out componentsJoinedByString:@"|"] : @"default";
+}
+
+static const char *policy_name(NSApplicationActivationPolicy p) {
+    switch (p) {
+        case NSApplicationActivationPolicyRegular: return "regular";
+        case NSApplicationActivationPolicyAccessory: return "accessory";
+        case NSApplicationActivationPolicyProhibited: return "prohibited";
+    }
+    return "?";
+}
+
+// What decides how a window behaves with Spaces, Stage Manager and the Dock.
+static NSString *describe_spaces(NSWindow *w) {
+    return [NSString stringWithFormat:
+        @"%p \"%@\" level=%ld behavior=[%@] floatingPanel=%d hidesOnDeactivate=%d onActiveSpace=%d "
+        @"canHide=%d excludedFromWindowsMenu=%d visible=%d",
+        w, w.title ?: @"", (long)w.level, behavior_names(w.collectionBehavior),
+        [w isKindOfClass:[NSPanel class]] ? ((NSPanel *)w).isFloatingPanel : -1,
+        w.hidesOnDeactivate, w.isOnActiveSpace, w.canHide, w.isExcludedFromWindowsMenu, w.isVisible];
+}
+
 static NSString *describe(NSWindow *w) {
     NSRect f = w.frame;
     NSView *content = w.contentView;
@@ -144,6 +188,23 @@ static BOOL is_sdl_fullscreen_style(NSWindowStyleMask mask) {
                      | NSWindowStyleMaskResizable | NSWindowStyleMaskFullScreen));
 }
 
+// A standard window's place in Spaces, Mission Control, Stage Manager and the
+// window cycle: managed and cycling, full screen as a primary window (dialogs keep
+// FullScreenNone), and none of the flags that pin a window to every Space or let it
+// float over other apps' full-screen Spaces.
+static NSWindowCollectionBehavior standard_behavior(NSWindowCollectionBehavior b) {
+    b &= ~(NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorMoveToActiveSpace
+           | NSWindowCollectionBehaviorTransient | NSWindowCollectionBehaviorStationary
+           | NSWindowCollectionBehaviorIgnoresCycle | NSWindowCollectionBehaviorFullScreenAuxiliary
+           | NSWindowCollectionBehaviorCanJoinAllApplications | NSWindowCollectionBehaviorAuxiliary);
+    b |= NSWindowCollectionBehaviorManaged | NSWindowCollectionBehaviorParticipatesInCycle;
+    if (!(b & NSWindowCollectionBehaviorFullScreenNone))
+        b |= NSWindowCollectionBehaviorFullScreenPrimary;
+    return b;
+}
+
+static void (*g_set_behavior)(id, SEL, NSWindowCollectionBehavior);
+
 static void apply_chrome(NSWindow *w) {
     if (is_managed(w) || !is_real_window(w) || is_sdl_fullscreen(w)
         || is_sdl_fullscreen_style(w.styleMask))
@@ -161,9 +222,10 @@ static void apply_chrome(NSWindow *w) {
         [w standardWindowButton:NSWindowZoomButton].hidden = YES;
     }
     set_toolbar(w, YES);
-    // The login window says FullScreenNone; everything else may go full screen.
-    if (!(w.collectionBehavior & NSWindowCollectionBehaviorFullScreenNone))
-        w.collectionBehavior |= NSWindowCollectionBehaviorFullScreenPrimary;
+    NSWindowCollectionBehavior was = w.collectionBehavior;
+    g_set_behavior(w, @selector(setCollectionBehavior:), standard_behavior(was));
+    NP_LOG("steamwin: behavior of %p \"%s\": [%s] -> [%s]", w, w.title.UTF8String,
+           behavior_names(was).UTF8String, behavior_names(w.collectionBehavior).UTF8String);
     NP_LOG("steamwin: native frame on %p \"%s\"%s: style 0x%lx -> 0x%lx",
            w, w.title.UTF8String, dialog ? " (dialog, close button only)" : "",
            (unsigned long)before, (unsigned long)w.styleMask);
@@ -203,6 +265,20 @@ static void title_double_click(NSWindow *w) {
     else if (![action isEqualToString:@"None"])
         [w performZoom:nil];
     NP_LOG("steamwin: double click on the title area of %p: %s", w, action ? action.UTF8String : "Maximize");
+}
+
+// SDL sets the collection behavior again when it changes a window (resizable, full
+// screen); a window with the macOS frame keeps a standard one.
+static void np_set_behavior(id self, SEL _cmd, NSWindowCollectionBehavior b) {
+    NSWindow *w = self;
+    if (is_managed(w)) {
+        NSWindowCollectionBehavior fixed = standard_behavior(b);
+        if (fixed != b && g_restores++ < 50)
+            NP_LOG("steamwin: Steam set behavior [%s] on %p, keeping [%s]",
+                   behavior_names(b).UTF8String, w, behavior_names(fixed).UTF8String);
+        b = fixed;
+    }
+    g_set_behavior(self, _cmd, b);
 }
 
 static void (*g_send_event)(id, SEL, NSEvent *);
@@ -356,7 +432,8 @@ static void run_debug(NSString *line) {
     NSString *cmd = words.firstObject;
     NSWindow *w = debug_target(title);
     NP_LOG("steamwin: debug '%s' on %p \"%s\"", line.UTF8String, w, w.title.UTF8String);
-    if (!w && ![cmd isEqualToString:@"dump"])
+    if (!w && ![cmd isEqualToString:@"dump"] && ![cmd isEqualToString:@"spaces"]
+        && ![cmd isEqualToString:@"policy"])
         return;
     if ([cmd isEqualToString:@"dump"]) {
         [g_seen removeAllObjects];
@@ -383,6 +460,18 @@ static void run_debug(NSString *line) {
             free(list);
             NP_LOG("steamwin: debug delegate methods: %s", [names componentsJoinedByString:@" "].UTF8String);
         }
+    } else if ([cmd isEqualToString:@"spaces"]) {
+        NP_LOG("steamwin: debug app policy=%s active=%d hidden=%d", policy_name(NSApp.activationPolicy),
+               NSApp.isActive, NSApp.isHidden);
+        for (NSWindow *each in NSApp.windows)
+            if (is_sdl(each) && (each.isVisible || each.isMiniaturized))
+                NP_LOG("steamwin: debug spaces %s", describe_spaces(each).UTF8String);
+    } else if ([cmd isEqualToString:@"policy"] && words.count >= 2) {
+        NSApplicationActivationPolicy p = [words[1] isEqualToString:@"regular"]
+            ? NSApplicationActivationPolicyRegular : NSApplicationActivationPolicyAccessory;
+        BOOL ok = [NSApp setActivationPolicy:p];
+        NP_LOG("steamwin: debug setActivationPolicy(%s) -> %d, now %s", policy_name(p), ok,
+               policy_name(NSApp.activationPolicy));
     } else if ([cmd isEqualToString:@"tree"]) {
         dump_tree(w.contentView.superview, 0);
     } else if ([cmd isEqualToString:@"front"]) {
@@ -444,7 +533,9 @@ static void observe(void) {
             g_sdl_window, @selector(setStyleMask:), (IMP)np_set_style);
         g_send_event = (void (*)(id, SEL, NSEvent *))override(
             g_sdl_window, @selector(sendEvent:), (IMP)np_send_event);
-        if (!g_set_style || !g_send_event) {
+        g_set_behavior = (void (*)(id, SEL, NSWindowCollectionBehavior))override(
+            g_sdl_window, @selector(setCollectionBehavior:), (IMP)np_set_behavior);
+        if (!g_set_style || !g_send_event || !g_set_behavior) {
             NP_ERR("steamwin: could not wrap SDL3Window, falling back to log mode");
             g_mode = NP_SW_LOG;
         }
@@ -485,7 +576,8 @@ static void observe(void) {
         poll_debug();
     }];
     survey(@"start");
-    NP_LOG("steamwin: watching windows (mode %s)", g_mode == NP_SW_NATIVE ? "native" : "log");
+    NP_LOG("steamwin: watching windows (mode %s), Steam Helper activation policy %s",
+           g_mode == NP_SW_NATIVE ? "native" : "log", policy_name(NSApp.activationPolicy));
 }
 
 // NSApp exists once Chromium has started its application; until then, retry.

@@ -34,6 +34,11 @@ int main(void) {
     CHECK(out != NULL, "title bar sheet gets the rule");
     CHECK(out && strstr(out, ".TitleBar.OSX .title-bar-actions.window-controls{visibility:hidden!important}"),
           "rule hides Valve's window controls");
+    CHECK(out && strstr(out, ".friendListHeaderContainer.titleBarContainer.OSX{padding-top:12px!important}"),
+          "friends header moves below the traffic lights");
+    CHECK(out && strstr(out, ".ModalDialogPopup .DialogHeader{margin-top:20px!important}"),
+          "dialog titles move below the traffic lights");
+    CHECK(out && !strstr(out, ".DesktopUI .TitleBar"), "the main window's row is not moved");
     CHECK(out && out_len == strlen(sheet) + strlen(NP_STEAMWIN_CSS), "rule appended once");
     char *again = out ? np_steamwin_css_transform((const uint8_t *)out, out_len, &out_len) : NULL;
     CHECK(again == NULL, "never twice");
