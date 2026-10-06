@@ -455,19 +455,23 @@ if [ -n "$STEAM_COMPAT_DATA_PATH" ]; then
 fi
 
 prefix_steam="$WINEPREFIX/drive_c/Program Files (x86)/Steam"
-# The engine's x86_64 ntdll.dll has to be the patched copy for steamclient64.dll
-# to reach lsteamclient; ntdll-patch/patch-dormison.sh puts it in the engine and
-# the bridge. i386 is not patched yet (docs/RISKS.md R1).
+# The engine's ntdll.dll, x86_64 and i386, has to carry the steamclient ->
+# lsteamclient hook for a game to reach lsteamclient (B1, docs/DECISIONS.md P3-1:
+# ntdll-patch/b1/install-b1.sh puts the pair in the engine and the bridge).
 verify_runner() {
-  staged="$bridge_src/wine/x86_64-windows/ntdll.dll"
-  live="$engine_root/wine/lib/wine/x86_64-windows/ntdll.dll"
-  if [ ! -f "$staged" ]; then
-    echo "=== no patched ntdll in the bridge, games will not reach lsteamclient ===" >> "$log" 2>&1 || true
-  elif ! cmp -s "$staged" "$live"; then
-    echo "=== the engine's x86_64 ntdll is not the patched copy, run ntdll-patch/patch-dormison.sh ===" >> "$log" 2>&1 || true
-  else
-    echo "runner: x86_64 ntdll is the patched copy" >> "$log" 2>&1 || true
-  fi
+  for arch in x86_64 i386; do
+    staged="$bridge_src/wine/$arch-windows/ntdll.dll"
+    live="$engine_root/wine/lib/wine/$arch-windows/ntdll.dll"
+    if [ ! -f "$staged" ]; then
+      echo "=== no patched $arch ntdll in the bridge, $arch games will not reach lsteamclient ===" >> "$log" 2>&1 || true
+    elif ! cmp -s "$staged" "$live"; then
+      echo "=== the engine's $arch ntdll is not the patched copy, run ntdll-patch/b1/install-b1.sh ===" >> "$log" 2>&1 || true
+    elif grep -a -q "lead to lsteamclient" "$live" 2>/dev/null; then
+      echo "runner: $arch ntdll is the patched copy (B1)" >> "$log" 2>&1 || true
+    else
+      echo "runner: $arch ntdll is the patched copy" >> "$log" 2>&1 || true
+    fi
+  done
   for f in x86_64-windows/lsteamclient.dll i386-windows/lsteamclient.dll x86_64-unix/lsteamclient.so; do
     [ -f "$bridge_src/$f" ] && continue
     echo "=== bridge is missing $f ===" >> "$log" 2>&1 || true

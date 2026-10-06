@@ -1,0 +1,233 @@
+diff --git a/dlls/ntdll/loader.c b/dlls/ntdll/loader.c
+index 45654e9aa8..78abcb9ecd 100644
+--- a/dlls/ntdll/loader.c
++++ b/dlls/ntdll/loader.c
+@@ -42,6 +42,12 @@ WINE_DECLARE_DEBUG_CHANNEL(relay);
+ WINE_DECLARE_DEBUG_CHANNEL(snoop);
+ WINE_DECLARE_DEBUG_CHANNEL(loaddll);
+ WINE_DECLARE_DEBUG_CHANNEL(imports);
++
++/* NotProton: a module whose DllMain is never called. Set on Valve's steamclient64.dll and
++ * gameoverlayrenderer(64).dll once their exports lead to lsteamclient (Proton's flag, same value). */
++#ifndef LDR_DONT_CALL_DLLMAIN
++#define LDR_DONT_CALL_DLLMAIN 0x20000000
++#endif
+ WINE_DECLARE_DEBUG_CHANNEL(winediag);
+ 
+ #ifdef _WIN64
+@@ -1702,7 +1708,7 @@ static NTSTATUS MODULE_InitDLL( WINE_MODREF *wm, UINT reason, LPVOID lpReserved
+ 
+     /* Skip calls for modules loaded with special load flags */
+ 
+-    if (wm->ldr.Flags & LDR_DONT_RESOLVE_REFS) return STATUS_SUCCESS;
++    if (wm->ldr.Flags & (LDR_DONT_RESOLVE_REFS | LDR_DONT_CALL_DLLMAIN)) return STATUS_SUCCESS;
+     if (wm->ldr.TlsIndex == -1) call_tls_callbacks( wm->ldr.DllBase, reason );
+     if (!entry) return STATUS_SUCCESS;
+ 
+@@ -2364,6 +2370,197 @@ done:
+ }
+ 
+ 
++/*************************************************************************
++ *		NotProton: Valve's steamclient -> lsteamclient
++ *
++ * The same redirection as Proton's steamclient_setup_trampolines (ValveSoftware/wine,
++ * dlls/ntdll/loader.c and dlls/ntdll/unix/loader.c), done from the PE side only so the
++ * unix interface, ntdll.so and the server protocol stay those of the Dormison release.
++ * Every named export of the Windows steamclient that lsteamclient also exports, and the
++ * entry point, become a jump into lsteamclient. PROTON_DISABLE_LSTEAMCLIENT=1 turns it off.
++ */
++static BOOL use_lsteamclient(void)
++{
++    static int use = -1;
++    WCHAR env[8];
++    UNICODE_STRING name = RTL_CONSTANT_STRING( L"PROTON_DISABLE_LSTEAMCLIENT" );
++    UNICODE_STRING value = { 0, sizeof(env), env };
++
++    if (use != -1) return use;
++    use = RtlQueryEnvironmentVariable_U( NULL, &name, &value ) || !value.Length || env[0] == '0';
++    if (!use) ERR( "lsteamclient disabled.\n" );
++    return use;
++}
++
++enum steamclient_kind { STEAMCLIENT_NONE, STEAMCLIENT_32, STEAMCLIENT_64, STEAMCLIENT_OVERLAY };
++
++static enum steamclient_kind steamclient_kind( const UNICODE_STRING *nt_name )
++{
++    const WCHAR *base = nt_name->Buffer, *p;
++    ULONG len;
++
++    for (p = nt_name->Buffer; p < nt_name->Buffer + nt_name->Length / sizeof(WCHAR); p++)
++        if (*p == '\\' || *p == '/') base = p + 1;
++    len = nt_name->Buffer + nt_name->Length / sizeof(WCHAR) - base;
++    if (len >= 4 && !wcsnicmp( base + len - 4, L".dll", 4 )) len -= 4;
++
++    if (!RtlCompareUnicodeStrings( base, len, L"steamclient", 11, TRUE )) return STEAMCLIENT_32;
++    if (!RtlCompareUnicodeStrings( base, len, L"steamclient64", 13, TRUE )) return STEAMCLIENT_64;
++    if (!RtlCompareUnicodeStrings( base, len, L"gameoverlayrenderer", 19, TRUE ) ||
++        !RtlCompareUnicodeStrings( base, len, L"gameoverlayrenderer64", 21, TRUE ))
++        return STEAMCLIENT_OVERLAY;
++    return STEAMCLIENT_NONE;
++}
++
++/* The address a named export leads to, or NULL when it is absent or a forwarder. */
++static void *steamclient_export( HMODULE module, const IMAGE_EXPORT_DIRECTORY *exports, DWORD exp_size,
++                                 const char *name )
++{
++    const DWORD *functions = get_rva( module, exports->AddressOfFunctions );
++    int ordinal = find_name_in_exports( module, exports, name );
++    char *proc;
++
++    if (ordinal == -1 || ordinal >= exports->NumberOfFunctions || !functions[ordinal]) return NULL;
++    proc = get_rva( module, functions[ordinal] );
++    if (proc >= (char *)exports && proc < (char *)exports + exp_size) return NULL;
++    return proc;
++}
++
++/* movabs rax, target; jmp rax -- or mov eax, target; jmp eax: 12 or 7 bytes, as Proton writes */
++static void steamclient_write_jump( BYTE *src, void *target )
++{
++#ifdef _WIN64
++    ULONG_PTR addr = (ULONG_PTR)target;
++    src[0] = 0x48; src[1] = 0xb8;
++    memcpy( src + 2, &addr, sizeof(addr) );
++    src[10] = 0xff; src[11] = 0xe0;
++#else
++    ULONG addr = PtrToUlong( target );
++    src[0] = 0xb8;
++    memcpy( src + 1, &addr, sizeof(addr) );
++    src[5] = 0xff; src[6] = 0xe0;
++#endif
++}
++
++static ULONG steamclient_setup_trampolines( HMODULE src_mod, HMODULE tgt_mod )
++{
++    IMAGE_NT_HEADERS *src_nt = RtlImageNtHeader( src_mod ), *tgt_nt = RtlImageNtHeader( tgt_mod );
++    IMAGE_SECTION_HEADER *sec = IMAGE_FIRST_SECTION( src_nt );
++    const IMAGE_EXPORT_DIRECTORY *src_exp, *tgt_exp;
++    DWORD src_size, tgt_size, old_prot[16];
++    const DWORD *names, *functions;
++    const WORD *ordinals;
++    ULONG i, count = 0, nsec = min( src_nt->FileHeader.NumberOfSections, ARRAY_SIZE(old_prot) );
++    void *addr;
++    SIZE_T size;
++
++    if (!(src_exp = RtlImageDirectoryEntryToData( src_mod, TRUE, IMAGE_DIRECTORY_ENTRY_EXPORT, &src_size ))) return 0;
++    if (!(tgt_exp = RtlImageDirectoryEntryToData( tgt_mod, TRUE, IMAGE_DIRECTORY_ENTRY_EXPORT, &tgt_size ))) return 0;
++
++    /* the jumps go into the code sections, which are read-only once mapped */
++    for (i = 0; i < nsec; i++)
++    {
++        old_prot[i] = 0;
++        if (!(sec[i].Characteristics & IMAGE_SCN_MEM_EXECUTE)) continue;
++        addr = (char *)src_mod + sec[i].VirtualAddress;
++        size = sec[i].Misc.VirtualSize;
++        if (NtProtectVirtualMemory( NtCurrentProcess(), &addr, &size, PAGE_EXECUTE_READWRITE, &old_prot[i] ))
++            old_prot[i] = 0;
++    }
++
++    names = get_rva( src_mod, src_exp->AddressOfNames );
++    functions = get_rva( src_mod, src_exp->AddressOfFunctions );
++    ordinals = get_rva( src_mod, src_exp->AddressOfNameOrdinals );
++    for (i = 0; i < src_exp->NumberOfNames; i++)
++    {
++        char *src_addr;
++        void *tgt_addr;
++
++        if (ordinals[i] >= src_exp->NumberOfFunctions || !functions[ordinals[i]]) continue;
++        src_addr = get_rva( src_mod, functions[ordinals[i]] );
++        if (src_addr >= (char *)src_exp && src_addr < (char *)src_exp + src_size) continue;
++        if (!(tgt_addr = steamclient_export( tgt_mod, tgt_exp, tgt_size, get_rva( src_mod, names[i] ) ))) continue;
++        steamclient_write_jump( (BYTE *)src_addr, tgt_addr );
++        count++;
++    }
++
++    if (src_nt->OptionalHeader.AddressOfEntryPoint && tgt_nt->OptionalHeader.AddressOfEntryPoint)
++        steamclient_write_jump( get_rva( src_mod, src_nt->OptionalHeader.AddressOfEntryPoint ),
++                                get_rva( tgt_mod, tgt_nt->OptionalHeader.AddressOfEntryPoint ) );
++
++    for (i = 0; i < nsec; i++)
++    {
++        DWORD prot;
++        if (!old_prot[i]) continue;
++        addr = (char *)src_mod + sec[i].VirtualAddress;
++        size = sec[i].Misc.VirtualSize;
++        NtProtectVirtualMemory( NtCurrentProcess(), &addr, &size, old_prot[i], &prot );
++    }
++    NtFlushInstructionCache( NtCurrentProcess(), src_mod, src_nt->OptionalHeader.SizeOfImage );
++    return count;
++}
++
++/* Proton's step for the 32-bit steamclient: its header gets the ImageBase the file has,
++ * not the one relocation left behind. */
++static void steamclient_restore_image_base( void *module, IMAGE_NT_HEADERS *nt, const UNICODE_STRING *nt_name )
++{
++    OBJECT_ATTRIBUTES attr;
++    void *addr = module;
++    SIZE_T size = 0x1000;
++    LARGE_INTEGER offset;
++    IO_STATUS_BLOCK io;
++    DWORD protect_old;
++    HANDLE file;
++
++    if (NtProtectVirtualMemory( NtCurrentProcess(), &addr, &size, PAGE_READWRITE, &protect_old )) return;
++    InitializeObjectAttributes( &attr, (UNICODE_STRING *)nt_name, OBJ_CASE_INSENSITIVE, 0, NULL );
++    if (!NtOpenFile( &file, GENERIC_READ | SYNCHRONIZE, &attr, &io, FILE_SHARE_READ | FILE_SHARE_DELETE,
++                     FILE_SYNCHRONOUS_IO_NONALERT | FILE_NON_DIRECTORY_FILE ))
++    {
++        offset.QuadPart = (ULONG_PTR)&nt->OptionalHeader.ImageBase - (ULONG_PTR)module;
++        NtReadFile( file, 0, NULL, NULL, &io, &nt->OptionalHeader.ImageBase,
++                    sizeof(nt->OptionalHeader.ImageBase), &offset, NULL );
++        NtClose( file );
++    }
++    NtProtectVirtualMemory( NtCurrentProcess(), &addr, &size, protect_old, &protect_old );
++}
++
++/* Returns the load flags build_module goes on with. */
++static DWORD redirect_steamclient( WINE_MODREF *wm, void *module, IMAGE_NT_HEADERS *nt,
++                                   const UNICODE_STRING *nt_name, LPCWSTR load_path, DWORD flags )
++{
++    static HMODULE lsteamclient;
++    UNICODE_STRING name = RTL_CONSTANT_STRING( L"lsteamclient.dll" );
++    enum steamclient_kind kind = steamclient_kind( nt_name );
++    NTSTATUS status;
++    ULONG count;
++
++    if (kind == STEAMCLIENT_NONE || !use_lsteamclient()) return flags;
++#ifdef _WIN64
++    if (kind == STEAMCLIENT_32) return flags;
++#else
++    if (kind == STEAMCLIENT_64) return flags;
++#endif
++    if (!lsteamclient && (status = LdrLoadDll( load_path, 0, &name, &lsteamclient )))
++    {
++        ERR( "%s: lsteamclient.dll did not load (%#lx), left as it is\n", debugstr_us(nt_name), status );
++        return flags;
++    }
++
++    count = steamclient_setup_trampolines( module, lsteamclient );
++    TRACE_(loaddll)( "%s: %lu exports and the entry point lead to lsteamclient.dll at %p\n",
++                     debugstr_us(nt_name), count, lsteamclient );
++    if (kind == STEAMCLIENT_32)
++    {
++        wm->ldr.Flags |= LDR_DONT_RESOLVE_REFS;
++        steamclient_restore_image_base( module, nt, nt_name );
++        return flags | LDR_DONT_RESOLVE_REFS;
++    }
++    wm->ldr.Flags |= LDR_DONT_CALL_DLLMAIN;
++    return flags;
++}
++
++
+ /*************************************************************************
+  *		build_module
+  *
+@@ -2401,6 +2598,8 @@ static NTSTATUS build_module( LPCWSTR load_path, const UNICODE_STRING *nt_name,
+ 
+     update_load_config( *module );
+ 
++    flags = redirect_steamclient( wm, *module, nt, nt_name, load_path, flags );
++
+     /* fixup imports */
+ 
+     if (!(flags & LDR_DONT_RESOLVE_REFS) &&
