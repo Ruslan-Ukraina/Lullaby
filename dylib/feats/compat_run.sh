@@ -1,5 +1,6 @@
 #!/bin/sh
-# notproton CrossOver compatibility tool shim
+# notproton compatibility tool shim: runs Windows games from Steam on the
+# Dormison engine NotProton unpacked into runners/current
 set -e
 
 verb="$1"
@@ -14,7 +15,7 @@ while [ "$argi" -lt "$argc" ]; do
   arg="$1"
   shift
   case "$arg" in
-    CX_GRAPHICS*=*|D3DM_*=*|DXMT_*=*|DXVK_*=*|MTL_*=*|NOTPROTON_*=*|ROSETTA_*=*|WINE*=*)
+    CX_GRAPHICS*=*|D3DM_*=*|DXMT_*=*|DXVK_*=*|MTL_*=*|NOTPROTON_*=*|ROSETTA_*=*|SEVO_*=*|WINE*=*)
       # shellcheck disable=SC2163 # arg is a NAME=VALUE pair, which export takes as an assignment
       export "$arg"
       launch_env="$launch_env $arg"
@@ -31,23 +32,25 @@ case "$verb" in
     ;;
 esac
 
-CX_ROOT="$HOME/Library/Application Support/notproton/runners/current"
-export CX_ROOT
-# cxcompatdb resolves its database through CX_HOME and logs an error for
-# every module loaded without it :(
-export CX_HOME="$HOME/Library/Application Support/CrossOver"
-wine_unix="$CX_ROOT/lib/wine/aarch64-unix"
-WINELOADER="$wine_unix/wine.app/Contents/MacOS/wine"
-WINESERVER="$CX_ROOT/CrossOver-Hosted Application/wineserver-arm64"
-if [ ! -x "$WINELOADER" ] || [ ! -x "$WINESERVER" ]; then
-  wine_unix="$CX_ROOT/lib/wine/x86_64-unix"
-  WINELOADER="$wine_unix/wine"
-  WINESERVER="$CX_ROOT/CrossOver-Hosted Application/wineserver"
-  [ -x "$WINESERVER" ] || WINESERVER="$CX_ROOT/CrossOver-Hosted Application/wineserver-x86"
-fi
+support="$HOME/Library/Application Support/notproton"
+# The Dormison engine. wine/bin/wine is its front door; x86_64-unix/wine is the
+# loader proper, the one Dormison re-executes every Windows program through and
+# the one a game's bundle carries a copy of. The server is native arm64.
+engine_root="$support/runners/current"
+wine_unix="$engine_root/wine/lib/wine/x86_64-unix"
+WINELOADER="$engine_root/wine/bin/wine"
+WINESERVER="$engine_root/wine/bin/wineserver"
 export WINELOADER WINESERVER
-export WINEDLLPATH="$CX_ROOT/lib/wine/x86_64-windows:$wine_unix"
-export PATH="$CX_ROOT/bin:$PATH"
+bridge_src="$support/bridge"
+# Dormison searches WINEDLLPATH after its own tree (set_dll_path), so this adds
+# lsteamclient, which the engine does not ship, and never shadows an engine DLL.
+export WINEDLLPATH="$bridge_src"
+export PATH="$engine_root/wine/bin:$PATH"
+# Dormison's View menu saves a setting through $SEVO_CLI and falls back to
+# Sevoflurane's /usr/local/bin/sevo when that is unset. NotProton never calls
+# Sevoflurane (docs/DECISIONS.md S1), so it always names this stand-in.
+sevo_cli="$support/notproton-sevo"
+export SEVO_CLI="$sevo_cli"
 
 if [ -n "$STEAM_COMPAT_DATA_PATH" ]; then
   log="$STEAM_COMPAT_DATA_PATH/notproton-run.log"
@@ -69,6 +72,28 @@ fi
 } >> "$log" 2>&1 || true
 
 stage_step="startup"
+[ -x "$WINELOADER" ] && [ -x "$WINESERVER" ] || {
+  echo "=== no Dormison engine at $engine_root, set it up in NotProton ===" >> "$log" 2>&1 || true
+  exit 1; }
+echo "engine: $(readlink "$engine_root" 2>/dev/null || echo "$engine_root")" \
+  >> "$log" 2>&1 || true
+
+# The stand-in SEVO_CLI names. Dormison runs it as
+# "app config <appid> <key> <value>" when a View menu setting changes; it only
+# records the call.
+sevo_stub=$(cat <<'STUB'
+#!/bin/sh
+# NotProton's stand-in for Sevoflurane's sevo CLI (docs/DECISIONS.md S1).
+log="$HOME/Library/Application Support/notproton/notproton-sevo.log"
+printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$log" 2>/dev/null
+exit 0
+STUB
+)
+if [ "$(cat "$sevo_cli" 2>/dev/null)" != "$sevo_stub" ]; then
+  printf '%s\n' "$sevo_stub" > "$sevo_cli.new" && chmod 755 "$sevo_cli.new" \
+    && mv -f "$sevo_cli.new" "$sevo_cli" \
+    || echo "=== could not write $sevo_cli ===" >> "$log" 2>&1 || true
+fi
 # shellcheck disable=SC2329 # the trap below invokes this
 report_early_exit() {
   status=$?
@@ -108,7 +133,7 @@ prefix_machine() {
 tool_name() {
   case "$1" in
     aa64) printf 'the FEX build of CrossOver' ;;
-    8664) printf 'the Rosetta build of CrossOver' ;;
+    8664) printf 'Dormison or the Rosetta build of CrossOver' ;;
     *) printf 'an older 32-bit setup' ;;
   esac
 }
@@ -273,24 +298,93 @@ lay_out_proton_profile() {
     && ln -s steamuser "$users/crossover" 2>/dev/null; then
     echo "=== pointed crossover at steamuser ===" >> "$log" 2>&1 || true
   fi
+  # Dormison names the profile after the macOS account (USER, else the password
+  # entry; set_home_dir in dlls/ntdll/unix/loader.c), so that name leads to
+  # steamuser as well, where Steam Cloud looks for saves.
+  mac_user=${USER:-$(id -un 2>/dev/null || true)}
+  case "$mac_user" in
+    ''|steamuser|crossover|*/*|*\\*) return 0 ;;
+  esac
+  if [ -L "$users/$mac_user" ] && [ ! -e "$users/$mac_user" ]; then
+    rm -f "${users:?}/${mac_user:?}" 2>/dev/null || true
+  fi
+  if [ ! -e "$users/$mac_user" ]; then
+    ln -s steamuser "$users/$mac_user" 2>/dev/null \
+      && echo "=== pointed $mac_user at steamuser ===" >> "$log" 2>&1 || true
+  elif [ ! -L "$users/$mac_user" ]; then
+    echo "=== $mac_user is a profile of its own, not steamuser ===" >> "$log" 2>&1 || true
+  fi
+}
+
+# Sets KEY=VALUE in an env file in Dormison's format (dlls/ntdll/unix/env.c:
+# one KEY=VALUE per line, no quoting), replacing the first KEY line, dropping
+# any later ones, or appending it.
+env_file_set() {
+  file=$1
+  key=$2
+  value=$3
+  if [ -f "$file" ]; then
+    awk -v k="$key" -v v="$value" '
+      { line = $0; sub(/^[ \t]+/, "", line) }
+      index(line, k "=") == 1 { if (!done) print k "=" v; done = 1; next }
+      { print }
+      END { if (!done) print k "=" v }' "$file" > "$file.np-new" \
+      && mv -f "$file.np-new" "$file"
+  else
+    printf '%s=%s\n' "$key" "$value" > "$file"
+  fi
+}
+
+# Dormison applies <prefix>/.sevo/bottle.env at the start of every process in
+# the prefix, then .sevo/apps/<program>.env (load_sevo_env). A new prefix gets
+# NotProton's defaults; after that the keys are the user's and stay, except the
+# two this script owns: WINEMSYNC, which only the bottle file may set and the
+# server has to share, and SEVO_CLI (S1).
+write_bottle_env() {
+  sevo="$WINEPREFIX/.sevo"
+  bottle="$sevo/bottle.env"
+  mkdir -p "$sevo/apps" || return 0
+  if [ ! -f "$bottle" ]; then
+    cat > "$bottle" <<'BOTTLE'
+# Dormison settings for every program in this prefix, first written by NotProton.
+# One KEY=VALUE per line; .sevo/apps/<program>.env overrides them per program.
+SEVO_RESIZABLE_WINDOWS=1
+SEVO_UPSCALER=off
+SEVO_FINAL_FILTER=lanczos
+SEVO_FPS=0
+SEVO_FPS_GRAPH=0
+SEVO_LINEAR_MOUSE=0
+SEVO_CURSOR_CONFINE=0
+BOTTLE
+  fi
+  env_file_set "$bottle" WINEMSYNC "$WINEMSYNC"
+  env_file_set "$bottle" SEVO_CLI "$sevo_cli"
+  echo "bottle.env: $(grep -v '^#' "$bottle" | tr '\n' ' ')" >> "$log" 2>&1 || true
 }
 
 if [ -n "$STEAM_COMPAT_DATA_PATH" ]; then
   export WINEPREFIX="$STEAM_COMPAT_DATA_PATH/pfx"
   mkdir -p "$WINEPREFIX"
   msync_from=launch-options
-  if [ -z "$WINEMSYNC" ] && [ -r "$STEAM_COMPAT_DATA_PATH/notproton-msync" ]; then
+  # The marker carries a launch option's choice over to the runs that come
+  # without one. A marker written under CrossOver holds its default of 0, so it
+  # only counts once the prefix has a bottle.env, which only Dormison runs write.
+  if [ -z "$WINEMSYNC" ] && [ -r "$STEAM_COMPAT_DATA_PATH/notproton-msync" ] \
+    && [ -f "$WINEPREFIX/.sevo/bottle.env" ]; then
     WINEMSYNC=$(tr -d ' \t\n' \
       < "$STEAM_COMPAT_DATA_PATH/notproton-msync" 2>/dev/null || true)
     msync_from=carried-over
   fi
   [ -n "$WINEMSYNC" ] || msync_from=default
-  export WINEMSYNC="${WINEMSYNC:-0}"
+  # msync+ is Dormison's sync and stays on; 0 is a per-game debugging switch.
+  export WINEMSYNC="${WINEMSYNC:-1}"
   printf '%s' "$WINEMSYNC" \
     > "$STEAM_COMPAT_DATA_PATH/notproton-msync" 2>/dev/null || true
   stage_step="prefix arch check"
   refuse_foreign_prefix
   echo "sync: WINEMSYNC=$WINEMSYNC from $msync_from" >> "$log" 2>&1 || true
+  stage_step="bottle settings"
+  write_bottle_env
   "$WINESERVER" -k >> "$log" 2>&1 || true
   stage_step="profile layout"
   lay_out_proton_profile
@@ -310,30 +404,23 @@ if [ -n "$STEAM_COMPAT_DATA_PATH" ]; then
   "$WINELOADER" reg add 'HKLM\Software\Classes\steam\shell\open\command' /ve /t REG_SZ /d '"C:\Program Files (x86)\Steam\steam.exe" "%1"' /f >> "$log" 2>&1 || true
 fi
 
-bridge_src="$HOME/Library/Application Support/notproton/bridge"
 prefix_steam="$WINEPREFIX/drive_c/Program Files (x86)/Steam"
+# The engine's x86_64 ntdll.dll has to be the patched copy for steamclient64.dll
+# to reach lsteamclient; ntdll-patch/patch-dormison.sh puts it in the engine and
+# the bridge. i386 is not patched yet (docs/RISKS.md R1).
 verify_runner() {
-  if [ ! -d "$bridge_src/wine" ]; then
-    echo "=== no patched ntdll in the bridge, run NotProton ===" >> "$log" 2>&1 || true
-    return
+  staged="$bridge_src/wine/x86_64-windows/ntdll.dll"
+  live="$engine_root/wine/lib/wine/x86_64-windows/ntdll.dll"
+  if [ ! -f "$staged" ]; then
+    echo "=== no patched ntdll in the bridge, games will not reach lsteamclient ===" >> "$log" 2>&1 || true
+  elif ! cmp -s "$staged" "$live"; then
+    echo "=== the engine's x86_64 ntdll is not the patched copy, run ntdll-patch/patch-dormison.sh ===" >> "$log" 2>&1 || true
+  else
+    echo "runner: x86_64 ntdll is the patched copy" >> "$log" 2>&1 || true
   fi
-  for arch in x86_64-windows i386-windows aarch64-windows; do
-    staged="$bridge_src/wine/$arch/ntdll.dll"
-    live="$CX_ROOT/lib/wine/$arch/ntdll.dll"
-    [ -f "$staged" ] || continue
-    if [ ! -f "$live" ]; then
-      echo "=== runner has no $arch ntdll, set up the runner in NotProton ===" >> "$log" 2>&1 || true
-    elif ! cmp -s "$staged" "$live"; then
-      echo "=== runner $arch ntdll is not the patched copy, set up the runner in NotProton ===" >> "$log" 2>&1 || true
-    fi
-  done
-  for arch in i386-windows x86_64-windows "${wine_unix##*/}"; do
-    case "$arch" in
-      *-unix) name="lsteamclient.so" ;;
-      *) name="lsteamclient.dll" ;;
-    esac
-    [ -f "$CX_ROOT/lib/wine/$arch/$name" ] && continue
-    echo "=== runner is missing $arch/$name, set up the runner in NotProton ===" >> "$log" 2>&1 || true
+  for f in x86_64-windows/lsteamclient.dll i386-windows/lsteamclient.dll x86_64-unix/lsteamclient.so; do
+    [ -f "$bridge_src/$f" ] && continue
+    echo "=== bridge is missing $f ===" >> "$log" 2>&1 || true
   done
 }
 install_lsteamclient_trigger() {
@@ -418,7 +505,64 @@ if [ -d "$bridge_src" ] && [ -n "$WINEPREFIX" ]; then
   echo "STEAM_COMPAT_CLIENT_INSTALL_PATH=$STEAM_COMPAT_CLIENT_INSTALL_PATH" >> "$log" 2>&1 || true
 fi
 
-export WINEDEBUG="${WINEDEBUG:-err+all,fixme-all}"
+# The renderer reaches every program of this launch through WINEDLLPATH_PREPEND,
+# which Dormison searches ahead of its own tree (set_dll_path), so the engine's
+# files stay as shipped. Each renderer directory links into runners/current, so
+# it follows an engine switch. DXMT is the default for D3D10 and D3D11.
+renderers="$support/renderers"
+stage_renderer() {
+  dir="$renderers/$1"
+  case "$1" in
+    dxmt)
+      mkdir -p "$dir/x86_64-windows" "$dir/i386-windows" "$dir/x86_64-unix" || return 1
+      for f in d3d11 d3d10core dxgi winemetal; do
+        ln -sfn "$engine_root/dxmt/$f.dll" "$dir/x86_64-windows/$f.dll"
+        ln -sfn "$engine_root/dxmt/i386-windows/$f.dll" "$dir/i386-windows/$f.dll"
+      done
+      # Wine looks for a builtin's unix half beside the directory it found the
+      # PE in, and winemetal's is the engine's (32 bit games reach it via wow64).
+      ln -sfn "$wine_unix/winemetal.so" "$dir/x86_64-unix/winemetal.so"
+      renderer_overrides="d3d11,d3d10core,dxgi,winemetal=b"
+      ;;
+    dxvk)
+      mkdir -p "$dir/x86_64-windows" || return 1
+      for f in d3d11 d3d10core; do
+        ln -sfn "$engine_root/dxvk/$f.dll" "$dir/x86_64-windows/$f.dll"
+      done
+      renderer_overrides="d3d11,d3d10core=b"
+      ;;
+    *) return 1 ;;
+  esac
+  for f in "$dir"/*/*; do
+    [ -e "$f" ] && continue
+    echo "=== renderer $1: $f leads nowhere in this engine ===" >> "$log" 2>&1 || true
+    return 1
+  done
+}
+renderer="${CX_GRAPHICS_BACKEND:-dxmt}"
+case "$renderer" in
+  dxmt|dxvk|wined3d) ;;
+  d3dmetal)
+    echo "=== D3DMetal is not installed in this engine, using DXMT ===" >> "$log" 2>&1 || true
+    renderer=dxmt ;;
+  *)
+    echo "=== unknown renderer $renderer, using DXMT ===" >> "$log" 2>&1 || true
+    renderer=dxmt ;;
+esac
+unset WINEDLLPATH_PREPEND
+if [ "$renderer" != wined3d ]; then
+  if stage_renderer "$renderer"; then
+    export WINEDLLPATH_PREPEND="$renderers/$renderer"
+    export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:+$WINEDLLOVERRIDES;}$renderer_overrides"
+  else
+    renderer=wined3d
+  fi
+fi
+echo "renderer: $renderer${WINEDLLPATH_PREPEND:+ from $WINEDLLPATH_PREPEND}" >> "$log" 2>&1 || true
+echo "WINEDLLOVERRIDES=$WINEDLLOVERRIDES" >> "$log" 2>&1 || true
+
+# loaddll is a line per module, cheap, and shows lsteamclient coming in.
+export WINEDEBUG="${WINEDEBUG:-err+all,fixme-all,+loaddll}"
 trap - EXIT
 echo "launch_env=$launch_env" >> "$log" 2>&1 || true
 echo "=== launching ($verb): $WINELOADER $* ===" >> "$log" 2>&1 || true
@@ -465,7 +609,10 @@ fi
 # shellcheck disable=SC1003 # the pair deletes a literal backslash, not a quote
 bundle_name=$(printf '%s' "$game_name" | tr -d '/:"`$\\')
 game_name_xml=$(printf '%s' "$game_name" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
-loader_root="$HOME/Library/Application Support/notproton/launchers/$app_id"
+# Dormison's loader, started with no program from a bundle under a directory
+# named only with digits, opens sevoflurane://play/<digits> (open_in_sevoflurane
+# in loader/main.c). The prefix keeps this directory out of that pattern (S1).
+loader_root="$support/launchers/app-$app_id"
 mkdir -p "$loader_root"
 loader_app="$loader_root/$bundle_name.app"
 rm -rf "${loader_root:?}"/*.app
@@ -584,17 +731,37 @@ for f in "$wine_unix"/*; do
   esac
   ln -sfn "$f" "$loader_macos/$base"
 done
-ln "$WINELOADER" "$loader_macos/wine" 2>/dev/null || cp "$WINELOADER" "$loader_macos/wine"
+ln "$wine_unix/wine" "$loader_macos/wine" 2>/dev/null || cp "$wine_unix/wine" "$loader_macos/wine"
 if [ -x "$loader_macos/wine" ]; then
   WINELOADER="$loader_macos/wine"
   echo "loader staged in bundle for game mode" >> "$log" 2>&1 || true
+  # Dormison re-executes every Windows program through the loader its
+  # .sevo/apps/<program>.env names in SEVO_LOADER, otherwise through the
+  # engine's own (loader_exec in dlls/ntdll/unix/loader.c). Naming this copy
+  # for the shim and the game keeps both in the bundle, which is where the Dock
+  # name, the icon and Game Mode come from.
+  if [ -n "$WINEPREFIX" ] && mkdir -p "$WINEPREFIX/.sevo/apps"; then
+    for program in steam.exe "$(basename "$target")"; do
+      program=$(printf '%s' "$program" | tr '[:upper:]' '[:lower:]')
+      [ -n "$program" ] || continue
+      env_file_set "$WINEPREFIX/.sevo/apps/$program.env" SEVO_LOADER "$WINELOADER"
+      echo "loader: .sevo/apps/$program.env SEVO_LOADER=$WINELOADER" >> "$log" 2>&1 || true
+    done
+  fi
 else
   echo "loader staging failed, game mode unavailable" >> "$log" 2>&1 || true
 fi
 
 cat > "$loader_macos/launcher" <<LAUNCHER
 #!/bin/sh
+# Opened from the Dock or Finder there is nothing to run, and the loader
+# started without a program would hand the game to Sevoflurane (S1).
+case "\$#:\${1:-}" in 0:|1:-psn_*) exit 0 ;; esac
 export WINELOADER="$WINELOADER"
+# Where the bundle's loader finds ntdll.so. Its presence also keeps the loader
+# from ever opening sevoflurane:// (S1).
+export SEVO_LOADER_TREE="$wine_unix"
+export SEVO_CLI="$sevo_cli"
 wine_log="$loader_root/notproton-wine.log"
 exec > "\$wine_log" 2>&1
 shim="$HOME/Library/Application Support/notproton/overlay-shim.dylib"
@@ -683,14 +850,16 @@ else
   echo "=== client staged no overlay renderer, overlay disabled ===" >> "$log" 2>&1 || true
 fi
 set -- --args "$shim_exe" "$@"
-for name in $(env | sed -nE 's/^(Steam[A-Za-z0-9]*|(CX_GRAPHICS|D3DM_|DXMT_|DXVK_|MTL_|ROSETTA_)[A-Z0-9_]*)=.*/\1/p'); do
+for name in $(env | sed -nE 's/^(Steam[A-Za-z0-9]*|(CX_GRAPHICS|D3DM_|DXMT_|DXVK_|MTL_|ROSETTA_|SEVO_)[A-Z0-9_]*)=.*/\1/p'); do
   eval "value=\$$name"
   # shellcheck disable=SC2154 # eval assigns value on the line above
   set -- --env "$name=$value" "$@"
 done
+if [ -n "$WINEDLLPATH_PREPEND" ]; then
+  set -- --env WINEDLLPATH_PREPEND="$WINEDLLPATH_PREPEND" "$@"
+fi
 set -- \
-  --env CX_ROOT="$CX_ROOT" \
-  --env CX_HOME="$CX_HOME" \
+  --env SEVO_CLI="$sevo_cli" \
   --env WINESERVER="$WINESERVER" \
   --env WINEDLLPATH="$WINEDLLPATH" \
   --env WINEDLLOVERRIDES="$WINEDLLOVERRIDES" \
