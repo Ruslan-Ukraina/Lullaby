@@ -89,6 +89,15 @@ struct GameSettingsTests {
         #expect(file.hasPrefix("SEVO_LOADER=/x/wine\n"))
     }
 
+    @Test("Renderer, HUD, AVX and retina round-trip through the env file")
+    func graphicsKeys() {
+        let settings = GameSettings(renderer: .dxvk, metalHUD: true, advertiseAVX: false, retina: true)
+        let text = EnvFile.apply(settings.entries, to: "")
+        #expect(text.contains("NOTPROTON_RENDERER=dxvk\n"))
+        #expect(GameSettings(env: EnvFile.parse(text)) == settings)
+        #expect(GameSettings(env: ["NOTPROTON_RENDERER": "d3dmetal"]).renderer == nil)
+    }
+
     @Test("msync is on unless the debugging marker says 0")
     func msyncMarker() throws {
         let root = try scratch()

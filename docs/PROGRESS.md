@@ -272,3 +272,22 @@
 - `PrefixTools.layout` и `RunnerStore` берут раскладку и версию у `DormisonEngine`.
 - `make runcheck compatcheck` — 0, `make app-tests` — 0 (378 тестов), `make app` — 0.
 - Не сделано: удаление CrossOver-кода (`CrossOverSource/License`, `RunnerInstaller/Setup/Patcher`, `SupportedRunner`, FEX-ресурсы) и замена их тестов; установка движка из тарбола (`EngineSetup`) — Фаза 2/4; `dllPaths` пока не используется run-скриптом (WINEDLLPATH = только мост, как в спайке).
+
+## 2026-10-06 — Фаза 2 завершена (кроме ручной проверки)
+
+**Сделано** (коммиты `a737833` … последний в ветке `dormison`):
+- CrossOver убран из приложения: удалены `CrossOverSource/License`, `RunnerInstaller/Setup/Patcher/Store`, `NtdllPatcher`, `SupportedRunner`, ресурсы `detour*.bin`, 8 файлов тестов. Вместо них — `EngineStore` (состояние `current`, список полных движков, атомарное переключение и удаление неактивных), строки «Engine» в Status, `DormisonEngine` в `PrefixTools`/`PrefixRebuild`.
+- `compat_run.sh`: ветка aarch64/FEX убрана (префикс всегда x86_64), сообщения без CrossOver, рендерер и Retina берутся из параметров запуска → `.sevo/apps/<exe>.env` → `bottle.env`.
+- Панель в Steam — только список рендереров (`NOTPROTON_RENDERER`); тесты панели переписаны (`panel-behavior`, `webpatch-fixtures`).
+- «Настройки игры»: добавлены рендерер, Retina, Metal HUD, AVX.
+- Бэклог 1 (финал лога по сигналу + ожидание в `spike-check.sh`), 3 (только наши процессы Wine, Sevoflurane по времени старта), 6 (сторож первого кадра `NOTPROTON_WATCHDOG`, тест `watchdogcheck.sh`), ложный ok в п. 5 `spike-check.sh` — закрыты в коде.
+- Решения P2-1…P2-4 — `DECISIONS.md`.
+
+**Проверено** (все с кодом 0): `make runcheck compatcheck scriptcheck panel-behavior webpatch-fixtures sigcheck anchorcheck sigdb-fixtures overlay-shim-tests`; `make app-tests` — 278 тестов; `make app` — `out/NotProton.app`. Запуск собранного приложения на 5 секунд записал `runners/dormison-b1/notproton-engine.env` с верными путями.
+
+**Не проверено / не сделано:**
+- В Steam стоит старый dylib со встроенным скриптом (до этих правок). Новые правки `compat_run.sh` попадут туда после кнопки Install в приложении или `make dylib-install`. Игры с новым скриптом не запускал.
+- Окно «Настройки игры» и строки Engine глазами не смотрел (нужен клик в приложении) — в `SPIKE_TEST.md` для тебя.
+- Выбор D3DMetal в рендерерах — после импорта GPTK (Фаза 7), Anime4K/CuNNy — когда движок получит каталог шейдеров (`SEVO_SHADER_DIR`).
+- Установка движка из приложения — Фаза 4 (P2-2).
+- Остатки слова crossover: имена внутри C-кода dylib (P2-3), миграция профиля `users/crossover`, тесты миграции, документация — Фаза 7.

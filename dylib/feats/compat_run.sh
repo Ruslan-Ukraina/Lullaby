@@ -401,8 +401,19 @@ BOTTLE
   echo "bottle.env: $(grep -v '^#' "$bottle" | tr '\n' ' ')" >> "$log" 2>&1 || true
 }
 
+# A value the game's own env file (then the prefix's) sets, for the keys that are
+# NotProton's rather than the engine's: the engine reads those files itself.
+exe_lc=$(basename "$1" | tr '[:upper:]' '[:lower:]')
+env_value() {
+  for f in "$WINEPREFIX/.sevo/apps/$exe_lc.env" "$WINEPREFIX/.sevo/bottle.env"; do
+    v=$(sed -n "s/^$1=//p" "$f" 2>/dev/null | head -1)
+    if [ -n "$v" ]; then printf '%s' "$v"; return 0; fi
+  done
+  return 0
+}
 if [ -n "$STEAM_COMPAT_DATA_PATH" ]; then
   export WINEPREFIX="$STEAM_COMPAT_DATA_PATH/pfx"
+  [ -n "$NOTPROTON_RETINA" ] || NOTPROTON_RETINA=$(env_value NOTPROTON_RETINA)
   mkdir -p "$WINEPREFIX"
   msync_from=launch-options
   # The marker carries a launch option's choice over to the runs that come
@@ -594,7 +605,10 @@ stage_renderer() {
     return 1
   done
 }
-renderer="${CX_GRAPHICS_BACKEND:-dxmt}"
+# Launch option first (the Steam page's renderer list, or the old CX_GRAPHICS_BACKEND
+# some games still carry), then the game's Game Settings.
+renderer="${NOTPROTON_RENDERER:-${CX_GRAPHICS_BACKEND:-$(env_value NOTPROTON_RENDERER)}}"
+renderer="${renderer:-dxmt}"
 case "$renderer" in
   dxmt|dxvk|wined3d) ;;
   d3dmetal)
@@ -887,6 +901,29 @@ kill_wine_prefix() {
   fi
 }
 
+# Test runs only: NOTPROTON_WATCHDOG=<seconds> in the launch options ends a game
+# that has drawn no frame by then, which is how a modal error box or a hang looks
+# from outside. A player's run never sets it, so a dialog stays on screen for them.
+start_watchdog() {
+  limit=${NOTPROTON_WATCHDOG:-0}
+  case "$limit" in ''|*[!0-9]*|0) return 0 ;; esac
+  parent=$$
+  (
+    waited=0
+    while [ "$waited" -lt "$limit" ]; do
+      sleep 1
+      waited=$((waited + 1))
+      kill -0 "$parent" 2>/dev/null || exit 0
+      grep -a -q "first present" "$loader_root/notproton-wine.log" 2>/dev/null && exit 0
+    done
+    shot="$STEAM_COMPAT_DATA_PATH/notproton-watchdog.png"
+    screencapture -x "$shot" >/dev/null 2>&1 || true
+    echo "=== watchdog: no first frame in ${limit}s, screenshot $shot, killing wine prefix ===" >> "$log" 2>&1 || true
+    kill_wine_prefix
+  ) &
+  watchdog_pid=$!
+}
+
 # Steam's "Exit Game" and the client shutting the game down both send a
 # termination signal to this run script, this handles it
 # shellcheck disable=SC2329 # the trap below invokes this
@@ -894,6 +931,7 @@ terminate() {
   # Steam repeats the signal and then kills the script, so a second delivery
   # must not start over and the script must end here, not in wait_prefix_idle
   trap '' TERM INT HUP
+  [ -n "$watchdog_pid" ] && kill "$watchdog_pid" 2>/dev/null || true
   echo "=== termination signal received, killing wine prefix ===" >> "$log" 2>&1 || true
   kill_wine_prefix
   [ -n "$open_pid" ] && kill "$open_pid" 2>/dev/null || true
@@ -939,6 +977,7 @@ lsregister="$lsregister/Frameworks/LaunchServices.framework/Support/lsregister"
 [ -x "$lsregister" ] && "$lsregister" -f "$loader_app" >> "$log" 2>&1 || true
 open -n -W -a "$loader_app" "$@" >> "$log" 2>&1 &
 open_pid=$!
+start_watchdog
 status=0
 seen=0
 idle=0
@@ -963,6 +1002,7 @@ while :; do
   fi
   sleep 1
 done
+[ -n "$watchdog_pid" ] && kill "$watchdog_pid" 2>/dev/null || true
 echo "=== game exited status=$status, killing wine prefix ===" >> "$log" 2>&1 || true
 kill_wine_prefix
 echo "=== wine prefix killed, session ending ===" >> "$log" 2>&1 || true

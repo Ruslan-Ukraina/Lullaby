@@ -145,8 +145,14 @@ echo "5. Renderer"
 printf '%s\n' "$session" | grep -a -E "^renderer:" | show
 if [ -f "$wine" ]; then
 	grep -a -E "sevo:gfx pid=[0-9]+ (renderer=|first present)" "$wine" | head -4 | show
-	if grep -a -q "sevo:gfx pid=[0-9]* renderer=dxmt" "$wine"; then
-		verdict ok "a process drew through DXMT"
+	# A process that named DXMT and then presented a frame; naming it alone is not drawing.
+	drew=$(awk '
+		/sevo:gfx pid=[0-9]+ renderer=dxmt/ { match($0, /pid=[0-9]+/); named[substr($0, RSTART, RLENGTH)] = 1 }
+		/sevo:gfx pid=[0-9]+ first present/ { match($0, /pid=[0-9]+/); k = substr($0, RSTART, RLENGTH); if (named[k]) print k }' "$wine" | head -1)
+	if [ -n "$drew" ]; then
+		verdict ok "a process drew a frame through DXMT ($drew)"
+	elif grep -a -q "sevo:gfx pid=[0-9]* renderer=dxmt" "$wine"; then
+		verdict fail "DXMT was chosen but no process presented a frame"
 	else
 		echo "         no process reported renderer=dxmt (expected for a D3D9, OpenGL or Vulkan game)"
 	fi

@@ -104,13 +104,13 @@ static int out_expand(np_out_t *o, const char *replace, const np_cap_t *caps) {
     return 1;
 }
 
-// CrossOver options panel. Not in great shape, but it'll do
+// Renderer panel: the one setting that has to be reachable from the game's own
+// Steam page. Everything else about a game lives in NotProton's Game Settings,
+// whose .sevo/apps/<exe>.env is the single source of truth (docs/DECISIONS.md V3).
+// The choice is a launch option, NOTPROTON_RENDERER=<name>, which compat_run.sh
+// reads ahead of the game's env file.
 #define NP_CX_OPTIONS_CSS \
-    "\".MSCXPanel{margin-top:10px}" \
-    ".MSCXPanel .MSCXRow{display:flex;flex-direction:row;padding:9px;margin:0;" \
-    "color:#dfe3e6;background:rgba(59,63,72,.5);border-radius:3px}" \
-    ".MSCXPanel .MSCXRow:hover{box-shadow:0 6px 8px 0 rgba(0,0,0,.16)}" \
-    ".MSCXNoBottomGap{margin-bottom:0}\""
+    "\".MSCXPanel{margin-top:10px}\""
 
 #define NP_CX_OPTIONS_BODY(ARG, RT, BARREL) \
     ARG "=>{" \
@@ -119,22 +119,8 @@ static int out_expand(np_out_t *o, const char *replace, const np_cap_t *caps) {
     "s=ps=>{const a=o.split(\" \").filter(x=>x&&!ps.some(p=>x.indexOf(p[0]+\"=\")===0));" \
     "ps.forEach(p=>{if(p[1])a.unshift(p[0]+\"=\"+p[1])});" \
     "SteamClient.Apps.SetAppLaunchOptions(t.unAppID,a.join(\" \"))}," \
-    "T=(ks,l,on,off)=>(0," RT ".jsx)(" BARREL ".Yh,{className:\"MSCXRow\",label:l," \
-    "checked:g(ks[0])===on," \
-    "onChange:v=>s(ks.map(k=>[k,v?on:(off||\"\")]))},ks[0])," \
-    "b=g(\"CX_GRAPHICS_BACKEND\")," \
-    "dm=\"\"===b||\"d3dmetal\"===b," \
-    "dx=\"\"===b||\"dxmt\"===b," \
-    "sw=\"1\"===g(\"DXMT_METALFX_SPATIAL_SWAPCHAIN\")," \
-    "F=\"d3d11.metalSpatialUpscaleFactor=\"," \
-    "cf=g(\"DXMT_CONFIG\")," \
-    "U=[{data:\"\",label:\"Off\"}," \
-    "{data:\"1.5\",label:\"1.5x\"}," \
-    "{data:\"1.72\",label:\"1.72x\"}," \
-    "{data:\"2.0\",label:\"2x\"}," \
-    "{data:\"3.0\",label:\"3x\"}]," \
-    "B=[{data:\"\",label:\"Automatic\"}," \
-    "{data:\"d3dmetal\",label:\"D3DMetal\"}," \
+    "b=g(\"NOTPROTON_RENDERER\")," \
+    "B=[{data:\"\",label:\"Automatic (DXMT)\"}," \
     "{data:\"dxmt\",label:\"DXMT\"}," \
     "{data:\"dxvk\",label:\"DXVK\"}," \
     "{data:\"wined3d\",label:\"WineD3D\"}];" \
@@ -142,26 +128,9 @@ static int out_expand(np_out_t *o, const char *replace, const np_cap_t *caps) {
     "&&!t.strCompatToolName)return null;" \
     "return(0," RT ".jsx)(\"div\",{className:\"MSCXPanel\",children:(0," RT ".jsxs)(" RT ".Fragment,{children:[" \
     "(0," RT ".jsx)(\"style\",{children:" NP_CX_OPTIONS_CSS "})," \
-    "(0," RT ".jsxs)(" BARREL ".XY,{label:\"Graphics\",children:[" \
+    "(0," RT ".jsx)(" BARREL ".XY,{label:\"Graphics\",children:" \
     "(0," RT ".jsx)(" BARREL ".m,{rgOptions:B,selectedOption:b," \
-    "onChange:v=>s([[\"CX_GRAPHICS_BACKEND\",v.data]]" \
-    ".concat(\"\"===v.data||\"d3dmetal\"===v.data?[]:[[\"D3DM_ENABLE_METALFX\",\"\"]])" \
-    ".concat(\"\"===v.data||\"dxmt\"===v.data?[]:" \
-    "[[\"DXMT_METALFX_SPATIAL_SWAPCHAIN\",\"\"],[\"DXMT_CONFIG\",\"\"]])" \
-    ".concat(\"dxmt\"===v.data?[]:[[\"DXMT_ENABLE_NVEXT\",\"\"]]))})," \
-    "T([\"MTL_HUD_ENABLED\"],\"Metal HUD\",\"1\")," \
-    "dm&&T([\"D3DM_ENABLE_METALFX\"],\"DLSS\",\"1\")," \
-    "\"dxmt\"===b&&T([\"DXMT_ENABLE_NVEXT\"],\"DLSS\",\"1\")," \
-    "T([\"ROSETTA_ADVERTISE_AVX\"],\"Advertise AVX2 to Rosetta\",\"1\",\"0\")," \
-    "T([\"WINEMSYNC\"],\"MSync\",\"1\",\"0\")," \
-    "T([\"NOTPROTON_RETINA\"],\"High Resolution\",\"1\",\"0\")" \
-    "]},\"gfx\")," \
-    "dx&&(0," RT ".jsx)(" BARREL ".XY," \
-    "{label:\"MetalFX Upscaling (Samples from the resolution the game is set to)\"," \
-    "children:(0," RT ".jsx)(" BARREL ".m,{rgOptions:U," \
-    "selectedOption:sw?(0===cf.indexOf(F)?cf.slice(F.length):\"2.0\"):\"\"," \
-    "onChange:v=>s(v.data?[[\"DXMT_METALFX_SPATIAL_SWAPCHAIN\",\"1\"],[\"DXMT_CONFIG\",F+v.data]]" \
-    ":[[\"DXMT_METALFX_SPATIAL_SWAPCHAIN\",\"\"],[\"DXMT_CONFIG\",\"\"]])})},\"usf\")" \
+    "onChange:v=>s([[\"NOTPROTON_RENDERER\",v.data],[\"CX_GRAPHICS_BACKEND\",\"\"]])})},\"gfx\")" \
     "]})})}"
 
 #define NP_CX_OPTIONS_COMPONENT \

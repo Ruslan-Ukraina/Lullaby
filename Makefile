@@ -83,7 +83,7 @@ runcheck:
 	@if ! command -v shellcheck >/dev/null 2>&1; then \
 		$(call SKIP,runcheck,shellcheck); exit 0; fi; \
 	shellcheck dylib/feats/compat_run.sh && sh -n dylib/feats/compat_run.sh && \
-	shellcheck dylib/tests/termcheck.sh dylib/tests/stubcheck.sh && sh dylib/tests/termcheck.sh && sh dylib/tests/stubcheck.sh && \
+	shellcheck dylib/tests/termcheck.sh dylib/tests/stubcheck.sh dylib/tests/watchdogcheck.sh && sh dylib/tests/termcheck.sh && sh dylib/tests/stubcheck.sh && sh dylib/tests/watchdogcheck.sh && \
 	echo "==> runcheck: the run script lints and parses clean"
 
 # runcheck owns compat_run.sh, whose warnings wait for a change that can move

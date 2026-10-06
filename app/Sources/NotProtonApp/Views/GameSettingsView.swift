@@ -19,6 +19,13 @@ struct GameSettingsView: View {
             Text("Game Settings: \(prefix.title)").font(.headline)
             if let loaded {
                 Form {
+                    Section("Graphics") {
+                        row(
+                            "Renderer", info: Self.rendererInfo,
+                            picker($settings.renderer, RendererChoice.allCases, label: Self.rendererLabel))
+                        row("High resolution (Retina)", info: Self.retinaInfo, flag($settings.retina))
+                        row("Metal HUD", info: Self.hudInfo, flag($settings.metalHUD))
+                    }
                     Section("Window") {
                         row(
                             "Resizable window", info: Self.windowsInfo,
@@ -40,6 +47,7 @@ struct GameSettingsView: View {
                     }
                     Section("Performance") {
                         row("Processors the game sees", info: Self.cpuInfo, cpuPicker)
+                        row("Advertise AVX2 to Rosetta", info: Self.avxInfo, flag($settings.advertiseAVX))
                         row("msync+ (debugging only)", info: Self.msyncInfo, Toggle("", isOn: $msync).labelsHidden())
                     }
                 }
@@ -132,6 +140,18 @@ struct GameSettingsView: View {
         }
     }
 
+    private static func rendererLabel(_ choice: RendererChoice) -> String {
+        switch choice {
+        case .dxmt: "DXMT (Direct3D 10/11)"
+        case .dxvk: "DXVK"
+        case .wined3d: "WineD3D"
+        }
+    }
+
+    static let rendererInfo = "What turns the game's Direct3D into Metal. DXMT is the default for Direct3D 10 and 11. DXVK and WineD3D are fallbacks for games DXMT does not run. Direct3D 12 needs Apple's Game Porting Toolkit, which is not set up yet."
+    static let retinaInfo = "Draws at the display's full pixel resolution instead of scaled-up points. Sharper, and slower."
+    static let hudInfo = "Shows Apple's Metal performance overlay in the game window."
+    static let avxInfo = "Tells the game the CPU supports AVX2. Some games need it, a few crash with it."
     static let windowsInfo = "Lets you resize the game's window while the picture keeps the game's resolution. “Also borderless full screen” turns a borderless full-screen window into an ordinary one you can move."
     static let upscalerInfo = "Draws the game below the screen's resolution and scales it up. MetalFX Spatial suits 3D games."
     static let filterInfo = "How the last scaling step resamples the picture into the window."

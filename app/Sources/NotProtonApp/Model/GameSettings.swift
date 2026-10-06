@@ -17,6 +17,11 @@ enum FinalFilter: String, CaseIterable, Sendable {
     case nearest, bilinear, lanczos
 }
 
+/// What draws Direct3D. D3DMetal joins once the player has imported Apple's toolkit.
+enum RendererChoice: String, CaseIterable, Sendable {
+    case dxmt, dxvk, wined3d
+}
+
 /// One level of settings. A nil value is "not set here": the level above decides.
 struct GameSettings: Equatable, Sendable {
     var windows: WindowMode?
@@ -28,6 +33,11 @@ struct GameSettings: Equatable, Sendable {
     var cursorConfine: Bool?
     /// 0 is every processor.
     var cpuCount: Int?
+    var renderer: RendererChoice?
+    var metalHUD: Bool?
+    var advertiseAVX: Bool?
+    /// Render at the display's full pixel resolution.
+    var retina: Bool?
 
     static let empty = GameSettings()
 
@@ -39,7 +49,8 @@ struct GameSettings: Equatable, Sendable {
     init(
         windows: WindowMode? = nil, upscaler: UpscalerChoice? = nil, filter: FinalFilter? = nil,
         fps: Bool? = nil, fpsGraph: Bool? = nil, linearMouse: Bool? = nil,
-        cursorConfine: Bool? = nil, cpuCount: Int? = nil
+        cursorConfine: Bool? = nil, cpuCount: Int? = nil, renderer: RendererChoice? = nil,
+        metalHUD: Bool? = nil, advertiseAVX: Bool? = nil, retina: Bool? = nil
     ) {
         self.windows = windows
         self.upscaler = upscaler
@@ -49,6 +60,10 @@ struct GameSettings: Equatable, Sendable {
         self.linearMouse = linearMouse
         self.cursorConfine = cursorConfine
         self.cpuCount = cpuCount
+        self.renderer = renderer
+        self.metalHUD = metalHUD
+        self.advertiseAVX = advertiseAVX
+        self.retina = retina
     }
 
     init(env: [String: String]) {
@@ -74,6 +89,10 @@ struct GameSettings: Equatable, Sendable {
         linearMouse = flag("SEVO_LINEAR_MOUSE")
         cursorConfine = flag("SEVO_CURSOR_CONFINE")
         cpuCount = env["SEVO_CPU_COUNT"].flatMap { Int($0) }.map { max(0, $0) }
+        renderer = env["NOTPROTON_RENDERER"].flatMap { RendererChoice(rawValue: $0.lowercased()) }
+        metalHUD = flag("MTL_HUD_ENABLED")
+        advertiseAVX = flag("ROSETTA_ADVERTISE_AVX")
+        retina = flag("NOTPROTON_RETINA")
     }
 
     /// The key/value pairs this level sets; a nil setting is a key to remove.
@@ -88,6 +107,10 @@ struct GameSettings: Equatable, Sendable {
             ("SEVO_LINEAR_MOUSE", flag(linearMouse)),
             ("SEVO_CURSOR_CONFINE", flag(cursorConfine)),
             ("SEVO_CPU_COUNT", cpuCount.map(String.init)),
+            ("NOTPROTON_RENDERER", renderer?.rawValue),
+            ("MTL_HUD_ENABLED", flag(metalHUD)),
+            ("ROSETTA_ADVERTISE_AVX", flag(advertiseAVX)),
+            ("NOTPROTON_RETINA", flag(retina)),
         ]
     }
 
@@ -97,7 +120,9 @@ struct GameSettings: Equatable, Sendable {
             windows: windows ?? base.windows, upscaler: upscaler ?? base.upscaler,
             filter: filter ?? base.filter, fps: fps ?? base.fps,
             fpsGraph: fpsGraph ?? base.fpsGraph, linearMouse: linearMouse ?? base.linearMouse,
-            cursorConfine: cursorConfine ?? base.cursorConfine, cpuCount: cpuCount ?? base.cpuCount)
+            cursorConfine: cursorConfine ?? base.cursorConfine, cpuCount: cpuCount ?? base.cpuCount,
+            renderer: renderer ?? base.renderer, metalHUD: metalHUD ?? base.metalHUD,
+            advertiseAVX: advertiseAVX ?? base.advertiseAVX, retina: retina ?? base.retina)
     }
 }
 
