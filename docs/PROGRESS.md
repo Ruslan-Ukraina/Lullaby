@@ -450,3 +450,5 @@
 **Документы:** DECISIONS P4-1…P4-7, RISKS R39–R41, BACKLOG 12–14, SPIKE_TEST §10.
 
 **Дальше:** твоя проверка по SPIKE_TEST §10. Затем Фаза 5 (BridgeUpdater, SignatureUpdater, гейт Steam) — по твоей команде.
+
+**Уведомление (17:42 CEST):** `PushNotification` — `Push not sent — mobile push is disabled in /config` (как раньше, BLOCKERS «Уведомления»). Снимок блока Engine отправлен в сессию файлом, системное уведомление macOS отправлено. Жду проверки по SPIKE_TEST §10.
