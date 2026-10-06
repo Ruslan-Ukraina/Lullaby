@@ -12,6 +12,7 @@ struct NotProtonApp: App {
 
     init() {
         AppLog.start()
+        HeadlessInstall.runIfRequested()
     }
 
     var body: some Scene {
