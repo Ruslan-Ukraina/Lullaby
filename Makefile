@@ -65,7 +65,7 @@ DEPS := $(OBJS:.o=.d)
         tests-list overlay-shim overlay-shim-install overlay-shim-tests \
         overlay-shim-bench iconmaker icon \
         appinfo helpers-install ntdll-resolve bridge runcheck compatcheck \
-        compatsvc-check scriptcheck
+        compatsvc-check scriptcheck steamwin-check
 
 APP_PAYLOAD := app/Sources/NotProtonApp/Resources/payload
 
@@ -232,6 +232,16 @@ webpatch-fixtures:
 	rm -rf "$${tmp:?}"; \
 	if [ $$fail -ne 0 ]; then exit 1; fi; \
 	echo "==> gate table and $$n webpatch fixtures: anchors intact, drift refused"
+
+STEAMWINCHECK := $(OUT_DIR)/steamwincheck
+
+$(STEAMWINCHECK): dylib/tests/steamwincheck.c dylib/feats/steamwin_css.c dylib/feats/steamwin_css.h
+	@mkdir -p $(dir $@)
+	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -g -O1 \
+	  -Wall -Wextra -Wno-unused-parameter -Idylib -o $@ dylib/tests/steamwincheck.c
+
+steamwin-check:
+	@$(MAKE) -s $(STEAMWINCHECK) && $(STEAMWINCHECK)
 
 SPAWN_ENV := $(OUT_DIR)/spawn-env
 

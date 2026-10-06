@@ -24,6 +24,7 @@ struct StatusSnapshot: Sendable {
     /// engine when the previous tree is the copy from before a reinstall.
     var rollbackTarget: String?
     var engineCapabilities = EngineCapabilities()
+    var nativeSteamWindows = false
 
     static func capture(bundledVersion: String) -> StatusSnapshot {
         let patch = PatchComparison.inspect()
@@ -36,7 +37,8 @@ struct StatusSnapshot: Sendable {
             installedEngines: EngineStore.installed(),
             patch: patch,
             rollbackTarget: EngineUpdater().rollbackTarget,
-            engineCapabilities: DormisonEngine().capabilities
+            engineCapabilities: DormisonEngine().capabilities,
+            nativeSteamWindows: SteamWindows.isOn()
         )
     }
 }
@@ -114,6 +116,7 @@ final class SystemStatus {
         failureRemedy = nil
         retryInstallForce = nil
         retryEngine = nil
+        retryRestart = false
     }
 
     // Engine updates: SystemStatus+Engine.swift.
@@ -279,6 +282,44 @@ final class SystemStatus {
             }
 
             return parts.joined(separator: " ")
+        }
+    }
+
+    /// The native frame is read by Steam when it starts, so a change offers a restart.
+    var offerSteamRestart = false
+    /// Set when a restart stopped because Steam would not quit.
+    var retryRestart = false
+
+    func setNativeSteamWindows(_ enabled: Bool) async {
+        await perform(from: SteamWindows.step) { _ in
+            try SteamWindows.set(enabled)
+            let running = await Task.detached { SteamBundle.isRunning }.value
+            self.offerSteamRestart = running
+            return (enabled ? "Native Steam windows are on." : "Native Steam windows are off.")
+                + (running ? " Restart Steam to apply." : " They apply when Steam starts.")
+        }
+    }
+
+    /// Quits Steam the soft way (as Install does) and opens it again.
+    func restartSteam() async {
+        guard isIdle else { return }
+        offerSteamRestart = false
+        if await Task.detached(priority: .userInitiated, operation: { SteamBundle.gameIsRunning }).value {
+            setFailure(SteamInstaller.gameRunning)
+            return
+        }
+        await perform(from: "Restarting Steam") { _ in
+            do {
+                _ = try await Task.detached(priority: .userInitiated) {
+                    try SteamBundle.quitClient()
+                }.value
+            } catch let stillRunning as SteamBundle.StillRunning {
+                self.retryRestart = true
+                throw stillRunning
+            }
+            AppLog.note("steam windows: restarting Steam")
+            self.openSteam()
+            return "Steam restarted."
         }
     }
 

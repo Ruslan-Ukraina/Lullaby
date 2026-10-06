@@ -263,6 +263,10 @@ struct StatusView: View {
                         ? StatusAction(label: "Retry", isProminent: true, isEnabled: status.isIdle) {
                             Task { await status.retryEngineAction() }
                         }
+                        : status.retryRestart
+                        ? StatusAction(label: "Retry", isProminent: true, isEnabled: status.isIdle) {
+                            Task { await status.restartSteam() }
+                        }
                         : status.failureRemedy?.settingsPane.map { pane in
                             StatusAction(label: Remedy.settingsButton) {
                                 Remedy.openSettings(pane)
@@ -277,6 +281,10 @@ struct StatusView: View {
                     action: status.offerSteamLaunch
                         ? StatusAction(label: "Open Steam", isProminent: true, isEnabled: status.isIdle) {
                             status.openSteam()
+                        }
+                        : status.offerSteamRestart
+                        ? StatusAction(label: "Restart Steam", isProminent: true, isEnabled: status.isIdle) {
+                            Task { await status.restartSteam() }
                         }
                         : nil
                 )
@@ -301,6 +309,7 @@ struct StatusView: View {
                     )
                 }
                 updateBlockRow(snapshot.updateBlocked)
+                steamWindowsRow(snapshot.nativeSteamWindows)
                 reinstallRow(snapshot.steam)
             }
 
@@ -469,6 +478,28 @@ struct StatusView: View {
         }
         .disabled(!status.isIdle)
         .help("Steam client updates may break NotProton.")
+    }
+
+    private func steamWindowsRow(_ enabled: Bool) -> some View {
+        Toggle(isOn: Binding(
+            get: { status.snapshot?.nativeSteamWindows ?? false },
+            set: { wanted in Task { await status.setNativeSteamWindows(wanted) } }
+        )) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Native Steam windows")
+                    .font(.headline)
+                Text(
+                    enabled
+                        ? "Steam's windows have the macOS title bar and traffic lights."
+                        : "Steam draws its own window buttons, as Valve ships it."
+                )
+                .foregroundStyle(.secondary)
+            }
+            .padding(.leading, StatusMetrics.textInset)
+        }
+        .disabled(!status.isIdle)
+        .help("macOS window frame for Steam: traffic lights, rounded corners, full screen, "
+            + "Stage Manager and tiling. Applies when Steam starts.")
     }
 
     private var blockUpdates: Binding<Bool> {
