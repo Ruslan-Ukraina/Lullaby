@@ -8,11 +8,14 @@ enum RunnerState: Sendable, Equatable {
     case bundleShaped(build: String)
     case unpatched(build: String, problems: [String])
     case broken(detail: String)
+    // A Dormison engine under runners/<version>, unpacked by engine/fetch-dormison.sh
+    // (Phase 1). It has no CrossOver build identity, so no CrossOver path acts on it.
+    case engine(version: String)
 
     var buildIdentifier: String? {
         switch self {
         case .cloned(let build, _), .bundleShaped(let build), .unpatched(let build, _): build
-        case .none, .broken: nil
+        case .none, .broken, .engine: nil
         }
     }
 }
@@ -43,6 +46,10 @@ enum RunnerStore {
         }
 
         let resolved = current.deletingLastPathComponent().appending(path: target).standardizedFileURL
+        if target.hasPrefix("dormison-"),
+           fm.fileExists(atPath: resolved.appending(path: "wine/lib/wine").path(percentEncoded: false)) {
+            return .engine(version: target)
+        }
         guard fm.fileExists(atPath: resolved.appending(path: "lib/wine").path(percentEncoded: false)) else {
             return .broken(detail: "runners/current points at \(target), which has no lib/wine.")
         }

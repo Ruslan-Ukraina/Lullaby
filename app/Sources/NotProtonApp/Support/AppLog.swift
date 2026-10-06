@@ -80,6 +80,7 @@ enum AppLog {
         case .unpatched(let build, let problems):
             "cloned \(build) unpatched: \(problems.joined(separator: ", "))"
         case .broken(let detail): "broken: \(detail)"
+        case .engine(let version): "engine \(version)"
         }
     }
 

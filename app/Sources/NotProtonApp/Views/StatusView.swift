@@ -627,6 +627,13 @@ struct StatusView: View {
                 tone: .bad,
                 action: runnerAction()
             )
+        case .engine(let version):
+            return StatusRow(
+                title: "Compatibility Tool",
+                value: "Dormison \(version.dropFirst("dormison-".count)).",
+                tone: .ok,
+                detail: "Phase 1 test build: the engine is set up by engine/fetch-dormison.sh."
+            )
         }
     }
 

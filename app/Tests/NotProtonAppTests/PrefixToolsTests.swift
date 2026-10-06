@@ -27,89 +27,106 @@ struct PrefixToolsTests {
         )
     }
 
-    @Test("The runner variables are the ones RUN_SCRIPT exports")
+    // A Dormison engine as engine/fetch-dormison.sh unpacks it: only the paths the tools
+    // and the run script reach for, each an empty executable.
+    private func fakeEngine(in dir: URL) throws -> URL {
+        let fm = FileManager.default
+        let runner = dir.appending(path: "dormison-test")
+        for path in ["wine/bin/wine", "wine/bin/wineserver", "wine/lib/wine/x86_64-unix/wine"] {
+            let file = runner.appending(path: path)
+            try fm.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data().write(to: file)
+            try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: file.path(percentEncoded: false))
+        }
+        return runner
+    }
+
+    // A CrossOver clone, the layout every tool understood before Dormison.
+    private func fakeCrossOver(in dir: URL) throws -> URL {
+        let fm = FileManager.default
+        let runner = dir.appending(path: "crossover-test")
+        for path in ["lib/wine/x86_64-unix/wine", "CrossOver-Hosted Application/wineserver-x86"] {
+            let file = runner.appending(path: path)
+            try fm.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data().write(to: file)
+            try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: file.path(percentEncoded: false))
+        }
+        return runner
+    }
+
+    @Test("The runner variables are the ones RUN_SCRIPT sets")
     func matchesRunScript() throws {
         // A tool under a stale copy of the runner layout writes registry keys the game side then
         // reads under different rules, and nothing else would notice the drift.
         let source = try Self.compatSource()
 
-        // Written in compat_run.sh as: export WINELOADER="$CX_ROOT/lib/wine/..."
-        func exported(_ name: String) throws -> String {
-            let pattern = #"export \#(name)="([^"]*)""#
-            let regex = try Regex(pattern)
+        // Written in compat_run.sh as: NAME="$engine_root/wine/bin/wine", exported or not.
+        // The first assignment is the one in force when the prefix is set up.
+        func assigned(_ name: String) throws -> String {
+            let regex = try Regex(#"(?m)^(?:export )?\#(name)="([^"]*)""#)
             let match = try #require(
-                source.firstMatch(of: regex), "compat_run.sh no longer exports \(name)")
+                source.firstMatch(of: regex), "compat_run.sh no longer sets \(name)")
             return String(match[1].substring ?? "")
         }
 
-        let home = try exported("CX_HOME").replacingOccurrences(
-            of: "$HOME", with: SupportPaths.home.path(percentEncoded: false))
+        let dir = URL(filePath: NSTemporaryDirectory()).appending(path: "np-layout-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let runner = try fakeEngine(in: dir)
 
-        // Both sides resolve the loader and wineserver from whichever unix directory the runner
-        // has, so the check is that they pick the same pair for the same tree.
-        let fm = FileManager.default
-        for (arch, loaderTail, serverName) in [
-            ("aarch64-unix", "wine.app/Contents/MacOS/wine", "wineserver-arm64"),
-            ("x86_64-unix", "wine", "wineserver-x86"),
-        ] {
-            let runner = URL(filePath: NSTemporaryDirectory())
-                .appending(path: "notproton-layout-\(UUID().uuidString)")
-            defer { try? fm.removeItem(at: runner) }
-
-            for path in ["lib/wine/\(arch)/\(loaderTail)", "CrossOver-Hosted Application/\(serverName)"] {
-                let file = runner.appending(path: path)
-                try fm.createDirectory(
-                    at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-                try Data().write(to: file)
-                try fm.setAttributes(
-                    [.posixPermissions: 0o755], ofItemAtPath: file.path(percentEncoded: false))
-            }
-
-            let layout = PrefixTools.layout(runner: runner)
-            #expect(layout.loader == runner.appending(path: "lib/wine/\(arch)/\(loaderTail)"))
-            #expect(layout.server == runner.appending(path: "CrossOver-Hosted Application/\(serverName)"))
-
-            // The shapes the script reaches for, which is what would drift independently.
-            #expect(source.contains("$wine_unix/\(loaderTail)"))
-            #expect(source.contains(serverName))
-
-            let environment = PrefixTools.environment(prefix: samplePrefix(), runner: runner)
-            let dllPath = try exported("WINEDLLPATH")
-                .replacingOccurrences(of: "$CX_ROOT", with: runner.path(percentEncoded: false))
-                .replacingOccurrences(of: "$wine_unix", with: layout.unixDir.path(percentEncoded: false))
-
-            #expect(environment["WINEDLLPATH"] == dllPath, "WINEDLLPATH drifted from RUN_SCRIPT")
-            #expect(environment["WINELOADER"] == layout.loader.path(percentEncoded: false))
-            #expect(environment["WINESERVER"] == layout.server.path(percentEncoded: false))
-            #expect(environment["CX_HOME"] == home)
-
-            // WINELOADER is what launch and recreate actually invoke, so the two have to
-            // agree with each other as well as with the script.
-            #expect(environment["WINELOADER"]
-                == PrefixTools.loader(runner: runner).path(percentEncoded: false))
+        let home = SupportPaths.home.path(percentEncoded: false)
+        let support = try assigned("support").replacingOccurrences(of: "$HOME", with: home)
+        func resolve(_ value: String) throws -> String {
+            try value
+                .replacingOccurrences(of: "$bridge_src", with: assigned("bridge_src"))
+                .replacingOccurrences(of: "$support", with: support)
+                .replacingOccurrences(of: "$HOME", with: home)
+                .replacingOccurrences(of: "$engine_root", with: runner.path(percentEncoded: false))
         }
+        #expect(support == SupportPaths.support.path(percentEncoded: false))
+
+        let layout = PrefixTools.layout(runner: runner)
+        #expect(layout.isEngine)
+        #expect(layout.loader.path(percentEncoded: false) == (try resolve(assigned("WINELOADER"))))
+        #expect(layout.server.path(percentEncoded: false) == (try resolve(assigned("WINESERVER"))))
+        #expect(layout.unixDir.path(percentEncoded: false) == (try resolve(assigned("wine_unix"))))
+
+        let environment = PrefixTools.environment(prefix: samplePrefix(), runner: runner)
+        #expect(environment["WINELOADER"] == layout.loader.path(percentEncoded: false))
+        #expect(environment["WINESERVER"] == layout.server.path(percentEncoded: false))
+        #expect(environment["WINEDLLPATH"] == (try resolve(assigned("WINEDLLPATH"))),
+                "WINEDLLPATH drifted from RUN_SCRIPT")
+        #expect(environment["SEVO_CLI"] == (try resolve(assigned("sevo_cli"))),
+                "SEVO_CLI drifted from RUN_SCRIPT")
+        #expect(environment["SEVO_CLI"] == SupportPaths.sevoCLI.path(percentEncoded: false))
+        #expect(environment["CX_ROOT"] == nil)
+        #expect(environment["CX_HOME"] == nil)
+
+        // WINELOADER is what launch and recreate actually invoke, so the two have to
+        // agree with each other as well as with the script.
+        #expect(environment["WINELOADER"]
+            == PrefixTools.loader(runner: runner).path(percentEncoded: false))
     }
 
     @Test("The prefix and the sync backend are set, and the game only variables are not")
-    func setsPrefixAndBackend() {
+    func setsPrefixAndBackend() throws {
+        let dir = URL(filePath: NSTemporaryDirectory()).appending(path: "np-env-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let runner = try fakeEngine(in: dir)
         let prefix = samplePrefix()
-        let environment = PrefixTools.environment(prefix: prefix)
+        let environment = PrefixTools.environment(prefix: prefix, runner: runner)
 
         #expect(environment["WINEPREFIX"] == prefix.pfx.path(percentEncoded: false))
         #expect(environment["WINEPREFIX"]?.hasSuffix("/compatdata/1574480/pfx") == true)
-        #expect(environment["WINEMSYNC"] == PrefixTools.syncBackend(prefix: prefix))
-        // Derived rather than spelled out, because the support directory hangs off the
-        // running account's home and a literal here would only ever pass on one machine.
-        let runnerBin = SupportPaths.currentRunner.appending(path: "bin")
-            .path(percentEncoded: false)
-        #expect(environment["PATH"]?.hasPrefix(runnerBin + ":") == true)
+        #expect(environment["WINEMSYNC"] == PrefixTools.syncBackend(prefix: prefix, runner: runner))
+        let engineBin = runner.appending(path: "wine/bin").path(percentEncoded: false)
+        #expect(environment["PATH"]?.hasPrefix(engineBin + ":") == true)
 
         // Redirecting steamclient to lsteamclient means something for a game, not for a
         // configuration window, where it would apply game override rules to what it touches.
         #expect(environment["WINEDLLOVERRIDES"] == nil)
     }
 
-    @Test("The sync backend is whatever the last launch recorded")
+    @Test("The sync backend follows the run script's rule for each runner")
     func readsRecordedBackend() throws {
         let root = URL(filePath: NSTemporaryDirectory())
             .appending(path: "np-msync-\(UUID().uuidString)")
@@ -117,16 +134,34 @@ struct PrefixToolsTests {
         let prefix = WinePrefix(appID: "480", name: nil, library: library, lastUsed: nil)
         try FileManager.default.createDirectory(at: prefix.root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
-
-        #expect(PrefixTools.syncBackend(prefix: prefix) == "0")
-
+        let crossover = try fakeCrossOver(in: root)
+        let engine = try fakeEngine(in: root)
         let marker = prefix.root.appending(path: "notproton-msync")
+        let bottle = prefix.pfx.appending(path: ".sevo/bottle.env")
+
+        // CrossOver: off unless the last launch recorded 1.
+        #expect(PrefixTools.syncBackend(prefix: prefix, runner: crossover) == "0")
         for (recorded, expected) in [("1", "1"), ("0", "0"), ("1\n", "1"), ("", "0"), ("yes", "0")] {
             try recorded.write(to: marker, atomically: true, encoding: .utf8)
             #expect(
-                PrefixTools.syncBackend(prefix: prefix) == expected,
+                PrefixTools.syncBackend(prefix: prefix, runner: crossover) == expected,
                 "recorded \(recorded.debugDescription)")
-            #expect(PrefixTools.environment(prefix: prefix)["WINEMSYNC"] == expected)
+            #expect(PrefixTools.environment(prefix: prefix, runner: crossover)["WINEMSYNC"] == expected)
+        }
+
+        // Dormison: on, and a 0 only counts once a Dormison run left a bottle.env, so a
+        // marker CrossOver wrote does not carry its default over.
+        try "0".write(to: marker, atomically: true, encoding: .utf8)
+        #expect(PrefixTools.syncBackend(prefix: prefix, runner: engine) == "1")
+        try FileManager.default.createDirectory(
+            at: bottle.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try "WINEMSYNC=0\n".write(to: bottle, atomically: true, encoding: .utf8)
+        for (recorded, expected) in [("0", "0"), ("0\n", "0"), ("1", "1"), ("", "1"), ("yes", "1")] {
+            try recorded.write(to: marker, atomically: true, encoding: .utf8)
+            #expect(
+                PrefixTools.syncBackend(prefix: prefix, runner: engine) == expected,
+                "recorded \(recorded.debugDescription) under Dormison")
+            #expect(PrefixTools.environment(prefix: prefix, runner: engine)["WINEMSYNC"] == expected)
         }
     }
 

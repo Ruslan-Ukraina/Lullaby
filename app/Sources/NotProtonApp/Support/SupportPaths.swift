@@ -32,6 +32,9 @@ enum SupportPaths {
     static var overlayShim: URL { support.appending(path: "overlay-shim.dylib") }
     static var iconmaker: URL { support.appending(path: "iconmaker") }
     static var appinfo: URL { support.appending(path: "appinfo") }
+    // The stand-in Dormison's View menu calls instead of Sevoflurane's CLI, written by
+    // compat_run.sh (docs/DECISIONS.md S1).
+    static var sevoCLI: URL { support.appending(path: "notproton-sevo") }
 
     static var packageDownloads: URL {
         home.appending(path: "Library/Caches/\(supportDirName)/valve-packages")

@@ -26,41 +26,41 @@ struct ShimAgreementTests {
         return String(rest[..<end.lowerBound])
     }
 
-    // Each loop the shim runs over an arch list, in the order they appear.
-    private static func archLists(in block: String) -> [Set<String>] {
+    // The bridge files a loop in the block names, as relative paths: "for f in a b c; do".
+    private static func bridgeLists(in block: String) -> [Set<String>] {
         block.split(separator: "\n").compactMap { line in
-            guard let marker = line.range(of: "for arch in ") else { return nil }
+            guard let marker = line.range(of: "for f in ") else { return nil }
             let tail = line[marker.upperBound...]
             guard let semicolon = tail.firstIndex(of: ";") else { return nil }
             return Set(tail[..<semicolon].split(separator: " ").map(String.init))
         }
     }
 
-    @Test("The shim checks the ntdll arches the app patches")
+    // Under Dormison the ntdll patch is engine/ntdll-patch work rather than the app's, and
+    // what it leaves in the bridge is the manifest's patched entry. The shim compares the
+    // engine against exactly that file.
+    @Test("The shim checks the patched ntdll the manifest lists")
     func ntdllArchesAgree() throws {
-        let lists = Self.archLists(in: try Self.verifyRunnerBlock())
-        #expect(lists.count == 2)
-        #expect(lists.first == Set(WineArch.allCases.map(\.rawValue)))
+        let block = try Self.verifyRunnerBlock()
+        let patched = try PayloadManifest.bundled().paths(origin: .patched)
+        #expect(patched == ["wine/x86_64-windows/ntdll.dll"])
+        for path in patched {
+            #expect(block.contains("\"$bridge_src/\(path)\""), "the shim never checks \(path)")
+            let arch = path.split(separator: "/")[1]
+            #expect(block.contains("$engine_root/wine/lib/wine/\(arch)/ntdll.dll"))
+        }
     }
 
-    @Test("The shim checks the builtins the app installs")
+    // lsteamclient stays in the bridge, which Dormison reaches through WINEDLLPATH, so
+    // the shim checks the arch copies the app stages there.
+    @Test("The shim checks the lsteamclient files the app stages")
     func builtinsAgree() throws {
-        let block = try Self.verifyRunnerBlock()
-        let lists = Self.archLists(in: block)
-
-        #expect(lists.count == 2)
-
-        // The windows halves are named literally. The unix one is whichever arch directory the
-        // loader turned up in, so both sides resolve that rather than naming a fixed arch.
-        let arches = try #require(lists.last)
-        let unix = "\"${wine_unix##*/}\""
-        #expect(arches.contains(unix))
-        #expect(arches.subtracting([unix]) == Set(RunnerPatcher.windowsBuiltins.map(\.arch)))
-
-        for builtin in RunnerPatcher.windowsBuiltins {
-            #expect(block.contains(builtin.name))
-        }
-        #expect(block.contains("lsteamclient.so"))
+        let lists = Self.bridgeLists(in: try Self.verifyRunnerBlock())
+        #expect(lists.count == 1)
+        let staged = Set(BridgePayload.entries.flatMap(\.bridgePaths).filter {
+            $0.contains("/") && $0.hasSuffix("lsteamclient.dll") || $0.hasSuffix("/lsteamclient.so")
+        })
+        #expect(lists.first == staged)
     }
 
     // A runner write left in the shim is the layout problem coming back: writing into the
@@ -70,7 +70,8 @@ struct ShimAgreementTests {
         let script = try Self.runScript()
         for line in script.split(separator: "\n") {
             let writes = line.contains("cp -f") || line.contains("codesign ")
-            guard writes, line.contains("$CX_ROOT") else { continue }
+            let runner = ["$CX_ROOT", "$engine_root", "$wine_unix"].contains { line.contains($0) }
+            guard writes, runner else { continue }
             Issue.record("RUN_SCRIPT writes into the runner: \(line.trimmingCharacters(in: .whitespaces))")
         }
     }

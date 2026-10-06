@@ -21,15 +21,34 @@ enum WineTool: String, CaseIterable, Sendable {
 
 enum PrefixTools {
 
-    static func syncBackend(prefix: WinePrefix) -> String {
+    static func syncBackend(prefix: WinePrefix, runner: URL = SupportPaths.currentRunner) -> String {
         let marker = prefix.root.appending(path: "notproton-msync")
-        let recorded = try? String(contentsOf: marker, encoding: .utf8)
-        return recorded?.trimmingCharacters(in: .whitespacesAndNewlines) == "1" ? "1" : "0"
+        let recorded = (try? String(contentsOf: marker, encoding: .utf8))?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard layout(runner: runner).isEngine else { return recorded == "1" ? "1" : "0" }
+        // compat_run.sh's rule for Dormison: msync is on, and only a marker a Dormison run
+        // wrote, which leaves a bottle.env in the prefix, can turn it off.
+        let bottle = prefix.pfx.appending(path: ".sevo/bottle.env")
+        let dormisonRun = FileManager.default.fileExists(atPath: bottle.path(percentEncoded: false))
+        return dormisonRun && recorded == "0" ? "0" : "1"
     }
 
     static func environment(prefix: WinePrefix, runner: URL = SupportPaths.currentRunner) -> [String: String] {
         let root = runner.path(percentEncoded: false)
         var environment = ProcessInfo.processInfo.environment
+        let engine = layout(runner: runner)
+        if engine.isEngine {
+            // What compat_run.sh sets for the Dormison engine.
+            environment["WINELOADER"] = engine.loader.path(percentEncoded: false)
+            environment["WINESERVER"] = engine.server.path(percentEncoded: false)
+            environment["WINEDLLPATH"] = SupportPaths.bridge.path(percentEncoded: false)
+            environment["WINEPREFIX"] = prefix.pfx.path(percentEncoded: false)
+            environment["WINEMSYNC"] = syncBackend(prefix: prefix, runner: runner)
+            environment["SEVO_CLI"] = SupportPaths.sevoCLI.path(percentEncoded: false)
+            environment["PATH"] = runner.appending(path: "wine/bin").path(percentEncoded: false)
+                + ":" + (environment["PATH"] ?? "/usr/bin:/bin")
+            return environment
+        }
         environment["CX_ROOT"] = root
         environment["CX_HOME"] = SupportPaths.applicationSupport
             .appending(path: "CrossOver").path(percentEncoded: false)
@@ -39,7 +58,7 @@ enum PrefixTools {
         environment["WINEDLLPATH"] = "\(root)/lib/wine/x86_64-windows:"
             + wine.unixDir.path(percentEncoded: false)
         environment["WINEPREFIX"] = prefix.pfx.path(percentEncoded: false)
-        environment["WINEMSYNC"] = syncBackend(prefix: prefix)
+        environment["WINEMSYNC"] = syncBackend(prefix: prefix, runner: runner)
         environment["PATH"] = "\(root)/bin:" + (environment["PATH"] ?? "/usr/bin:/bin")
         return environment
     }
@@ -52,6 +71,8 @@ enum PrefixTools {
         let loader: URL
         let server: URL
         let unixDir: URL
+        // A Dormison engine under runners/<version> rather than a CrossOver clone.
+        var isEngine = false
     }
 
     static func layout(runner: URL = SupportPaths.currentRunner) -> WineLayout {
@@ -59,6 +80,19 @@ enum PrefixTools {
         let hosted = runner.appending(path: "CrossOver-Hosted Application")
         func executable(_ url: URL) -> Bool {
             fm.isExecutableFile(atPath: url.path(percentEncoded: false))
+        }
+
+        // Dormison, the paths compat_run.sh uses: the front door loader and the arm64
+        // server in wine/bin, the unix modules under wine/lib/wine.
+        let engineBin = runner.appending(path: "wine/bin")
+        if executable(engineBin.appending(path: "wine")),
+           executable(engineBin.appending(path: "wineserver")) {
+            return WineLayout(
+                loader: engineBin.appending(path: "wine"),
+                server: engineBin.appending(path: "wineserver"),
+                unixDir: runner.appending(path: "wine/lib/wine/x86_64-unix"),
+                isEngine: true
+            )
         }
 
         let arm = runner.appending(path: "lib/wine/aarch64-unix")

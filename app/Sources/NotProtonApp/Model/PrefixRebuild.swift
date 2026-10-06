@@ -152,6 +152,15 @@ extension PrefixTools {
         try? fm.createSymbolicLink(
             atPath: users.appending(path: "crossover").path(percentEncoded: false),
             withDestinationPath: "steamuser")
+        // Dormison names the profile after the macOS account, so that name leads to
+        // steamuser too, as compat_run.sh lays it out at launch.
+        let account = ProcessInfo.processInfo.environment["USER"] ?? NSUserName()
+        if !account.isEmpty, !["steamuser", "crossover"].contains(account),
+           !account.contains("/"), !account.contains("\\") {
+            try? fm.createSymbolicLink(
+                atPath: users.appending(path: account).path(percentEncoded: false),
+                withDestinationPath: "steamuser")
+        }
     }
 }
 
