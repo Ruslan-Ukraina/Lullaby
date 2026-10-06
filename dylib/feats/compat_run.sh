@@ -851,9 +851,14 @@ kill_wine_prefix() {
 # termination signal to this run script, this handles it
 # shellcheck disable=SC2329 # the trap below invokes this
 terminate() {
+  # Steam repeats the signal and then kills the script, so a second delivery
+  # must not start over and the script must end here, not in wait_prefix_idle
+  trap '' TERM INT HUP
   echo "=== termination signal received, killing wine prefix ===" >> "$log" 2>&1 || true
   kill_wine_prefix
   [ -n "$open_pid" ] && kill "$open_pid" 2>/dev/null || true
+  echo "=== termination signal, session ending ===" >> "$log" 2>&1 || true
+  exit 143
 }
 trap terminate TERM INT HUP
 
