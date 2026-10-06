@@ -105,6 +105,16 @@ final class SystemStatus {
     func clearFailure() {
         failure = nil
         failureRemedy = nil
+        retryInstallForce = nil
+    }
+
+    /// Set when an install stopped because Steam would not quit: the force flag to retry with.
+    private(set) var retryInstallForce: Bool?
+
+    func retryInstall() async {
+        guard let force = retryInstallForce else { return }
+        AppLog.note("install: retry after Steam did not quit")
+        await requestInstall(force: force)
     }
 
     /// Install, Update and Reinstall. A running game refuses it here and in the installer;
@@ -222,9 +232,15 @@ final class SystemStatus {
 
     func installIntoSteam(force: Bool = false) async {
         await perform(from: InstallPhase.checkingPayload.label) { progress in
-            let result = try await Task.detached(priority: .userInitiated) {
-                try SteamInstaller.run(force: force, report: { progress($0.label) })
-            }.value
+            let result: InstallOutcome
+            do {
+                result = try await Task.detached(priority: .userInitiated) {
+                    try SteamInstaller.run(force: force, report: { progress($0.label) })
+                }.value
+            } catch let stillRunning as SteamBundle.StillRunning {
+                self.retryInstallForce = force
+                throw stillRunning
+            }
 
             var parts = [
                 (force ? "NotProton reinstalled" : "NotProton successfully installed")

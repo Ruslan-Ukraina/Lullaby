@@ -1,5 +1,6 @@
 // Steam app bundle patching component
 
+import AppKit
 import Foundation
 
 enum SteamDeployment: Sendable, Equatable {
@@ -106,6 +107,81 @@ enum SteamBundle {
             _ = try? Shell.run("/usr/bin/pkill", ["-f", pattern])
         }
         return true
+    }
+
+    static let bundleIdentifier = "com.valvesoftware.steam"
+
+    /// How long Install, Update and Reinstall wait for Steam to quit on its own.
+    static let quitTimeout: TimeInterval = 45
+
+    /// Steam left running after the soft quit. The person closes it and presses Retry.
+    struct StillRunning: LocalizedError, Equatable {
+        let seconds: Int
+        var errorDescription: String? {
+            "Steam did not quit within \(seconds) seconds. Quit Steam yourself "
+                + "(Steam → Quit Steam, or ⌘Q), then press Retry."
+        }
+    }
+
+    /// Asks Steam to quit the way a person would, so it saves its state: steam://exit first
+    /// (Steam's own exit command), then the Quit Apple event if it is still up halfway. No
+    /// signals: SIGTERM is ignored by steam_osx, and SIGKILL loses Steam's unsaved state.
+    /// Returns false when Steam was not running. Used by Install, Update and Reinstall;
+    /// Repair and Remove keep stopClient.
+    static func quitClient(
+        app: URL = SupportPaths.Steam.app,
+        helpers: [URL] = [SupportPaths.Steam.innerApp],
+        timeout: TimeInterval = quitTimeout,
+        poll: TimeInterval = 0.5,
+        isRunning running: () -> Bool = { isRunning },
+        openExitURL: () -> Void = requestExitURL,
+        sendQuitEvent: () -> Void = requestQuitEvent,
+        sleep: (TimeInterval) -> Void = { Thread.sleep(forTimeInterval: $0) },
+        sweep: ([String]) -> Void = sweepHelpers,
+        onStopping: () -> Void = {}
+    ) throws -> Bool {
+        guard running() else { return false }
+        onStopping()
+
+        AppLog.note("steam quit: steam://exit")
+        openExitURL()
+        var waited: TimeInterval = 0
+        var sentEvent = false
+        while running() {
+            guard waited < timeout else {
+                AppLog.note("steam quit: still running after \(Int(timeout)) s")
+                throw StillRunning(seconds: Int(timeout))
+            }
+            if !sentEvent, waited >= timeout / 2 {
+                AppLog.note("steam quit: Quit Apple event")
+                sendQuitEvent()
+                sentEvent = true
+            }
+            sleep(poll)
+            waited += poll
+        }
+        AppLog.note("steam quit: closed after \(Int(waited)) s")
+
+        sweep(sweepPatterns(app: app, helpers: helpers))
+        return true
+    }
+
+    static func requestExitURL() {
+        _ = try? Shell.run("/usr/bin/open", ["-g", "steam://exit"])
+    }
+
+    static func requestQuitEvent() {
+        for app in NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier) {
+            app.terminate()
+        }
+    }
+
+    /// Helpers (ipcserver, Steam Helper) can outlive steam_osx for a moment; Steam is gone,
+    /// so ending them loses nothing.
+    static func sweepHelpers(_ patterns: [String]) {
+        for pattern in patterns {
+            _ = try? Shell.run("/usr/bin/pkill", ["-f", pattern])
+        }
     }
 
     static func sweepPatterns(app: URL, helpers: [URL]) -> [String] {

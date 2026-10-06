@@ -379,3 +379,17 @@
 - `lsteamclient.so` в мосте после установки из приложения — release-копия (`aef7…`, 2,39 МБ, R27 — strip SwiftPM). В ней 22 символа `SteamNetworkingSocketsSerialized005` и 2 `SteamAppDisableUpdate001`, как в сборке. В PE-библиотеках моста x86_64 и i386 хеши совпадают с приложением.
 - RISKS: R1 уточнён, добавлены R35–R38.
 - Проверки: `make runcheck compatcheck scriptcheck panel-behavior webpatch-fixtures sigcheck anchorcheck sigdb-fixtures overlay-shim-tests` — все 0; `make app-tests` — 0, 292 теста; `test-b1.sh scratch/ntdll-b1/dormison-b1` — 0, x86_64 и i386 OK, пара совпадает по sha256 с установленной в движок.
+
+## 2026-10-06 ~16:55 CEST — **Фаза 3 закрыта**
+
+Твоя проверка: оверлей Steam работает, CS:S работает, Reinstall сработал, но Steam сам не закрылся; 32-битный тест пропускаем.
+
+- **Мягкий выход Steam (P3-6).** Причина: `stopClient` слал SIGTERM, который steam_osx игнорирует. В `app.log` 14:38:24 → 14:38:58 видно 30 с ожидания, после чего шёл SIGKILL. Теперь `SteamBundle.quitClient`: `steam://exit` → через половину ожидания Quit Apple event → до 45 с → `StillRunning` («Quit Steam yourself… then press Retry») и кнопка **Retry** в Status. Сигналов нет. Repair и Remove не тронуты. 4 теста (`SteamBundleTests`). Живая проверка: `NotProtonApp --install-into-steam --reinstall` при открытом Steam → `steam quit: closed after 3 s`, `patched=true stoppedSteam=true`. Steam снова открыт (вход 16:52:27), `codesign --verify` Steam.app — ok.
+- **Растягивание при смене разрешения** — это CS:S (D3D9 → wined3d-gl масштабирует кадр под окно; окно без рамки 1512×982), а не наша настройка: у PEAK в 16:41 `presenter=off upscaler=off`, §9.3 не включался. Включать по умолчанию нечего, BACKLOG п. 9 дополнен.
+- **BACKLOG п. 11:** i386-путь реализован и покрыт `test-b1.sh`, на живой игре не проверен; кандидат — Alien Swarm (630).
+- **CLAUDE.md §8 «Требования пользователя (из ручных тестов)»** добавлен (Update/Reinstall, мягкий выход, проверки).
+- Проверки: `make runcheck compatcheck scriptcheck panel-behavior webpatch-fixtures sigcheck anchorcheck sigdb-fixtures overlay-shim-tests` — все 0; `make app-tests` — 0, **296 тестов**; `make app` — 0; `test-b1.sh` — x86_64 и i386 OK (16:45).
+
+**Итог Фазы 3:** B1 (x86_64 и i386) в движке; 64-битные игры (PEAK, ETS2, Deadlock, CS:S) — хук, оверлей, интерфейсы 005/AppDisableUpdate001 работают; i386 — только тестом (BACKLOG 11). Status: сравнение по содержимому, Update, Reinstall, build id, мягкий выход Steam с Retry.
+
+**Дальше:** Фаза 4 (EngineUpdater) — в новой сессии, по твоей команде.

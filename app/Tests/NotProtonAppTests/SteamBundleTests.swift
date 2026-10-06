@@ -197,4 +197,81 @@ struct SteamBundleTests {
             ) == .steamMissing
         )
     }
+
+    // Steam in a test: running until a given number of polls after a quit request.
+    private final class FakeSteam {
+        var running: Bool
+        var pollsToQuit: Int?
+        var polls = 0
+        var exitURLs = 0
+        var quitEvents = 0
+        var swept: [String] = []
+        var slept: TimeInterval = 0
+
+        init(running: Bool, pollsToQuit: Int?) {
+            self.running = running
+            self.pollsToQuit = pollsToQuit
+        }
+
+        func quit(timeout: TimeInterval = 10) throws -> Bool {
+            try SteamBundle.quitClient(
+                app: URL(filePath: "/tmp/Steam.app"),
+                helpers: [URL(filePath: "/tmp/Inner")],
+                timeout: timeout,
+                poll: 1,
+                isRunning: {
+                    guard running, let limit = pollsToQuit, exitURLs > 0 else { return running }
+                    if polls >= limit { running = false }
+                    return running
+                },
+                openExitURL: { exitURLs += 1 },
+                sendQuitEvent: { quitEvents += 1 },
+                sleep: { slept += $0; polls += 1 },
+                sweep: { swept = $0 }
+            )
+        }
+    }
+
+    @Test("A Steam that is not running is left alone")
+    func quitNotRunning() throws {
+        let steam = FakeSteam(running: false, pollsToQuit: nil)
+        #expect(try !steam.quit())
+        #expect(steam.exitURLs == 0)
+        #expect(steam.quitEvents == 0)
+        #expect(steam.swept.isEmpty)
+    }
+
+    @Test("steam://exit closes Steam: no Quit event, helpers swept afterwards")
+    func quitByExitURL() throws {
+        let steam = FakeSteam(running: true, pollsToQuit: 3)
+        #expect(try steam.quit())
+        #expect(steam.exitURLs == 1)
+        #expect(steam.quitEvents == 0)
+        #expect(steam.swept == ["/tmp/Steam.app/", "/tmp/Inner/"])
+    }
+
+    @Test("A Steam slow to quit gets the Quit Apple event halfway through the wait")
+    func quitByAppleEvent() throws {
+        let steam = FakeSteam(running: true, pollsToQuit: 7)
+        #expect(try steam.quit(timeout: 10))
+        #expect(steam.exitURLs == 1)
+        #expect(steam.quitEvents == 1)
+    }
+
+    // The bug this guards was live: Reinstall sent SIGTERM, which steam_osx ignores, and
+    // Steam stayed open. Now it asks, waits, and hands the decision back with Retry.
+    @Test("A Steam that will not quit is reported, not killed, once the wait is over")
+    func quitTimesOut() throws {
+        let steam = FakeSteam(running: true, pollsToQuit: nil)
+        do {
+            _ = try steam.quit(timeout: 10)
+            Issue.record("a Steam that never quit was reported as stopped")
+        } catch let error as SteamBundle.StillRunning {
+            #expect(error == SteamBundle.StillRunning(seconds: 10))
+            #expect(error.localizedDescription.contains("Retry"))
+        }
+        #expect(steam.slept == 10)
+        #expect(steam.quitEvents == 1)
+        #expect(steam.swept.isEmpty, "helpers were swept while Steam was still up")
+    }
 }

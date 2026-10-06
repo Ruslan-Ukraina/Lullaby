@@ -48,7 +48,7 @@ enum SteamInstaller {
     typealias BundleRegistrar = @Sendable (URL) -> Void
 
     static let stopTheClient: ClientStopper = { app, onStopping in
-        try SteamBundle.stopClient(app: app, step: step, onStopping: onStopping)
+        try SteamBundle.quitClient(app: app, onStopping: onStopping)
     }
 
     static func run(

@@ -235,11 +235,15 @@ struct StatusView: View {
                     title: "Failed",
                     value: failure,
                     tone: .bad,
-                    action: status.failureRemedy?.settingsPane.map { pane in
-                        StatusAction(label: Remedy.settingsButton) {
-                            Remedy.openSettings(pane)
+                    action: status.retryInstallForce != nil
+                        ? StatusAction(label: "Retry", isProminent: true, isEnabled: status.isIdle) {
+                            Task { await status.retryInstall() }
                         }
-                    }
+                        : status.failureRemedy?.settingsPane.map { pane in
+                            StatusAction(label: Remedy.settingsButton) {
+                                Remedy.openSettings(pane)
+                            }
+                        }
                 )
             } else if let outcome = status.outcome {
                 StatusRow(

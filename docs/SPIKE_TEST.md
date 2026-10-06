@@ -400,6 +400,7 @@ Steam → игра → ⚙ → Свойства → **Совместимость
 
 1. Открой `~/Projects/NotProton/out/NotProton.app` → **Status**. Ожидаемо: `NotProton — Installed (1.0.2)`, ниже `Build 47B89F80, installed 6 Oct 2026 at 15:32.` (это я поставил в 15:32), строка **Reinstall NotProton** с кнопкой **Reinstall**.
 2. При открытом Steam нажми **Reinstall**. Ожидаемо: вопрос «Close Steam to install?». Нажми **Close Steam and Install**. Steam закроется, появится `Done — NotProton reinstalled (build 47B89F80). Steam was stopped, so start it again.` и кнопка **Open Steam**. Нажми её — Steam откроется.
+   Steam закрывается сам, обычно за несколько секунд (`steam://exit`, затем штатный Quit). Если за 45 с он не закрылся — `Failed — Steam did not quit within 45 seconds. Quit Steam yourself (Steam → Quit Steam, or ⌘Q), then press Retry.` и кнопка **Retry**: закрой Steam сам и нажми её.
 3. Запусти любую игру и, пока она идёт, нажми **Reinstall**. Ожидаемо: `Failed — A game is running under NotProton. Quit the game, then try again.` Steam не закрывается.
 4. «Update available» сам увидишь, когда я в следующий раз соберу приложение с изменённым скриптом запуска: строка станет оранжевой, в подробностях — `Out of date: Steam patch, run script.` и кнопка **Update**.
 
