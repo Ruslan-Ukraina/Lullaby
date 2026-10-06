@@ -237,3 +237,12 @@
 - Жду твою цель для Фазы 2.
 - Как начать Фазу 2, предлагаю так: fast-forward `dormison` на `spike/dormison`, `spike/dormison` не трогать (`BLOCKERS.md`, п. 1).
 - Первые пункты бэклога в Фазе 2: 1, 3 и 6, плюс ложный ok в п. 5 `spike-check.sh`.
+
+---
+
+## 2026-10-06 10:12 CEST — `dormison` перемотан на `spike/dormison`
+
+- По твоему указанию: `git fetch . spike/dormison:dormison` дал fast-forward `b0acfd8..2259474` (16 коммитов). `git push origin dormison` → `b0acfd8..2259474  dormison -> dormison`, код 0, без force push.
+- Рабочая копия переключена на `dormison`. Коммит тот же, файлы не менялись.
+- `spike/dormison` не тронут: `2259474` и локально, и в `origin`.
+- Дальше работаю в `dormison`. Фазу 2 не начинаю — жду твою цель.

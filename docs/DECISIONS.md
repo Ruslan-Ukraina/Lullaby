@@ -29,6 +29,7 @@
 | 2026-10-06 | DX12 | Отказ RE9 (DirectX 12, «Unsupported graphics card») ожидаем и провалом Фазы 1 не считается: DXMT — только D3D10/11 | D3DMetal (GPTK) / Mullion — Фаза 7, BACKLOG п. 5 |
 | 2026-10-06 | spike-ref | Ветка `spike/dormison` остаётся эталоном и не удаляется. Фаза 2 начинается только по твоей цели | — |
 | 2026-10-06 | backlog | Замечания ручной проверки ведём в `docs/BACKLOG.md`, у каждого — фаза | фазы пунктов 1–6 назначил ты, пункта 7 — предложение |
+| 2026-10-06 | dormison-ff | `dormison` перемотан на `spike/dormison` (fast-forward до `2259474`) | Фаза 2 — в `dormison`; `spike/dormison` больше не меняется |
 
 ## Как выполняем S1
 
