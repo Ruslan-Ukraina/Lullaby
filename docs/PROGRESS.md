@@ -544,3 +544,38 @@
 - снимки — `scratch/steam-windows/report/` (не в git: там видны аккаунт, друзья и почта).
 
 **Дальше:** твоя проверка по SPIKE_TEST §11.
+
+## 2026-10-06 ~23:20 CEST — Твоя проверка: исправление Фазы 4, отступы в окнах, Spaces
+
+**Фаза 4: «Steam не закрылся при Reinstall из окна» (P4-8).**
+- **Причина** (по `app.log` и `console_log` Steam): код в окне и в `--engine` одинаковый — Steam закрывался только перед переключением, после загрузки и смоук-теста. Ты закрыл его сам через 43 с: `steam://exit` в 21:51:58, строк `steam quit:` от нас нет.
+- **Исправление:**
+  - `EngineUpdater.prepare` и `activatePrepared` разделены;
+  - окно готовит движок при открытом Steam, затем спрашивает «Close Steam and Switch» и закрывает Steam по нажатию;
+  - Retry переключает без загрузки, Cancel удаляет подготовленный движок;
+  - строка «ready to switch» — на случай, если вопрос закрыли.
+- **Проверка через путь кнопок** (`--ui-test-engine-reinstall`, окно открыто):
+  - 21:14:14Z «Reinstall»;
+  - 21:15:24Z вопрос при открытом Steam;
+  - 21:15:32Z «Close Steam and Switch» → `steam quit: closed after 2 s` → `installed dormison-b1 (reinstall) … stoppedSteam=true`.
+
+  Снимок вопроса не получился: окно NotProton было в другом пространстве, где был ты. Steam открыт снова.
+- Тесты +2: подготовка → переключение → Retry; отказ от подготовленного.
+
+**Окна (W8, W9).**
+- **Отступы:** шапка друзей +12 px, `.ModalDialogPopup .DialogHeader` +20 px. На снимках v2 аватар в окне друзей и заголовки «Ігрові сервери» и «Гравці» ниже светофоров; главное окно, настройки и свойства не изменились.
+- **Диагностика:**
+  - окна Steam — `level 0`, behavior только `fullScreenPrimary`, `hidesOnDeactivate=0`, не NSPanel;
+  - стандартное `NSWindow` — `level 0`, behavior пустой, политика `regular`;
+  - Steam Helper — `activationPolicy=accessory`, `lsappinfo`: `type="UIElement"`; `steam_osx` — `Foreground`, значок в Dock.
+- **Под переключателем:** стандартный behavior `managed|participatesInCycle|fullScreenPrimary` (в логе `behavior of … -> [...]`), SDL его не перезапишет.
+- **Корень — фоновый процесс:** варианты А–Г в DECISIONS W10, ручной эксперимент Б — SPIKE_TEST §11.10. Ничего рискованного не делал. Во время диагностики ты был за Mac, поэтому эксперименты с полным экраном и `front` я прекратил.
+
+**Проверки (23:10, все с кодом 0):**
+- `make app-tests` — **320 тестов**;
+- `make app`;
+- `make runcheck scriptcheck webpatch-fixtures steamwin-check callscheck sigcheck`.
+
+В Steam стоит dylib `7F0DAE09`, `/Applications/NotProton.app` — та же сборка, переключатель включён.
+
+**Фаза 4 — закрыта** (твоя проверка + исправление P4-8). **Пункт 15 — открыт**: ждёт твоей проверки SPIKE_TEST §11.9–11.10 и решения по W10.
