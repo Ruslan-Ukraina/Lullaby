@@ -21,6 +21,7 @@ int main(void) {
     CHECK(np_steamwin_parse_mode("log\n") == NP_SW_LOG, "log");
     CHECK(np_steamwin_parse_mode("off\n") == NP_SW_OFF, "off");
     CHECK(np_steamwin_parse_mode("nativeish") == NP_SW_OFF, "nativeish is off");
+    CHECK(np_steamwin_parse_mode("native-app\n") == NP_SW_NATIVE_APP, "native-app");
     CHECK(np_steamwin_parse_mode("") == NP_SW_OFF, "empty");
     CHECK(np_steamwin_parse_mode(NULL) == NP_SW_OFF, "null");
 

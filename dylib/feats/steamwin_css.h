@@ -7,10 +7,12 @@
 #include <stdint.h>
 
 // notproton/steam-windows: absent or "off", "log" (describe windows, change
-// nothing), "native". NotProton.app writes it; it is read once per process.
+// nothing), "native", "native-app" (native, and Steam Helper runs as a regular
+// app: experiment, DECISIONS W10 option B). NotProton.app writes it; it is read
+// once per process. Everything native applies to native-app too.
 #define NP_STEAMWIN_SWITCH_FILE "steam-windows"
 
-typedef enum { NP_SW_OFF = 0, NP_SW_LOG = 1, NP_SW_NATIVE = 2 } np_steamwin_mode_t;
+typedef enum { NP_SW_OFF = 0, NP_SW_LOG = 1, NP_SW_NATIVE = 2, NP_SW_NATIVE_APP = 3 } np_steamwin_mode_t;
 
 np_steamwin_mode_t np_steamwin_parse_mode(const char *word);
 np_steamwin_mode_t np_steamwin_mode(void);

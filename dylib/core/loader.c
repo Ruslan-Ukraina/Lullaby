@@ -8,6 +8,7 @@
 #include "../hooks/hooks.h"
 #include "../feats/compat.h"
 #include "../feats/steamwin.h"
+#include "../feats/steamfocus.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -246,6 +247,7 @@ static void np_init(int argc, const char **argv) {
     // Steam's windows live in Steam Helper's browser process, not in steam_osx.
     if (np_steamwin_is_browser_process(argc, argv)) {
         np_steamwin_start();
+        np_steamfocus_start("helper", 1);
         return;
     }
 
@@ -262,6 +264,7 @@ static void np_init(int argc, const char **argv) {
            pn, getpid(), NOTPROTON_VERSION);
 
     np_log_platform_overrides();
+    np_steamfocus_start("osx", 0);
     np_compat_export_tools_path();
     np_hooks_spawn_install();
 

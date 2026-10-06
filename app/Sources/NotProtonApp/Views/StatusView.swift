@@ -311,6 +311,9 @@ struct StatusView: View {
                 }
                 updateBlockRow(snapshot.updateBlocked)
                 steamWindowsRow(snapshot.nativeSteamWindows)
+                if snapshot.nativeSteamWindows {
+                    steamAsAppRow(snapshot.steamAsRegularApp)
+                }
                 reinstallRow(snapshot.steam)
             }
 
@@ -501,6 +504,28 @@ struct StatusView: View {
         .disabled(!status.isIdle)
         .help("macOS window frame for Steam: traffic lights, rounded corners, full screen, "
             + "Stage Manager and tiling. Applies when Steam starts.")
+    }
+
+    private func steamAsAppRow(_ enabled: Bool) -> some View {
+        Toggle(isOn: Binding(
+            get: { status.snapshot?.steamAsRegularApp ?? false },
+            set: { wanted in Task { await status.setNativeSteamWindows(true, regularApp: wanted) } }
+        )) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Steam as a regular app (experimental)")
+                    .font(.headline)
+                Text(
+                    enabled
+                        ? "Spaces and Stage Manager treat Steam's windows as an app's. A second Steam icon is in the Dock."
+                        : "Steam's windows belong to a background helper, as Valve ships it."
+                )
+                .foregroundStyle(.secondary)
+            }
+            .padding(.leading, StatusMetrics.textInset)
+        }
+        .disabled(!status.isIdle)
+        .help("Runs Steam Helper, which owns Steam's windows, as a regular app. While a Steam window "
+            + "is focused the menu bar shows only the Steam menu. Applies when Steam starts.")
     }
 
     private var blockUpdates: Binding<Bool> {

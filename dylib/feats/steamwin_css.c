@@ -12,7 +12,7 @@
 static np_steamwin_mode_t g_mode = NP_SW_OFF;
 static pthread_once_t g_mode_once = PTHREAD_ONCE_INIT;
 
-// The first word only, whole: "native" or "log"; anything else is off, as
+// The first word only, whole: "native", "native-app" or "log"; anything else is off, as
 // NotProton.app's SteamWindows.mode reads it.
 static int is_word(const char *text, const char *word) {
     size_t n = strlen(word);
@@ -27,6 +27,8 @@ np_steamwin_mode_t np_steamwin_parse_mode(const char *text) {
         return NP_SW_OFF;
     while (*text == ' ' || *text == '\t' || *text == '\n' || *text == '\r')
         text++;
+    if (is_word(text, "native-app"))
+        return NP_SW_NATIVE_APP;
     if (is_word(text, "native"))
         return NP_SW_NATIVE;
     if (is_word(text, "log"))

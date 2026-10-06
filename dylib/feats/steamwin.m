@@ -328,7 +328,7 @@ static NSMapTable<NSWindow *, NSString *> *g_seen;
 
 static void survey(NSString *why) {
     for (NSWindow *w in NSApp.windows) {
-        if (g_mode == NP_SW_NATIVE)
+        if (g_mode >= NP_SW_NATIVE)
             apply_chrome(w);
         NSString *now = describe(w);
         NSString *before = [g_seen objectForKey:w];
@@ -528,7 +528,7 @@ static void observe(void) {
     if (!g_sdl_window)
         NP_WARN("steamwin: no SDL3Window class in Steam Helper, windows are left as they are");
 
-    if (g_mode == NP_SW_NATIVE && g_sdl_window) {
+    if (g_mode >= NP_SW_NATIVE && g_sdl_window) {
         g_set_style = (void (*)(id, SEL, NSWindowStyleMask))override(
             g_sdl_window, @selector(setStyleMask:), (IMP)np_set_style);
         g_send_event = (void (*)(id, SEL, NSEvent *))override(
@@ -552,7 +552,7 @@ static void observe(void) {
         [center addObserverForName:name object:nil queue:NSOperationQueue.mainQueue
                         usingBlock:^(NSNotification *note) { survey(note.name); }];
     }
-    if (g_mode == NP_SW_NATIVE) {
+    if (g_mode >= NP_SW_NATIVE) {
         [center addObserverForName:NSWindowWillEnterFullScreenNotification object:nil
                              queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
             if (is_managed(note.object))
@@ -577,7 +577,7 @@ static void observe(void) {
     }];
     survey(@"start");
     NP_LOG("steamwin: watching windows (mode %s), Steam Helper activation policy %s",
-           g_mode == NP_SW_NATIVE ? "native" : "log", policy_name(NSApp.activationPolicy));
+           g_mode >= NP_SW_NATIVE ? "native" : "log", policy_name(NSApp.activationPolicy));
 }
 
 // NSApp exists once Chromium has started its application; until then, retry.
@@ -600,6 +600,6 @@ void np_steamwin_start(void) {
     if (g_mode == NP_SW_OFF)
         return;
     np_log_init();
-    NP_LOG("steamwin: Steam Helper pid %d, mode %s", getpid(), g_mode == NP_SW_NATIVE ? "native" : "log");
+    NP_LOG("steamwin: Steam Helper pid %d, mode %s", getpid(), g_mode >= NP_SW_NATIVE ? "native" : "log");
     dispatch_async(dispatch_get_main_queue(), ^{ await_app(0); });
 }

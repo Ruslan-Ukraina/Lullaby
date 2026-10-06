@@ -31,6 +31,23 @@ struct SteamWindowsTests {
         #expect(SteamWindows.isOn(at: url) == false)
     }
 
+    @Test("Regular-app mode is on, needs the frame, and switching the frame off clears it")
+    func regularApp() throws {
+        let url = file()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+
+        try SteamWindows.set(true, regularApp: true, at: url)
+        #expect(try String(contentsOf: url, encoding: .utf8) == "native-app\n")
+        #expect(SteamWindows.isOn(at: url))
+        #expect(SteamWindows.isRegularApp(at: url))
+
+        try SteamWindows.set(true, regularApp: false, at: url)
+        #expect(SteamWindows.isOn(at: url) && !SteamWindows.isRegularApp(at: url))
+
+        try SteamWindows.set(false, regularApp: true, at: url)
+        #expect(!SteamWindows.isOn(at: url) && !SteamWindows.isRegularApp(at: url))
+    }
+
     @Test("The diagnostic log mode is not on, and unknown words are off")
     func otherWords() throws {
         let url = file()

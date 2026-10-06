@@ -25,6 +25,7 @@ struct StatusSnapshot: Sendable {
     var rollbackTarget: String?
     var engineCapabilities = EngineCapabilities()
     var nativeSteamWindows = false
+    var steamAsRegularApp = false
 
     static func capture(bundledVersion: String) -> StatusSnapshot {
         let patch = PatchComparison.inspect()
@@ -38,7 +39,8 @@ struct StatusSnapshot: Sendable {
             patch: patch,
             rollbackTarget: EngineUpdater().rollbackTarget,
             engineCapabilities: DormisonEngine().capabilities,
-            nativeSteamWindows: SteamWindows.isOn()
+            nativeSteamWindows: SteamWindows.isOn(),
+            steamAsRegularApp: SteamWindows.isRegularApp()
         )
     }
 }
@@ -292,9 +294,10 @@ final class SystemStatus {
     /// Set when a restart stopped because Steam would not quit.
     var retryRestart = false
 
-    func setNativeSteamWindows(_ enabled: Bool) async {
+    func setNativeSteamWindows(_ enabled: Bool, regularApp: Bool? = nil) async {
+        let asApp = regularApp ?? (snapshot?.steamAsRegularApp ?? false)
         await perform(from: SteamWindows.step) { _ in
-            try SteamWindows.set(enabled)
+            try SteamWindows.set(enabled, regularApp: asApp)
             let running = await Task.detached { SteamBundle.isRunning }.value
             self.offerSteamRestart = running
             return (enabled ? "Native Steam windows are on." : "Native Steam windows are off.")

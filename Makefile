@@ -45,7 +45,7 @@ SRCS := \
 	vendor/cJSON.c
 
 # Objective-C: AppKit through the runtime, for Steam Helper's windows.
-OBJC_SRCS := dylib/feats/steamwin.m
+OBJC_SRCS := dylib/feats/steamwin.m dylib/feats/steamfocus.m
 
 OUT_DIR     := out
 

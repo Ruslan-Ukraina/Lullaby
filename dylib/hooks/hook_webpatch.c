@@ -188,7 +188,7 @@ static int try_serve(const char *path, int oflag) {
         return -1;
     if (np_webpatch_should_patch(path))
         return open_patched(path);
-    if (np_steamwin_css_should_patch(path) && np_steamwin_mode() == NP_SW_NATIVE)
+    if (np_steamwin_css_should_patch(path) && np_steamwin_mode() >= NP_SW_NATIVE)
         return open_patched_css(path);
     return -1;
 }
