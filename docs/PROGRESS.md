@@ -304,3 +304,10 @@
 - **Retina из «Настроек игры» не применилась:** в обеих сессиях `video: RetinaMode=0`, в `peak.exe.env` нет `NOTPROTON_RETINA`. Значит, настройка не была сохранена в файл (не нажат Save, или ошибка записи). Сохранение пока ничего не писало в лог, поэтому причину не различить. Добавил запись `game settings <appid> <exe>: …` в `app.log` при сохранении и при ошибке; `make app-tests` — 278 ok, `make app` — 0. Нужен повтор: Retina = On → Save → запуск → в run-логе `video: RetinaMode=1`.
 - **Производительность:** окружение сессий Фазы 1 и 2 одинаково (msync+ включён, DXMT, Retina выкл.). Подробно — `BACKLOG.md` п. 10.
 - **BACKLOG:** добавлены п. 8 (exclusive fullscreen; в Dormison есть `ResizableWindows=window` и `EmulateModeset`, готового «в нативный полноэкранный режим» нет), п. 9 (половинное разрешение и MetalFX — после Фазы 7), п. 10 (регрессия fps — разбор логов).
+
+## 2026-10-06 ~12:15 CEST — **Фаза 2 закрыта** (твоё решение)
+
+- Retina из «Настроек игры» работает: сохранение в 12:06:07 (`app.log`: `game settings 3527290 peak.exe: SEVO_FPS=1 NOTPROTON_RETINA=1 …`), сессия 12:06:16 — `video: RetinaMode=1`, финал `=== termination signal, session ending ===`.
+- PEAK, Retina, полноэкранный режим по зелёной кнопке: 74–80 fps, 1% low 45–58 — как в Фазе 1. BACKLOG п. 10 закрыт.
+- BACKLOG п. 9 дополнен: при меньшем разрешении в игре — чёрные рамки (presenter=off); кандидаты — Upscaler «Final filter only» / MetalFX + Resizable window «Every window».
+- Дальше — Фаза 3 (lsteamclient «по-взрослому»: B1 или B2 + i386), жду твоего «начинай».
