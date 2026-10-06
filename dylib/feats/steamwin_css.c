@@ -65,6 +65,10 @@ int np_steamwin_css_should_patch(const char *path) {
     return path && has_suffix(path, ".css") && strstr(path, "/steamui/") != NULL;
 }
 
+// All rules apply only under `.TitleBar.NPDesktop`, a class np_steamwin_js_transform
+// adds to Steam's TitleBar outside the in-game overlay: overlay windows have no
+// macOS frame and keep Valve's buttons and spacing.
+//
 // Valve draws its traffic lights as `.TitleBar.OSX .title-bar-actions.window-controls`
 // (library.js, TitleBar). Hidden, not removed: the row keeps their width, and the
 // real buttons sit in that place.
@@ -74,13 +78,15 @@ int np_steamwin_css_should_patch(const char *path) {
 // main window, where the row lines up, is not touched:
 //   friends list   its header (avatar, name) is `.friendListHeaderContainer
 //                  .titleBarContainer.OSX`, which has no padding of its own;
-//   dialog popups  servers, players and the like put their title in a DialogHeader
-//                  inside `.ModalDialogPopup`.
+//   every dialog   popups Steam opens as `html.ModalDialogPopup > body.ModalDialogBody`
+//                  (servers, players, About, the launch option chooser…): one rule
+//                  moves the whole body down, border-box keeps the height.
 const char NP_STEAMWIN_CSS[] =
     "\n/* NotProton: native Steam windows */\n"
-    ".TitleBar.OSX .title-bar-actions.window-controls{visibility:hidden!important}\n"
-    ".friendListHeaderContainer.titleBarContainer.OSX{padding-top:12px!important}\n"
-    ".ModalDialogPopup .DialogHeader{margin-top:20px!important}\n";
+    ".TitleBar.OSX.NPDesktop .title-bar-actions.window-controls{visibility:hidden!important}\n"
+    ".friendListHeaderContainer.titleBarContainer.OSX:has(> .TitleBar.NPDesktop){padding-top:12px!important}\n"
+    "html.ModalDialogPopup > body.ModalDialogBody:has(.TitleBar.NPDesktop)"
+    "{padding-top:14px!important;box-sizing:border-box!important}\n";
 
 static const char ANCHOR[] = ".title-bar-actions";
 
@@ -100,5 +106,76 @@ char *np_steamwin_css_transform(const uint8_t *src, size_t src_len, size_t *out_
     memcpy(out + src_len, NP_STEAMWIN_CSS, extra);
     out[src_len + extra] = '\0';
     *out_len = src_len + extra;
+    return out;
+}
+
+// MARK: TitleBar class
+
+// TitleBar in library.js: `…popup:M,children:C}=e,…("TitleBar","title-area",p&&"OSX",…`.
+// After `p&&"OSX",` goes `p&&!<overlay?>(M)&&"NPDesktop",`. The overlay test uses
+// names Steam does not minify: window.g_PopupManager.GetPopups(), each popup's
+// window and BIsInOverlay() (a popup of a game's overlay has its PID in
+// browser_info). Anything unexpected counts as not the overlay.
+static const char TB_ANCHOR[] = "\"TitleBar\",\"title-area\",";
+static const char TB_OVERLAY[] =
+    "&&!function(w){try{var m=window.g_PopupManager;return!!(w&&m&&m.GetPopups&&"
+    "Array.from(m.GetPopups()).some(function(e){return e&&e.window===w&&"
+    "(e.BIsInOverlay?e.BIsInOverlay():!!(e.browser_info&&e.browser_info.m_unPID))}))}"
+    "catch(n){return!1}}(";
+static const char TB_TAIL[] = ")&&\"NPDesktop\",";
+
+static int ident_char(char c) {
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '$';
+}
+
+char *np_steamwin_js_transform(const uint8_t *src, size_t src_len, size_t *out_len) {
+    const char *s = (const char *)src;
+    if (!s || !out_len)
+        return NULL;
+    const char *at = memmem(s, src_len, TB_ANCHOR, sizeof(TB_ANCHOR) - 1);
+    if (!at)
+        return NULL;
+    size_t rest = src_len - (size_t)(at - s) - (sizeof(TB_ANCHOR) - 1);
+    if (memmem(at + 1, rest, TB_ANCHOR, sizeof(TB_ANCHOR) - 1))
+        return NULL;                        // more than one TitleBar: not the shape we know
+    if (memmem(s, src_len, "NPDesktop", 9))
+        return NULL;                        // already patched
+
+    // `p&&"OSX",` right after the anchor.
+    const char *id = at + sizeof(TB_ANCHOR) - 1, *e = id;
+    while ((size_t)(e - s) < src_len && ident_char(*e))
+        e++;
+    static const char OSX[] = "&&\"OSX\",";
+    if (e == id || (size_t)(e - s) + sizeof(OSX) - 1 > src_len || memcmp(e, OSX, sizeof(OSX) - 1) != 0)
+        return NULL;
+    const char *insert = e + sizeof(OSX) - 1;
+
+    // `popup:M` in the destructuring just before.
+    const char *p = at, *popup = NULL;
+    for (const char *q = at; q > s && at - q < 600; q--)
+        if (memcmp(q, "popup:", 6) == 0) { popup = q + 6; break; }
+    if (!popup)
+        return NULL;
+    const char *pe = popup;
+    while (pe < at && ident_char(*pe))
+        pe++;
+    if (pe == popup)
+        return NULL;
+    (void)p;
+
+    size_t id_len = (size_t)(e - id), pop_len = (size_t)(pe - popup);
+    size_t extra = id_len + (sizeof(TB_OVERLAY) - 1) + pop_len + (sizeof(TB_TAIL) - 1);
+    char *out = malloc(src_len + extra + 1);
+    if (!out)
+        return NULL;
+    size_t head = (size_t)(insert - s), o = 0;
+    memcpy(out, s, head); o += head;
+    memcpy(out + o, id, id_len); o += id_len;
+    memcpy(out + o, TB_OVERLAY, sizeof(TB_OVERLAY) - 1); o += sizeof(TB_OVERLAY) - 1;
+    memcpy(out + o, popup, pop_len); o += pop_len;
+    memcpy(out + o, TB_TAIL, sizeof(TB_TAIL) - 1); o += sizeof(TB_TAIL) - 1;
+    memcpy(out + o, insert, src_len - head); o += src_len - head;
+    out[o] = '\0';
+    *out_len = o;
     return out;
 }

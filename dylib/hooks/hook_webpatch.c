@@ -124,6 +124,19 @@ static int open_patched(const char *path) {
     const char *shape = NULL;
     char *patched = np_webpatch_transform((const uint8_t *)raw, raw_len, &patched_len,
                                           &shape);
+
+    // Native Steam windows: Steam's TitleBar learns whether it is in the overlay.
+    if (np_steamwin_mode() >= NP_SW_NATIVE) {
+        size_t tagged_len = 0;
+        char *tagged = np_steamwin_js_transform(
+            (const uint8_t *)(patched ? patched : raw), patched ? patched_len : raw_len, &tagged_len);
+        if (tagged) {
+            free(patched);
+            patched = tagged;
+            patched_len = tagged_len;
+            NP_LOG("steamwin: TitleBar in %s tagged NPDesktop outside the overlay", path);
+        }
+    }
     free(raw);
     if (!patched)
         return -1;

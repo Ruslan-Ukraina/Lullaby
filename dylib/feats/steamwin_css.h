@@ -26,4 +26,8 @@ int np_steamwin_css_should_patch(const char *path);
 // bar (or already carries the rule). Caller frees.
 char *np_steamwin_css_transform(const uint8_t *src, size_t src_len, size_t *out_len);
 
+// library.js with the TitleBar tagged `NPDesktop` outside the in-game overlay,
+// or NULL when the TitleBar is not there in the known shape. Caller frees.
+char *np_steamwin_js_transform(const uint8_t *src, size_t src_len, size_t *out_len);
+
 #endif

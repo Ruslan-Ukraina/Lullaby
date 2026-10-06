@@ -516,7 +516,7 @@ struct StatusView: View {
                     .font(.headline)
                 Text(
                     enabled
-                        ? "Spaces and Stage Manager treat Steam's windows as an app's. A second Steam icon is in the Dock."
+                        ? "Spaces and Stage Manager treat Steam's windows as an app's. One Steam icon in the Dock."
                         : "Steam's windows belong to a background helper, as Valve ships it."
                 )
                 .foregroundStyle(.secondary)
@@ -524,8 +524,9 @@ struct StatusView: View {
             .padding(.leading, StatusMetrics.textInset)
         }
         .disabled(!status.isIdle)
-        .help("Runs Steam Helper, which owns Steam's windows, as a regular app. While a Steam window "
-            + "is focused the menu bar shows only the Steam menu. Applies when Steam starts.")
+        .help("Runs Steam Helper, which owns Steam's windows, as a regular app named Steam while a Steam "
+            + "window is open; steam_osx hides its icon meanwhile and gets it back otherwise. "
+            + "Applies when Steam starts.")
     }
 
     private var blockUpdates: Binding<Bool> {

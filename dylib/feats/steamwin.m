@@ -221,7 +221,9 @@ static void apply_chrome(NSWindow *w) {
         [w standardWindowButton:NSWindowMiniaturizeButton].hidden = YES;
         [w standardWindowButton:NSWindowZoomButton].hidden = YES;
     }
-    set_toolbar(w, YES);
+    // Dialogs keep the plain title bar: the close button at the standard macOS
+    // place; their content moves below it (steamwin_css.c, ModalDialogBody).
+    set_toolbar(w, !dialog);
     NSWindowCollectionBehavior was = w.collectionBehavior;
     g_set_behavior(w, @selector(setCollectionBehavior:), standard_behavior(was));
     NP_LOG("steamwin: behavior of %p \"%s\": [%s] -> [%s]", w, w.title.UTF8String,
@@ -346,7 +348,7 @@ static void survey(NSString *why) {
 // events it sends itself need no accessibility permission. Target: the window
 // whose title contains @<text>, else the main window "Steam".
 //   dump                     describe windows and what a click would hit along the top
-//   zoom | fullscreen | miniaturize | deminiaturize
+//   zoom | fullscreen | miniaturize | deminiaturize | close
 //   click X Y | dblclick X Y points from the window's top left corner
 //   key CODE                 a key press (53 is Escape)
 
@@ -477,6 +479,8 @@ static void run_debug(NSString *line) {
     } else if ([cmd isEqualToString:@"front"]) {
         [NSApp activate];
         [w makeKeyAndOrderFront:nil];
+    } else if ([cmd isEqualToString:@"close"]) {
+        [w performClose:nil];
     } else if ([cmd isEqualToString:@"zoom"]) {
         [w performZoom:nil];
     } else if ([cmd isEqualToString:@"fullscreen"]) {
@@ -560,7 +564,7 @@ static void observe(void) {
         }];
         [center addObserverForName:NSWindowDidExitFullScreenNotification object:nil
                              queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
-            if (is_managed(note.object))
+            if (is_managed(note.object) && (added_bits(note.object) & NSWindowStyleMaskMiniaturizable))
                 set_toolbar(note.object, YES);
         }];
     }

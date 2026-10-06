@@ -11,6 +11,7 @@
 #include "steamwin_css.h"
 #include "../util/log.h"
 
+#include <dlfcn.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -18,7 +19,7 @@ static const char *g_who = "?";
 static int g_lines;
 
 #define FOCUS_LOG(fmt, ...) do { \
-    if (g_lines++ < 600) NP_LOG("focus[%s] " fmt, g_who, ##__VA_ARGS__); \
+    if (g_lines++ < 2000) NP_LOG("focus[%s] " fmt, g_who, ##__VA_ARGS__); \
 } while (0)
 
 // "Module:symbol" for a few frames above the traced call.
@@ -68,8 +69,7 @@ static BOOL suppress_activation(const char *what) {
 
 // MARK: Traced calls
 
-static IMP o_activate_ignoring, o_activate, o_ra_activate, o_ra_activate_from, o_make_key_front,
-    o_order_front_regardless;
+static IMP o_activate_ignoring, o_activate, o_ra_activate, o_ra_activate_from;
 
 static void t_activate_ignoring(id self, SEL _cmd, BOOL flag) {
     if (suppress_activation("activateIgnoringOtherApps"))
@@ -104,27 +104,12 @@ static BOOL t_ra_activate_from(id self, SEL _cmd, NSRunningApplication *from,
         self, _cmd, from, options);
 }
 
-static void t_make_key_front(id self, SEL _cmd, id sender) {
-    NSWindow *w = self;
-    FOCUS_LOG("makeKeyAndOrderFront %p \"%s\" from %s", w, w.title.UTF8String, callers().UTF8String);
-    ((void (*)(id, SEL, id))o_make_key_front)(self, _cmd, sender);
-}
-
-static void t_order_front_regardless(id self, SEL _cmd) {
-    NSWindow *w = self;
-    FOCUS_LOG("orderFrontRegardless %p \"%s\" from %s", w, w.title.UTF8String, callers().UTF8String);
-    ((void (*)(id, SEL))o_order_front_regardless)(self, _cmd);
-}
-
 static void trace_calls(void) {
     o_activate_ignoring = swap_in([NSApplication class], @selector(activateIgnoringOtherApps:), (IMP)t_activate_ignoring);
     o_activate = swap_in([NSApplication class], @selector(activate), (IMP)t_activate);
     o_ra_activate = swap_in([NSRunningApplication class], @selector(activateWithOptions:), (IMP)t_ra_activate);
     o_ra_activate_from = swap_in([NSRunningApplication class], @selector(activateFromApplication:options:),
                                  (IMP)t_ra_activate_from);
-    o_make_key_front = swap_in([NSWindow class], @selector(makeKeyAndOrderFront:), (IMP)t_make_key_front);
-    o_order_front_regardless = swap_in([NSWindow class], @selector(orderFrontRegardless),
-                                       (IMP)t_order_front_regardless);
 }
 
 static void trace_notifications(void) {
@@ -134,18 +119,201 @@ static void trace_notifications(void) {
             FOCUS_LOG("%s (key window %p)", n.name.UTF8String, NSApp.keyWindow);
         }];
     }
-    for (NSString *name in @[NSWindowDidBecomeKeyNotification, NSWindowDidResignKeyNotification,
-                             NSWindowDidBecomeMainNotification]) {
-        [center addObserverForName:name object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n) {
-            NSWindow *w = n.object;
-            FOCUS_LOG("%s %p \"%s\"", n.name.UTF8String, w, w.title.UTF8String);
-        }];
-    }
     [NSWorkspace.sharedWorkspace.notificationCenter addObserverForName:NSWorkspaceDidActivateApplicationNotification
         object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n) {
             NSRunningApplication *app = n.userInfo[NSWorkspaceApplicationKey];
             FOCUS_LOG("workspace: %s (pid %d) is now active", app.localizedName.UTF8String, app.processIdentifier);
         }];
+}
+
+// MARK: One Dock icon
+//
+// Steam Helper is regular (and has the Dock icon) only while it has a window a
+// person uses; steam_osx hides its own icon only while Steam Helper is alive and
+// regular. Any other state, including Helper quitting, crashing or restarting,
+// gives steam_osx its icon back within a second: Steam is never without one.
+
+static NSString *const kHelperID = @"com.valvesoftware.steam.helper";
+
+static void use_steam_icon(void);
+
+static BOOL is_person_window(NSWindow *w) {
+    return [NSStringFromClass([w class]) containsString:@"SDL"] && w.canBecomeMainWindow && !w.parentWindow
+        && !(w.collectionBehavior & NSWindowCollectionBehaviorIgnoresCycle) && w.level == NSNormalWindowLevel
+        && (w.isVisible || w.isMiniaturized);
+}
+
+// Steam's strings in the client's language (Steam Helper runs with -lang=uk_UA etc.).
+static NSDictionary<NSString *, NSString *> *g_strings;
+
+static void load_strings(void) {
+    NSString *lang = @"english";
+    for (NSString *arg in NSProcessInfo.processInfo.arguments) {
+        if (![arg hasPrefix:@"-lang="])
+            continue;
+        NSDictionary *names = @{@"uk": @"ukrainian", @"ru": @"russian", @"de": @"german", @"fr": @"french",
+                                @"es": @"spanish", @"it": @"italian", @"pl": @"polish", @"pt": @"portuguese",
+                                @"ja": @"japanese", @"ko": @"koreana", @"zh": @"schinese", @"tr": @"turkish"};
+        NSString *code = [[arg substringFromIndex:6] substringToIndex:MIN(2, arg.length - 6)];
+        lang = names[code] ?: lang;
+    }
+    NSURL *dir = [[NSBundle.mainBundle.bundleURL URLByAppendingPathComponent:@"../../MacOS/steamui/localization"]
+        URLByStandardizingPath];
+    NSString *text = [NSString stringWithContentsOfURL:[dir URLByAppendingPathComponent:
+        [NSString stringWithFormat:@"steamui_%@-json.js", lang]] encoding:NSUTF8StringEncoding error:nil];
+    NSMutableDictionary *found = [NSMutableDictionary dictionary];
+    for (NSString *key in @[@"Menu_Store", @"Menu_Library", @"Menu_Friends"]) {
+        NSRange r = [text rangeOfString:[NSString stringWithFormat:@"\"%@\":\"", key]];
+        if (r.location == NSNotFound)
+            continue;
+        NSUInteger start = NSMaxRange(r);
+        NSRange end = [text rangeOfString:@"\"" options:0 range:NSMakeRange(start, MIN(80, text.length - start))];
+        if (end.location != NSNotFound)
+            found[key] = [text substringWithRange:NSMakeRange(start, end.location - start)];
+    }
+    g_strings = found;
+    FOCUS_LOG("Dock menu strings (%s): %lu", lang.UTF8String, (unsigned long)found.count);
+}
+
+@interface NPSteamDock : NSObject
+@end
+
+@implementation NPSteamDock {
+    NSTimeInterval _lastQuit;
+}
+
+- (void)open:(NSMenuItem *)item {
+    [NSWorkspace.sharedWorkspace openURL:[NSURL URLWithString:item.representedObject]];
+}
+
+// A click on the Dock icon: Steam's library, as steam_osx's icon does.
+- (void)reopen:(NSAppleEventDescriptor *)event withReply:(NSAppleEventDescriptor *)reply {
+    FOCUS_LOG("Dock icon clicked: opening the library");
+    [NSWorkspace.sharedWorkspace openURL:[NSURL URLWithString:@"steam://open/games"]];
+}
+
+// Quit from the Dock icon or Cmd-Q quits Steam, not only its windows. A second
+// request within ten seconds (Steam itself winding Helper down) is let through.
+- (void)quit:(NSAppleEventDescriptor *)event withReply:(NSAppleEventDescriptor *)reply {
+    NSTimeInterval now = NSProcessInfo.processInfo.systemUptime;
+    if (_lastQuit && now - _lastQuit < 10) {
+        FOCUS_LOG("quit requested again: Steam Helper terminates");
+        [NSApp terminate:nil];
+        return;
+    }
+    _lastQuit = now;
+    FOCUS_LOG("quit requested: asking Steam to exit (steam://exit)");
+    [NSWorkspace.sharedWorkspace openURL:[NSURL URLWithString:@"steam://exit"]];
+}
+
+- (NSMenu *)menu {
+    NSMenu *menu = [[NSMenu alloc] initWithTitle:@"Steam"];
+    NSArray *items = @[@[@"Menu_Store", @"Store", @"steam://store"],
+                       @[@"Menu_Library", @"Library", @"steam://open/games"],
+                       @[@"Menu_Friends", @"Friends", @"steam://open/friends"]];
+    for (NSArray *spec in items) {
+        NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:g_strings[spec[0]] ?: spec[1]
+                                                      action:@selector(open:) keyEquivalent:@""];
+        item.target = self;
+        item.representedObject = spec[2];
+        [menu addItem:item];
+    }
+    return menu;
+}
+@end
+
+static NPSteamDock *g_dock;
+
+static NSMenu *np_dock_menu(id self, SEL _cmd, NSApplication *app) {
+    return [g_dock menu];
+}
+
+// The Dock tile's name: the private call Chromium uses for the same purpose
+// (base/mac: SetProcessName). Missing symbols leave "Steam Helper".
+static void set_dock_name(NSString *name) {
+    void *ls = dlopen("/System/Library/Frameworks/CoreServices.framework/Frameworks/"
+                      "LaunchServices.framework/LaunchServices", RTLD_LAZY);
+    CFTypeRef (*get_asn)(void) = ls ? dlsym(ls, "_LSGetCurrentApplicationASN") : NULL;
+    OSStatus (*set_item)(int, CFTypeRef, CFStringRef, CFTypeRef, CFDictionaryRef *) =
+        ls ? dlsym(ls, "_LSSetApplicationInformationItem") : NULL;
+    CFStringRef *key = ls ? dlsym(ls, "_kLSDisplayNameKey") : NULL;
+    if (!get_asn || !set_item || !key || !*key) {
+        FOCUS_LOG("Dock name: LaunchServices calls not found, the tile keeps its name");
+        return;
+    }
+    OSStatus st = set_item(-2 /* kLSDefaultSessionID */, get_asn(), *key, (__bridge CFStringRef)name, NULL);
+    FOCUS_LOG("Dock name set to %s: %d", name.UTF8String, (int)st);
+}
+
+static void become_steam_in_dock(void) {
+    use_steam_icon();
+    set_dock_name(@"Steam");
+}
+
+static BOOL g_helper_regular;
+static int g_without_windows;
+
+static void helper_tick(void) {
+    BOOL has = NO;
+    for (NSWindow *w in NSApp.windows)
+        if (is_person_window(w)) { has = YES; break; }
+    g_without_windows = has ? 0 : g_without_windows + 1;
+    BOOL want = has || (g_helper_regular && g_without_windows < 3);
+    if (want == g_helper_regular)
+        return;
+    g_helper_regular = want;
+    [NSApp setActivationPolicy:want ? NSApplicationActivationPolicyRegular : NSApplicationActivationPolicyAccessory];
+    FOCUS_LOG("Steam Helper is now %s (%s)", want ? "regular" : "accessory",
+              want ? "a Steam window is open" : "no Steam window: steam_osx keeps the Dock icon");
+    if (want)
+        become_steam_in_dock();
+}
+
+static void start_helper_dock(void) {
+    load_strings();
+    g_dock = [NPSteamDock new];
+    NSAppleEventManager *events = NSAppleEventManager.sharedAppleEventManager;
+    [events setEventHandler:g_dock andSelector:@selector(reopen:withReply:)
+              forEventClass:kCoreEventClass andEventID:kAEReopenApplication];
+    [events setEventHandler:g_dock andSelector:@selector(quit:withReply:)
+              forEventClass:kCoreEventClass andEventID:kAEQuitApplication];
+    Class delegate = [(id)NSApp.delegate class];
+    if (delegate) {
+        Method m = class_getInstanceMethod(delegate, @selector(applicationDockMenu:));
+        if (m)
+            method_setImplementation(m, (IMP)np_dock_menu);
+        else
+            class_addMethod(delegate, @selector(applicationDockMenu:), (IMP)np_dock_menu, "@@:@");
+    }
+    FOCUS_LOG("Dock: reopen, quit and menu handled (delegate %s)", delegate ? class_getName(delegate) : "none");
+    helper_tick();
+    [NSTimer scheduledTimerWithTimeInterval:1 repeats:YES block:^(NSTimer *t) { helper_tick(); }];
+}
+
+static void osx_tick(void) {
+    BOOL helper_regular = NO;
+    for (NSRunningApplication *app in [NSRunningApplication runningApplicationsWithBundleIdentifier:kHelperID])
+        if (!app.isTerminated && app.activationPolicy == NSApplicationActivationPolicyRegular)
+            helper_regular = YES;
+    NSApplicationActivationPolicy want = helper_regular ? NSApplicationActivationPolicyAccessory
+                                                        : NSApplicationActivationPolicyRegular;
+    if (NSApp.activationPolicy == want)
+        return;
+    BOOL ok = [NSApp setActivationPolicy:want];
+    FOCUS_LOG("steam_osx %s its Dock icon (%d)", helper_regular ? "hides" : "shows", ok);
+}
+
+static void start_osx_dock(void) {
+    osx_tick();
+    [NSTimer scheduledTimerWithTimeInterval:1 repeats:YES block:^(NSTimer *t) { osx_tick(); }];
+    NSNotificationCenter *ws = NSWorkspace.sharedWorkspace.notificationCenter;
+    for (NSString *name in @[NSWorkspaceDidTerminateApplicationNotification, NSWorkspaceDidLaunchApplicationNotification]) {
+        [ws addObserverForName:name object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n) {
+            NSRunningApplication *app = n.userInfo[NSWorkspaceApplicationKey];
+            if ([app.bundleIdentifier isEqualToString:kHelperID])
+                osx_tick();
+        }];
+    }
 }
 
 // MARK: Start
@@ -185,9 +353,7 @@ void np_steamfocus_start(const char *who, int make_regular) {
         await_app(0, ^{
             trace_notifications();
             if (make_regular) {
-                BOOL ok = [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
-                FOCUS_LOG("activation policy regular: %d", ok);
-                use_steam_icon();
+                start_helper_dock();
                 // What the menu bar shows while a Steam window is focused: Steam
                 // Helper's own menu, not steam_osx's.
                 NSMutableArray *menus = [NSMutableArray array];
@@ -202,6 +368,8 @@ void np_steamfocus_start(const char *who, int make_regular) {
                 FOCUS_LOG("Steam Helper menu bar: %s",
                           menus.count ? [menus componentsJoinedByString:@" "].UTF8String : "none");
             }
+            if (!make_regular)
+                start_osx_dock();
             FOCUS_LOG("tracing in pid %d, policy %ld", getpid(), (long)NSApp.activationPolicy);
         });
     });

@@ -33,13 +33,13 @@ int main(void) {
     size_t out_len = 0;
     char *out = np_steamwin_css_transform((const uint8_t *)sheet, strlen(sheet), &out_len);
     CHECK(out != NULL, "title bar sheet gets the rule");
-    CHECK(out && strstr(out, ".TitleBar.OSX .title-bar-actions.window-controls{visibility:hidden!important}"),
-          "rule hides Valve's window controls");
-    CHECK(out && strstr(out, ".friendListHeaderContainer.titleBarContainer.OSX{padding-top:12px!important}"),
-          "friends header moves below the traffic lights");
-    CHECK(out && strstr(out, ".ModalDialogPopup .DialogHeader{margin-top:20px!important}"),
-          "dialog titles move below the traffic lights");
-    CHECK(out && !strstr(out, ".DesktopUI .TitleBar"), "the main window's row is not moved");
+    CHECK(out && strstr(out, ".TitleBar.OSX.NPDesktop .title-bar-actions.window-controls{visibility:hidden!important}"),
+          "Valve's buttons hidden only where the TitleBar is tagged NPDesktop");
+    CHECK(out && strstr(out, ":has(> .TitleBar.NPDesktop){padding-top:12px!important}"),
+          "friends header moves below the traffic lights, outside the overlay");
+    CHECK(out && strstr(out, "html.ModalDialogPopup > body.ModalDialogBody:has(.TitleBar.NPDesktop)"),
+          "one rule for every dialog popup");
+    CHECK(out && !strstr(out, ".DialogHeader"), "no per-header rule left");
     CHECK(out && out_len == strlen(sheet) + strlen(NP_STEAMWIN_CSS), "rule appended once");
     char *again = out ? np_steamwin_css_transform((const uint8_t *)out, out_len, &out_len) : NULL;
     CHECK(again == NULL, "never twice");
@@ -49,6 +49,29 @@ int main(void) {
     const char *other = ".Library{color:red}";
     CHECK(np_steamwin_css_transform((const uint8_t *)other, strlen(other), &out_len) == NULL,
           "sheets without the title bar are left alone");
+
+    // TitleBar, as library.js ships it (Steam 1788652215).
+    const char *js = "x=1;function p(e){const{className:t,hideActions:i,bOSX:p=(0,l.Pr)(),"
+        "onClose:b,extraActions:w,popup:M,children:C}=e,v=(0,c.jt)(M);return(0,n.jsxs)(\"div\","
+        "{className:(0,a.A)(\"TitleBar\",\"title-area\",p&&\"OSX\",(v||g)&&\"WindowFocus\",t)})}";
+    size_t js_len = 0;
+    char *tagged = np_steamwin_js_transform((const uint8_t *)js, strlen(js), &js_len);
+    CHECK(tagged != NULL, "TitleBar found");
+    CHECK(tagged && strstr(tagged, "p&&\"OSX\",p&&!function(w){"), "class added after OSX, same flag");
+    CHECK(tagged && strstr(tagged, "}(M)&&\"NPDesktop\",(v||g)&&\"WindowFocus\""), "overlay test gets the popup");
+    CHECK(tagged && strstr(tagged, "window.g_PopupManager") && strstr(tagged, "BIsInOverlay"),
+          "overlay test uses Steam's popup manager");
+    CHECK(tagged && js_len == strlen(tagged), "length reported");
+    char *twice = tagged ? np_steamwin_js_transform((const uint8_t *)tagged, js_len, &js_len) : NULL;
+    CHECK(twice == NULL, "never twice");
+    free(tagged);
+    free(twice);
+    const char *plain = "function q(){return 1}";
+    CHECK(np_steamwin_js_transform((const uint8_t *)plain, strlen(plain), &js_len) == NULL,
+          "scripts without the TitleBar are left alone");
+    const char *drift = "(\"TitleBar\",\"title-area\",p&&\"MAC\",t)";
+    CHECK(np_steamwin_js_transform((const uint8_t *)drift, strlen(drift), &js_len) == NULL,
+          "a changed shape is refused");
 
     if (!g_fail)
         printf("==> steamwin-check: switch word and stylesheet rule as expected\n");
