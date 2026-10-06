@@ -225,6 +225,13 @@
 - `docs/RISKS.md` — статусы R5, R6, R26, R31, R32 (закрыт), новые R33 (VAC) и R34 (msync).
 - `docs/BLOCKERS.md` — ждём цель Фазы 2; что учесть, пока играешь на spike-сборке.
 
+### Пуш и уведомление (04:33 CEST)
+
+- `git push origin spike/dormison` → `82ae660..abbc5fd  spike/dormison -> spike/dormison`, код 0.
+- `PushNotification`: **не отправлен** — `Push not sent — mobile push is disabled in /config`, как и на прошлых контрольных точках (`BLOCKERS.md`, п. 2).
+- `docs/BACKLOG.md` отправлен файлом в сессию (`SendUserFile`, доставлен), его видно с другого устройства.
+- Системное уведомление macOS (`osascript display notification`) — код 0.
+
 ### Дальше
 
 - Жду твою цель для Фазы 2.
