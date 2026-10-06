@@ -461,3 +461,37 @@
   - `notproton.dylib` загружен в оба процесса (`lsof`, наследуемый `DYLD_INSERT_LIBRARIES`).
 - Sevoflurane показывает Steam в собственных `NSWindow` через `WKWebView`. Это эталон вида и ролей окон, но не код для переноса.
 - Код не менялся. Фаза 4 по-прежнему ждёт твоей проверки (SPIKE_TEST §10).
+
+## 2026-10-06 18:18–18:32 CEST — Фаза 4: SPIKE_TEST §10 прогнан без тебя (по твоей просьбе)
+
+Фаза 4 **не закрыта**: ждёт твоего просмотра снимков и своей проверки. Всё лежит в `scratch/phase4-check/` (не в git):
+- полный журнал — `check.log`;
+- снимки — `01…06*.png`;
+- вывод `spike-check` — `03-spike-check.txt`, `05-spike-check.txt`;
+- отказы — `06-refusal.txt`.
+
+**Как проверял.** Кнопки в окне я нажать не могу: у Терминала нет доступа к управлению. Поэтому Reinstall и Roll Back запускал тем же кодом обновления без окна:
+- `NotProtonApp --engine reinstall --quit-steam`;
+- `NotProtonApp --engine rollback --quit-steam`.
+
+`--quit-steam` заменяет ответ «Close Steam and Continue» в диалоге. Окно (Status) снимал после каждого шага, перезапуская приложение. Вопрос-диалог и кнопки Retry и Open Steam остались без проверки, их — тебе.
+
+| Шаг | Что сделано | Результат | Доказательство |
+|---|---|---|---|
+| 1 | Сборка 17:33 (`acd2ab8`, код как в `79ad31f`) → `/Applications/NotProton.app`. Прежняя (16:38) — в `scratch/backups/NotProton.app-20261006-1638` | `codesign --verify` ok, бинарник совпадает с `out/` | `check.log` |
+| 2 | `--install-into-steam` | `patched=false`: dylib в Steam уже этой сборки (build 47B89F80), Steam не закрывался; components 18/18, код 0 | `check.log` |
+| 10.1 | Status → Engine | `Dormison b1`, `Wine 11.16 + wine-staging 11.16, commit 52c2a4b918d6.`, `Up to date. Checked 18:18.`, Check for Updates и Reinstall, канал Beta | `01-engine-block.png` |
+| 10.2 | Reinstall при открытом Steam | 421 с, из них загрузка 6 мин. Size, sha256 и подпись, 5004 файла, B1 обеих архитектур, смоук-тест — ok. Steam закрыт мягко за 2 с перед переключением. Новое дерево — `dormison-b1`, inode 44683873 → 45271838, без `.notproton-b2`. Старое — `.previous-dormison-b1`, с `.notproton-b2`. Кэш загрузок пуст, копия B1 в мосте совпадает | `check.log`, `02-after-reinstall.png` (строка «Previous engine — Roll Back») |
+| 10.3 | Steam (вход 18:27:02) → `steam://rungameid/3527290` | процесс игры через 9 с; главное меню PEAK, 96 fps; `redirect_steamclient … 40 exports`; `renderer=dxmt msync=1`; выход Quit бандла; `spike-check.sh 3527290` — **10 ok, 0 failed**; `runner: x86_64 … (B1)` и `i386 … (B1)` | `03-peak-after-reinstall.png`, `03b-screen-after-reinstall.png`, `03-spike-check.txt` |
+| 10.4 | Roll Back при открытом Steam | 4 с, Steam закрыт за 3 с. Вернулось исходное дерево: inode 44683873, с `.notproton-b2` | `check.log`, `04-after-rollback.png` |
+| 10.5 | Steam (вход 18:29:31) → PEAK | главное меню, 98 fps, хук B1, DXMT, msync; `spike-check.sh` — **10 ok, 0 failed**, обе строки B1 | `05-peak-after-rollback.png`, `05b-screen-after-rollback.png`, `05-spike-check.txt` |
+| 10.6 | Reinstall и Roll Back во время PEAK | оба отказали: `A game is running under NotProton. Quit the game, then try again.`, код 1. Ничего не скачано, движок тот же (inode 44683873), Steam и PEAK работали дальше | `06-refusal.txt`, `06-screen-game-still-running.png` |
+
+**Состояние после проверки:**
+- `current` → `dormison-b1`: исходное дерево, как до проверки;
+- `previous` → `.previous-dormison-b1`: свежая переустановка, Roll Back вернёт её;
+- Steam открыт, игр нет.
+
+**Замечания (не чинил — ты просил ничего не начинать, BACKLOG 16):**
+1. В `app.log` нет последних строк команды без окна: `engine: installed …`, `engine: rolled back …`, `engine: refused …`. Процесс завершается раньше, чем фоновая очередь `AppLog` их допишет. В выводе команды они есть. В приложении с окном этого нет: оно не завершается сразу.
+2. `engine test: wineserver -k exited 1` после `wineserver -w` — безвредный шум в логе: сервер к этому моменту уже завершился.
