@@ -522,7 +522,23 @@ stage_renderer() {
       # Wine looks for a builtin's unix half beside the directory it found the
       # PE in, and winemetal's is the engine's (32 bit games reach it via wow64).
       ln -sfn "$wine_unix/winemetal.so" "$dir/x86_64-unix/winemetal.so"
-      renderer_overrides="d3d11,d3d10core,dxgi,winemetal=b"
+      # Wine takes a builtin off the dll path only for a name the prefix holds a
+      # file for (find_builtin_without_file in dlls/ntdll/loader.c skips the dll
+      # path otherwise), and winemetal is not one of Wine's own, so its builtin
+      # copy goes into the prefix as that file. The loader then takes the image
+      # from the dll path, where the renderer directory comes first.
+      if [ -n "$WINEPREFIX" ]; then
+        for pair in "system32:dxmt" "syswow64:dxmt/i386-windows"; do
+          sysdir="$WINEPREFIX/drive_c/windows/${pair%%:*}"
+          src="$engine_root/${pair#*:}/winemetal.dll"
+          [ -d "$sysdir" ] || continue
+          cmp -s "$src" "$sysdir/winemetal.dll" && continue
+          cp -f "$src" "$sysdir/winemetal.dll" || return 1
+        done
+      fi
+      # In this order: Dormison names the renderer in its sevo:gfx log line by
+      # finding "d3d10core,d3d11" in WINEDLLOVERRIDES (sevo_provenance.c).
+      renderer_overrides="d3d10core,d3d11,dxgi,winemetal=b"
       ;;
     dxvk)
       mkdir -p "$dir/x86_64-windows" || return 1
