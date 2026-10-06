@@ -42,7 +42,16 @@ verdict() {
 show() { sed 's/^/         /'; }
 
 # Only the last session in the run log counts.
-session=$(awk '/^=== notproton run /{buf=""} {buf=buf $0 "\n"} END{printf "%s", buf}' "$run")
+last_session() { awk '/^=== notproton run /{buf=""} {buf=buf $0 "\n"} END{printf "%s", buf}' "$run"; }
+session=$(last_session)
+# The run script writes its closing line up to ~11 s after Steam shows "Play"
+# again: give an unfinished session 30 s. A stop from Steam ends it with the
+# "termination signal, session ending" line, which is a clean end too.
+ended() { printf '%s\n' "$session" | grep -a -q -E "^=== (wine prefix killed, session ending|termination signal, session ending) ==="; }
+waited=0
+while ! ended && [ "$waited" -lt 30 ]; do
+	sleep 1; waited=$((waited + 1)); session=$(last_session)
+done
 name=$(printf '%s\n' "$session" | sed -n 's/^.*launchers\/app-[0-9]*\/\(.*\)\.app\/Contents\/MacOS\/wine$/\1/p' | head -1)
 echo "app $appid${name:+ ($name)}"
 echo "run log:  $run"
@@ -98,17 +107,25 @@ else
 	verdict fail "the wine log does not show msync running"
 fi
 printf '%s\n' "$session" | grep -a -E "^=== (bundle exited|game exited|game tree gone|wine prefix killed|termination signal)" | show
-if printf '%s\n' "$session" | grep -a -q "^=== wine prefix killed, session ending ==="; then
+if printf '%s\n' "$session" | grep -a -q -E "^=== (wine prefix killed|termination signal), session ending ==="; then
 	verdict ok "the session ended and the prefix was shut down"
 else
 	verdict fail "the session has not ended (still running, or hung): quit the game and wait 15 s"
 fi
-left=$(pgrep -fl "wineserver|steam\.exe|x86_64-unix/wine|MacOS/wine" 2>/dev/null)
+# Ours: engine under notproton/runners, launchers, or our compatdata. Other
+# Wine (Sevoflurane bottles, CrossOver) is listed, never a failure.
+all_wine=$(pgrep -fl "wineserver|steam\.exe|x86_64-unix/wine|MacOS/wine" 2>/dev/null)
+left=$(printf '%s\n' "$all_wine" | grep -a -E "notproton/(runners|launchers)|$compat" )
+foreign=$(printf '%s\n' "$all_wine" | grep -a -v -E "notproton/(runners|launchers)|$compat" | grep -a .)
+if [ -n "$foreign" ]; then
+	echo "         Wine processes that are not ours (ignored):"
+	printf '%s\n' "$foreign" | show
+fi
 if [ -n "$left" ]; then
 	printf '%s\n' "$left" | show
-	verdict fail "Wine processes are still running"
+	verdict fail "our Wine processes are still running"
 else
-	verdict ok "no Wine processes left"
+	verdict ok "no Wine processes of ours left"
 fi
 
 echo
@@ -142,8 +159,16 @@ if [ -s "$support/notproton-sevo.log" ]; then
 	tail -3 "$support/notproton-sevo.log" | show
 	echo "         (View menu settings went to NotProton's stand-in, as they should)"
 fi
-if pgrep -f "Sevoflurane.app/Contents/MacOS/" >/dev/null 2>&1; then
-	verdict fail "Sevoflurane.app is running; if you did not open it, report this"
+sevo_pid=$(pgrep -f "Sevoflurane.app/Contents/MacOS/" 2>/dev/null | head -1)
+if [ -n "$sevo_pid" ]; then
+	sevo_start=$(date -j -f '%a %b %e %T %Y' "$(ps -o lstart= -p "$sevo_pid")" +%s 2>/dev/null || echo 0)
+	# the log is appended to across sessions: the session starts at its own header line
+	run_start=$(date -j -f '%a %b %e %T %Y' "$(printf '%s\n' "$session" | sed -n 's/^=== notproton run \(.*\) [A-Z]* \([0-9]*\) ===$/\1 \2/p' | head -1)" +%s 2>/dev/null || echo 0)
+	if [ "$sevo_start" -le "$run_start" ]; then
+		verdict ok "Sevoflurane.app was already open before this session (not started by us)"
+	else
+		verdict fail "Sevoflurane.app started during this session ($(ps -o lstart= -p "$sevo_pid")): check who opened it"
+	fi
 else
 	verdict ok "Sevoflurane.app is not running"
 fi
