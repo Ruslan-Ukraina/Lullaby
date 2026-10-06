@@ -256,3 +256,84 @@ tail -60 "$HOME/Library/Application Support/notproton/launchers/app-$A/notproton
 Плюс названия игр и вывод `engine/spike-check.sh` для каждой. Логи я могу прочитать сам: они остаются на диске, назови только игры.
 
 Затем напиши **GO** или **NO-GO: <что не так>**. Без твоего решения Фазу 2 не начинаю.
+
+---
+
+## 8. Проверка Фазы 2
+
+Собрано: `out/NotProton.app` (ветка `dormison`). Все автоматические проверки зелёные, но игры с новым `compat_run.sh` я не запускал. Заполни по пунктам, в конце напиши **OK** или что не так.
+
+### 8.0 Подготовка
+
+1. Закрой Steam (⌘Q).
+2. Открой `~/Projects/NotProton/out/NotProton.app`. Если macOS ругается на подпись — правый клик → «Открыть».
+3. Pane **Status** → **Install** (в Steam попадает новый dylib со скриптом запуска). Ожидаемо: «NotProton successfully installed», Steam остановлен или не был запущен.
+4. Запусти Steam из `/Applications/Steam.app`.
+
+Ожидаемо: Status не показывает ошибок; в разделе Steam — «Installed (…)».
+
+### 8.1 Блок Engine в Status
+
+Pane **Status**, раздел **Engine**.
+
+Ожидаемо:
+- строка «Dormison b1» с зелёной точкой;
+- кнопок «Set Up», «Choose…», «Copy» и упоминаний CrossOver нет нигде в окне;
+- если установлено больше одного движка, под строкой список версий с кнопками **Use** и **Remove** (у активной их нет). Сейчас установлен один, так что список не покажется — это нормально.
+
+Проверка файла: `cat ~/Library/Application\ Support/notproton/runners/dormison-b1/notproton-engine.env` — 7 строк `NP_ENGINE_…='…'`, пути ведут в `dormison-b1`.
+
+### 8.2 Окно «Настройки игры»
+
+Pane **Prefixes** → выбери игру, в которой ты уже играл → кнопка **Game Settings…** на панели (или правый клик по игре).
+
+Ожидаемо:
+- открывается окно с разделами Graphics, Window, Picture, Input, Performance; у каждой строки есть значок (i), по клику — пояснение;
+- у игры, ни разу не запускавшейся после этой сборки, вместо настроек — «Launch the game once». Это нормально: имя exe записывается при запуске. Запусти игру, закрой, открой окно снова;
+- значения «From the prefix» — наследование от профиля префикса.
+
+Сделай: Renderer → **DXVK**, Frame rate counter → **On**, Resizable window → **Every window**, **Save**.
+
+Проверка файла: `cat "<Steam>/steamapps/compatdata/<appid>/pfx/.sevo/apps/<exe>.env"` (exe в нижнем регистре). Ожидаемо: строки `NOTPROTON_RENDERER=dxvk`, `SEVO_FPS=1`, `SEVO_RESIZABLE_WINDOWS=all`; прежняя строка `SEVO_LOADER=…` на месте.
+
+### 8.3 Выбор рендерера в панели Steam
+
+Steam → игра → ⚙ → Свойства → **Совместимость** → включи принудительное использование «Dormison (NotProton)».
+
+Ожидаемо:
+- под выбором инструмента один раздел **Graphics** с одним выпадающим списком: Automatic (DXMT), DXMT, DXVK, WineD3D. Переключателей Metal HUD, DLSS, MSync, MetalFX там больше нет;
+- выбери **DXMT** → в «Параметры запуска» появилось `NOTPROTON_RENDERER=dxmt`; выбери **Automatic** → строка исчезла; твои прочие параметры (например `-novid`) остались.
+
+### 8.4 Настройки применяются в игре
+
+Игра из 8.2 (Renderer DXVK, FPS On, Every window). Запусти из Steam.
+
+Ожидаемо:
+- на экране счётчик FPS; окно тянется за угол;
+- `engine/spike-check.sh <appid>`: в п. 5 строка `renderer: dxvk`, п. 5 без FAIL;
+- в меню **View** переключи Show Frame Rate выключить, выйди из игры, запусти снова: счётчика нет (выбор из меню сохранился), в `.env` — `SEVO_FPS=0`;
+- верни в окне Game Settings Renderer = **From the prefix**, Save: следующий запуск снова через DXMT (`renderer: dxmt` в логе).
+
+Если игра с DXVK не стартует — это находка, а не твоя ошибка: напиши игру и что случилось.
+
+### 8.5 Остановка из Steam
+
+1. Запусти любую игру, дождись окна.
+2. В Steam нажми **Остановить** (на странице игры вместо «Играть»).
+3. Подожди 15 секунд.
+4. Выполни: `engine/spike-check.sh` (без аргументов — последняя игра).
+
+Ожидаемо: п. 3 «the session ended and the prefix was shut down» с `[ok]`, «no Wine processes of ours left» `[ok]`, в конце `0 failed`.
+
+В журнале запуска (`<Steam>/steamapps/compatdata/<appid>/notproton-run.log`) последние строки сессии:
+```
+=== termination signal received, killing wine prefix ===
+=== termination signal, session ending ===
+```
+Ни одного процесса Wine после этого (`pgrep -fl wineserver` пусто, если Sevoflurane не открыт).
+
+Повтори один раз с обычным выходом из игры (меню игры → Выход) — финал `=== wine prefix killed, session ending ===` должен появиться не позже чем через ~15 с.
+
+### 8.6 Что прислать
+
+Таблица пунктов 8.1–8.5: ok / не ok и что видел. Логи я прочитаю сам, назови игры и время, когда нажимал «Остановить».
