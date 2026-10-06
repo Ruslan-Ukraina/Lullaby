@@ -90,6 +90,13 @@ struct EngineUpdateOutcome: Sendable, Equatable {
     let smoke: String
 }
 
+/// A downloaded, checked, patched and tested engine waiting for the switch.
+struct EnginePrepared: Sendable, Equatable {
+    let release: EngineRelease
+    let partial: URL
+    let smoke: String
+}
+
 struct EngineRollbackOutcome: Sendable, Equatable {
     let from: String
     let to: String
@@ -170,12 +177,34 @@ struct EngineUpdater: Sendable {
 
     // MARK: Install
 
-    /// `mayQuitSteam`: the person agreed to close Steam for the switch.
+    /// Prepare and switch in one go. `mayQuitSteam`: the person agreed beforehand to
+    /// close Steam for the switch (the headless command's --quit-steam); without it a
+    /// running Steam refuses the update before anything is downloaded.
     func install(
         _ release: EngineRelease,
         mayQuitSteam: Bool,
         report: @escaping @Sendable (EngineUpdatePhase) -> Void = { _ in }
     ) async throws -> EngineUpdateOutcome {
+        guard mayQuitSteam || !steamIsRunning() else {
+            AppLog.note("engine: refused, Steam is running")
+            throw StepFailure(step: Self.step, detail: Self.steamRunning)
+        }
+        let prepared = try await prepare(release, report: report)
+        do {
+            return try activatePrepared(prepared, mayQuitSteam: mayQuitSteam, report: report)
+        } catch {
+            if !(error is SteamBundle.StillRunning) { discard(prepared) }
+            throw error
+        }
+    }
+
+    /// Everything that can happen while Steam stays open: the download, every check,
+    /// the B1 patch and the smoke test. The result is a complete engine tree beside
+    /// the runners, ready for activatePrepared, which is quick.
+    func prepare(
+        _ release: EngineRelease,
+        report: @escaping @Sendable (EngineUpdatePhase) -> Void = { _ in }
+    ) async throws -> EnginePrepared {
         let step = Self.step
         let version = release.version
         AppLog.note("engine: install begin \(version) channel=\(release.channel.rawValue) "
@@ -186,10 +215,6 @@ struct EngineUpdater: Sendable {
         guard !gameIsRunning() else {
             AppLog.note("engine: refused, a game is running")
             throw StepFailure(step: step, detail: Self.gameRunning)
-        }
-        guard mayQuitSteam || !steamIsRunning() else {
-            AppLog.note("engine: refused, Steam is running")
-            throw StepFailure(step: step, detail: Self.steamRunning)
         }
         report(.checking)
         guard case .supported(let entry) = try support().verdict(for: version) else {
@@ -235,17 +260,43 @@ struct EngineUpdater: Sendable {
             report(.testing)
             let smoke = try smokeTest(partial)
             AppLog.note("engine: smoke test passed: \(smoke)")
+            AppLog.note("engine: \(version) prepared in \(partial.lastPathComponent)")
+            return EnginePrepared(release: release, partial: partial, smoke: smoke)
+        } catch {
+            AppLog.note("engine: install of \(version) failed: \(error.localizedDescription)")
+            try? removeIfPresent(partial)
+            throw error
+        }
+    }
 
-            guard !gameIsRunning() else { throw StepFailure(step: step, detail: Self.gameRunning) }
-            var stopped = false
-            if steamIsRunning() {
-                guard mayQuitSteam else { throw StepFailure(step: step, detail: Self.steamRunning) }
-                report(.stoppingSteam)
-                stopped = try quitSteam()
-            }
-
+    /// The switch: a game refuses it; a running Steam is closed (the soft way) only
+    /// with `mayQuitSteam`. When Steam will not quit (StillRunning) the prepared tree
+    /// is kept, so Retry switches without downloading again; any other failure drops it.
+    func activatePrepared(
+        _ prepared: EnginePrepared,
+        mayQuitSteam: Bool,
+        report: @escaping @Sendable (EngineUpdatePhase) -> Void = { _ in }
+    ) throws -> EngineUpdateOutcome {
+        let step = Self.step
+        let fm = FileManager.default
+        let version = prepared.release.version
+        guard DormisonEngine(root: prepared.partial).isUsable else {
+            throw StepFailure(step: step, detail: "The prepared engine is gone. Update again.")
+        }
+        guard !gameIsRunning() else {
+            AppLog.note("engine: switch refused, a game is running")
+            throw StepFailure(step: step, detail: Self.gameRunning)
+        }
+        var stopped = false
+        if steamIsRunning() {
+            guard mayQuitSteam else { throw StepFailure(step: step, detail: Self.steamRunning) }
+            report(.stoppingSteam)
+            AppLog.note("engine: closing Steam to switch to \(version)")
+            stopped = try quitSteam()
+        }
+        do {
             report(.switching)
-            let switched = try activate(partial: partial, version: version)
+            let switched = try activate(partial: prepared.partial, version: version)
             report(.cleaning)
             prune()
             // The tarball, its signature, and parts of downloads that were given up.
@@ -256,12 +307,21 @@ struct EngineUpdater: Sendable {
                 + "previous=\(switched.previous ?? "none") stoppedSteam=\(stopped)")
             return EngineUpdateOutcome(
                 version: version, previous: switched.previous, reinstalled: switched.reinstalled,
-                stoppedSteam: stopped, smoke: smoke)
+                stoppedSteam: stopped, smoke: prepared.smoke)
         } catch {
-            AppLog.note("engine: install of \(version) failed: \(error.localizedDescription)")
-            try? removeIfPresent(partial)
+            AppLog.note("engine: switch to \(version) failed: \(error.localizedDescription)")
+            discard(prepared)
             throw error
         }
+    }
+
+    /// Drops a prepared tree that will not be switched to.
+    func discard(_ prepared: EnginePrepared) {
+        guard prepared.partial.lastPathComponent.hasSuffix(".partial"),
+              prepared.partial.deletingLastPathComponent().standardizedFileURL == runners.standardizedFileURL
+        else { return }
+        try? removeIfPresent(prepared.partial)
+        AppLog.note("engine: prepared \(prepared.release.version) discarded")
     }
 
     private func signatureFile(for tarball: URL) -> URL {

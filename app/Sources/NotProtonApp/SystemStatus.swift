@@ -123,6 +123,8 @@ final class SystemStatus {
     var engineCheck: EngineUpdateCheck?
     var engineChannel = EngineChannel.preferred
     var pendingEngine: EngineAction?
+    /// Downloaded, checked and tested, waiting for the switch.
+    var preparedEngine: EnginePrepared?
     /// Set when an engine update or rollback stopped because Steam would not quit.
     var retryEngine: EngineAction?
     /// When the engine list was last read.

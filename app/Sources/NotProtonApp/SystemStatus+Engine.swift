@@ -1,11 +1,18 @@
 // Engine section of Status: check Dormison's signed list, update or reinstall
-// through EngineUpdater, roll back. A running game refuses all of it; a running
-// Steam is asked about first, because the switch closes it.
+// through EngineUpdater, roll back. A running game refuses all of it.
+//
+// Update and Reinstall download, check and test the engine while Steam stays open,
+// then ask "Close Steam and Switch?" and close Steam the moment that is pressed.
+// Asking first and closing Steam minutes later, after the download, read as Steam
+// not closing at all (your check, 2026-10-06). Roll Back is instant, so it asks
+// first and closes Steam right away.
 
 import Foundation
 
 enum EngineAction: Sendable, Equatable {
     case install(EngineRelease)
+    /// Switch to the engine already prepared (after the question, or on Retry).
+    case finish
     case rollback
 }
 
@@ -53,18 +60,61 @@ extension SystemStatus {
             AppLog.note("engine: refused, a game is running")
             return
         }
-        if state.steam {
-            pendingEngine = action
+        switch action {
+        case .install(let release):
+            await prepareEngine(release)
+        case .finish:
+            await runEngine(.finish, mayQuitSteam: true)
+        case .rollback:
+            if state.steam {
+                pendingEngine = action
+                pendingConfirmation = .stopSteamForEngine
+                return
+            }
+            await runEngine(action, mayQuitSteam: false)
+        }
+    }
+
+    /// Download, check and test with Steam open; then switch, asking first if Steam runs.
+    private func prepareEngine(_ release: EngineRelease) async {
+        let reinstall = release.version == EngineStore.currentTag()
+        let first = reinstall ? "Reinstalling \(release.displayName)" : "Installing \(release.displayName)"
+        var ready = false
+        await perform(from: first) { progress in
+            let prepared = try await Task.detached(priority: .userInitiated) {
+                try await EngineUpdater().prepare(release) { progress($0.label) }
+            }.value
+            self.preparedEngine = prepared
+            ready = true
+            return nil
+        }
+        guard ready else { return }
+        if await Task.detached(priority: .userInitiated, operation: { SteamBundle.isRunning }).value {
+            AppLog.note("engine: \(release.version) ready, asking to close Steam")
+            outcome = "\(release.displayName) is downloaded and tested. Close Steam to switch to it."
+            pendingEngine = .finish
             pendingConfirmation = .stopSteamForEngine
             return
         }
-        await runEngine(action, mayQuitSteam: false)
+        await runEngine(.finish, mayQuitSteam: false)
     }
 
     func confirmPendingEngine() async {
         guard let action = pendingEngine else { return }
         pendingEngine = nil
+        AppLog.note("engine: Close Steam confirmed for \(action == .rollback ? "roll back" : "the switch")")
         await runEngine(action, mayQuitSteam: true)
+    }
+
+    /// "Cancel" on the question: a prepared engine is dropped, the current one stays.
+    func cancelPendingEngine() {
+        let action = pendingEngine
+        pendingEngine = nil
+        guard action == .finish, let prepared = preparedEngine else { return }
+        preparedEngine = nil
+        Task.detached { EngineUpdater().discard(prepared) }
+        outcome = "Update cancelled. \(EngineStore.displayName(EngineStore.currentTag() ?? "")) stays."
+        AppLog.note("engine: switch cancelled, prepared engine dropped")
     }
 
     func retryEngineAction() async {
@@ -76,20 +126,26 @@ extension SystemStatus {
     private func runEngine(_ action: EngineAction, mayQuitSteam: Bool) async {
         switch action {
         case .install(let release):
-            let reinstall = release.version == EngineStore.currentTag()
-            let first = reinstall ? "Reinstalling \(release.displayName)" : "Installing \(release.displayName)"
-            await perform(from: first) { progress in
+            await prepareEngine(release)
+        case .finish:
+            guard let prepared = preparedEngine else { return }
+            let release = prepared.release
+            await perform(from: "Switching to \(release.displayName)") { progress in
                 let result: EngineUpdateOutcome
                 do {
                     result = try await Task.detached(priority: .userInitiated) {
-                        try await EngineUpdater().install(release, mayQuitSteam: mayQuitSteam) {
+                        try EngineUpdater().activatePrepared(prepared, mayQuitSteam: mayQuitSteam) {
                             progress($0.label)
                         }
                     }.value
                 } catch let stillRunning as SteamBundle.StillRunning {
-                    self.retryEngine = action
+                    self.retryEngine = .finish
                     throw stillRunning
+                } catch {
+                    self.preparedEngine = nil
+                    throw error
                 }
+                self.preparedEngine = nil
                 self.engineCheck = .upToDate(release, supported: true)
                 var parts = [
                     result.reinstalled
@@ -123,5 +179,39 @@ extension SystemStatus {
                 return text
             }
         }
+    }
+
+    /// `--ui-test-engine-reinstall` / `--ui-test-engine-rollback`: the buttons' path
+    /// without a mouse. The same SystemStatus calls the Reinstall (or Roll Back) button
+    /// and "Close Steam and …" make, in the running app with its window, the question
+    /// left on screen for a few seconds so it can be photographed.
+    static let uiTestReinstall = "--ui-test-engine-reinstall"
+    static let uiTestRollback = "--ui-test-engine-rollback"
+
+    func runEngineUITestIfRequested(arguments: [String] = CommandLine.arguments) async {
+        let reinstall = arguments.contains(Self.uiTestReinstall)
+        guard reinstall || arguments.contains(Self.uiTestRollback) else { return }
+        AppLog.note("ui-test: begin \(reinstall ? "reinstall" : "rollback")")
+        if reinstall {
+            await checkEngineUpdates()
+            guard case .upToDate(let release, true)? = engineCheck else {
+                AppLog.note("ui-test: reinstall not offered (\(engineCheck?.summary ?? "no check"))")
+                return
+            }
+            AppLog.note("ui-test: press Reinstall")
+            await requestEngine(.install(release))
+        } else {
+            AppLog.note("ui-test: press Roll Back")
+            await requestEngine(.rollback)
+        }
+        if pendingConfirmation == .stopSteamForEngine {
+            AppLog.note("ui-test: question on screen (Steam running: \(SteamBundle.isRunning))")
+            try? await Task.sleep(for: .seconds(8))
+            AppLog.note("ui-test: press Close Steam and \(reinstall ? "Switch" : "Roll Back")")
+            pendingConfirmation = nil
+            await confirmPendingEngine()
+        }
+        AppLog.note("ui-test: end outcome=\(outcome ?? "none") failure=\(failure ?? "none") "
+            + "steamRunning=\(SteamBundle.isRunning)")
     }
 }

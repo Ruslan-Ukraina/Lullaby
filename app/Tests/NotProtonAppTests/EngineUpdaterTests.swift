@@ -58,6 +58,7 @@ private final class Flags: Sendable {
     let steam = Mutex(false)
     let quits = Mutex(0)
     let smokeFails = Mutex(false)
+    let quitFails = Mutex(false)
 }
 
 /// A temporary notproton tree, a signing key, and fake Dormison releases.
@@ -98,6 +99,7 @@ private struct Rig {
             steamIsRunning: { flags.steam.withLock { $0 } },
             quitSteam: {
                 flags.quits.withLock { $0 += 1 }
+                if flags.quitFails.withLock({ $0 }) { throw SteamBundle.StillRunning(seconds: 45) }
                 flags.steam.withLock { $0 = false }
                 return true
             },
@@ -538,6 +540,60 @@ struct EngineUpdaterTests {
         let message = await failure { _ = try await rig.install("dormison-b1") }
         #expect(message.contains("bridge is for"))
         #expect(rig.entries().isEmpty)
+    }
+
+    @Test("The UI path: prepare with Steam open, then the switch closes Steam; Retry after Steam stayed")
+    func prepareThenSwitch() async throws {
+        let rig = Rig()
+        defer { rig.remove() }
+        try rig.supporting(["dormison-b1", "dormison-b2"])
+        try rig.publish("dormison-b1")
+        try rig.announce("dormison-b1")
+        _ = try await rig.install("dormison-b1")
+        try rig.publish("dormison-b2")
+        try rig.announce("dormison-b2")
+        rig.flags.steam.withLock { $0 = true }
+
+        // Steam stays open through the download and the checks.
+        let prepared = try await rig.updater.prepare(try await rig.release("dormison-b2"))
+        #expect(rig.flags.quits.withLock { $0 } == 0)
+        #expect(rig.current() == "dormison-b1")
+        #expect(rig.exists("runners/.dormison-b2.partial/wine/bin/wine"))
+
+        // Without the person's yes the switch refuses and leaves everything.
+        #expect(throws: StepFailure.self) { try rig.updater.activatePrepared(prepared, mayQuitSteam: false) }
+        #expect(rig.current() == "dormison-b1")
+
+        // Steam will not quit: the prepared tree stays for Retry.
+        rig.flags.quitFails.withLock { $0 = true }
+        #expect(throws: SteamBundle.StillRunning.self) {
+            try rig.updater.activatePrepared(prepared, mayQuitSteam: true)
+        }
+        #expect(rig.exists("runners/.dormison-b2.partial/wine/bin/wine"))
+        #expect(rig.current() == "dormison-b1")
+
+        // Retry: Steam quits now and the switch happens without a new download.
+        rig.flags.quitFails.withLock { $0 = false }
+        let downloads = rig.transport.state.withLock { $0.downloads }
+        let outcome = try rig.updater.activatePrepared(prepared, mayQuitSteam: true)
+        #expect(outcome.stoppedSteam)
+        #expect(rig.current() == "dormison-b2")
+        #expect(rig.transport.state.withLock { $0.downloads } == downloads)
+        #expect(!rig.exists("runners/.dormison-b2.partial"))
+    }
+
+    @Test("A prepared engine that is not wanted is dropped")
+    func discardPrepared() async throws {
+        let rig = Rig()
+        defer { rig.remove() }
+        try rig.supporting(["dormison-b1"])
+        try rig.publish("dormison-b1")
+        try rig.announce("dormison-b1")
+        let prepared = try await rig.updater.prepare(try await rig.release("dormison-b1"))
+        #expect(rig.exists("runners/.dormison-b1.partial"))
+        rig.updater.discard(prepared)
+        #expect(!rig.exists("runners/.dormison-b1.partial"))
+        #expect(rig.current() == nil)
     }
 
     // MARK: Rollback

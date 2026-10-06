@@ -170,20 +170,20 @@ struct StatusView: View {
             )
         }
         .confirmationDialog(
-            "Close Steam to change the engine?",
+            status.pendingEngine == .rollback ? "Close Steam to roll back the engine?" : "Close Steam to switch engines?",
             isPresented: asking(.stopSteamForEngine),
             titleVisibility: .visible
         ) {
-            Button(status.pendingEngine == .rollback ? "Close Steam and Roll Back" : "Close Steam and Continue") {
+            Button(status.pendingEngine == .rollback ? "Close Steam and Roll Back" : "Close Steam and Switch") {
                 Task { await status.confirmPendingEngine() }
             }
-            Button("Cancel", role: .cancel) { status.pendingEngine = nil }
+            Button("Cancel", role: .cancel) { status.cancelPendingEngine() }
         } message: {
             Text(
                 status.pendingEngine == .rollback
-                    ? "Steam is running. NotProton closes it to switch engines, then offers to open it again."
-                    : "Steam is running. NotProton downloads and tests the engine first, then closes Steam "
-                        + "to switch to it and offers to open it again."
+                    ? "Steam is running. NotProton closes it now to switch engines, then offers to open it again."
+                    : "\(status.preparedEngine?.release.displayName ?? "The engine") is downloaded and tested. "
+                        + "NotProton closes Steam now to switch to it, then offers to open it again."
             )
         }
         .confirmationDialog(
@@ -234,6 +234,7 @@ struct StatusView: View {
         .task {
             if status.snapshot == nil { await status.refresh() }
             if status.engineCheck == nil { await status.checkEngineUpdates(quiet: true) }
+            await status.runEngineUITestIfRequested()
         }
     }
 
@@ -614,6 +615,25 @@ struct StatusView: View {
 
     @ViewBuilder
     private func engineUpdateRow(_ state: EngineState) -> some View {
+        if let prepared = status.preparedEngine, status.pendingConfirmation != .stopSteamForEngine {
+            StatusRow(
+                title: "Updates",
+                value: "\(prepared.release.displayName) is ready to switch to.",
+                tone: .warning,
+                detail: "Downloaded and tested. Switching closes Steam if it is running.",
+                action: StatusAction(
+                    label: status.snapshot?.steamRunning == true ? "Close Steam and Switch" : "Switch",
+                    isProminent: true,
+                    isEnabled: status.isIdle
+                ) { Task { await status.requestEngine(.finish) } }
+            )
+        } else {
+            engineCheckRow(state)
+        }
+    }
+
+    @ViewBuilder
+    private func engineCheckRow(_ state: EngineState) -> some View {
         switch status.engineCheck {
         case nil:
             StatusRow(
