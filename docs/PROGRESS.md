@@ -369,3 +369,13 @@
 - Тесты: `PatchComparisonTests` (8), `SteamBundleTests` +3, `SteamInstallerTests` +3 (reinstall, run, отказ при игре), `InstallPayloadTests` — `compat_run.sh`. Repair и Remove не трогал.
 - Проверки: `make app-tests` — 0, **292 теста**; `make app` — 0; `make runcheck compatcheck` — 0. Живая проверка: собранное приложение пишет `state steam=installed 1.0.2`, `state patch build=47B89F80 installedAt=2026-10-06T13:32:57Z stale=none`, на экране строка build и Reinstall (снимок смотрел).
 - Не проверено: клики Update/Reinstall в окне (нужен ты, SPIKE_TEST §9.4a); вид «Update available» на живой системе — появится при следующей сборке с изменённым скриптом.
+
+## 2026-10-06 ~16:45 CEST — Фаза 3: разбор твоей проверки (оверлей, CS:S), итог
+
+- **Оверлей Steam (Shift+Tab)** работает — твоя проверка. В PEAK уведомление оверлея видно и на моём снимке 15:33.
+- **CS:S (240) — 64-битная.** Во всех четырёх сессиях (16:14, 16:21, 16:27, 16:28) запускалась `cstrike_win64.exe -steam`. В appinfo у неё два варианта для Windows — `cstrike.exe` (PE32) и `cstrike_win64.exe` (PE32+), и Steam выбирает 64-битный. Хук сработал для `steamclient64.dll` (`redirect_steamclient … 40 exports`), `spike-check.sh 240` — **9 ok, 0 failed**. Строки DXMT нет, потому что D3D9 идёт через `renderer=wined3d-gl` (R38). **i386-хук в настоящей игре по-прежнему не проверен** (R35).
+- **32-битная игра:** среди установленных (PEAK, ETS2, Deadlock, CS:S, Stardew) нет ни одной только 32-битной. Остаётся Isaac (250900): SPIKE_TEST §9.2.
+- **Deadlock подтверждён по логам, повторять не нужно:** сессия 13:28 — уже с новым lsteamclient (мост 12:40) и B1 (`redirect_steamclient` ×2), **0 строк `Don't recognize interface`** (раньше были 005 и AppDisableUpdate001), игра шла ~14 мин, выход `game exited status=0`.
+- `lsteamclient.so` в мосте после установки из приложения — release-копия (`aef7…`, 2,39 МБ, R27 — strip SwiftPM). В ней 22 символа `SteamNetworkingSocketsSerialized005` и 2 `SteamAppDisableUpdate001`, как в сборке. В PE-библиотеках моста x86_64 и i386 хеши совпадают с приложением.
+- RISKS: R1 уточнён, добавлены R35–R38.
+- Проверки: `make runcheck compatcheck scriptcheck panel-behavior webpatch-fixtures sigcheck anchorcheck sigdb-fixtures overlay-shim-tests` — все 0; `make app-tests` — 0, 292 теста; `test-b1.sh scratch/ntdll-b1/dormison-b1` — 0, x86_64 и i386 OK, пара совпадает по sha256 с установленной в движок.
