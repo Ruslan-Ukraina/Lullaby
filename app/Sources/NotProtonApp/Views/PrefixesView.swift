@@ -6,6 +6,7 @@ struct PrefixesView: View {
 
     @Environment(PrefixesModel.self) private var model
     @Environment(\.colorSchemeContrast) private var contrast
+    @State private var settingsFor: WinePrefix?
 
     var body: some View {
         Group {
@@ -57,6 +58,7 @@ struct PrefixesView: View {
             }
         }
         .task { if model.prefixes.isEmpty { await model.load() } }
+        .sheet(item: $settingsFor) { GameSettingsView(prefix: $0) }
         .confirmationDialog(
             PrefixPrompt.deleteTitle(deleting),
             isPresented: asking(.delete),
@@ -155,6 +157,12 @@ struct PrefixesView: View {
         }
         .disabled(model.selectedPrefix == nil || model.isBusy)
         .help("Run a program or open a Wine tool in the selected prefix.")
+
+        Button("Game Settings…", systemImage: "slider.horizontal.3") {
+            settingsFor = model.selectedPrefix
+        }
+        .disabled(model.selectedPrefix == nil || model.isBusy)
+        .help("Window, picture and input settings of the selected game.")
 
         Button("Reveal in Finder", systemImage: "folder") {
             if let prefix = model.selectedPrefix { model.reveal(prefix) }
@@ -276,6 +284,8 @@ struct PrefixesView: View {
         let targets = model.prefixes.filter { ids.contains($0.id) }
         Group {
             if let prefix = single(ids) {
+                Button("Game Settings…") { settingsFor = prefix }
+                Divider()
                 toolButtons(for: prefix)
                 Divider()
                 Button("Reveal in Finder") { model.reveal(prefix) }
