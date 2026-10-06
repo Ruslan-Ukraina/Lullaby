@@ -245,7 +245,7 @@ final class SystemStatus {
     private static let restartHint = "Steam was stopped, so start it again."
 
     private static let noEngine =
-        "No engine is installed yet: run engine/fetch-dormison.sh --activate until the app installs it."
+        "No engine is installed yet: press Check for Updates in the Engine section to install it."
 
     func installIntoSteam(force: Bool = false) async {
         await perform(from: InstallPhase.checkingPayload.label) { progress in

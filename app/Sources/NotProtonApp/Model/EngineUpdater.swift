@@ -248,8 +248,10 @@ struct EngineUpdater: Sendable {
             let switched = try activate(partial: partial, version: version)
             report(.cleaning)
             prune()
-            try? fm.removeItem(at: tarball)
-            try? fm.removeItem(at: signatureFile(for: tarball))
+            // The tarball, its signature, and parts of downloads that were given up.
+            for name in (try? fm.contentsOfDirectory(atPath: cache.path(percentEncoded: false))) ?? [] {
+                try? fm.removeItem(at: cache.appending(path: name))
+            }
             AppLog.note("engine: installed \(version)\(switched.reinstalled ? " (reinstall)" : "") "
                 + "previous=\(switched.previous ?? "none") stoppedSteam=\(stopped)")
             return EngineUpdateOutcome(

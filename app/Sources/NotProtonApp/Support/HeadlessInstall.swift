@@ -1,6 +1,6 @@
 // `NotProtonApp --install-into-steam`: what the Install button does, without the window,
 // for setting a machine up while nobody is at it (Phase 1). The CrossOver runner step is
-// left out: the engine is Dormison, set up by engine/fetch-dormison.sh. Prints each step
+// left out: the engine is Dormison, installed by `--engine install` (HeadlessEngine). Prints each step
 // and exits 0 when NotProton is in Steam and every component is in place, 1 otherwise.
 // With --reinstall it patches Steam again even when it already carries this build.
 

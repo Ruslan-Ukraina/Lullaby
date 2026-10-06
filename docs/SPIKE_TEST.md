@@ -418,3 +418,129 @@ Steam → игра → ⚙ → Свойства → **Совместимость
 Плюс 9.4a: Reinstall → вопрос → Open Steam (да/нет); Reinstall во время игры → отказ (да/нет).
 
 Плюс 9.3: режим → картинка, fps. Затем — **OK** или что не так.
+
+---
+
+## 10. Проверка Фазы 4: обновление движка из NotProton.app
+
+Что изменилось: движок теперь ставит, переустанавливает и откатывает само приложение (Status → **Engine**), без Терминала. Порядок такой:
+1. подписанный список Dormison;
+2. загрузка с докачкой;
+3. размер, sha256 и подпись;
+4. каждый файл по `engine-manifest.json`;
+5. наш B1-`ntdll`;
+6. проверочный запуск Wine во временном префиксе;
+7. переключение.
+
+Предыдущая копия остаётся для отката (`DECISIONS.md` P4-1…P4-7).
+
+Без тебя проверено на отдельной копии движка, не на твоей (PROGRESS, 6 октября, ~17:35):
+- загрузка, оборванная на 16,6 МБ, продолжилась с того же байта (сервер ответил 206);
+- проверка, B1 и проверочный запуск прошли;
+- переустановка отложила старую копию, откат дважды поменял копии местами;
+- файлы совпадают с твоим `runners/dormison-b1`.
+
+Твой движок я не трогал. Игры не запускал.
+
+**Онлайн-игры с VAC не запускай.**
+
+### 10.0 Подготовка
+
+1. Закрой NotProton, если открыт. Открой `~/Projects/NotProton/out/NotProton.app` (свежая сборка).
+2. Steam можно не закрывать: приложение само спросит. Убедись, что ни одна игра не запущена.
+3. Нужно ~1,5 ГБ свободного места и интернет: каждая переустановка заново скачивает 233 МБ.
+
+### 10.1 Блок Engine
+
+Status → раздел **Engine**. Ожидаемо:
+- **Engine** — `Dormison b1`, ниже `Wine 11.16 + wine-staging 11.16, commit 52c2a4b918d6.`;
+- **Updates** — `Up to date.`, ниже `Checked ЧЧ:ММ.`; кнопки **Check for Updates** и **Reinstall**. Приложение проверяет список Dormison само при открытии;
+- **Update channel** — `Beta`. Stable не выбирай: у Dormison пока нет стабильного релиза. Если выберешь, увидишь `No stable Dormison release yet. Switch the channel to Beta to get one.`;
+- строки **Previous engine** пока нет.
+
+Нажми **Check for Updates**. Ожидаемо: снова `Up to date.`, время обновилось.
+
+### 10.2 Переустановка той же версии (Reinstall)
+
+1. В строке **Updates** нажми **Reinstall**.
+2. Если Steam открыт, появится вопрос «Close Steam to change the engine?». Нажми **Close Steam and Continue**. Steam закроется не сразу, а после проверки, перед самым переключением.
+3. Вверху меняются этапы. Займёт 2–5 минут:
+   - `Downloading the engine (… of 233 MB)`;
+   - `Verifying the download`;
+   - `Unpacking the engine`;
+   - `Checking the engine's files`;
+   - `Adding the Steam loader patch`;
+   - `Testing the engine`;
+   - `Stopping Steam`;
+   - `Switching engines`;
+   - `Cleaning up`.
+
+Ожидаемо:
+- `Done — Dormison b1 reinstalled. The copy it replaced is kept: Roll Back returns to it. Steam was stopped, so start it again.` и кнопка **Open Steam**;
+- новая строка **Previous engine** — `Dormison b1, the other copy from the last reinstall.` с кнопкой **Roll Back**.
+
+Если Steam не закрылся за 45 с — `Failed — Steam did not quit within 45 seconds…` и кнопка **Retry**. Закрой Steam сам (⌘Q) и нажми **Retry**.
+
+Проверка в Терминале (по желанию):
+```sh
+ls -a "$HOME/Library/Application Support/notproton/runners"
+ls "$HOME/Library/Application Support/notproton/runners/dormison-b1/wine/lib/wine/x86_64-windows" | grep notproton
+```
+Ожидаемо:
+- первая команда: `.previous-dormison-b1  current  dormison-b1  previous`;
+- вторая: только `ntdll.dll.notproton-orig`. Спайкового `.notproton-b2` в новой копии нет — он остался в старой.
+
+### 10.3 PEAK после переустановки
+
+1. Нажми **Open Steam** (или открой `/Applications/Steam.app`).
+2. PEAK → **Играть**. Дождись меню, выйди из игры. Подожди 15 с.
+3. В Терминале:
+   ```sh
+   cd ~/Projects/NotProton && engine/spike-check.sh 3527290
+   ```
+
+Ожидаемо:
+- PEAK запустился как раньше, в Dock — его имя и иконка;
+- `spike-check.sh` — 10 ok, 0 failed, в п. 2 `[ok] the B1 loader hook led steamclient to lsteamclient`;
+- в run-логе — `runner: x86_64 ntdll is the patched copy (B1)` и такая же строка для i386.
+
+### 10.4 Откат (Roll Back)
+
+1. Status → **Previous engine** → **Roll Back**.
+2. Если Steam открыт — «Close Steam to change the engine?» → **Close Steam and Roll Back**.
+
+Ожидаемо:
+- за несколько секунд появляется `Done — Back on Dormison b1 (the other copy from the last reinstall).` и кнопка **Open Steam**. Ничего не скачивается;
+- строка **Previous engine** осталась: второе нажатие вернёт копию из 10.2.
+
+Проверка (по желанию): команда `ls … | grep notproton` из 10.2 снова показывает `ntdll.dll.notproton-b2` и `ntdll.dll.notproton-orig`. Значит, на месте копия, которая была до переустановки.
+
+### 10.5 PEAK после отката
+
+Повтори 10.3. Ожидаемо то же самое: PEAK в меню, `spike-check.sh 3527290` — 10 ok, 0 failed.
+
+### 10.6 Отказ во время игры
+
+1. Запусти PEAK и, пока он идёт, нажми **Reinstall** (или **Roll Back**).
+2. Ожидаемо: `Failed — A game is running under NotProton. Quit the game, then try again.` Ничего не скачивается, Steam не закрывается.
+3. Выйди из PEAK.
+
+### 10.7 По желанию: нет сети и прерванная загрузка
+
+- Выключи Wi-Fi → **Check for Updates**. Ожидаемо: `Failed — Check for engine updates: NotProton could not reach GitHub. Check your internet connection and try again.` Движок не меняется.
+- Нажми **Reinstall**, на этапе `Downloading the engine` выключи Wi-Fi. Ожидаемо: `Failed — Update the engine: The download stopped. NotProton could not reach GitHub… What arrived is kept, and the next try continues from there.` Включи Wi-Fi, снова **Reinstall**. Загрузка продолжится с того же места, в `app.log` будет строка `engine: server resumed the download at byte … (206)`.
+
+### 10.8 Что прислать
+
+| Шаг | Результат |
+|---|---|
+| 10.1 Блок Engine, Check for Updates | |
+| 10.2 Reinstall → Done, строка Previous engine | |
+| 10.3 PEAK после переустановки (`spike-check`) | |
+| 10.4 Roll Back → Done | |
+| 10.5 PEAK после отката (`spike-check`) | |
+| 10.6 Отказ во время игры | |
+
+Если что-то пошло не так — пришли время. Строки `engine:` в `~/Library/Application Support/notproton/app.log` я прочитаю сам.
+
+После проверки можно оставить любую из двух копий. Вторая (~1,1 ГБ) удалится сама при следующем обновлении движка.

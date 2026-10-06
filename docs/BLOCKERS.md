@@ -1,16 +1,22 @@
 # BLOCKERS — что нужно от тебя
 
-Обновлено: 2026-10-06, ~13:30 CEST.
+Обновлено: 2026-10-06, ~17:40 CEST.
 
 ## Сейчас ждём
 
-1. **Ручную проверку Фазы 3** — `docs/SPIKE_TEST.md`, раздел 9:
-   - 9.0 — Install из `out/NotProton.app` при закрытом Steam;
-   - 9.1 — PEAK, ETS2, Deadlock (только меню);
-   - 9.2 — Isaac, 32 бита: поставить через Steam с принудительным Dormison **до** установки;
-   - 9.3 — эксперимент «Also borderless full screen» на PEAK.
-   Всё остальное в Фазе 3 сделано и проверено без игр (`PROGRESS.md`, 13:30).
-2. **Откат, если B1 что-то сломает:** `ntdll-patch/b1/install-b1.sh --restore` возвращает релизные `ntdll.dll` (без хука вообще). Вернуть спайк B2 для x86_64 — скопировать `ntdll.dll.notproton-b2` поверх `ntdll.dll` в `runners/dormison-b1/wine/lib/wine/x86_64-windows/`. Мост до Фазы 3 — `scratch/backups/bridge-pre-p3/`.
+1. **Ручную проверку Фазы 4** — `docs/SPIKE_TEST.md`, раздел 10:
+   - 10.1 — блок Engine и Check for Updates;
+   - 10.2 — Reinstall той же версии;
+   - 10.3 — PEAK;
+   - 10.4 — Roll Back;
+   - 10.5 — PEAK;
+   - 10.6 — отказ во время игры;
+   - 10.7 — по желанию, без сети.
+
+   Всё остальное в Фазе 4 сделано и проверено без игр (`PROGRESS.md`, ~17:35).
+2. **Если после Reinstall или Roll Back PEAK не запустится:**
+   - нажми **Roll Back** ещё раз — вернётся другая копия;
+   - старая копия (с `.notproton-b2`) лежит в `runners/.previous-dormison-b1`, пока не пройдёт следующее обновление движка.
 
 ## Учти, пока играешь
 

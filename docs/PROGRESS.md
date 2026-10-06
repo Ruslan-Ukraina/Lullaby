@@ -393,3 +393,60 @@
 **Итог Фазы 3:** B1 (x86_64 и i386) в движке; 64-битные игры (PEAK, ETS2, Deadlock, CS:S) — хук, оверлей, интерфейсы 005/AppDisableUpdate001 работают; i386 — только тестом (BACKLOG 11). Status: сравнение по содержимому, Update, Reinstall, build id, мягкий выход Steam с Retry.
 
 **Дальше:** Фаза 4 (EngineUpdater) — в новой сессии, по твоей команде.
+
+## 2026-10-06 ~17:35 CEST — Фаза 4: EngineUpdater (обновление движка из приложения)
+
+**Сделано** (коммит `4b032c1` и следующий):
+- `Model/EngineManifest.swift` — `engine.json` проверяется закреплённым Ed25519-ключом Dormison до разбора. Релизы принимаются только из `github.com/kageroumado/dormison/releases/download/`. Каналы stable и beta (правило Sevoflurane), по умолчанию beta (P4-6).
+- `Model/EngineSupport.swift` + `engine/support.json` + `engine/stage-support.py` — таблица совместимости. Её и B1-пару `make app-payload` кладёт в `payload/engine-support/` с проверкой sha256. Нет B1 или моста для версии — «Waiting for NotProton support» (P4-1).
+- `Support/EngineTransport.swift` — загрузка в `.part` с докачкой по HTTP Range (206; на 200 начинает заново).
+- `Model/EngineUpdater.swift` — порядок P4-2, раскладка и откат P4-3 (`previous`, `.previous-dormison-<tag>`, `renamex_np` SWAP), Steam и игры — P4-4. После установки остаётся одна предыдущая версия, кэш загрузок очищается.
+- `Model/EngineSmokeTest.swift` — `wine --version`, `wineboot --init` во временном префиксе, B1-`ntdll` в `system32` и `syswow64` (P4-5).
+- Status → **Engine**:
+  - версия и commit;
+  - **Check for Updates** (и сама при открытии);
+  - **Install** / **Update** / **Reinstall**;
+  - **Roll Back** в строке «Previous engine»;
+  - **Update channel**;
+  - вопрос «Close Steam to change the engine?», **Retry**, **Open Steam**.
+- `NotProtonApp --engine check|install|reinstall|rollback` (P4-7).
+- `EngineStore.switchTo` ставит `previous` и синхронизирует копию `ntdll` в мосте; удаление движка убирает висящую ссылку `previous`.
+
+**Тесты:** `EngineUpdaterTests` — 19 тестов:
+- подлинный `engine.json` b1 проверяется закреплённым ключом, а с одним изменённым байтом — нет;
+- поддельный манифест;
+- чужой URL;
+- каналы;
+- проверка обновлений;
+- установка с нуля;
+- поддельный тарбол;
+- несовпадение sha256;
+- изменённый файл;
+- нет сети;
+- прерванная загрузка с докачкой;
+- провал смоук-теста;
+- игра или Steam запущены;
+- нет моста или B1;
+- чужой коммит;
+- обновление b1→b2→b3 с откатом;
+- переустановка с откатом;
+- нечего откатывать;
+- встроенная таблица.
+
+**Живая проверка без тебя** — на отдельном дереве в scratchpad, твой `runners/` не тронут:
+- `--engine install` загрузил настоящий `dormison-b1.tar.xz`. Я оборвал загрузку на 17,7 МБ, повторный запуск продолжил: `downloading … from byte 17695726`;
+- проверка, B1 (`33bca058…`, `e0d5f658…`) и смоук-тест: `dormison-b1 (Staging), wineboot created a prefix with the B1 ntdll.dll (x86_64 and i386)`. Установка заняла 123 с;
+- дерево совпадает с твоим `runners/dormison-b1`: те же файлы и те же ссылки. Отличаются только `.notproton-b2` (спайк) и пути в env;
+- `--engine reinstall` с обрывом на 16,6 МБ: `server resumed the download at byte 16580535 (206)`. Затем `.previous-dormison-b1` со старым деревом и `--engine rollback` дважды в обе стороны. Временное дерево (2 ГБ) удалено;
+- снимок Status → Engine: `Dormison b1`, `Wine 11.16 + wine-staging 11.16, commit 52c2a4b918d6.`, `Up to date. Checked 17:30.`, кнопки Check for Updates и Reinstall, канал Beta.
+
+**Проверки (17:33, все с кодом 0):**
+- `make app-tests` — **315 тестов** (было 296);
+- `make app` — `out/NotProton.app (1.0.2)`;
+- `make runcheck compatcheck scriptcheck panel-behavior webpatch-fixtures sigcheck anchorcheck sigdb-fixtures overlay-shim-tests`.
+
+**Не проверено:** кнопки в окне на твоём настоящем движке и PEAK после переустановки и отката — это контрольная точка, SPIKE_TEST §10.
+
+**Документы:** DECISIONS P4-1…P4-7, RISKS R39–R41, BACKLOG 12–14, SPIKE_TEST §10.
+
+**Дальше:** твоя проверка по SPIKE_TEST §10. Затем Фаза 5 (BridgeUpdater, SignatureUpdater, гейт Steam) — по твоей команде.
