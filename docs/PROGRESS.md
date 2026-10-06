@@ -335,3 +335,10 @@
 **Не проверено:** игры. Это контрольная точка — ручная проверка по SPIKE_TEST §9. Новый dylib в Steam.app не ставил: Steam был открыт, а Install его закрывает. Это §9.0, для тебя.
 
 **Пуш и уведомление (13:35 CEST).** `git push origin dormison` → `b9ee167..838a717`, ветка совпадает с `origin`. Ветка форка Dormison `notproton/b1-steamclient` запушена. `PushNotification`: `Push not sent — mobile push is disabled in /config` (как раньше, BLOCKERS). Системное уведомление macOS — отправлено. Жду проверки по SPIKE_TEST §9.
+
+## 2026-10-06 ~12:55 CEST — Фаза 3: PEAK с B1 (сессия 12:49)
+
+- `engine/spike-check.sh 3527290` — **10 ok, 0 failed** (код 0). Пункт 2: `steamclient64.dll: 40 exports and the entry point lead to lsteamclient.dll`, `[ok] the B1 loader hook led steamclient to lsteamclient`, ошибок lsteamclient нет. msync+ работает, DXMT нарисовал первый кадр (+7053 мс), сессия завершилась по сигналу, наших процессов Wine не осталось.
+- В Steam всё ещё **старый dylib**: в run-логе `runner: x86_64 ntdll is the patched copy` без `(B1)` и без строки i386. Хук работает, потому что B1 уже стоит в `runners/dormison-b1`. Новый скрипт попадёт в Steam после SPIKE_TEST §9.0 (закрыть Steam → Install в NotProton.app).
+- Висящий `winedevice.exe` (pid 55389, запущен 4 октября) — не наш, `spike-check` его не считает. Не трогал.
+- Не проверено: достижения в оверлее (нужен глаз), ETS2, Deadlock, Isaac (32 бит), эксперимент §9.3.
