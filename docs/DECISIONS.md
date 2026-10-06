@@ -9,7 +9,20 @@
 | 2026-10-06 | В3 | Настройки игры — в двух местах, единственный источник правды `<prefix>/.sevo/apps/<exe>.env`. Основное — окно «Настройки игры» в NotProton.app. Панель в Steam упрощается до выбора рендерера | Фаза 2: CX-опции панели (`D3DM_*`, `DXMT_METALFX*`, `MTL_HUD_ENABLED`, `ROSETTA_*`, `WINEMSYNC`, `NOTPROTON_RETINA`) уходят из панели |
 | 2026-10-06 | В4 | Автообновление Sparkle выключить **уже в Фазе 1** (ветка `spike/dormison`): фид указывает на апстрим и может заменить сборку форка. В Фазе 6 переключить на свой фид | Фаза 1: автопроверка выключена до первой установки spike-сборки |
 | 2026-10-06 | S1 | **Форк не вызывает Sevoflurane ни при каких условиях**: ни через `sevoflurane://` из копии загрузчика, ни через `SEVO_CLI` из меню View (заглушка или скрытие пунктов). Если к концу Фазы 1 не получится — обход описать в `SPIKE_TEST.md` | см. «Как выполняем S1» ниже |
-| — | lsteamclient | B1 / B2 / A — по итогам Фазы 1 и Фазы 3 | — |
+| 2026-10-06 | P1-1 | **Спайк: lsteamclient — B2 для x86_64.** `ntdll-patch/patch-dormison.sh` патчит `x86_64-windows/ntdll.dll` в копии движка; чистый файл остаётся рядом как `ntdll.dll.notproton-orig`, копия патча — в `bridge/wine/x86_64-windows/`. i386 не патчится (cave 368 < 1376) | окончательный выбор B1 / B2 — в Фазе 3. Через `WINEDLLPATH_PREPEND` ntdll подать нельзя: `load_ntdll()` открывает его только из каталога движка (`dlls/ntdll/unix/loader.c`) |
+| 2026-10-06 | P1-2 | Движок ставит скрипт `engine/fetch-dormison.sh`: три проверки (подпись манифеста, подпись + sha256 + размер тарбола, каждый файл по `engine-manifest.json`), распаковка в `.partial`, атомарный `current` | Фаза 4 переносит это в `EngineUpdater` приложения |
+| 2026-10-06 | P1-3 | lsteamclient в движок **не** кладём: `WINEDLLPATH=bridge`, Dormison ищет там после своего дерева | движок остаётся как в поставке, кроме ntdll (P1-1) |
+| 2026-10-06 | P1-4 | Рендерер DXMT по умолчанию — через `WINEDLLPATH_PREPEND=notproton/renderers/dxmt`: ссылки в `runners/current`, overrides `d3d10core,d3d11,dxgi,winemetal=b`. Builtin-`winemetal.dll` копируется в `system32`/`syswow64` префикса | без файла в префиксе Wine не берёт builtin с dll path (`find_builtin_without_file` работает только при создании префикса). Порядок `d3d10core,d3d11` нужен, чтобы Dormison писал в лог `renderer=dxmt` |
+| 2026-10-06 | P1-5 | Бандл игры несёт копию **`x86_64-unix/wine`** (загрузчик с `WINE_RESERVE`), а не `wine/bin/wine` (входная дверь). `SEVO_LOADER` в `.sevo/apps/{steam.exe,<игра>.exe}.env` указывает на эту копию | Dormison перезапускает дочерние процессы через `SEVO_LOADER`, иначе через загрузчик движка: игра потеряла бы имя в Dock и Game Mode |
+| 2026-10-06 | P1-6 | `.sevo/bottle.env` пишется при первом запуске под Dormison (профиль по умолчанию); `WINEMSYNC` и `SEVO_CLI` переписываются при каждом запуске; маркер msync времён CrossOver не переносится | профиль — `MIGRATION_PLAN.md` §3.2; источник правды для настроек — Фаза 2 |
+| 2026-10-06 | S1-impl | S1 выполнен: заглушка `notproton-sevo` (только пишет в лог) в `SEVO_CLI` и `bottle.env`; лаунчер экспортирует `SEVO_LOADER_TREE` и выходит без программы (и с `-psn_…`); бандлы в `launchers/app-<appid>/` | проверено: заглушка, условие выхода, отсутствие процесса Sevoflurane.app |
+| 2026-10-06 | B4-impl | Sparkle не стартует, «Check for Updates…» неактивен, `SUFeedURL`/`SUPublicEDKey` апстрима удалены из `Info.plist`, `SUEnableAutomaticChecks=false` | свой фид — Фаза 6 |
+| 2026-10-06 | P1-7 | Имя инструмента в Steam — «Dormison (NotProton)». Внутреннее имя `notproton` не меняется | Steam хранит выбор инструмента по внутреннему имени, а Steam Cloud требует «proton» в имени каталога |
+| 2026-10-06 | P1-8 | `NotProtonApp --install-into-steam` — установка в Steam тем же кодом, что кнопка Install, без окна (шаг CrossOver пропущен) | для автономной установки и будущих smoke-тестов |
+| 2026-10-06 | P1-9 | Мост раскладывается по sha256, а не по размеру | ошибка апстрима: собранный под Dormison `lsteamclient.so` после strip совпал по размеру со старым, и старый остался |
+| 2026-10-06 | P1-10 | `PrefixTools` (Wine Configuration, Registry Editor, Task Manager, Run…, пересборка) использует раскладку и окружение Dormison, как `compat_run.sh`; профиль `users/<пользователь macOS>` → `steamuser` и при запуске, и при пересборке | Фаза 2 переносит это в `EngineProvider` |
+| 2026-10-06 | rm-guard | В скриптах каждый `rm`/`find -delete`/`rsync --delete` с переменной в пути — через `${var:?}` | по твоему указанию; коммит `aba3265` |
+| — | lsteamclient | B1 / B2 / A — окончательно по итогам Фазы 3 | спайк — B2 (P1-1) |
 
 ## Как выполняем S1
 
@@ -43,4 +56,4 @@
 ## Состояние окружения (с твоих слов и после проверки)
 
 - Пуши: ты их включил. Сейчас проверять тестовой отправкой не стал: ты у терминала, и инструмент пропустил бы её как дубликат. Проверится на следующей контрольной точке.
-- `pkgconf`: ты пишешь «установлен», но на 2026-10-06 ~01:25 CEST его нет. Файлы `/opt/homebrew/bin/pkg-config` и `/opt/homebrew/bin/pkgconf` отсутствуют, `brew list --versions pkgconf` ничего не выводит. Фазу 1 это не блокирует. Подробнее — в `BLOCKERS.md`.
+- `pkgconf`: на 2026-10-06 ~01:25 CEST его не было; в 02:41 CEST `/opt/homebrew/bin/pkg-config` и `pkgconf` есть. Вопрос закрыт.
