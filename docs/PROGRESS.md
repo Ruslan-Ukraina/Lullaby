@@ -495,3 +495,52 @@
 **Замечания (не чинил — ты просил ничего не начинать, BACKLOG 16):**
 1. В `app.log` нет последних строк команды без окна: `engine: installed …`, `engine: rolled back …`, `engine: refused …`. Процесс завершается раньше, чем фоновая очередь `AppLog` их допишет. В выводе команды они есть. В приложении с окном этого нет: оно не завершается сразу.
 2. `engine test: wineserver -k exited 1` после `wineserver -w` — безвредный шум в логе: сервер к этому моменту уже завершился.
+
+## 2026-10-06 18:35–19:20 CEST — BACKLOG 15: нативные окна Steam
+
+**Разведка (режим `log`, W2).** Все окна Steam — `SDL3Window` в браузерном процессе Steam Helper (без `--type=`). Внутри — CEF, зоны перетаскивания — это `CefDraggableView`. Типы окон и их признаки — в DECISIONS W2:
+- обычное окно: `0xc` / `0x80`;
+- диалог: `0x4` / `0x200`;
+- меню и подсказки: `0x4` / `0x240`, дочерние;
+- Big Picture: SDL сам ставит `0xf` и уводит его в нативный полноэкранный режим.
+
+**Сделано** (коммиты `a35fa23`, `adbe965` и следующий):
+- `dylib/feats/steamwin.m`:
+  - рамка `Titled|Closable|Miniaturizable|FullSizeContentView`, прозрачный заголовок;
+  - тулбар unifiedCompact: центр светофоров 20 pt, как у ряда Steam;
+  - у диалогов только кнопка закрытия;
+  - сброс стиля со стороны SDL восстанавливается;
+  - собственный полноэкранный режим SDL отпускает окно;
+  - в нативном полноэкранном режиме тулбар снимается;
+  - двойной клик по `CefDraggableView` выполняет системное действие;
+  - отладочный канал `steam-windows-debug` (W6).
+- `dylib/feats/steamwin_css.c` + `hook_webpatch.c` — правило CSS скрывает кнопки Valve. Его дописываем к `library.css` и `chunk~2dcc5aaf7.css`, которые читает сам Steam Helper.
+- `loader.c` — в Steam Helper без `--type=` запускается только этот модуль.
+- NotProton.app — переключатель **Native Steam windows** в Status → Steam: по умолчанию выключен, предлагает **Restart Steam**, есть Retry.
+- Тесты: `SteamWindowsTests` (3), `make steamwin-check`.
+
+**Проверено без мыши** (события Steam Helper сам себе, снимки, лог):
+- `dump`: клики по верхней полосе попадают в `CefDraggableView`/`CefNonDraggableView`, а не в заголовок macOS. Кнопка закрытия в 13 pt от верха, заголовок 40 pt;
+- клик по «БІБЛІОТЕКА» открыл библиотеку;
+- двойной клик по панели: `Maximize`, окно 1512×882, повтор вернул 1117×768;
+- полный экран: вход (`style 0xc00f`), ряд Steam виден целиком. Выход: SDL сбросил стиль на `0xf` и `0xc`, рамка восстановлена (`keeping the macOS frame`);
+- рамку получили: главное окно, друзья, настройки, свойства PEAK, «Про Steam» и «Вхід до Steam» (только закрытие), «Ігрові сервери», «Гравці», «Завершення роботи», «Запуск...»; меню и подсказки — нет;
+- Big Picture: вход в нативный полноэкранный режим и выход, главное окно в порядке;
+- режим `off`: после перезапуска строк `steamwin:` нет, Steam как раньше;
+- PEAK с включённой функцией: `spike-check.sh 3527290` — 10 ok, 0 failed.
+- Чёрные окна на некоторых снимках — это Chromium не рисует перекрытые окна; с выключенной функцией то же самое (W5).
+
+**Не проверено:** перетаскивание и изменение размера мышью, сворачивание (Постановщик держит Steam в боковой ленте, а Steam Helper — `LSUIElement`, вывести его вперёд извне нельзя), Постановщик, тайлинг, окно чата. Это SPIKE_TEST §11.
+
+**Проверки (19:10, все с кодом 0):**
+- `make app-tests` — **318 тестов**;
+- `make app`;
+- `make runcheck compatcheck scriptcheck panel-behavior webpatch-fixtures sigcheck anchorcheck sigdb-fixtures overlay-shim-tests steamwin-check callscheck`.
+
+**Состояние:**
+- переключатель **включён** (`notproton/steam-windows` = `native`);
+- в Steam стоит dylib сборки `163C1DA9`;
+- `/Applications/NotProton.app` — эта же сборка;
+- снимки — `scratch/steam-windows/report/` (не в git: там видны аккаунт, друзья и почта).
+
+**Дальше:** твоя проверка по SPIKE_TEST §11.
