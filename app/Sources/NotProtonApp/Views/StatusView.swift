@@ -170,6 +170,23 @@ struct StatusView: View {
             )
         }
         .confirmationDialog(
+            "Close Steam to change the engine?",
+            isPresented: asking(.stopSteamForEngine),
+            titleVisibility: .visible
+        ) {
+            Button(status.pendingEngine == .rollback ? "Close Steam and Roll Back" : "Close Steam and Continue") {
+                Task { await status.confirmPendingEngine() }
+            }
+            Button("Cancel", role: .cancel) { status.pendingEngine = nil }
+        } message: {
+            Text(
+                status.pendingEngine == .rollback
+                    ? "Steam is running. NotProton closes it to switch engines, then offers to open it again."
+                    : "Steam is running. NotProton downloads and tests the engine first, then closes Steam "
+                        + "to switch to it and offers to open it again."
+            )
+        }
+        .confirmationDialog(
             "Replace Steam with Valve's bundle?",
             isPresented: asking(.replaceSteam),
             titleVisibility: .visible
@@ -214,7 +231,10 @@ struct StatusView: View {
                     + "and Steam Play prefixes are not removed."
             )
         }
-        .task { if status.snapshot == nil { await status.refresh() } }
+        .task {
+            if status.snapshot == nil { await status.refresh() }
+            if status.engineCheck == nil { await status.checkEngineUpdates(quiet: true) }
+        }
     }
 
     private func asking(_ confirmation: SystemStatus.Confirmation) -> Binding<Bool> {
@@ -238,6 +258,10 @@ struct StatusView: View {
                     action: status.retryInstallForce != nil
                         ? StatusAction(label: "Retry", isProminent: true, isEnabled: status.isIdle) {
                             Task { await status.retryInstall() }
+                        }
+                        : status.retryEngine != nil
+                        ? StatusAction(label: "Retry", isProminent: true, isEnabled: status.isIdle) {
+                            Task { await status.retryEngineAction() }
                         }
                         : status.failureRemedy?.settingsPane.map { pane in
                             StatusAction(label: Remedy.settingsButton) {
@@ -281,7 +305,12 @@ struct StatusView: View {
             }
 
             Section("Engine") {
-                runnerRow(snapshot.runner)
+                runnerRow(snapshot.runner, capabilities: snapshot.engineCapabilities)
+                engineUpdateRow(snapshot.runner)
+                if let target = snapshot.rollbackTarget {
+                    rollbackRow(target)
+                }
+                channelRow
                 if snapshot.installedEngines.count > 1 {
                     engineRows(snapshot)
                 }
@@ -497,14 +526,14 @@ struct StatusView: View {
         }
     }
 
-    private func runnerRow(_ state: EngineState) -> some View {
+    private func runnerRow(_ state: EngineState, capabilities: EngineCapabilities) -> some View {
         switch state {
         case .none:
             return StatusRow(
                 title: "Engine",
                 value: "Not installed.",
                 tone: .neutral,
-                detail: "Until the app installs it, run engine/fetch-dormison.sh --activate."
+                detail: "Check for Updates finds the Dormison engine and installs it."
             )
         case .broken(let detail):
             return StatusRow(
@@ -517,9 +546,131 @@ struct StatusView: View {
             return StatusRow(
                 title: "Engine",
                 value: EngineStore.displayName(version),
-                tone: .ok
+                tone: .ok,
+                detail: Self.engineDetail(capabilities)
             )
         }
+    }
+
+    /// "Wine 11.16 + wine-staging 11.16, commit 52c2a4b918d6."
+    static func engineDetail(_ capabilities: EngineCapabilities) -> String? {
+        var parts: [String] = []
+        if let wine = capabilities.wine { parts.append("Wine \(wine)") }
+        if let commit = capabilities.commit { parts.append("commit \(commit.prefix(12))") }
+        return parts.isEmpty ? nil : parts.joined(separator: ", ") + "."
+    }
+
+    private var checkAction: StatusAction {
+        StatusAction(
+            label: "Check for Updates",
+            help: "Read Dormison's signed release list.",
+            isEnabled: status.isIdle
+        ) { Task { await status.checkEngineUpdates() } }
+    }
+
+    private func engineInstallAction(_ release: EngineRelease, label: String, prominent: Bool) -> StatusAction {
+        StatusAction(
+            label: label,
+            isProminent: prominent,
+            help: "Download, verify and test \(release.displayName), then switch to it.",
+            isEnabled: status.isIdle
+        ) { Task { await status.requestEngine(.install(release)) } }
+    }
+
+    private var checkedDetail: String? {
+        status.engineCheckedAt.map { "Checked \($0.formatted(date: .omitted, time: .shortened))." }
+    }
+
+    @ViewBuilder
+    private func engineUpdateRow(_ state: EngineState) -> some View {
+        switch status.engineCheck {
+        case nil:
+            StatusRow(
+                title: "Updates",
+                value: "Not checked yet.",
+                tone: .neutral,
+                action: checkAction
+            )
+        case .available(let release):
+            StatusRow(
+                title: "Updates",
+                value: state == .none ? "\(release.displayName) is ready to install."
+                    : "\(release.displayName) is available.",
+                tone: .warning,
+                detail: release.notes,
+                secondaryAction: checkAction,
+                action: engineInstallAction(
+                    release, label: state == .none ? "Install" : "Update", prominent: true)
+            )
+        case .upToDate(let release, let supported):
+            StatusRow(
+                title: "Updates",
+                value: "Up to date.",
+                tone: .ok,
+                detail: supported ? checkedDetail : "This NotProton cannot reinstall it.",
+                secondaryAction: checkAction,
+                action: supported ? engineInstallAction(release, label: "Reinstall", prominent: false) : nil
+            )
+        case .waiting(let release, let reason):
+            StatusRow(
+                title: "Updates",
+                value: "\(release.displayName) is out. Waiting for NotProton support.",
+                tone: .warning,
+                detail: reason + " The current engine keeps working.",
+                action: checkAction
+            )
+        case .newerInstalled(let release):
+            StatusRow(
+                title: "Updates",
+                value: "Newer than the \(release.channel.label.lowercased()) channel (\(release.displayName)).",
+                tone: .ok,
+                detail: checkedDetail,
+                action: checkAction
+            )
+        case .nothingOnChannel(let channel):
+            StatusRow(
+                title: "Updates",
+                value: channel == .stable
+                    ? "No stable Dormison release yet. Switch the channel to Beta to get one."
+                    : "Dormison names no release.",
+                tone: .neutral,
+                action: checkAction
+            )
+        }
+    }
+
+    private func rollbackRow(_ target: String) -> some View {
+        let sameVersion = target == EngineStore.currentTag()
+        return StatusRow(
+            title: "Previous engine",
+            value: sameVersion
+                ? "\(EngineStore.displayName(target)), the other copy from the last reinstall."
+                : EngineStore.displayName(target),
+            tone: .neutral,
+            action: StatusAction(
+                label: "Roll Back",
+                help: "Switch games back to the previous engine.",
+                isEnabled: status.isIdle
+            ) { Task { await status.requestEngine(.rollback) } }
+        )
+    }
+
+    private var channelRow: some View {
+        Picker(selection: Binding(
+            get: { status.engineChannel },
+            set: { channel in Task { await status.setEngineChannel(channel) } }
+        )) {
+            ForEach(EngineChannel.allCases) { Text($0.label).tag($0) }
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Update channel")
+                    .font(.headline)
+                Text("Beta gets Dormison's test builds; Stable only its releases.")
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.leading, StatusMetrics.textInset)
+        }
+        .disabled(!status.isIdle)
     }
 
     private func fetchAction() -> StatusAction {

@@ -74,13 +74,18 @@ struct EngineStoreTests {
         let root = try runners(["dormison-b1", "dormison-b2"], current: "dormison-b1")
         defer { try? FileManager.default.removeItem(at: root) }
 
-        try EngineStore.switchTo("dormison-b2", runners: root)
+        try EngineStore.switchTo("dormison-b2", runners: root, bridge: root.appending(path: "bridge"))
         #expect(EngineStore.currentTag(runners: root) == "dormison-b2")
+        #expect(EngineUpdater(runners: root).previousTarget == "dormison-b1")
         #expect(FileManager.default.fileExists(
             atPath: root.appending(path: "dormison-b2/notproton-engine.env").path(percentEncoded: false)))
 
-        #expect(throws: StepFailure.self) { try EngineStore.switchTo("dormison-b9", runners: root) }
-        #expect(throws: StepFailure.self) { try EngineStore.switchTo("../x", runners: root) }
+        #expect(throws: StepFailure.self) {
+            try EngineStore.switchTo("dormison-b9", runners: root, bridge: root.appending(path: "bridge"))
+        }
+        #expect(throws: StepFailure.self) {
+            try EngineStore.switchTo("../x", runners: root, bridge: root.appending(path: "bridge"))
+        }
         #expect(EngineStore.currentTag(runners: root) == "dormison-b2")
     }
 

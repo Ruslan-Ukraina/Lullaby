@@ -14,6 +14,7 @@ struct NotProtonApp: App {
         AppLog.start()
         DormisonEngine().ensureEnvironmentFile()
         HeadlessInstall.runIfRequested()
+        HeadlessEngine.runIfRequested()
     }
 
     var body: some Scene {

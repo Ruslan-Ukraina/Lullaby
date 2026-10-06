@@ -20,6 +20,10 @@ struct StatusSnapshot: Sendable {
     var payload: PayloadState
     var installedEngines: [InstalledEngine] = []
     var patch: InstalledPatch?
+    /// What Rollback returns to, e.g. "dormison-b1"; the same name as the current
+    /// engine when the previous tree is the copy from before a reinstall.
+    var rollbackTarget: String?
+    var engineCapabilities = EngineCapabilities()
 
     static func capture(bundledVersion: String) -> StatusSnapshot {
         let patch = PatchComparison.inspect()
@@ -30,7 +34,9 @@ struct StatusSnapshot: Sendable {
             runner: EngineStore.state(),
             payload: PayloadInspector.inspect(),
             installedEngines: EngineStore.installed(),
-            patch: patch
+            patch: patch,
+            rollbackTarget: EngineUpdater().rollbackTarget,
+            engineCapabilities: DormisonEngine().capabilities
         )
     }
 }
@@ -57,6 +63,7 @@ final class SystemStatus {
         case removeEngine
         case removeEverything
         case stopSteamToInstall
+        case stopSteamForEngine
 
         var id: Self { self }
     }
@@ -106,7 +113,17 @@ final class SystemStatus {
         failure = nil
         failureRemedy = nil
         retryInstallForce = nil
+        retryEngine = nil
     }
+
+    // Engine updates: SystemStatus+Engine.swift.
+    var engineCheck: EngineUpdateCheck?
+    var engineChannel = EngineChannel.preferred
+    var pendingEngine: EngineAction?
+    /// Set when an engine update or rollback stopped because Steam would not quit.
+    var retryEngine: EngineAction?
+    /// When the engine list was last read.
+    var engineCheckedAt: Date?
 
     /// Set when an install stopped because Steam would not quit: the force flag to retry with.
     private(set) var retryInstallForce: Bool?
@@ -122,7 +139,7 @@ final class SystemStatus {
     private(set) var pendingForce = false
 
     /// Set when the last install stopped Steam, so Status can offer to start it again.
-    private(set) var offerSteamLaunch = false
+    var offerSteamLaunch = false
 
     func requestInstall(force: Bool = false) async {
         guard isIdle else { return }

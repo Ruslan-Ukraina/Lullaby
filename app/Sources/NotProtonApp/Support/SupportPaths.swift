@@ -40,6 +40,11 @@ enum SupportPaths {
         home.appending(path: "Library/Caches/\(supportDirName)/valve-packages")
     }
 
+    /// Engine tarballs while they download (a .part file survives an interruption).
+    static var engineDownloads: URL {
+        home.appending(path: "Library/Caches/\(supportDirName)/engine")
+    }
+
     static var deployedVersion: URL { support.appending(path: "dylib.version") }
 
     static var currentRunner: URL { runners.appending(path: "current") }

@@ -1,6 +1,6 @@
 // The engines under runners/, which of them is current, and switching between
-// them. Installing a new one is the updater's job (Phase 4); this only looks at
-// what is on disk and moves the `current` link.
+// them. Installing, reinstalling and rolling back are EngineUpdater's; this looks
+// at what is on disk and moves the `current` link.
 
 import Foundation
 
@@ -80,23 +80,38 @@ enum EngineStore {
         return total
     }
 
+    static let currentLink = "current"
+
     /// Points `current` at another installed engine by renaming a new link over
-    /// the old one, so there is no moment without a current engine.
-    static func switchTo(_ tag: String, runners: URL = SupportPaths.runners) throws {
-        let fm = FileManager.default
+    /// the old one, so there is no moment without a current engine. The engine it
+    /// leaves becomes `previous`, the one Rollback returns to.
+    /// `bridge` defaults to the bridge beside `runners` (notproton/bridge).
+    static func switchTo(_ tag: String, runners: URL = SupportPaths.runners, bridge: URL? = nil) throws {
         guard tag.hasPrefix(prefix), !tag.contains("/"),
               DormisonEngine(root: runners.appending(path: tag)).isUsable
         else { throw StepFailure(step: step, detail: "\(tag) is not an installed engine.") }
+        let old = currentTag(runners: runners)
         DormisonEngine(root: runners.appending(path: tag)).ensureEnvironmentFile()
+        try pointLink(currentLink, at: tag, in: runners)
+        if let old, old != tag {
+            try? pointLink(EngineUpdater.previousLink, at: old, in: runners)
+        }
+        EngineUpdater.syncBridgeNtdll(
+            engine: runners.appending(path: tag),
+            bridge: bridge ?? runners.deletingLastPathComponent().appending(path: "bridge"))
+    }
 
-        let staging = runners.appending(path: ".current.new")
+    /// runners/<name> -> <target>, replaced by rename.
+    static func pointLink(_ name: String, at target: String, in runners: URL) throws {
+        let fm = FileManager.default
+        let staging = runners.appending(path: ".\(name).new")
         try? fm.removeItem(at: staging)
-        try fm.createSymbolicLink(atPath: staging.path(percentEncoded: false), withDestinationPath: tag)
-        let current = runners.appending(path: "current").path(percentEncoded: false)
-        if rename(staging.path(percentEncoded: false), current) != 0 {
+        try fm.createSymbolicLink(atPath: staging.path(percentEncoded: false), withDestinationPath: target)
+        let link = runners.appending(path: name).path(percentEncoded: false)
+        if rename(staging.path(percentEncoded: false), link) != 0 {
             let reason = String(cString: strerror(errno))
             try? fm.removeItem(at: staging)
-            throw StepFailure(step: step, detail: "Could not switch to \(tag). \(reason)")
+            throw StepFailure(step: step, detail: "Could not point \(name) at \(target). \(reason)")
         }
     }
 
@@ -110,6 +125,10 @@ enum EngineStore {
                 step: removeStep, detail: "\(tag) is the active engine. Switch to another one first.")
         }
         try WriteRefused.catching(path) { try FileManager.default.removeItem(at: target) }
+        let previous = runners.appending(path: EngineUpdater.previousLink).path(percentEncoded: false)
+        if (try? FileManager.default.destinationOfSymbolicLink(atPath: previous)) == tag {
+            try? FileManager.default.removeItem(atPath: previous)
+        }
     }
 
     static func displayName(_ tag: String) -> String {
