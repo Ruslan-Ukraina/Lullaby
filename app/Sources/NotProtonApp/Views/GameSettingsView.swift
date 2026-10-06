@@ -87,9 +87,16 @@ struct GameSettingsView: View {
         do {
             try GameSettingsStore.save(settings, for: prefix, program: loaded.program)
             try GameSettingsStore.setMsync(msync, for: prefix)
+            let set = settings.entries.compactMap { entry in entry.value.map { "\(entry.key)=\($0)" } }
+            AppLog.note(
+                "game settings \(prefix.appID) \(loaded.program): "
+                    + (set.isEmpty ? "all from the prefix" : set.joined(separator: " "))
+                    + " msync=\(msync ? 1 : 0) -> "
+                    + GameSettingsStore.gameFile(prefix, program: loaded.program).path(percentEncoded: false))
             dismiss()
         } catch {
             failure = error.localizedDescription
+            AppLog.note("game settings \(prefix.appID) save failed: \(error.localizedDescription)")
         }
     }
 
