@@ -162,6 +162,13 @@
 - Dormison не грузит builtin без файла в префиксе (R30); wined3d даёт DX11 только уровня 9_3 (R31).
 - Отклонено тобой: удаление с `"$users/$mac_user"` — переделано на `${var:?}` везде (`aba3265`).
 
+### Пуш и уведомление (02:44 CEST)
+
+- Ветка запушена: `git push -u origin spike/dormison` → `* [new branch] spike/dormison -> spike/dormison`, код 0.
+- `PushNotification`: **не отправлен** — `Push not sent — mobile push is disabled in /config`. Как включить — `BLOCKERS.md`, п. 2.
+- `docs/SPIKE_TEST.md` отправлен файлом в сессию (`SendUserFile`, доставлен), его видно с другого устройства.
+- Системное уведомление macOS (`osascript display notification`) — код 0.
+
 ### Дальше
 
 - Ты: `docs/SPIKE_TEST.md` → GO / NO-GO.
