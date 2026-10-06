@@ -350,3 +350,11 @@
 - Выход через Quit бандла (osascript): `bundle exited status=0` → `game exited status=0, killing wine prefix` → `session ending`.
 - `engine/spike-check.sh 3527290` — **10 ok, 0 failed**.
 - Не проверено: достижения в оверлее, ETS2, Deadlock, Isaac; в Steam всё ещё старый dylib (§9.0).
+
+## 2026-10-06 15:30–15:37 CEST — Фаза 3: новый dylib в Steam, PEAK и ETS2 без тебя
+
+- `make app` — 0. Установка: `out/NotProton.app/Contents/MacOS/NotProtonApp --install-into-steam` (то же, что Install; Steam закрыт установщиком) → `NotProton 1.0.2 in Steam, Steam was stopped, 2 bridge file(s) staged, 3 signature database(s)`, `components complete (18 of 18)`. arm64 LC_UUID dylib в Steam.app: был `43B5842E…`, стал `47B89F80…` (= сборка). Steam снова открыт, вход в аккаунт 15:33:11.
+- **PEAK** (15:33): `runner: x86_64 … (B1)` и `runner: i386 … (B1)`, `redirect_steamclient … 40 exports`, уведомление оверлея Steam в окне, главное меню 84 fps, выход через Quit → `spike-check.sh 3527290` **10 ok, 0 failed**.
+- **ETS2** (15:35): обе строки B1, `redirect_steamclient` ×2, главное меню с профилем, первый кадр DXMT +13,9 с, выход Quit → `spike-check.sh 227300` **10 ok, 0 failed**. У ETS2 `WINEMSYNC=1` всё ещё приходит из параметров запуска (старая строка, безвредно).
+- Найдена причина, почему ты не мог обновить патч из приложения: состояние «Installed» считается только по `dylib.version` (номер версии 1.0.2), а не по самому dylib. Чиню (см. следующую запись).
+- Для тебя (SPIKE_TEST §9): Isaac (§9.2), достижения в оверлее, Deadlock до меню, §9.3.
