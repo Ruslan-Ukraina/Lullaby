@@ -86,10 +86,12 @@ enum BridgePayload {
         var unchanged: [String] = []
 
         for entry in located.sources {
-            let sourceSize = try fileSize(entry.source)
+            let sourceDigest = try Digest.sha256(of: entry.source)
             for bridgePath in entry.bridgePaths {
                 let destination = bridge.appending(path: bridgePath)
-                if let existing = try? fileSize(destination), existing == sourceSize {
+                // By content, not size: two builds of lsteamclient.so can strip to the same
+                // size, and a size check then keeps the old one (seen moving to Dormison).
+                if Digest.sha256IfPresent(destination) == sourceDigest {
                     unchanged.append(bridgePath)
                     continue
                 }
@@ -104,12 +106,5 @@ enum BridgePayload {
         }
 
         return Outcome(staged: staged, unchanged: unchanged)
-    }
-
-    private static func fileSize(_ url: URL) throws -> Int {
-        let attrs = try FileManager.default.attributesOfItem(
-            atPath: url.path(percentEncoded: false)
-        )
-        return (attrs[.size] as? Int) ?? 0
     }
 }

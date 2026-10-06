@@ -66,7 +66,7 @@ struct BridgePayloadTests {
         }
     }
 
-    @Test("Files at the correct size are left alone on a second run")
+    @Test("Files with the same contents are left alone on a second run")
     func skipsMatchingSize() throws {
         let work = try scratch()
         defer { try? FileManager.default.removeItem(at: work) }
@@ -79,9 +79,31 @@ struct BridgePayloadTests {
         let second = try BridgePayload.stage(located: located, bridge: bridge)
 
         #expect(!first.staged.isEmpty)
-        #expect(second.staged.isEmpty, "files were re-staged despite matching size")
+        #expect(second.staged.isEmpty, "files were re-staged despite matching contents")
         let allPaths = BridgePayload.entries.flatMap(\.bridgePaths)
         #expect(second.unchanged.count == allPaths.count)
+    }
+
+    // Two builds of the same source can come out the same size, and the stale one has to go.
+    @Test("A file of the same size with other contents is replaced")
+    func replacesSameSizeDifferentContents() throws {
+        let work = try scratch()
+        defer { try? FileManager.default.removeItem(at: work) }
+
+        let root = try fakeResources(in: work)
+        let located = try BridgePayload.locate(root: root)
+        let bridge = work.appending(path: "staged")
+        _ = try BridgePayload.stage(located: located, bridge: bridge)
+
+        let stale = bridge.appending(path: "x86_64-unix/lsteamclient.so")
+        var bytes = try Data(contentsOf: stale)
+        bytes[0] ^= 0xff
+        try bytes.write(to: stale)
+
+        let second = try BridgePayload.stage(located: located, bridge: bridge)
+        #expect(second.staged == ["x86_64-unix/lsteamclient.so"])
+        let source = try #require(located.sources.first { $0.bridgePaths.contains("x86_64-unix/lsteamclient.so") })
+        #expect(try Data(contentsOf: stale) == Data(contentsOf: source.source))
     }
 
     @Test("Flat and arch copies are byte-identical")
