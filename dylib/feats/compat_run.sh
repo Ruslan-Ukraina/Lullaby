@@ -79,13 +79,40 @@ echo "engine: $(readlink "$engine_root" 2>/dev/null || echo "$engine_root")" \
   >> "$log" 2>&1 || true
 
 # The stand-in SEVO_CLI names. Dormison runs it as
-# "app config <appid> <key> <value>" when a View menu setting changes; it only
-# records the call.
+# "app config <appid> <key> <value>" when a View menu setting changes. It logs
+# the call and writes the setting to the game's .sevo/apps/<program>.env, so
+# the choice holds on the next launch (the program name is in .sevo/game-exe).
 sevo_stub=$(cat <<'STUB'
 #!/bin/sh
 # NotProton's stand-in for Sevoflurane's sevo CLI (docs/DECISIONS.md S1).
 log="$HOME/Library/Application Support/notproton/notproton-sevo.log"
 printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$log" 2>/dev/null
+[ "$1" = app ] && [ "$2" = config ] && [ -n "$5" ] || exit 0
+case "$4" in
+  (upscaler) var=SEVO_UPSCALER; value=$5 ;;
+  (filter) var=SEVO_FINAL_FILTER; value=$5 ;;
+  (windows) var=SEVO_RESIZABLE_WINDOWS; value=$5 ;;
+  (fps) var=SEVO_FPS ;;
+  (fps-graph) var=SEVO_FPS_GRAPH ;;
+  (*) exit 0 ;;
+esac
+case "$4" in
+  (fps|fps-graph) case "$5" in (on) value=1 ;; (off) value=0 ;; (*) exit 0 ;; esac ;;
+esac
+case "$value" in (*[!A-Za-z0-9_.-]*) exit 0 ;; esac
+[ -n "$WINEPREFIX" ] && [ -f "$WINEPREFIX/.sevo/game-exe" ] || exit 0
+exe=$(cat "$WINEPREFIX/.sevo/game-exe")
+file="$WINEPREFIX/.sevo/apps/$exe.env"
+mkdir -p "$WINEPREFIX/.sevo/apps" || exit 0
+if [ -f "$file" ]; then
+  awk -v k="$var" -v v="$value" '
+    { line = $0; sub(/^[ \t]+/, "", line) }
+    index(line, k "=") == 1 { if (!done) print k "=" v; done = 1; next }
+    { print }
+    END { if (!done) print k "=" v }' "$file" > "$file.np-new" && mv -f "$file.np-new" "$file"
+else
+  printf '%s=%s\n' "$var" "$value" > "$file"
+fi
 exit 0
 STUB
 )
@@ -757,6 +784,7 @@ if [ -x "$loader_macos/wine" ]; then
   # for the shim and the game keeps both in the bundle, which is where the Dock
   # name, the icon and Game Mode come from.
   if [ -n "$WINEPREFIX" ] && mkdir -p "$WINEPREFIX/.sevo/apps"; then
+    printf '%s\n' "$(basename "$target" | tr '[:upper:]' '[:lower:]')" > "$WINEPREFIX/.sevo/game-exe"
     for program in steam.exe "$(basename "$target")"; do
       program=$(printf '%s' "$program" | tr '[:upper:]' '[:lower:]')
       [ -n "$program" ] || continue
