@@ -333,3 +333,5 @@
 **Проверки (все с кодом 0):** `make runcheck compatcheck scriptcheck panel-behavior webpatch-fixtures sigcheck anchorcheck sigdb-fixtures overlay-shim-tests`; `make app-tests` — 278 тестов; `make app` — `out/NotProton.app` (в payload новый lsteamclient с 005 и скрипт с проверкой B1); `test-b1.sh` и `ifacecheck.sh` — 0 FAIL.
 
 **Не проверено:** игры. Это контрольная точка — ручная проверка по SPIKE_TEST §9. Новый dylib в Steam.app не ставил: Steam был открыт, а Install его закрывает. Это §9.0, для тебя.
+
+**Пуш и уведомление (13:35 CEST).** `git push origin dormison` → `b9ee167..838a717`, ветка совпадает с `origin`. Ветка форка Dormison `notproton/b1-steamclient` запушена. `PushNotification`: `Push not sent — mobile push is disabled in /config` (как раньше, BLOCKERS). Системное уведомление macOS — отправлено. Жду проверки по SPIKE_TEST §9.
