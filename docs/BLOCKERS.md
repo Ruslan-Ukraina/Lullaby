@@ -20,6 +20,6 @@
 
 ## Уведомления
 
-2. **Пуши на телефон выключены.** `PushNotification` в 04:33 CEST снова ответил `Push not sent — mobile push is disabled in /config` (так же в 01:0x и 02:44).
+2. **Пуши на телефон выключены.** `PushNotification` в 04:33 CEST снова ответил `Push not sent — mobile push is disabled in /config`, как и на контрольных точках Фазы 0 и Фазы 1 (02:44).
    Что сделать: в Claude Code открой `/config` и включи мобильные пуши (нужен подключённый Remote Control).
    Что дошло вместо пуша: `docs/BACKLOG.md` файлом в сессию и системное уведомление macOS.
