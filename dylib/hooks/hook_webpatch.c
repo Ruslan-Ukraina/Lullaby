@@ -4,6 +4,7 @@
 
 #include "../feats/webpatch.h"
 #include "../feats/compatsvc.h"
+#include "../feats/steamwin_css.h"
 #include "../util/file.h"
 #include "../util/log.h"
 
@@ -147,14 +148,49 @@ static int open_patched(const char *path) {
     return fd;
 }
 
+// A steamui stylesheet with the rule that hides Valve's drawn window buttons, while
+// native Steam windows are switched on (steamwin_css.h). -1 serves the file as is.
+static int open_patched_css(const char *path) {
+    np_log_attach();
+
+    int in = sys_open(path, O_RDONLY, 0);
+    if (in < 0)
+        return -1;
+    size_t raw_len = 0;
+    char *raw = drain_fd(in, &raw_len);
+    close(in);
+    if (!raw)
+        return -1;
+
+    size_t patched_len = 0;
+    char *patched = np_steamwin_css_transform((const uint8_t *)raw, raw_len, &patched_len);
+    free(raw);
+    if (!patched)
+        return -1;
+
+    int fd = spill_to_temp(patched, patched_len);
+    free(patched);
+    if (fd < 0)
+        return -1;
+    // Chromium opens each sheet many times; one line per sheet is enough.
+    unsigned long key = 5381;
+    for (const char *c = path; *c; c++)
+        key = key * 33 + (unsigned char)*c;
+    NP_LOG_FIRST_KEY(key, "steamwin: served %s with Valve's window buttons hidden to %s pid %d",
+                     path, getprogname(), getpid());
+    return fd;
+}
+
 static const int WRITE_INTENT = O_WRONLY | O_RDWR | O_CREAT | O_TRUNC | O_APPEND;
 
 static int try_serve(const char *path, int oflag) {
     if (oflag & WRITE_INTENT)
         return -1;
-    if (!np_webpatch_should_patch(path))
-        return -1;
-    return open_patched(path);
+    if (np_webpatch_should_patch(path))
+        return open_patched(path);
+    if (np_steamwin_css_should_patch(path) && np_steamwin_mode() == NP_SW_NATIVE)
+        return open_patched_css(path);
+    return -1;
 }
 
 static mode_t creat_mode(int oflag, va_list ap) {

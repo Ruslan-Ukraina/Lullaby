@@ -7,6 +7,7 @@
 #include "../core/macho.h"
 #include "../hooks/hooks.h"
 #include "../feats/compat.h"
+#include "../feats/steamwin.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -241,7 +242,13 @@ static void np_log_platform_overrides(void) {
 }
 
 __attribute__((constructor))
-static void np_init(void) {
+static void np_init(int argc, const char **argv) {
+    // Steam's windows live in Steam Helper's browser process, not in steam_osx.
+    if (np_steamwin_is_browser_process(argc, argv)) {
+        np_steamwin_start();
+        return;
+    }
+
     const char *pn = getprogname();
     if (!pn || strcmp(pn, "steam_osx") != 0)
         return;

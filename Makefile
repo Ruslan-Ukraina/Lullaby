@@ -9,7 +9,8 @@ CFLAGS   := -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) \
 LDFLAGS  := -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) \
             -dynamiclib -install_name @rpath/notproton.dylib
 
-FRAMEWORKS := -framework CoreFoundation
+# AppKit is weak: steam_osx and Steam Helper have it, nothing else needs it.
+FRAMEWORKS := -framework CoreFoundation -framework Foundation -weak_framework AppKit -lobjc
 
 DOBBY_DIR  := build/dobby
 DOBBY_LIBS := $(DOBBY_DIR)/libdobby.a \
@@ -40,7 +41,11 @@ SRCS := \
 	dylib/feats/webui.c \
 	dylib/feats/compatsvc.c \
 	dylib/feats/webpatch.c \
+	dylib/feats/steamwin_css.c \
 	vendor/cJSON.c
+
+# Objective-C: AppKit through the runtime, for Steam Helper's windows.
+OBJC_SRCS := dylib/feats/steamwin.m
 
 OUT_DIR     := out
 
@@ -52,7 +57,7 @@ ARM64_DYLIB := $(OUT_DIR)/notproton.arm64.dylib
 X86_STUB    := $(OUT_DIR)/notproton.x86_64.dylib
 TARGET      := $(OUT_DIR)/notproton.dylib
 
-OBJS := $(patsubst %.c,$(OUT_DIR)/%.o,$(SRCS))
+OBJS := $(patsubst %.c,$(OUT_DIR)/%.o,$(SRCS)) $(patsubst %.m,$(OUT_DIR)/%.o,$(OBJC_SRCS))
 DEPS := $(OBJS:.o=.d)
 
 .PHONY: all clean rebuild dobby deploy dylib-install sigcheck app-payload app app-zip \
@@ -309,6 +314,12 @@ $(TARGET): $(ARM64_DYLIB) $(X86_STUB)
 $(OUT_DIR)/%.o: %.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+OBJCFLAGS := $(filter-out -std=c17,$(CFLAGS)) -fobjc-arc -fobjc-weak
+
+$(OUT_DIR)/%.o: %.m
+	@mkdir -p $(dir $@)
+	$(CC) $(OBJCFLAGS) -c $< -o $@
 
 $(RUN_SCRIPT_H): dylib/feats/compat_run.sh dylib/embed_script.py
 	@mkdir -p $(GENERATED_DIR)
