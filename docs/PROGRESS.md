@@ -255,3 +255,12 @@
 - Тест: `dylib/tests/termcheck.sh` (подключён к `make runcheck`): вырезает обработчик из реального скрипта, шлёт два `TERM`; ждёт код 143, финальную строку, один `wineserver -k`. `make runcheck compatcheck` — код 0.
 - Не сделано по п. 1: ожидание финала в `spike-check.sh`.
 - Дальше: п. 3 (`spike-check.sh` и проверка «идёт ли игра» только по нашим префиксам), п. 6, ложный ok в п. 5, затем `EngineProvider` и окно «Настройки игры».
+
+## 2026-10-06 — Фаза 2: настройки игры, пункты 1 и 3 бэклога
+
+- **Бэклог 1** закрыт: `terminate()` (коммит `a737833`) и ожидание финала в `engine/spike-check.sh` до 30 с; остановка из Steam считается чистым завершением.
+- **Бэклог 3** закрыт в коде: `spike-check.sh` считает «нашими» только Wine из `notproton/runners|launchers` и нашей `compatdata`, чужой Wine показывает отдельно без FAIL; Sevoflurane, запущенный до начала сессии, — ok, после старта — FAIL. Приложение: `SteamBundle.gameIsRunning` смотрит только наши пути (`Shell.processIsRunning(commandLineContaining:)`, тест). Живой проверки с открытым Sevoflurane не было.
+- **Меню View переживает перезапуск:** заглушка `notproton-sevo` пишет `upscaler/filter/fps/fps-graph/windows` в `.sevo/apps/<exe>.env`; имя exe — в `.sevo/game-exe` (пишет run-скрипт). Тест `dylib/tests/stubcheck.sh` в `make runcheck`.
+- **Окно «Настройки игры»** (`Views/GameSettingsView.swift`, кнопка в панели и пункт контекстного меню Prefixes): изменяемое окно, апскейлер (off/lanczos/MetalFX), финальный фильтр, FPS, график, raw mouse, удержание курсора, лимит ядер, msync+ (отладка через `notproton-msync`), подсказка (i) у каждого пункта. Модель — `Model/GameSettings.swift`, 5 тестов.
+- Проверки: `make runcheck compatcheck` — 0; `make app-tests` — 0, 373 теста; `make app` — 0, `out/NotProton.app`.
+- **Не сделано в Фазе 2:** выбор рендерера (DXMT/DXVK/wined3d), шейдерные апскейлеры Anime4K/CuNNy (нужен SEVO_SHADER_DIR), `EngineProvider`, замена тестов CrossOver, бэклог 6 (сторож первого кадра), ручная проверка окна на реальной игре (нужен клик в приложении).
