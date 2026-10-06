@@ -394,6 +394,17 @@ Steam → игра → ⚙ → Свойства → **Совместимость
 
 Запиши для каждого режима: картинка (нормальная / смещена / чёрная), fps, работает ли выход обратно в окно. По логу я проверю, что настройка дошла: в `.sevo/apps/peak.exe.env` должно быть `SEVO_RESIZABLE_WINDOWS=window`.
 
+### 9.4a Кнопки Update и Reinstall в NotProton.app
+
+Что изменилось: Status сравнивает то, что стоит в Steam, с тем, что внутри приложения, по содержимому (а не по номеру версии). Под «Installed (1.0.2)» теперь виден build и дата установки.
+
+1. Открой `~/Projects/NotProton/out/NotProton.app` → **Status**. Ожидаемо: `NotProton — Installed (1.0.2)`, ниже `Build 47B89F80, installed 6 Oct 2026 at 15:32.` (это я поставил в 15:32), строка **Reinstall NotProton** с кнопкой **Reinstall**.
+2. При открытом Steam нажми **Reinstall**. Ожидаемо: вопрос «Close Steam to install?». Нажми **Close Steam and Install**. Steam закроется, появится `Done — NotProton reinstalled (build 47B89F80). Steam was stopped, so start it again.` и кнопка **Open Steam**. Нажми её — Steam откроется.
+3. Запусти любую игру и, пока она идёт, нажми **Reinstall**. Ожидаемо: `Failed — A game is running under NotProton. Quit the game, then try again.` Steam не закрывается.
+4. «Update available» сам увидишь, когда я в следующий раз соберу приложение с изменённым скриптом запуска: строка станет оранжевой, в подробностях — `Out of date: Steam patch, run script.` и кнопка **Update**.
+
+Если что-то не так — пришли время, остальное я посмотрю в `~/Library/Application Support/notproton/app.log` (строки `install:` и `state patch`).
+
 ### 9.4 Что прислать
 
 | Пункт | PEAK | ETS2 | Deadlock (меню) | Isaac (32 бит) |
@@ -402,5 +413,7 @@ Steam → игра → ⚙ → Свойства → **Совместимость
 | B1 в `spike-check.sh` (п. 2) | | | | |
 | Достижения / оверлей | | | — | |
 | Ошибки `Don't recognize interface` | | | | |
+
+Плюс 9.4a: Reinstall → вопрос → Open Steam (да/нет); Reinstall во время игры → отказ (да/нет).
 
 Плюс 9.3: режим → картинка, fps. Затем — **OK** или что не так.

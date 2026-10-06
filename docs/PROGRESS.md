@@ -358,3 +358,14 @@
 - **ETS2** (15:35): обе строки B1, `redirect_steamclient` ×2, главное меню с профилем, первый кадр DXMT +13,9 с, выход Quit → `spike-check.sh 227300` **10 ok, 0 failed**. У ETS2 `WINEMSYNC=1` всё ещё приходит из параметров запуска (старая строка, безвредно).
 - Найдена причина, почему ты не мог обновить патч из приложения: состояние «Installed» считается только по `dylib.version` (номер версии 1.0.2), а не по самому dylib. Чиню (см. следующую запись).
 - Для тебя (SPIKE_TEST §9): Isaac (§9.2), достижения в оверлее, Deadlock до меню, §9.3.
+
+## 2026-10-06 ~15:45 CEST — Фаза 3: Update / Reinstall в NotProton.app (твой запрос)
+
+- `Model/PatchComparison.swift` (P3-5): dylib в Steam.app — по LC_UUID, `run` — по sha256 с `compat_run.sh` (теперь в payload, `make app-payload`), мост и вспомогательные файлы — по sha256. Расхождение → `.outdated(deployed:bundled:stale:)` → «Update available», что именно устарело, build Steam против build приложения, кнопка **Update**.
+- **Reinstall** — всегда в разделе Steam (`SteamInstaller.run(force:)`; headless: `--install-into-steam --reinstall`).
+- Если Steam открыт — вопрос «Close Steam to install?»; после установки, закрывшей Steam, — кнопка **Open Steam**. Пока запущена наша игра — отказ (и в приложении, и в установщике).
+- Установщик сразу пишет новый `run` в `compatibilitytools.d/notproton`, если папка есть.
+- Status: `Build 47B89F80, installed 6 Oct 2026 at 15:32.`; `app.log`: `install: begin…`, `install: done version=… build=… patched=… stoppedSteam=…`, `state patch build=… installedAt=… stale=…`.
+- Тесты: `PatchComparisonTests` (8), `SteamBundleTests` +3, `SteamInstallerTests` +3 (reinstall, run, отказ при игре), `InstallPayloadTests` — `compat_run.sh`. Repair и Remove не трогал.
+- Проверки: `make app-tests` — 0, **292 теста**; `make app` — 0; `make runcheck compatcheck` — 0. Живая проверка: собранное приложение пишет `state steam=installed 1.0.2`, `state patch build=47B89F80 installedAt=2026-10-06T13:32:57Z stale=none`, на экране строка build и Reinstall (снимок смотрел).
+- Не проверено: клики Update/Reinstall в окне (нужен ты, SPIKE_TEST §9.4a); вид «Update available» на живой системе — появится при следующей сборке с изменённым скриптом.

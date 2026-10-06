@@ -18,6 +18,40 @@ enum MachOBuild {
         return found.isEmpty ? nil : found.sorted()
     }
 
+    private static let cpuARM64: UInt32 = 0x0100_000c
+
+    /// The build to show a person: the arm64 slice's LC_UUID (the slice Steam runs), else
+    /// the first one found. Eight hex digits are enough to tell two builds apart by eye.
+    static func shortBuild(of url: URL) -> String? {
+        guard let bytes = try? Data(contentsOf: url, options: .mappedIfSafe) else { return nil }
+        var arm64: Set<String> = []
+        var any: Set<String> = []
+        for (cpu, offset) in slices(bytes) {
+            var found: Set<String> = []
+            readCommands(bytes, at: offset, into: &found)
+            if cpu == cpuARM64 { arm64.formUnion(found) }
+            any.formUnion(found)
+        }
+        return (arm64.sorted().first ?? any.sorted().first).map { String($0.prefix(8)) }
+    }
+
+    private static func slices(_ bytes: Data) -> [(cpu: UInt32?, offset: Int)] {
+        guard let magic = read(bytes, at: 0, bigEndian: false) else { return [] }
+        let fat = magic.byteSwapped
+        guard fat == fat32 || fat == fat64 else {
+            return [(read(bytes, at: 4, bigEndian: magic == swapped64 || magic == swapped32), 0)]
+        }
+        guard let count = read(bytes, at: 4, bigEndian: true) else { return [] }
+        let wide = fat == fat64
+        return (0..<Int(count)).compactMap { index in
+            let entry = 8 + index * (wide ? 32 : 20)
+            guard let slice = read(bytes, at: entry + (wide ? 12 : 8), bigEndian: true) else {
+                return nil
+            }
+            return (read(bytes, at: entry, bigEndian: true), Int(slice))
+        }
+    }
+
     private static func collect(_ bytes: Data, at offset: Int, into found: inout Set<String>) {
         guard let magic = read(bytes, at: offset, bigEndian: false) else { return }
         let fat = magic.byteSwapped

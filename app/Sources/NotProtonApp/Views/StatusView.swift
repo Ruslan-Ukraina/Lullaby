@@ -155,6 +155,21 @@ struct StatusView: View {
             Text(Self.updateBlockPrompt)
         }
         .confirmationDialog(
+            "Close Steam to install?",
+            isPresented: asking(.stopSteamToInstall),
+            titleVisibility: .visible
+        ) {
+            Button("Close Steam and Install") {
+                Task { await status.confirmPendingInstall() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(
+                "Steam is running. NotProton closes it to replace the patch inside Steam, "
+                    + "then offers to open it again. Downloads in progress are paused."
+            )
+        }
+        .confirmationDialog(
             "Replace Steam with Valve's bundle?",
             isPresented: asking(.replaceSteam),
             titleVisibility: .visible
@@ -227,7 +242,16 @@ struct StatusView: View {
                     }
                 )
             } else if let outcome = status.outcome {
-                StatusRow(title: "Done", value: outcome, tone: .ok)
+                StatusRow(
+                    title: "Done",
+                    value: outcome,
+                    tone: .ok,
+                    action: status.offerSteamLaunch
+                        ? StatusAction(label: "Open Steam", isProminent: true, isEnabled: status.isIdle) {
+                            status.openSteam()
+                        }
+                        : nil
+                )
             }
 
             if let activity = status.activity {
@@ -240,15 +264,16 @@ struct StatusView: View {
             }
 
             Section("Steam") {
-                steamRow(snapshot.steam, payload: snapshot.payload)
+                steamRow(snapshot.steam, payload: snapshot.payload, patch: snapshot.patch)
                 if snapshot.steamRunning {
                     StatusRow(
                         title: "Steam is running",
-                        value: "Close Steam before continuing.",
+                        value: "Install, Update and Reinstall close it first and ask before they do.",
                         tone: .info
                     )
                 }
                 updateBlockRow(snapshot.updateBlocked)
+                reinstallRow(snapshot.steam)
             }
 
             Section("Engine") {
@@ -297,9 +322,9 @@ struct StatusView: View {
         .disabled(!status.isIdle)
     }
 
-    private func installAction(prominent: Bool) -> StatusAction {
+    private func installAction(prominent: Bool, label: String = "Install") -> StatusAction {
         StatusAction(
-            label: "Install",
+            label: label,
             isProminent: prominent,
             help: "Install NotProton into Steam.",
             isEnabled: status.isIdle
@@ -308,7 +333,46 @@ struct StatusView: View {
         }
     }
 
-    private func steamRow(_ deployment: SteamDeployment, payload: PayloadState) -> some View {
+    private static let installedFormat: Date.FormatStyle = .dateTime
+        .day().month(.abbreviated).year().hour().minute()
+
+    /// "Build 47B89F80, installed 6 Oct 2026 at 15:30" for what sits in Steam.app.
+    static func patchDetail(_ patch: InstalledPatch?) -> String? {
+        guard let patch, let build = patch.build else { return nil }
+        var text = "Build \(build)"
+        if let date = patch.installedAt { text += ", installed \(date.formatted(installedFormat))" }
+        return text + "."
+    }
+
+    static func staleDetail(_ stale: [PatchPart], patch: InstalledPatch?) -> String? {
+        var lines: [String] = []
+        if !stale.isEmpty {
+            let parts = stale.map(\.label).joined(separator: ", ")
+            lines.append("Out of date: \(parts).")
+        }
+        if let patch, let shipped = patch.shippedBuild {
+            lines.append("Steam has build \(patch.build ?? "none"), this app carries build \(shipped).")
+        }
+        return lines.isEmpty ? nil : lines.joined(separator: " ")
+    }
+
+    private func reinstallRow(_ deployment: SteamDeployment) -> some View {
+        StatusRow(
+            title: "Reinstall NotProton",
+            value: "Put every part back in place, even if it looks current.",
+            action: StatusAction(
+                label: "Reinstall",
+                help: "Install NotProton into Steam again. Steam is closed first.",
+                isEnabled: status.isIdle && deployment != .steamMissing
+            ) {
+                Task { await status.requestInstall(force: true) }
+            }
+        )
+    }
+
+    private func steamRow(
+        _ deployment: SteamDeployment, payload: PayloadState, patch: InstalledPatch?
+    ) -> some View {
         switch deployment {
         case .steamMissing:
             StatusRow(title: "NotProton", value: "Steam not found.", tone: .bad)
@@ -324,7 +388,8 @@ struct StatusView: View {
                 StatusRow(
                     title: "NotProton",
                     value: "Installed" + (version.map { " (\($0))" } ?? ""),
-                    tone: .ok
+                    tone: .ok,
+                    detail: Self.patchDetail(patch)
                 )
             } else {
                 StatusRow(
@@ -336,12 +401,14 @@ struct StatusView: View {
                     action: installAction(prominent: true)
                 )
             }
-        case .outdated(_, let bundled):
+        case .outdated(let deployed, let bundled, let stale):
             StatusRow(
                 title: "NotProton",
-                value: "Update available (\(bundled)).",
+                value: deployed.map { $0 == bundled ? "Update available." : "Update available (\($0) → \(bundled))." }
+                    ?? "Update available.",
                 tone: .warning,
-                action: installAction(prominent: true)
+                detail: Self.staleDetail(stale, patch: patch),
+                action: installAction(prominent: true, label: "Update")
             )
         case .foreign:
             StatusRow(

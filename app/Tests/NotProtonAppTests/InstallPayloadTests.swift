@@ -12,7 +12,7 @@ struct InstallPayloadTests {
         return url
     }
 
-    private func stage(_ root: URL, dylib: Bool = true, shim: Bool = true, iconmaker: Bool = true, appinfo: Bool = true, signatures: [String] = ["1788400362.json"]) throws {
+    private func stage(_ root: URL, dylib: Bool = true, shim: Bool = true, iconmaker: Bool = true, appinfo: Bool = true, runScript: Bool = true, signatures: [String] = ["1788400362.json"]) throws {
         let files = FileManager.default
         let signatureDir = root.appending(path: "signatures/macos.arm64")
         try files.createDirectory(at: signatureDir, withIntermediateDirectories: true)
@@ -20,6 +20,9 @@ struct InstallPayloadTests {
         if shim { try Data("shim".utf8).write(to: root.appending(path: "overlay-shim.dylib")) }
         if iconmaker { try Data("iconmaker".utf8).write(to: root.appending(path: "iconmaker")) }
         if appinfo { try Data("appinfo".utf8).write(to: root.appending(path: "appinfo")) }
+        if runScript {
+            try Data("#!/bin/sh\n".utf8).write(to: root.appending(path: InstallPayload.runScriptName))
+        }
         for name in signatures {
             try Data("{}".utf8).write(to: signatureDir.appending(path: name))
         }
@@ -32,6 +35,7 @@ struct InstallPayloadTests {
         #expect(located.dylib.lastPathComponent == "notproton.dylib")
         #expect(located.overlayShim.lastPathComponent == "overlay-shim.dylib")
         #expect(located.appinfo.lastPathComponent == "appinfo")
+        #expect(located.runScript.lastPathComponent == "compat_run.sh")
         #expect(!located.signatures.isEmpty)
 
         // A real fat dylib, not a placeholder: an install that copied a stub would
@@ -91,7 +95,10 @@ struct InstallPayloadTests {
     func reportsEverythingMissing() throws {
         let root = try scratch()
         defer { try? FileManager.default.removeItem(at: root) }
-        try stage(root, dylib: false, shim: false, iconmaker: false, appinfo: false, signatures: [])
+        try stage(
+            root, dylib: false, shim: false, iconmaker: false, appinfo: false, runScript: false,
+            signatures: []
+        )
 
         do {
             _ = try InstallPayload.locate(root: root)
@@ -101,6 +108,7 @@ struct InstallPayloadTests {
             #expect(failure.detail.contains("overlay-shim.dylib"))
             #expect(failure.detail.contains("iconmaker"))
             #expect(failure.detail.contains("appinfo"))
+            #expect(failure.detail.contains("compat_run.sh"))
             #expect(failure.detail.contains("signatures/macos.arm64"))
         }
     }

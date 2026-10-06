@@ -49,6 +49,9 @@ struct SteamInstallerTests {
         let appinfo = root.appending(path: "appinfo")
         try FileManager.default.copyItem(at: dylib, to: appinfo)
 
+        try Data("#!/bin/sh\necho shipped\n".utf8)
+            .write(to: root.appending(path: InstallPayload.runScriptName))
+
         try Data("{}".utf8).write(to: signatureDir.appending(path: "1788400362.json"))
         try Data("{}".utf8).write(to: signatureDir.appending(path: "1788652215.json"))
 
@@ -70,6 +73,8 @@ struct SteamInstallerTests {
         var deployedVersion: URL { support.appending(path: "dylib.version") }
         var backups: URL { support.appending(path: "backups") }
         var bridge: URL { support.appending(path: "bridge") }
+        var toolFolder: URL { work.appending(path: "compatibilitytools.d/notproton") }
+        var runScript: URL { toolFolder.appending(path: "run") }
     }
 
     private func fixture(into work: URL) async throws -> Fixture {
@@ -92,12 +97,15 @@ struct SteamInstallerTests {
     private func install(
         _ fixture: Fixture,
         version: String = "9.9.9-test",
+        force: Bool = false,
         calls: Calls = Calls(),
-        stopped: Bool = false
+        stopped: Bool = false,
+        gameRunning: Bool = false
     ) throws -> InstallOutcome {
         try SteamInstaller.run(
             payload: fixture.payload,
             version: version,
+            force: force,
             app: fixture.app,
             bridge: fixture.bridge,
             signatures: fixture.signatures,
@@ -106,6 +114,8 @@ struct SteamInstallerTests {
             appinfo: fixture.appinfo,
             deployedVersion: fixture.deployedVersion,
             backups: fixture.backups,
+            runScript: fixture.runScript,
+            gameIsRunning: { gameRunning },
             stopClient: { _, onStopping in if stopped { onStopping() }; return stopped },
             register: { calls.register($0) }
         )
@@ -433,5 +443,81 @@ struct SteamInstallerTests {
 
         #expect(throws: StepFailure.self) { try InstallPayload.locate(root: empty) }
         #expect(SteamBundle.currentInsert(at: fixture.plist) == nil)
+    }
+
+    @Test("Reinstall patches Steam again even when it already carries this build")
+    func reinstallForcesPatching() async throws {
+        let work = try scratch()
+        defer { try? FileManager.default.removeItem(at: work) }
+        let fixture = try await self.fixture(into: work)
+        let files = FileManager.default
+
+        _ = try install(fixture)
+        let pinned = Date(timeIntervalSince1970: 1_000_000)
+        try files.setAttributes(
+            [.modificationDate: pinned],
+            ofItemAtPath: fixture.deployedDylib.path(percentEncoded: false)
+        )
+
+        let plain = try install(fixture, stopped: true)
+        #expect(!plain.stoppedClient, "a plain install stopped Steam for the same build")
+
+        let forced = try install(fixture, force: true, stopped: true)
+        #expect(forced.stoppedClient, "reinstall did not stop Steam")
+        let rewritten = try files.attributesOfItem(
+            atPath: fixture.deployedDylib.path(percentEncoded: false)
+        )[.modificationDate] as? Date
+        #expect(rewritten != pinned, "reinstall left the deployed dylib alone")
+        #expect(forced.build == MachOBuild.shortBuild(of: fixture.payload.dylib))
+        #expect(
+            SteamBundle.currentInsert(at: fixture.plist)
+                == fixture.deployedDylib.path(percentEncoded: false)
+        )
+    }
+
+    @Test("The run script is written into Steam's tool folder, executable, when the folder exists")
+    func writesRunScript() async throws {
+        let work = try scratch()
+        defer { try? FileManager.default.removeItem(at: work) }
+        let fixture = try await self.fixture(into: work)
+        let files = FileManager.default
+
+        _ = try install(fixture)
+        #expect(
+            !files.fileExists(atPath: fixture.toolFolder.path(percentEncoded: false)),
+            "the installer created the dylib's tool folder"
+        )
+
+        try files.createDirectory(at: fixture.toolFolder, withIntermediateDirectories: true)
+        try Data("#!/bin/sh\necho old\n".utf8).write(to: fixture.runScript)
+        _ = try install(fixture)
+
+        #expect(try Data(contentsOf: fixture.runScript) == Data(contentsOf: fixture.payload.runScript))
+        let mode = try files.attributesOfItem(
+            atPath: fixture.runScript.path(percentEncoded: false)
+        )[.posixPermissions] as? Int
+        #expect(mode == 0o755)
+    }
+
+    @Test("A running game stops an install that would close Steam, before Steam is touched")
+    func refusesWhileGameRuns() async throws {
+        let work = try scratch()
+        defer { try? FileManager.default.removeItem(at: work) }
+        let fixture = try await self.fixture(into: work)
+        let before = try Data(contentsOf: fixture.plist)
+
+        do {
+            _ = try install(fixture, stopped: true, gameRunning: true)
+            Issue.record("the install went ahead under a running game")
+        } catch let failure as StepFailure {
+            #expect(failure.detail == SteamInstaller.gameRunning)
+        }
+        #expect(try Data(contentsOf: fixture.plist) == before)
+        #expect(!FileManager.default.fileExists(atPath: fixture.deployedDylib.path(percentEncoded: false)))
+
+        // Nothing to patch: a running game does not matter, Steam is not stopped.
+        _ = try install(fixture)
+        let outcome = try install(fixture, stopped: true, gameRunning: true)
+        #expect(!outcome.stoppedClient)
     }
 }

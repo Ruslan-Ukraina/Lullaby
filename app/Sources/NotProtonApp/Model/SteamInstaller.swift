@@ -38,6 +38,7 @@ struct InstallOutcome: Sendable {
     let signatureDatabases: Int
     let backedUpPlist: Bool
     let bridgeStaged: Int
+    let build: String?
 }
 
 enum SteamInstaller {
@@ -54,6 +55,7 @@ enum SteamInstaller {
         payload suppliedPayload: InstallPayload.Located? = nil,
         bridgePayload suppliedBridge: BridgePayload.Located? = nil,
         version: String = AppVersion.bundled,
+        force: Bool = false,
         app: URL = SupportPaths.Steam.app,
         bridge: URL = SupportPaths.bridge,
         signatures: URL = SupportPaths.signatures,
@@ -62,10 +64,13 @@ enum SteamInstaller {
         appinfo: URL = SupportPaths.appinfo,
         deployedVersion: URL = SupportPaths.deployedVersion,
         backups: URL = SupportPaths.backups,
+        runScript: URL = SupportPaths.Steam.compatTool.appending(path: "run"),
+        gameIsRunning: @Sendable () -> Bool = { SteamBundle.gameIsRunning },
         stopClient: ClientStopper = stopTheClient,
         register: BundleRegistrar = { SteamBundle.register($0) },
         report: @escaping @Sendable (InstallPhase) -> Void = { _ in }
     ) throws -> InstallOutcome {
+        AppLog.note("install: begin\(force ? " (reinstall)" : "") version=\(version)")
         report(.checkingPayload)
         let payload = try suppliedPayload ?? InstallPayload.locate()
         let bridgeLocated = try suppliedBridge ?? BridgePayload.locate()
@@ -78,10 +83,17 @@ enum SteamInstaller {
         let dylib = app.appending(path: "Contents/MacOS/\(SupportPaths.dylibName)")
         try assertBundleIsPresent(app)
         try assertInsertIsDeployedOrAbsent(at: plist, dylib: dylib)
-        let patching = try needsPatching(plist: plist, dylib: dylib, shipping: payload.dylib, app: app)
+        let patching = try needsPatching(
+            plist: plist, dylib: dylib, shipping: payload.dylib, app: app, force: force
+        )
 
         var stopped = false
         if patching {
+            // Stopping Steam under a running game ends it without saving.
+            guard !gameIsRunning() else {
+                AppLog.note("install: refused, a game is running")
+                throw StepFailure(step: step, detail: Self.gameRunning)
+            }
             stopped = try stopClient(app) { report(.stoppingClient) }
 
             report(.copyingDylib)
@@ -99,6 +111,7 @@ enum SteamInstaller {
         try install(payload.overlayShim, at: overlayShim)
         try install(payload.iconmaker, at: iconmaker)
         try install(payload.appinfo, at: appinfo)
+        try installRunScript(payload.runScript, at: runScript)
 
         var backedUp = false
         if patching {
@@ -132,13 +145,20 @@ enum SteamInstaller {
             )
         }
 
+        let build = MachOBuild.shortBuild(of: dylib)
+        AppLog.note(
+            "install: done version=\(version) build=\(build ?? "unknown") "
+                + "patched=\(patching) stoppedSteam=\(stopped) "
+                + "bridgeStaged=\(bridgeResult.staged.count) signatures=\(payload.signatures.count)"
+        )
         report(.finished)
         return InstallOutcome(
             stoppedClient: stopped,
             version: version,
             signatureDatabases: payload.signatures.count,
             backedUpPlist: backedUp,
-            bridgeStaged: bridgeResult.staged.count
+            bridgeStaged: bridgeResult.staged.count,
+            build: build
         )
     }
 
@@ -166,9 +186,11 @@ enum SteamInstaller {
         }
     }
 
-    static func needsPatching(plist: URL, dylib: URL, shipping: URL, app: URL) throws -> Bool {
+    static func needsPatching(
+        plist: URL, dylib: URL, shipping: URL, app: URL, force: Bool = false
+    ) throws -> Bool {
         let deployed = SteamBundle.currentInsert(at: plist) == dylib.path(percentEncoded: false)
-        if deployed, let installed = MachOBuild.identity(of: dylib),
+        if !force, deployed, let installed = MachOBuild.identity(of: dylib),
             let current = MachOBuild.identity(of: shipping), installed == current
         {
             AppLog.note("install: Steam already carries this dylib, installing for this account only")
@@ -185,6 +207,9 @@ enum SteamInstaller {
         }
         return true
     }
+
+    static let gameRunning =
+        "A game is running under NotProton. Quit the game, then try again."
 
     private static let mismatchAcrossAccounts =
         "Steam has a different copy of NotProton, installed by another account on this Mac. "
@@ -220,6 +245,19 @@ enum SteamInstaller {
             try? files.removeItem(at: destination)
             try files.copyItem(at: source, to: destination)
         }
+    }
+
+    /// The dylib writes the run script into Steam's compatibility tool folder at every game
+    /// launch. Writing it here too means Steam has the new one before the next launch. The
+    /// folder belongs to the dylib (it writes the .vdf files next to it), so a folder that is
+    /// not there yet is left for the dylib to create.
+    static func installRunScript(_ source: URL, at destination: URL) throws {
+        let folder = destination.deletingLastPathComponent()
+        guard FileManager.default.fileExists(atPath: folder.path(percentEncoded: false)) else { return }
+        try install(source, at: destination)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755], ofItemAtPath: destination.path(percentEncoded: false)
+        )
     }
 
     static func write(_ version: String, to url: URL) throws {

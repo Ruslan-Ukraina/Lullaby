@@ -19,15 +19,18 @@ struct StatusSnapshot: Sendable {
     var runner: EngineState
     var payload: PayloadState
     var installedEngines: [InstalledEngine] = []
+    var patch: InstalledPatch?
 
     static func capture(bundledVersion: String) -> StatusSnapshot {
-        StatusSnapshot(
-            steam: SteamBundle.deployment(bundledVersion: bundledVersion),
+        let patch = PatchComparison.inspect()
+        return StatusSnapshot(
+            steam: SteamBundle.deployment(bundledVersion: bundledVersion, stale: patch?.stale ?? []),
             steamRunning: SteamBundle.isRunning,
             updateBlocked: UpdateBlock.isPresent(),
             runner: EngineStore.state(),
             payload: PayloadInspector.inspect(),
-            installedEngines: EngineStore.installed()
+            installedEngines: EngineStore.installed(),
+            patch: patch
         )
     }
 }
@@ -53,6 +56,7 @@ final class SystemStatus {
         case blockUpdates
         case removeEngine
         case removeEverything
+        case stopSteamToInstall
 
         var id: Self { self }
     }
@@ -103,9 +107,45 @@ final class SystemStatus {
         failureRemedy = nil
     }
 
-    func requestInstall() async {
+    /// Install, Update and Reinstall. A running game refuses it here and in the installer;
+    /// a running Steam is asked about first, because the install closes it.
+    private(set) var pendingForce = false
+
+    /// Set when the last install stopped Steam, so Status can offer to start it again.
+    private(set) var offerSteamLaunch = false
+
+    func requestInstall(force: Bool = false) async {
         guard isIdle else { return }
-        await installIntoSteam()
+        offerSteamLaunch = false
+        let state = await Task.detached(priority: .userInitiated) {
+            (game: SteamBundle.gameIsRunning, steam: SteamBundle.isRunning)
+        }.value
+        if state.game {
+            outcome = nil
+            setFailure(SteamInstaller.gameRunning)
+            AppLog.note("install: refused, a game is running")
+            return
+        }
+        if state.steam {
+            pendingForce = force
+            pendingConfirmation = .stopSteamToInstall
+            return
+        }
+        await installIntoSteam(force: force)
+    }
+
+    func confirmPendingInstall() async {
+        let force = pendingForce
+        pendingForce = false
+        await installIntoSteam(force: force)
+    }
+
+    func openSteam() {
+        offerSteamLaunch = false
+        AppLog.note("open Steam after install")
+        NSWorkspace.shared.openApplication(
+            at: SupportPaths.Steam.app, configuration: NSWorkspace.OpenConfiguration()
+        )
     }
 
     private(set) var pendingRemoval: String?
@@ -180,14 +220,20 @@ final class SystemStatus {
     private static let noEngine =
         "No engine is installed yet: run engine/fetch-dormison.sh --activate until the app installs it."
 
-    func installIntoSteam() async {
+    func installIntoSteam(force: Bool = false) async {
         await perform(from: InstallPhase.checkingPayload.label) { progress in
             let result = try await Task.detached(priority: .userInitiated) {
-                try SteamInstaller.run(report: { progress($0.label) })
+                try SteamInstaller.run(force: force, report: { progress($0.label) })
             }.value
 
-            var parts = ["NotProton successfully installed."]
-            if result.stoppedClient { parts.append(Self.restartHint) }
+            var parts = [
+                (force ? "NotProton reinstalled" : "NotProton successfully installed")
+                    + (result.build.map { " (build \($0))." } ?? ".")
+            ]
+            if result.stoppedClient {
+                parts.append(Self.restartHint)
+                self.offerSteamLaunch = true
+            }
             let state = await Task.detached(priority: .userInitiated) {
                 (runner: EngineStore.state(), payload: PayloadInspector.inspect())
             }.value

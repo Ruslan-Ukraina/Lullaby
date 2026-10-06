@@ -123,7 +123,45 @@ struct SteamBundleTests {
                 bundledVersion: "0.2.0",
                 app: try stubBundle(insert: .own, dylib: true),
                 versionFile: try versionFile("0.1.0")
-            ) == .outdated(deployed: "0.1.0", bundled: "0.2.0")
+            ) == .outdated(deployed: "0.1.0", bundled: "0.2.0", stale: [])
+        )
+    }
+
+    // The bug this guards was live: Status said "Installed (1.0.2)" over a dylib from an
+    // older build of 1.0.2, and there was no button to replace it.
+    @Test("The same version with a stale part reads as outdated, naming the part")
+    func sameVersionStaleContent() throws {
+        #expect(
+            SteamBundle.deployment(
+                bundledVersion: "0.2.0",
+                stale: [.dylib, .runScript],
+                app: try stubBundle(insert: .own, dylib: true),
+                versionFile: try versionFile("0.2.0")
+            ) == .outdated(deployed: "0.2.0", bundled: "0.2.0", stale: [.dylib, .runScript])
+        )
+    }
+
+    @Test("Stale parts on a Steam patched by another account still read as outdated")
+    func staleWithoutVersionFile() throws {
+        #expect(
+            SteamBundle.deployment(
+                bundledVersion: "0.2.0",
+                stale: [.bridge],
+                app: try stubBundle(insert: .own, dylib: true),
+                versionFile: try versionFile(nil)
+            ) == .outdated(deployed: nil, bundled: "0.2.0", stale: [.bridge])
+        )
+    }
+
+    @Test("Stale parts do not hide somebody else's insert")
+    func staleDoesNotMaskForeign() throws {
+        #expect(
+            SteamBundle.deployment(
+                bundledVersion: "0.2.0",
+                stale: [.dylib],
+                app: try stubBundle(insert: .other("/opt/other/thing.dylib"), dylib: true),
+                versionFile: try versionFile("0.2.0")
+            ) == .foreign(insert: "/opt/other/thing.dylib")
         )
     }
 

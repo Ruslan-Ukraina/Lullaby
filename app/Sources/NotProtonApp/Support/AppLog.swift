@@ -30,6 +30,13 @@ enum AppLog {
             "state steamRunning=\(snapshot.steamRunning) updatesBlocked=\(snapshot.updateBlocked)",
             "state runner=\(describe(snapshot.runner))",
         ]
+        if let patch = snapshot.patch {
+            lines.append(
+                "state patch build=\(patch.build ?? "none") "
+                    + "installedAt=\(patch.installedAt.map { ISO8601DateFormatter().string(from: $0) } ?? "none") "
+                    + "stale=\(patch.stale.isEmpty ? "none" : patch.stale.map(\.rawValue).joined(separator: ","))"
+            )
+        }
 
         lines.append("state engines=\(snapshot.installedEngines.map(\.tag).joined(separator: ","))")
 
@@ -57,7 +64,9 @@ enum AppLog {
         case .steamMissing: "no Steam.app"
         case .notInstalled: "not installed"
         case .installed(let version): "installed \(version ?? "version unknown")"
-        case .outdated(let deployed, let bundled): "outdated deployed=\(deployed) bundled=\(bundled)"
+        case .outdated(let deployed, let bundled, let stale):
+            "outdated deployed=\(deployed ?? "unknown") bundled=\(bundled) "
+                + "stale=\(stale.isEmpty ? "none" : stale.map(\.rawValue).joined(separator: ","))"
         case .foreign(let insert): "foreign insert \(insert)"
         }
     }

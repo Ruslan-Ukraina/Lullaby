@@ -10,9 +10,13 @@ enum InstallPayload {
         let overlayShim: URL
         let iconmaker: URL
         let appinfo: URL
+        /// compat_run.sh as the dylib embeds it, to compare with Steam's copy and to write it.
+        let runScript: URL
 
         let signatures: [URL]
     }
+
+    static let runScriptName = "compat_run.sh"
 
     static func root(in bundle: Bundle = .module) throws -> URL {
         guard let url = bundle.url(forResource: "payload", withExtension: nil) else {
@@ -35,6 +39,7 @@ enum InstallPayload {
         let shim = root.appending(path: "overlay-shim.dylib")
         let iconmaker = root.appending(path: "iconmaker")
         let appinfo = root.appending(path: "appinfo")
+        let runScript = root.appending(path: runScriptName)
 
         var missing: [String] = []
         if !files.fileExists(atPath: dylib.path(percentEncoded: false)) {
@@ -48,6 +53,9 @@ enum InstallPayload {
         }
         if !files.fileExists(atPath: appinfo.path(percentEncoded: false)) {
             missing.append("appinfo")
+        }
+        if !files.fileExists(atPath: runScript.path(percentEncoded: false)) {
+            missing.append(runScriptName)
         }
 
         let signatureDir = root.appending(path: "signatures/macos.arm64")
@@ -67,7 +75,7 @@ enum InstallPayload {
 
         return Located(
             dylib: dylib, overlayShim: shim, iconmaker: iconmaker,
-            appinfo: appinfo, signatures: signatures
+            appinfo: appinfo, runScript: runScript, signatures: signatures
         )
     }
 }

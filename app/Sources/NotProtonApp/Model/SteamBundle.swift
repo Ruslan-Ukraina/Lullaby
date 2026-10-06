@@ -6,7 +6,8 @@ enum SteamDeployment: Sendable, Equatable {
     case steamMissing
     case notInstalled
     case installed(version: String?)
-    case outdated(deployed: String, bundled: String)
+    /// A different version, or the same version with parts whose content differs.
+    case outdated(deployed: String?, bundled: String, stale: [PatchPart])
     // If the user has something else installed, maybe let's not deploy?
     case foreign(insert: String)
 }
@@ -38,6 +39,7 @@ enum SteamBundle {
 
     static func deployment(
         bundledVersion: String,
+        stale: [PatchPart] = [],
         app: URL = SupportPaths.Steam.app,
         versionFile: URL = SupportPaths.deployedVersion
     ) -> SteamDeployment {
@@ -54,9 +56,11 @@ enum SteamBundle {
 
         guard files.fileExists(atPath: deployedDylib) else { return .notInstalled }
 
-        guard let deployed = deployedVersion(at: versionFile) else { return .installed(version: nil) }
+        let deployed = deployedVersion(at: versionFile)
+        if !stale.isEmpty { return .outdated(deployed: deployed, bundled: bundledVersion, stale: stale) }
+        guard let deployed else { return .installed(version: nil) }
         if deployed == bundledVersion { return .installed(version: deployed) }
-        return .outdated(deployed: deployed, bundled: bundledVersion)
+        return .outdated(deployed: deployed, bundled: bundledVersion, stale: [])
     }
 
     static func currentInsert(at url: URL = SupportPaths.Steam.infoPlist) -> String? {
