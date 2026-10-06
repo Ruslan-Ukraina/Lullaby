@@ -70,16 +70,20 @@ echo
 echo "2. lsteamclient loaded and steamclient64 rerouted"
 printf '%s\n' "$session" | grep -a -E "^runner:|patched copy|bridge is missing" | show
 if [ -f "$wine" ]; then
-	grep -a -E 'Loaded L".*(lsteamclient|steamclient64)\.dll"' "$wine" | sed 's/^/         /' | head -8
-	# The detour loads lsteamclient while steamclient64 is being built, so in
-	# the same thread lsteamclient's line comes first and steamclient64's next.
-	if awk '
+	# B1 (docs/DECISIONS.md P3-1) says what it redirected, 64-bit steamclient64.dll
+	# and 32-bit steamclient.dll alike; the spike's B2 only showed in the load order.
+	hooked=$(grep -a "lead to lsteamclient" "$wine" | sed 's/.*\\\\//; s/".*: /: /' | sort -u)
+	grep -a -E 'Loaded L".*(lsteamclient|steamclient64?)\.dll"' "$wine" | sed 's/^/         /' | head -8
+	if [ -n "$hooked" ]; then
+		printf '%s\n' "$hooked" | show
+		verdict ok "the B1 loader hook led steamclient to lsteamclient"
+	elif awk '
 		/Loaded L".*\\lsteamclient\.dll"/ { split($0, t, ":"); lsc[t[1]] = 1; next }
-		/Loaded L".*\\steamclient64\.dll"/ { split($0, t, ":"); if (lsc[t[1]]) found = 1 }
+		/Loaded L".*\\steamclient(64)?\.dll"/ { split($0, t, ":"); if (lsc[t[1]]) found = 1 }
 		END { exit !found }' "$wine"; then
-		verdict ok "lsteamclient.dll came in ahead of steamclient64.dll in the same thread (the detour fired)"
+		verdict ok "lsteamclient.dll came in ahead of steamclient in the same thread (the detour fired)"
 	else
-		verdict fail "no lsteamclient.dll load ahead of steamclient64.dll"
+		verdict fail "no sign that steamclient was led to lsteamclient"
 	fi
 	errors=$(grep -a -E "err:steamclient|unable to load native steamclient|_wassert" "$wine")
 	if [ -n "$errors" ]; then

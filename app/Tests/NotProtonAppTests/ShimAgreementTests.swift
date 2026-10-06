@@ -36,18 +36,22 @@ struct ShimAgreementTests {
         }
     }
 
-    // Under Dormison the ntdll patch is engine/ntdll-patch work rather than the app's, and
-    // what it leaves in the bridge is the manifest's patched entry. The shim compares the
-    // engine against exactly that file.
+    // The B1 ntdll pair is ntdll-patch/b1 work rather than the app's, and what it leaves in
+    // the bridge is the manifest's patched entries. The shim compares the engine against
+    // exactly those files, one arch at a time.
     @Test("The shim checks the patched ntdll the manifest lists")
     func ntdllArchesAgree() throws {
         let block = try Self.verifyRunnerBlock()
         let patched = try PayloadManifest.bundled().paths(origin: .patched)
-        #expect(patched == ["wine/x86_64-windows/ntdll.dll"])
+        #expect(Set(patched) == ["wine/x86_64-windows/ntdll.dll", "wine/i386-windows/ntdll.dll"])
+        let loop = try #require(
+            block.split(separator: "\n").first { $0.contains("for arch in ") }, "no arch loop in verify_runner")
+        #expect(block.contains("\"$bridge_src/wine/$arch-windows/ntdll.dll\""))
+        #expect(block.contains("$engine_root/wine/lib/wine/$arch-windows/ntdll.dll"))
         for path in patched {
-            #expect(block.contains("\"$bridge_src/\(path)\""), "the shim never checks \(path)")
-            let arch = path.split(separator: "/")[1]
-            #expect(block.contains("$engine_root/wine/lib/wine/\(arch)/ntdll.dll"))
+            let arch = path.split(separator: "/")[1].replacingOccurrences(of: "-windows", with: "")
+            #expect(loop.split(whereSeparator: { $0 == " " || $0 == ";" }).contains(Substring(arch)),
+                    "the shim never checks \(path)")
         }
     }
 

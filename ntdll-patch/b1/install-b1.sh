@@ -70,7 +70,9 @@ for a in x86_64 i386; do
 	if [ "$cur" = "$(sha "$new")" ]; then
 		echo "==> $a: already B1"
 	else
-		if [ "$cur" != "$want" ] && [ ! -f "$live.notproton-b2" ]; then
+		# Only the spike's binary patch is worth keeping; an older B1 build is not.
+		if [ "$cur" != "$want" ] && [ ! -f "$live.notproton-b2" ] \
+			&& ! grep -a -q "lead to lsteamclient" "$live"; then
 			cp -p "$live" "$live.notproton-b2"
 			echo "==> $a: the previous patched file is kept as ntdll.dll.notproton-b2"
 		fi

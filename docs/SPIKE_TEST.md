@@ -337,3 +337,70 @@ Steam → игра → ⚙ → Свойства → **Совместимость
 ### 8.6 Что прислать
 
 Таблица пунктов 8.1–8.5: ok / не ok и что видел. Логи я прочитаю сам, назови игры и время, когда нажимал «Остановить».
+
+---
+
+## 9. Проверка Фазы 3 (lsteamclient «по-взрослому») и эксперимент п. 8
+
+Что изменилось:
+- **B1.** `ntdll.dll` обеих архитектур собрана из исходников Dormison с хуком steamclient → lsteamclient (`DECISIONS.md` P3-1). Она уже стоит в `runners/dormison-b1` и в мосте. Рядом лежат `.notproton-orig` (релиз) и `.notproton-b2` (спайк).
+- **lsteamclient** получил интерфейсы `SteamNetworkingSocketsSerialized005` и `SteamAppDisableUpdate001` (P3-2). Он уже в мосте.
+- Без меня проверено: хук на тестовой программе (x86_64 и i386) и оба интерфейса на живом клиенте Steam. Игры я не запускал.
+
+**Онлайн-игры с VAC не запускай** (`RISKS.md`, раздел «R33: VAC»). Deadlock — только до главного меню.
+
+### 9.0 Подготовка
+
+1. Закрой Steam (⌘Q).
+2. Открой `~/Projects/NotProton/out/NotProton.app` → **Status** → **Install**. В Steam попадёт новый скрипт запуска, который пишет в лог, какая `ntdll` стоит (B1).
+3. Открой Steam из `/Applications/Steam.app`.
+
+### 9.1 64-битные игры не сломаны: PEAK, ETS2, Deadlock
+
+Для каждой: запусти, дождись меню или игры, выйди из игры, подожди 15 с, затем `engine/spike-check.sh <appid>` (PEAK 3527290, ETS2 227300, Deadlock 1422450).
+
+Ожидаемо:
+- в п. 2 — `[ok] the B1 loader hook led steamclient to lsteamclient` и строка `steamclient64.dll: 40 exports and the entry point lead to lsteamclient.dll …`;
+- в run-логе (`<Steam>/steamapps/compatdata/<appid>/notproton-run.log`) — `runner: x86_64 ntdll is the patched copy (B1)` и `runner: i386 ntdll is the patched copy (B1)`;
+- достижения и статистика в оверлее (Shift+Tab) видны, как в Фазе 1;
+- **Deadlock** (только меню): ошибок про 005 и AppDisableUpdate больше нет. Проверка:
+  `grep -a "Don't recognize interface" "$HOME/Library/Application Support/notproton/launchers/app-1422450/notproton-wine.log"` — пусто (раньше было `SteamNetworkingSocketsSerialized005` и `SteamAppDisableUpdate001`). Итог `spike-check.sh` — без FAIL в п. 2.
+
+### 9.2 32-битная игра: The Binding of Isaac: Rebirth (250900)
+
+Нашёл по exe: `isaac-ng.exe` — i386, рядом 32-битный `steam_api.dll` (Steamworks, достижения). Игра есть у твоего аккаунта, но установлена только в `~/GameHub` — этой библиотеки Steam не знает. **Добавлять `~/GameHub` в Steam не надо**: там же лежит второй PEAK.
+
+1. В Steam: The Binding of Isaac: Rebirth → ⚙ → **Свойства** → **Совместимость** → включи «Принудительно использовать» → **Dormison (NotProton)**. Делай это **до** установки: иначе Steam поставит версию для macOS.
+2. **Установить** (около 1,6 ГБ).
+3. **Играть.** Первый запуск дольше: создаётся префикс с 32-битной частью (`syswow64`).
+
+Ожидаемо:
+- игра запускается, в Dock — её имя и иконка;
+- в оверлее (Shift+Tab) видны достижения Isaac, Steam показывает «в игре»; если получится — открой любое достижение и убедись, что оно засчиталось (страница игры → Достижения);
+- `engine/spike-check.sh 250900`, п. 2: `steamclient.dll: 40 exports and the entry point lead to lsteamclient.dll …` и `[ok] the B1 loader hook …`. В п. 5 строки про DXMT может не быть: Isaac рисует через OpenGL, это нормально;
+- в run-логе — `installed syswow64 lsteamclient trigger` при первом запуске.
+
+Если Isaac не стартует или достижения не видны — пришли время запуска, остальное я прочитаю в логах сам.
+
+### 9.3 Эксперимент п. 8: «Also borderless full screen» на PEAK
+
+Цель — понять, лечит ли режим Dormison `ResizableWindows=window` поломку полноэкранного режима самой игры (0 fps, картинка смещена).
+
+1. NotProton → **Prefixes** → PEAK → **Game Settings…** → Resizable window = **Also borderless full screen** → **Save**.
+2. Запусти PEAK. В настройках графики игры по очереди:
+   - **оконный режим без рамки / Fullscreen Window** (если есть): картинка? fps? окно можно двигать и тянуть? зелёная кнопка — нативный полноэкранный режим?
+   - **эксклюзивный полноэкранный / Exclusive Fullscreen**: картинка на месте? fps?
+3. Выйди, верни в Game Settings Resizable window = **From the prefix**, Save.
+
+Запиши для каждого режима: картинка (нормальная / смещена / чёрная), fps, работает ли выход обратно в окно. По логу я проверю, что настройка дошла: в `.sevo/apps/peak.exe.env` должно быть `SEVO_RESIZABLE_WINDOWS=window`.
+
+### 9.4 Что прислать
+
+| Пункт | PEAK | ETS2 | Deadlock (меню) | Isaac (32 бит) |
+|---|---|---|---|---|
+| Запуск | | | | |
+| B1 в `spike-check.sh` (п. 2) | | | | |
+| Достижения / оверлей | | | — | |
+| Ошибки `Don't recognize interface` | | | | |
+
+Плюс 9.3: режим → картинка, fps. Затем — **OK** или что не так.

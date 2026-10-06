@@ -311,3 +311,25 @@
 - PEAK, Retina, полноэкранный режим по зелёной кнопке: 74–80 fps, 1% low 45–58 — как в Фазе 1. BACKLOG п. 10 закрыт.
 - BACKLOG п. 9 дополнен: при меньшем разрешении в игре — чёрные рамки (presenter=off); кандидаты — Upscaler «Final filter only» / MetalFX + Resizable window «Every window».
 - Дальше — Фаза 3 (lsteamclient «по-взрослому»: B1 или B2 + i386), жду твоего «начинай».
+
+## 2026-10-06 ~13:30 CEST — Фаза 3: B1 и интерфейсы готовы, жду ручной проверки
+
+**Сделано**
+- **B1 (P3-1).** Хук steamclient → lsteamclient в `dlls/ntdll/loader.c` форка Dormison: ветка `notproton/b1-steamclient`, коммит `1e0b5ba000` поверх `52c2a4b918`, запушен в `origin` форка. Копия патча — `ntdll-patch/b1/0001-…patch`. Скрипты:
+  - `build-b1.sh` (`--check-base`) собирает PE `ntdll.dll` x86_64 и i386;
+  - `test-b1.sh` проверяет хук на APFS-клоне движка во временном префиксе;
+  - `install-b1.sh` (`--restore`) ставит в движок и мост с резервными копиями.
+- **Воспроизводимость (R2 закрыт).** Релиз собран mingw GCC 16.2.0, как у нас. Непропатченная сборка совпадает с релизной по размеру до байта, а по коду — инструкция в инструкцию.
+- **Тест хука:** x86_64 и i386 — `CreateInterface` и точка входа steamclient ведут в lsteamclient, 40 экспортов. С релизной `ntdll.dll` тест падает, причём i386 `steamclient.dll` без B1 вообще не грузится (ошибка 126). R1 закрыт кодом.
+- **B1 в движке:** `runners/dormison-b1`, x86_64 `33bca058…`, i386 `e0d5f658…`. Рядом `.notproton-orig` (релиз) и для x86_64 `.notproton-b2` (спайк). Копии — в `bridge/wine/{x86_64,i386}-windows/` и `bridge/wine/b1.json`.
+- **Интерфейсы (P3-2).** `lsteamclient/add-interfaces.py` (из `fetch.sh`) добавляет `SteamNetworkingSocketsSerialized005` и `SteamAppDisableUpdate001`. `lsteamclient/tests/ifacecheck.sh` на живом клиенте: оба создаются в x86_64 и i386, `GetSTUNServer` → `162.254.197.38:3478`. Мост обновлён (`build.sh --install`, теперь только в мост, P3-3); прежние файлы — `scratch/backups/bridge-pre-p3`.
+- **`compat_run.sh`:** `verify_runner` проверяет обе архитектуры и пишет `(B1)`.
+- **`spike-check.sh`:** п. 2 засчитывает запись B1 для `steamclient64.dll` и `steamclient.dll`.
+- **Манифест мостa:** добавлен `patched wine/i386-windows/ntdll.dll`.
+- **VAC (R33)** оценён в `RISKS.md`, раздел «R33: VAC».
+- **32-битная игра** для проверки — The Binding of Isaac: Rebirth (250900), `isaac-ng.exe` i386 + `steam_api.dll`. Сейчас она только в `~/GameHub`; ставить через Steam с принудительным Dormison (SPIKE_TEST §9.2).
+- **SPIKE_TEST §9:** проверка PEAK, ETS2, Deadlock (только меню), Isaac и эксперимент п. 8 «Also borderless full screen» на PEAK.
+
+**Проверки (все с кодом 0):** `make runcheck compatcheck scriptcheck panel-behavior webpatch-fixtures sigcheck anchorcheck sigdb-fixtures overlay-shim-tests`; `make app-tests` — 278 тестов; `make app` — `out/NotProton.app` (в payload новый lsteamclient с 005 и скрипт с проверкой B1); `test-b1.sh` и `ifacecheck.sh` — 0 FAIL.
+
+**Не проверено:** игры. Это контрольная точка — ручная проверка по SPIKE_TEST §9. Новый dylib в Steam.app не ставил: Steam был открыт, а Install его закрывает. Это §9.0, для тебя.

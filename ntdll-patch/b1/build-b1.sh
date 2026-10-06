@@ -37,8 +37,16 @@ OUT=${OUT:-$repo/scratch/ntdll-b1/$version}
 mkdir -p "$OUT"
 
 [ -d "$WINE_BUILD/dlls/ntdll" ] || die "no wine build tree at $WINE_BUILD, run bridge/setup-wine-tree.sh"
+# The release's commit itself, or the fork's notproton/b1-steamclient branch on top of
+# it, whose only change is dlls/ntdll/loader.c.
 head=$(git -C "$WINE_SRC" rev-parse HEAD)
-[ "$head" = "$commit" ] || die "$WINE_SRC is at $head, the engine was built from $commit"
+if [ "$head" != "$commit" ]; then
+	git -C "$WINE_SRC" merge-base --is-ancestor "$commit" "$head" \
+		|| die "$WINE_SRC is at $head, which is not built on the engine's $commit"
+	changed=$(git -C "$WINE_SRC" diff --name-only "$commit" "$head")
+	[ "$changed" = dlls/ntdll/loader.c ] \
+		|| die "$WINE_SRC at $head changes more than dlls/ntdll/loader.c over $commit: $changed"
+fi
 
 # The clean ntdll.dll of the release, from the engine's own manifest.
 clean_of() {
