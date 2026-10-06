@@ -40,7 +40,7 @@
 #   ./build.sh --unix          unix half only
 #   ./build.sh --install       also install to the CrossOver tree and bridge
 #
-# Overridable: WINE_BUILD, WINE_SRC_REL, CX_ROOT, BRIDGE_DIR, UNIX_ARCH
+# Overridable: WINE_BUILD, WINE_SRC_REL, BRIDGE_DIR, UNIX_ARCH
 
 set -eu
 
@@ -64,7 +64,6 @@ TREE=${TREE:-$repo/build/lsteamclient}
 # The cloned runner, not the user's installed CrossOver. --install writes into this
 # tree, and the installed app has to stay stock: it is the only clean copy on the
 # machine and it is what the clone and the ntdll patcher are both taken from.
-CX_ROOT=${CX_ROOT:-$HOME/Library/Application Support/notproton/runners/current}
 BRIDGE_DIR=${BRIDGE_DIR:-$HOME/Library/Application Support/notproton/bridge}
 
 install=0
@@ -200,28 +199,8 @@ fi
 
 [ "$install" -eq 1 ] || { echo "==> not installing, pass --install to deploy"; exit 0; }
 
-[ -d "$CX_ROOT/lib/wine" ] || { echo "==> no CrossOver tree at $CX_ROOT"; exit 1; }
-
-# Refuse to write into an installed CrossOver, whatever CX_ROOT says. That copy is
-# the source the runner clone and the ntdll patcher are both taken from, and
-# CrossOver ships no lsteamclient, so anything added there is a modification of the
-# user's application that nothing would ever clean up.
-case "$CX_ROOT" in
-	/Applications/*)
-		echo "==> refusing to install into $CX_ROOT" >&2
-		echo "    that is an installed CrossOver and it has to stay stock." >&2
-		echo "    point CX_ROOT at the runner clone under the support directory." >&2
-		exit 1
-		;;
-esac
-
-# Each half goes to three places.
-#
-# The bridge arch directories are what RUN_SCRIPT's install_lsteamclient copies
-# into the CrossOver tree on every launch, so they are the real source of truth.
-# Writing the CrossOver tree here as well only makes the current build testable
-# without launching a game first; the next launch overwrites it from the bridge
-# either way, which means skipping the bridge copy silently reverts the install.
+# Everything goes to the bridge only. Dormison ships no lsteamclient and the run
+# script reaches the bridge through WINEDLLPATH, so the engine stays as released.
 #
 # The flat bridge copies are separate consumers, not duplicates: RUN_SCRIPT
 # stages them into the prefix Steam directory as the load trigger for the 64 bit
@@ -247,18 +226,16 @@ install_one() {
 
 if [ "$do_pe" -eq 1 ]; then
 	install_one "$pe_i386" \
-		"$BRIDGE_DIR/i386-windows/lsteamclient.dll" \
-		"$CX_ROOT/lib/wine/i386-windows/lsteamclient.dll"
+		"$BRIDGE_DIR/i386-windows/lsteamclient.dll"
 	install_one "$pe_x86_64" \
 		"$BRIDGE_DIR/x86_64-windows/lsteamclient.dll" \
-		"$BRIDGE_DIR/lsteamclient.dll" \
-		"$CX_ROOT/lib/wine/x86_64-windows/lsteamclient.dll"
+		"$BRIDGE_DIR/lsteamclient.dll"
 fi
 
 if [ "$do_unix" -eq 1 ]; then
 	install_one "$out" \
 		"$BRIDGE_DIR/$unix_dir/lsteamclient.so" \
-		"$CX_ROOT/lib/wine/$unix_dir/lsteamclient.so"
+		"$BRIDGE_DIR/lsteamclient.so"
 fi
 
 echo "==> done. prefixes refresh their copy from the bridge on next launch."

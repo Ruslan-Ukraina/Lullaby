@@ -93,3 +93,7 @@ echo "$authored" | while IFS= read -r f; do
 done
 
 echo "==> assembled $TREE with $(echo "$authored" | LC_ALL=C grep -c .) authored files over it"
+
+# Interfaces the macOS client serves that Valve's tree has no wrapper for yet
+# (docs/DECISIONS.md P3-2), added to the generated files in gen_wrapper.py's layout.
+python3 -I "$here/add-interfaces.py" "$TREE"
