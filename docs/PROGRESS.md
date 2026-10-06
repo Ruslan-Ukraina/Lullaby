@@ -452,3 +452,12 @@
 **Дальше:** твоя проверка по SPIKE_TEST §10. Затем Фаза 5 (BridgeUpdater, SignatureUpdater, гейт Steam) — по твоей команде.
 
 **Уведомление (17:42 CEST):** `PushNotification` — `Push not sent — mobile push is disabled in /config` (как раньше, BLOCKERS «Уведомления»). Снимок блока Engine отправлен в сессию файлом, системное уведомление macOS отправлено. Жду проверки по SPIKE_TEST §10.
+
+## 2026-10-06 ~17:55 CEST — BACKLOG 15: нативные окна Steam (твой запрос)
+
+- В BACKLOG добавлен п. 15 «Нативные окна Steam как в Sevoflurane»: высокий приоритет, после Фазы 4, до Фазы 5. В нём требования, план, риски и приёмка; решение — DECISIONS W1.
+- Проверено (только чтение):
+  - окна Steam, включая главное 1117×768, принадлежат процессу **Steam Helper** (CEF, `-nocrashdial`), а не `steam_osx`;
+  - `notproton.dylib` загружен в оба процесса (`lsof`, наследуемый `DYLD_INSERT_LIBRARIES`).
+- Sevoflurane показывает Steam в собственных `NSWindow` через `WKWebView`. Это эталон вида и ролей окон, но не код для переноса.
+- Код не менялся. Фаза 4 по-прежнему ждёт твоей проверки (SPIKE_TEST §10).
