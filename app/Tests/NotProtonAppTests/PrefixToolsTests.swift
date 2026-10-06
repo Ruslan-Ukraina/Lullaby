@@ -41,19 +41,6 @@ struct PrefixToolsTests {
         return runner
     }
 
-    // A CrossOver clone, the layout every tool understood before Dormison.
-    private func fakeCrossOver(in dir: URL) throws -> URL {
-        let fm = FileManager.default
-        let runner = dir.appending(path: "crossover-test")
-        for path in ["lib/wine/x86_64-unix/wine", "CrossOver-Hosted Application/wineserver-x86"] {
-            let file = runner.appending(path: path)
-            try fm.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try Data().write(to: file)
-            try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: file.path(percentEncoded: false))
-        }
-        return runner
-    }
-
     @Test("The runner variables are the ones RUN_SCRIPT sets")
     func matchesRunScript() throws {
         // A tool under a stale copy of the runner layout writes registry keys the game side then
@@ -84,27 +71,20 @@ struct PrefixToolsTests {
         }
         #expect(support == SupportPaths.support.path(percentEncoded: false))
 
-        let layout = PrefixTools.layout(runner: runner)
-        #expect(layout.isEngine)
-        #expect(layout.loader.path(percentEncoded: false) == (try resolve(assigned("WINELOADER"))))
-        #expect(layout.server.path(percentEncoded: false) == (try resolve(assigned("WINESERVER"))))
-        #expect(layout.unixDir.path(percentEncoded: false) == (try resolve(assigned("wine_unix"))))
+        let engine = DormisonEngine(root: runner)
+        #expect(engine.isUsable)
+        #expect(engine.wineloader.path(percentEncoded: false) == (try resolve(assigned("WINELOADER"))))
+        #expect(engine.wineserver.path(percentEncoded: false) == (try resolve(assigned("WINESERVER"))))
+        #expect(engine.unixDirectory.path(percentEncoded: false) == (try resolve(assigned("wine_unix"))))
 
-        let environment = PrefixTools.environment(prefix: samplePrefix(), runner: runner)
-        #expect(environment["WINELOADER"] == layout.loader.path(percentEncoded: false))
-        #expect(environment["WINESERVER"] == layout.server.path(percentEncoded: false))
+        let environment = PrefixTools.environment(prefix: samplePrefix(), engine: engine)
+        #expect(environment["WINELOADER"] == engine.wineloader.path(percentEncoded: false))
+        #expect(environment["WINESERVER"] == engine.wineserver.path(percentEncoded: false))
         #expect(environment["WINEDLLPATH"] == (try resolve(assigned("WINEDLLPATH"))),
                 "WINEDLLPATH drifted from RUN_SCRIPT")
         #expect(environment["SEVO_CLI"] == (try resolve(assigned("sevo_cli"))),
                 "SEVO_CLI drifted from RUN_SCRIPT")
         #expect(environment["SEVO_CLI"] == SupportPaths.sevoCLI.path(percentEncoded: false))
-        #expect(environment["CX_ROOT"] == nil)
-        #expect(environment["CX_HOME"] == nil)
-
-        // WINELOADER is what launch and recreate actually invoke, so the two have to
-        // agree with each other as well as with the script.
-        #expect(environment["WINELOADER"]
-            == PrefixTools.loader(runner: runner).path(percentEncoded: false))
     }
 
     @Test("The prefix and the sync backend are set, and the game only variables are not")
@@ -113,11 +93,11 @@ struct PrefixToolsTests {
         defer { try? FileManager.default.removeItem(at: dir) }
         let runner = try fakeEngine(in: dir)
         let prefix = samplePrefix()
-        let environment = PrefixTools.environment(prefix: prefix, runner: runner)
+        let environment = PrefixTools.environment(prefix: prefix, engine: DormisonEngine(root: runner))
 
         #expect(environment["WINEPREFIX"] == prefix.pfx.path(percentEncoded: false))
         #expect(environment["WINEPREFIX"]?.hasSuffix("/compatdata/1574480/pfx") == true)
-        #expect(environment["WINEMSYNC"] == PrefixTools.syncBackend(prefix: prefix, runner: runner))
+        #expect(environment["WINEMSYNC"] == PrefixTools.syncBackend(prefix: prefix))
         let engineBin = runner.appending(path: "wine/bin").path(percentEncoded: false)
         #expect(environment["PATH"]?.hasPrefix(engineBin + ":") == true)
 
@@ -134,34 +114,23 @@ struct PrefixToolsTests {
         let prefix = WinePrefix(appID: "480", name: nil, library: library, lastUsed: nil)
         try FileManager.default.createDirectory(at: prefix.root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
-        let crossover = try fakeCrossOver(in: root)
-        let engine = try fakeEngine(in: root)
+        let engine = DormisonEngine(root: try fakeEngine(in: root))
         let marker = prefix.root.appending(path: "notproton-msync")
         let bottle = prefix.pfx.appending(path: ".sevo/bottle.env")
 
-        // CrossOver: off unless the last launch recorded 1.
-        #expect(PrefixTools.syncBackend(prefix: prefix, runner: crossover) == "0")
-        for (recorded, expected) in [("1", "1"), ("0", "0"), ("1\n", "1"), ("", "0"), ("yes", "0")] {
-            try recorded.write(to: marker, atomically: true, encoding: .utf8)
-            #expect(
-                PrefixTools.syncBackend(prefix: prefix, runner: crossover) == expected,
-                "recorded \(recorded.debugDescription)")
-            #expect(PrefixTools.environment(prefix: prefix, runner: crossover)["WINEMSYNC"] == expected)
-        }
-
         // Dormison: on, and a 0 only counts once a Dormison run left a bottle.env, so a
-        // marker CrossOver wrote does not carry its default over.
+        // marker an earlier tool wrote does not carry its default over.
         try "0".write(to: marker, atomically: true, encoding: .utf8)
-        #expect(PrefixTools.syncBackend(prefix: prefix, runner: engine) == "1")
+        #expect(PrefixTools.syncBackend(prefix: prefix) == "1")
         try FileManager.default.createDirectory(
             at: bottle.deletingLastPathComponent(), withIntermediateDirectories: true)
         try "WINEMSYNC=0\n".write(to: bottle, atomically: true, encoding: .utf8)
         for (recorded, expected) in [("0", "0"), ("0\n", "0"), ("1", "1"), ("", "1"), ("yes", "1")] {
             try recorded.write(to: marker, atomically: true, encoding: .utf8)
             #expect(
-                PrefixTools.syncBackend(prefix: prefix, runner: engine) == expected,
+                PrefixTools.syncBackend(prefix: prefix) == expected,
                 "recorded \(recorded.debugDescription) under Dormison")
-            #expect(PrefixTools.environment(prefix: prefix, runner: engine)["WINEMSYNC"] == expected)
+            #expect(PrefixTools.environment(prefix: prefix, engine: engine)["WINEMSYNC"] == expected)
         }
     }
 
@@ -182,10 +151,10 @@ struct PrefixToolsTests {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
         #expect(throws: StepFailure.self) {
-            try PrefixTools.launch(.winecfg, in: samplePrefix(), runner: dir)
+            try PrefixTools.launch(.winecfg, in: samplePrefix(), engine: DormisonEngine(root: dir))
         }
         #expect(throws: StepFailure.self) {
-            try PrefixTools.recreate(samplePrefix(), runner: dir)
+            try PrefixTools.recreate(samplePrefix(), engine: DormisonEngine(root: dir))
         }
     }
 
@@ -214,7 +183,7 @@ struct PrefixToolsTests {
 
         // No runner, which is the same refusal opening a tool gets.
         #expect(throws: StepFailure.self) {
-            try PrefixTools.run(exe, in: samplePrefix(), runner: dir)
+            try PrefixTools.run(exe, in: samplePrefix(), engine: DormisonEngine(root: dir))
         }
         #expect(throws: StepFailure.self) {
             try PrefixTools.run(dir.appending(path: "gone.exe"), in: samplePrefix())
@@ -241,16 +210,12 @@ struct PrefixToolsTests {
     func archRuleMatchesRunScript() throws {
         let source = try Self.compatSource()
 
-        // Written in compat.c as: aarch64-unix) want=aa64 ;;
-        func wanted(_ pattern: String) throws -> PrefixArch? {
-            let match = try #require(
-                source.firstMatch(of: try Regex(pattern)), "compat.c no longer sets \(pattern)")
-            let word = try #require(UInt16(String(match[1].substring ?? ""), radix: 16))
-            return PrefixArch(machine: word)
-        }
-
-        #expect(try wanted(#"aarch64-unix\) want=(\w+)"#) == .arm64)
-        #expect(try wanted(#"\*\) want=(\w+)"#) == .x86_64)
+        // Dormison runs through Rosetta: the launcher wants the x86_64 machine word.
+        let match = try #require(
+            source.firstMatch(of: /want=(\w+)\n/), "compat_run.sh no longer sets want")
+        let word = try #require(UInt16(String(match.1), radix: 16))
+        #expect(PrefixArch(machine: word) == PrefixTools.prefixArch())
+        #expect(PrefixTools.prefixArch() == .x86_64)
 
         // And both read it out of the same file.
         #expect(source.contains(#"drive_c/windows/system32/ntdll.dll"#))
@@ -258,31 +223,23 @@ struct PrefixToolsTests {
 
     // Both names come off the same machine words the arch rule uses, so a wrong word or the
     // two swapped tells the player to keep the build they have and rebuild for the other.
-    @Test("The dialog names the build that made the prefix and the one installed now")
-    func dialogNamesBothBuilds() throws {
+    @Test("The dialog names the tool that made the prefix and the one installed now")
+    func dialogNamesBothTools() throws {
         let source = try Self.compatSource()
 
-        // Written in compat_run.sh as: aa64) printf 'the FEX build of CrossOver' ;;
         func name(of word: String) throws -> String {
             let match = try #require(
                 source.firstMatch(of: try Regex("\(word)\\) printf '([^']+)'")),
                 "compat_run.sh no longer names \(word)")
             return String(match[1].substring ?? "")
         }
+        #expect(try name(of: "aa64").contains("ARM64"))
+        #expect(try name(of: "8664") == "Dormison")
 
-        // The machine word each loader wants, taken from the rule rather than restated.
-        func wanted(_ pattern: String) throws -> String {
-            let match = try #require(source.firstMatch(of: try Regex(pattern)))
-            return String(match[1].substring ?? "")
-        }
-
-        #expect(try name(of: wanted(#"aarch64-unix\) want=(\w+)"#)).contains("FEX"))
-        #expect(try name(of: wanted(#"\*\) want=(\w+)"#)).contains("Rosetta"))
-
-        // A prefix that reads as 32 bit is neither build, so it gets no build name.
+        // A prefix that reads as 32 bit is neither, so it gets no tool name.
         let fallback = try #require(source.firstMatch(of: /\*\) printf '([^']+)'/))
         let vague = String(fallback.1)
-        #expect(!vague.contains("FEX") && !vague.contains("Rosetta"))
+        #expect(!vague.contains("ARM64") && !vague.contains("Dormison"))
 
         // What made the prefix is named first and blamed, what is installed second.
         let built = try #require(source.range(of: #"$(tool_name "$have")"#))
@@ -316,36 +273,13 @@ struct PrefixToolsTests {
         #expect(closing.upperBound <= refusal.lowerBound)
     }
 
-    // Whichever unix tree the runner has decides the loader, and so decides the arch of
-    // every windows file wineboot then installs. The two have to be read by one rule.
-    @Test("The arch a runner builds prefixes for follows the loader it resolves")
-    func prefixArchFollowsTheLoader() throws {
-        let fm = FileManager.default
-        for (arch, loaderTail, serverName, expected) in [
-            ("aarch64-unix", "wine.app/Contents/MacOS/wine", "wineserver-arm64", PrefixArch.arm64),
-            ("x86_64-unix", "wine", "wineserver-x86", PrefixArch.x86_64),
-        ] {
-            let runner = FileManager.default.temporaryDirectory
-                .appending(path: "np-arch-\(UUID().uuidString)")
-            defer { try? fm.removeItem(at: runner) }
-            for path in ["lib/wine/\(arch)/\(loaderTail)", "CrossOver-Hosted Application/\(serverName)"] {
-                let file = runner.appending(path: path)
-                try fm.createDirectory(
-                    at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-                try Data().write(to: file)
-                try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: file.path(percentEncoded: false))
-            }
-            #expect(PrefixTools.prefixArch(runner: runner) == expected)
-        }
-    }
-
     // Stands in for wineboot --init, the one part of a rebuild a test cannot run: the windows
     // tree, empty profile stubs, the link out to the real home. lock makes the rename fail.
     private func fakeRunner(
         in dir: URL, home: URL, exit status: Int = 0, lock: Bool = false, extra: String = ":"
     ) throws -> URL {
         let runner = dir.appending(path: "runner")
-        let loader = runner.appending(path: "lib/wine/x86_64-unix/wine")
+        let loader = runner.appending(path: "wine/bin/wine")
         try FileManager.default.createDirectory(
             at: loader.deletingLastPathComponent(), withIntermediateDirectories: true)
         try Data("""
@@ -407,7 +341,7 @@ struct PrefixToolsTests {
         try Data("mine".utf8).write(to: home.appending(path: "letter.txt"))
 
         let prefix = try usedPrefix(in: dir, home: home)
-        try PrefixTools.recreate(prefix, runner: try fakeRunner(in: dir, home: home))
+        try PrefixTools.recreate(prefix, engine: DormisonEngine(root: try fakeRunner(in: dir, home: home)))
 
         func text(_ path: String) -> String? {
             try? String(contentsOf: prefix.pfx.appending(path: path), encoding: .utf8)
@@ -462,7 +396,7 @@ struct PrefixToolsTests {
         try fm.createDirectory(at: documents, withIntermediateDirectories: true)
         try Data("stale".utf8).write(to: documents.appending(path: "letter.txt"))
 
-        try PrefixTools.recreate(prefix, runner: try fakeRunner(in: dir, home: home))
+        try PrefixTools.recreate(prefix, engine: DormisonEngine(root: try fakeRunner(in: dir, home: home)))
 
         let carried = prefix.pfx.appending(path: "drive_c/users/steamuser/Documents/letter.txt")
         #expect(try String(contentsOf: carried, encoding: .utf8) == "stale")
@@ -485,7 +419,7 @@ struct PrefixToolsTests {
         try fm.createDirectory(at: beside, withIntermediateDirectories: true)
         try Data("theirs".utf8).write(to: beside.appending(path: "save.txt"))
 
-        try PrefixTools.recreate(prefix, runner: runner)
+        try PrefixTools.recreate(prefix, engine: DormisonEngine(root: runner))
 
         let profile = prefix.pfx.appending(path: "drive_c/users/steamuser")
         func text(_ path: String) -> String? {
@@ -525,7 +459,7 @@ struct PrefixToolsTests {
                         .path(percentEncoded: false))
             }
 
-            try PrefixTools.recreate(prefix, runner: runner)
+            try PrefixTools.recreate(prefix, engine: DormisonEngine(root: runner))
 
             let carried = users.appending(path: "steamuser/\(shared)")
             #expect(try String(contentsOf: carried, encoding: .utf8) == "crossover",
@@ -560,7 +494,7 @@ struct PrefixToolsTests {
                 to: folder.deletingLastPathComponent().appending(path: "note.txt"))
         }
 
-        try PrefixTools.recreate(prefix, runner: runner)
+        try PrefixTools.recreate(prefix, engine: DormisonEngine(root: runner))
 
         let roaming = users.appending(path: "steamuser/AppData/Roaming")
         func contents(_ name: String) -> [String] {
@@ -598,7 +532,7 @@ struct PrefixToolsTests {
             at: settings.deletingLastPathComponent(), withIntermediateDirectories: true)
         try Data("mine".utf8).write(to: settings)
 
-        try PrefixTools.recreate(prefix, runner: runner)
+        try PrefixTools.recreate(prefix, engine: DormisonEngine(root: runner))
 
         let profile = prefix.pfx.appending(path: "drive_c/users/steamuser")
         func text(_ path: String) -> String? {
@@ -629,7 +563,7 @@ struct PrefixToolsTests {
         try fm.createDirectory(at: preVista, withIntermediateDirectories: true)
         try Data("legacy".utf8).write(to: preVista.appending(path: "legacy.txt"))
 
-        try PrefixTools.recreate(prefix, runner: runner)
+        try PrefixTools.recreate(prefix, engine: DormisonEngine(root: runner))
 
         let profile = users.appending(path: "steamuser")
         for name in ["Documents", "My Documents"] {
@@ -667,7 +601,7 @@ struct PrefixToolsTests {
             atPath: users.appending(path: "crossover/Documents").path(percentEncoded: false),
             withDestinationPath: "/somewhere/that/moved")
 
-        try PrefixTools.recreate(prefix, runner: runner)
+        try PrefixTools.recreate(prefix, engine: DormisonEngine(root: runner))
 
         func target(_ path: String) throws -> String {
             try fm.destinationOfSymbolicLink(
@@ -700,7 +634,7 @@ struct PrefixToolsTests {
         let loose = prefix.pfx.appending(path: "drive_c/users/crossover/settings.ini")
         try Data("windowed=1".utf8).write(to: loose)
 
-        try PrefixTools.recreate(prefix, runner: runner)
+        try PrefixTools.recreate(prefix, engine: DormisonEngine(root: runner))
 
         #expect(try Data(contentsOf: loose) == Data("windowed=1".utf8))
     }
@@ -719,7 +653,7 @@ struct PrefixToolsTests {
             atPath: game.appending(path: "latest").path(percentEncoded: false),
             withDestinationPath: "save.dat")
 
-        try PrefixTools.recreate(prefix, runner: runner)
+        try PrefixTools.recreate(prefix, engine: DormisonEngine(root: runner))
 
         let carried = prefix.pfx.appending(
             path: "drive_c/users/steamuser/AppData/Roaming/game/latest")
@@ -745,7 +679,7 @@ struct PrefixToolsTests {
         try fm.createDirectory(at: theirs, withIntermediateDirectories: true)
         try Data("theirs".utf8).write(to: theirs.appending(path: "theirs.dat"))
 
-        try PrefixTools.recreate(prefix, runner: runner)
+        try PrefixTools.recreate(prefix, engine: DormisonEngine(root: runner))
 
         let landed = prefix.pfx.appending(path: "drive_c/users/steamuser/AppData/Roaming/other")
         // Read through the link the other profile left, the save comes back either way, out of
@@ -770,7 +704,7 @@ struct PrefixToolsTests {
         try Data("exe".utf8).write(to: driveC.appending(path: "Games/Quake/quake.exe"))
         try Data("notes".utf8).write(to: driveC.appending(path: "notes.txt"))
 
-        try PrefixTools.recreate(prefix, runner: runner)
+        try PrefixTools.recreate(prefix, engine: DormisonEngine(root: runner))
 
         #expect(try Data(contentsOf: driveC.appending(path: "Games/Quake/quake.exe")) == Data("exe".utf8))
         #expect(try Data(contentsOf: driveC.appending(path: "notes.txt")) == Data("notes".utf8))
@@ -792,7 +726,7 @@ struct PrefixToolsTests {
 
         let prefix = try usedPrefix(in: dir, home: home)
         let runner = try fakeRunner(in: dir, home: home, exit: 1)
-        #expect(throws: (any Error).self) { try PrefixTools.recreate(prefix, runner: runner) }
+        #expect(throws: (any Error).self) { try PrefixTools.recreate(prefix, engine: DormisonEngine(root: runner)) }
 
         func text(_ path: String) -> String? {
             try? String(contentsOf: prefix.pfx.appending(path: path), encoding: .utf8)
@@ -819,7 +753,7 @@ struct PrefixToolsTests {
         try fm.setAttributes(
             [.posixPermissions: 0], ofItemAtPath: save.path(percentEncoded: false))
 
-        #expect(throws: (any Error).self) { try PrefixTools.recreate(prefix, runner: runner) }
+        #expect(throws: (any Error).self) { try PrefixTools.recreate(prefix, engine: DormisonEngine(root: runner)) }
 
         try fm.setAttributes(
             [.posixPermissions: 0o644], ofItemAtPath: save.path(percentEncoded: false))
@@ -852,7 +786,7 @@ struct PrefixToolsTests {
             at: pfx.appending(path: "drive_c/windows"), withIntermediateDirectories: true)
         let prefix = try #require(PrefixStore.all(libraries: [library]).first)
 
-        try PrefixTools.recreate(prefix, runner: try fakeRunner(in: dir, home: home))
+        try PrefixTools.recreate(prefix, engine: DormisonEngine(root: try fakeRunner(in: dir, home: home)))
 
         #expect(fm.fileExists(
             atPath: pfx.appending(path: "drive_c/users/steamuser").path(percentEncoded: false)))
@@ -882,7 +816,7 @@ struct PrefixToolsTests {
         let prefix = try #require(PrefixStore.all(libraries: [library]).first)
         let runner = try fakeRunner(in: dir, home: home)
 
-        #expect(throws: StepFailure.self) { try PrefixTools.recreate(prefix, runner: runner) }
+        #expect(throws: StepFailure.self) { try PrefixTools.recreate(prefix, engine: DormisonEngine(root: runner)) }
 
         #expect(try String(contentsOf: stranded, encoding: .utf8) == "save")
     }
@@ -900,7 +834,7 @@ struct PrefixToolsTests {
         try fm.createDirectory(at: previous, withIntermediateDirectories: true)
         try Data("spent".utf8).write(to: previous.appending(path: "user.reg"))
 
-        try PrefixTools.recreate(prefix, runner: try fakeRunner(in: dir, home: home))
+        try PrefixTools.recreate(prefix, engine: DormisonEngine(root: try fakeRunner(in: dir, home: home)))
 
         #expect(try String(contentsOf: previous.appending(path: "user.reg"), encoding: .utf8)
             == "spent")
@@ -940,7 +874,7 @@ struct PrefixToolsTests {
         let runner = try fakeRunner(in: dir, home: home, lock: true)
 
         var thrown: (any Error)?
-        do { try PrefixTools.recreate(prefix, runner: runner) } catch { thrown = error }
+        do { try PrefixTools.recreate(prefix, engine: DormisonEngine(root: runner)) } catch { thrown = error }
 
         // Every refusal in the rebuild is a StepFailure, so a Cocoa error is the rename itself
         // and not the run stopping somewhere earlier and looking the same afterwards.
@@ -964,9 +898,9 @@ struct PrefixToolsTests {
         clock.dateFormat = "yyyyMMdd-HHmmss"
 
         let first = try #require(try PrefixTools.recreate(
-            prefix, runner: runner, now: clock.date(from: "20260101-120000")!))
+            prefix, engine: DormisonEngine(root: runner), now: clock.date(from: "20260101-120000")!))
         let second = try #require(try PrefixTools.recreate(
-            prefix, runner: runner, now: clock.date(from: "20260102-133000")!))
+            prefix, engine: DormisonEngine(root: runner), now: clock.date(from: "20260102-133000")!))
 
         #expect(first.lastPathComponent == "pfx.previous-20260101-120000")
         #expect(second.lastPathComponent == "pfx.previous-20260102-133000")
@@ -989,8 +923,8 @@ struct PrefixToolsTests {
         clock.dateFormat = "yyyyMMdd-HHmmss"
         let instant = clock.date(from: "20260101-120000")!
 
-        let first = try #require(try PrefixTools.recreate(prefix, runner: runner, now: instant))
-        let second = try #require(try PrefixTools.recreate(prefix, runner: runner, now: instant))
+        let first = try #require(try PrefixTools.recreate(prefix, engine: DormisonEngine(root: runner), now: instant))
+        let second = try #require(try PrefixTools.recreate(prefix, engine: DormisonEngine(root: runner), now: instant))
 
         #expect(first.lastPathComponent == "pfx.previous-20260101-120000")
         #expect(second.lastPathComponent == "pfx.previous-20260101-120000-2")
@@ -1011,7 +945,7 @@ struct PrefixToolsTests {
         let prefix = try #require(PrefixStore.all(libraries: [library]).first)
         try fm.removeItem(at: pfx)
 
-        let parked = try PrefixTools.recreate(prefix, runner: try fakeRunner(in: dir, home: home))
+        let parked = try PrefixTools.recreate(prefix, engine: DormisonEngine(root: try fakeRunner(in: dir, home: home)))
 
         #expect(parked == nil)
         #expect(PrefixStore.backups(of: prefix).isEmpty)
@@ -1103,7 +1037,7 @@ struct PrefixToolsTests {
         let runner = try fakeRunner(in: dir, home: home)
         let prefix = try usedPrefix(in: dir, home: home)
 
-        try PrefixTools.recreate(prefix, runner: runner)
+        try PrefixTools.recreate(prefix, engine: DormisonEngine(root: runner))
 
         let profile = prefix.pfx.appending(path: "drive_c/users/steamuser")
         // The targets are relative and spelled the way Proton spells them, so the link
@@ -1142,7 +1076,7 @@ struct PrefixToolsTests {
         try fm.createDirectory(at: stranded, withIntermediateDirectories: true)
         try Data("cloud".utf8).write(to: stranded.appending(path: "progress.sav"))
 
-        try PrefixTools.recreate(prefix, runner: runner)
+        try PrefixTools.recreate(prefix, engine: DormisonEngine(root: runner))
 
         let profile = prefix.pfx.appending(path: "drive_c/users/steamuser")
         let landed = profile.appending(path: "AppData/Local/Ghost/Saves/progress.sav")
@@ -1218,7 +1152,7 @@ struct PrefixToolsTests {
                 ofItemAtPath: client.path(percentEncoded: false))
         }
 
-        try PrefixTools.recreate(prefix, runner: runner)
+        try PrefixTools.recreate(prefix, engine: DormisonEngine(root: runner))
 
         let profile = prefix.pfx.appending(path: "drive_c/users/steamuser")
         for (legacy, modern) in [
@@ -1259,7 +1193,7 @@ struct PrefixToolsTests {
             at: save.deletingLastPathComponent(), withIntermediateDirectories: true)
         try Data("precious".utf8).write(to: save)
 
-        try PrefixTools.recreate(prefix, runner: runner)
+        try PrefixTools.recreate(prefix, engine: DormisonEngine(root: runner))
 
         let landed = prefix.pfx
             .appending(path: "drive_c/users/steamuser/AppData/Roaming/Ghost/slot1.sav")
@@ -1289,7 +1223,7 @@ struct PrefixToolsTests {
             at: save.deletingLastPathComponent(), withIntermediateDirectories: true)
         try Data("precious".utf8).write(to: save)
 
-        try PrefixTools.recreate(prefix, runner: runner)
+        try PrefixTools.recreate(prefix, engine: DormisonEngine(root: runner))
 
         let landed = prefix.pfx
             .appending(path: "drive_c/users/steamuser/AppData/Roaming/Ghost/slot1.sav")
@@ -1345,7 +1279,7 @@ struct PrefixToolsTests {
         let runner = try fakeRunner(
             in: dir, home: home,
             extra: "cd \"$WINEPREFIX/drive_c/users/steamuser\" && \(freshProfile)")
-        try PrefixTools.recreate(prefix, runner: runner)
+        try PrefixTools.recreate(prefix, engine: DormisonEngine(root: runner))
         return dir
     }
 

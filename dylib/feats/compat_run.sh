@@ -173,17 +173,15 @@ prefix_machine() {
 
 tool_name() {
   case "$1" in
-    aa64) printf 'the FEX build of CrossOver' ;;
-    8664) printf 'Dormison or the Rosetta build of CrossOver' ;;
+    aa64) printf 'an ARM64 compatibility tool' ;;
+    8664) printf 'Dormison' ;;
     *) printf 'an older 32-bit setup' ;;
   esac
 }
 
 refuse_foreign_prefix() {
-  case "${wine_unix##*/}" in
-    aarch64-unix) want=aa64 ;;
-    *) want=8664 ;;
-  esac
+  # Dormison runs Windows programs through Rosetta only: x86_64 prefixes.
+  want=8664
   have=$(prefix_machine) || return 0
   [ "$have" = "$want" ] && return 0
   echo "=== prefix ntdll is $have and this compatibility tool wants $want, rebuild the prefix in NotProton ===" >> "$log" 2>&1 || true
@@ -408,7 +406,7 @@ if [ -n "$STEAM_COMPAT_DATA_PATH" ]; then
   mkdir -p "$WINEPREFIX"
   msync_from=launch-options
   # The marker carries a launch option's choice over to the runs that come
-  # without one. A marker written under CrossOver holds its default of 0, so it
+  # without one. A marker written by an earlier tool can hold 0 as its default, so it
   # only counts once the prefix has a bottle.env, which only Dormison runs write.
   if [ -z "$WINEMSYNC" ] && [ -r "$STEAM_COMPAT_DATA_PATH/notproton-msync" ] \
     && [ -f "$WINEPREFIX/.sevo/bottle.env" ]; then

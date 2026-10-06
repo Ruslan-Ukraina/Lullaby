@@ -26,10 +26,6 @@ let package = Package(
             resources: (hasPayload ? [.copy("Resources/payload")] : []) + [
                 .copy("Resources/payload.manifest"),
                 .copy("Resources/valve-packages.manifest"),
-                .copy("Resources/detour2.bin"),
-                .copy("Resources/detour32.bin"),
-                .copy("Resources/detour32-fex.bin"),
-                .copy("Resources/detour64-fex.bin"),
             ],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),

@@ -44,18 +44,6 @@ enum SupportPaths {
 
     static var currentRunner: URL { runners.appending(path: "current") }
 
-    static func runnerRoot(forBuild build: String, runners: URL = SupportPaths.runners) -> URL {
-        runners.appending(path: "crossover-\(build)")
-    }
-
-    static func crossOverRoot(inBundle bundle: URL) -> URL {
-        bundle.appending(path: "Contents/SharedSupport/CrossOver")
-    }
-
-    static func clonedRoot(forBuild build: String, runners: URL = SupportPaths.runners) -> URL {
-        runnerRoot(forBuild: build, runners: runners).appending(path: "CrossOver")
-    }
-
     enum Steam {
         static var app: URL { URL(filePath: "/Applications/Steam.app") }
         static var infoPlist: URL { infoPlist(inBundle: app) }

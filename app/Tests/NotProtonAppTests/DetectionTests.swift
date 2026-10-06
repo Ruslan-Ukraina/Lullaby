@@ -3,110 +3,101 @@ import Testing
 
 @testable import NotProtonApp
 
-@Suite("Runner allow list")
-struct SupportedRunnerTests {
+@Suite("Engine store")
+struct EngineStoreTests {
 
-    // The arches a build carries need both hashes: an input with no output leaves the patch
-    // unverified, and an output with no input patches a file nothing had checked.
-    @Test("Every row's pin hashes are complete for the arches it claims")
-    func rowsAreComplete() {
-        #expect(!SupportedRunners.all.isEmpty)
-
-        for build in SupportedRunners.all {
-            expectSHA256(build.loaderSHA256, "loader for \(build.id)")
-            #expect(!build.cleanNtdll.isEmpty, "\(build.id) patches nothing")
-            #expect(Set(build.cleanNtdll.keys) == Set(build.patchedNtdll.keys), "\(build.id) is lopsided")
-
-            for (arch, clean) in build.cleanNtdll {
-                let patched = build.patchedNtdll[arch]
-                expectSHA256(clean, "clean \(arch.rawValue)")
-                expectSHA256(patched ?? "", "patched \(arch.rawValue)")
-
-                // A patch that produced its own input would mean the patcher did
-                // nothing, and the launch path would silently run stock ntdll.
-                #expect(clean != patched)
+    private func runners(_ tags: [String], current: String?) throws -> URL {
+        let root = URL.temporaryDirectory.appending(path: "np-runners-\(UUID().uuidString)")
+        for tag in tags {
+            let bin = root.appending(path: "\(tag)/wine/bin")
+            try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+            for name in ["wine", "wineserver"] {
+                let file = bin.appending(path: name)
+                try Data("#!/bin/sh\n".utf8).write(to: file)
+                try FileManager.default.setAttributes(
+                    [.posixPermissions: 0o755], ofItemAtPath: file.path(percentEncoded: false))
             }
+            try "{\"version\": \"\(tag)\"}".write(
+                to: root.appending(path: "\(tag)/engine-info.json"), atomically: true, encoding: .utf8)
+        }
+        if let current {
+            try FileManager.default.createSymbolicLink(
+                atPath: root.appending(path: "current").path(percentEncoded: false),
+                withDestinationPath: current)
+        }
+        return root
+    }
+
+    @Test("No runners folder means no engine")
+    func none() {
+        let missing = URL.temporaryDirectory.appending(path: "np-missing-\(UUID().uuidString)")
+        #expect(EngineStore.state(runners: missing) == .none)
+        #expect(EngineStore.installed(in: missing).isEmpty)
+    }
+
+    @Test("A current link to a usable Dormison engine reads back its version")
+    func engine() throws {
+        let root = try runners(["dormison-b1"], current: "dormison-b1")
+        defer { try? FileManager.default.removeItem(at: root) }
+        #expect(EngineStore.state(runners: root) == .engine(version: "dormison-b1"))
+        #expect(EngineStore.currentTag(runners: root) == "dormison-b1")
+    }
+
+    @Test("A link at something that is not an engine is broken")
+    func broken() throws {
+        let root = try runners(["dormison-b1"], current: "dormison-b1")
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.removeItem(at: root.appending(path: "dormison-b1/wine/bin/wine"))
+        guard case .broken = EngineStore.state(runners: root) else {
+            Issue.record("expected .broken"); return
+        }
+        let foreign = try runners(["crossover-1"], current: "crossover-1")
+        defer { try? FileManager.default.removeItem(at: foreign) }
+        guard case .broken = EngineStore.state(runners: foreign) else {
+            Issue.record("expected .broken"); return
         }
     }
 
-    @Test("Identities are unique so lookup is unambiguous")
-    func identitiesAreUnique() {
-        // Versions are deliberately not unique here: CodeWeavers ships flavors sharing one,
-        // which is why neither the lookup key nor the clone directory is the version.
-        let ids = SupportedRunners.all.map(\.id)
-        #expect(Set(ids).count == ids.count)
-
-        let loaders = SupportedRunners.all.map(\.loaderSHA256)
-        #expect(Set(loaders).count == loaders.count)
+    @Test("Only complete engines are listed, in version order")
+    func listing() throws {
+        let root = try runners(["dormison-b10", "dormison-b2", "dormison-b1"], current: nil)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(
+            at: root.appending(path: ".dormison-b3.partial"), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(
+            at: root.appending(path: "dormison-b4"), withIntermediateDirectories: true)
+        #expect(EngineStore.installed(in: root).map(\.tag) == ["dormison-b1", "dormison-b2", "dormison-b10"])
     }
 
-    @Test("The first supported build keeps a bare version as its id")
-    func firstBuildKeepsBareVersionID() {
-        // Its clone is already on disk as crossover-<version>, and a machine whose CrossOver
-        // has since been replaced by another flavor could not produce that clone again.
-        let build = SupportedRunners.all[0]
-        #expect(build.flavor == nil)
-        #expect(build.id == build.bundleVersion)
+    @Test("Switching moves current and writes the engine's env file; refusing leaves it alone")
+    func switching() throws {
+        let root = try runners(["dormison-b1", "dormison-b2"], current: "dormison-b1")
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        try EngineStore.switchTo("dormison-b2", runners: root)
+        #expect(EngineStore.currentTag(runners: root) == "dormison-b2")
+        #expect(FileManager.default.fileExists(
+            atPath: root.appending(path: "dormison-b2/notproton-engine.env").path(percentEncoded: false)))
+
+        #expect(throws: StepFailure.self) { try EngineStore.switchTo("dormison-b9", runners: root) }
+        #expect(throws: StepFailure.self) { try EngineStore.switchTo("../x", runners: root) }
+        #expect(EngineStore.currentTag(runners: root) == "dormison-b2")
     }
 
-    // Picking the FEX CrossOver used to read "Build 27.0.0.40921", the same as the Rosetta one.
-    // Which had been picked only became visible once the clone directory carried the flavor.
-    @Test("A build is named by its flavor as well as its version")
-    func buildsAreNamedByFlavor() {
-        let rosetta = try! #require(SupportedRunners.build(id: "27.0.0.40921"))
-        let fex = try! #require(SupportedRunners.build(id: "27.0.0.40921-fex"))
+    @Test("The active engine cannot be removed, another one can")
+    func removing() throws {
+        let root = try runners(["dormison-b1", "dormison-b2"], current: "dormison-b2")
+        defer { try? FileManager.default.removeItem(at: root) }
 
-        #expect(rosetta.bundleVersion == fex.bundleVersion)
-        #expect(rosetta.releaseVersion == fex.releaseVersion)
-        #expect(rosetta.displayVersion == "20260821 Rosetta")
-        #expect(fex.displayVersion == "20260821 FEX")
-        #expect(rosetta.displayVersion != fex.displayVersion)
+        #expect(throws: StepFailure.self) { try EngineStore.remove("dormison-b2", runners: root) }
+        try EngineStore.remove("dormison-b1", runners: root)
+        #expect(EngineStore.installed(in: root).map(\.tag) == ["dormison-b2"])
+        #expect(throws: StepFailure.self) { try EngineStore.remove("dormison-b1", runners: root) }
     }
 
-    // The installed row has only the clone directory name, which is the id.
-    @Test("An installed build is named the same way the picked one is")
-    func installedBuildsReadBackTheSame() {
-        for build in SupportedRunners.all {
-            #expect(SupportedRunners.displayVersion(forID: build.id) == build.displayVersion)
-            #expect(!SupportedRunners.displayVersion(forID: build.id).contains("-fex"))
-        }
-
-        // A tree off the allow list still has to say something, and its directory name is
-        // all there is to say.
-        #expect(SupportedRunners.displayVersion(forID: "26.0.1.1234") == "26.0.1.1234")
-    }
-
-    @Test("Lookup matches on an exact loader hash only")
-    func lookupIsExact() {
-        let build = SupportedRunners.all[0]
-        #expect(SupportedRunners.build(loaderSHA256: build.loaderSHA256) != nil)
-        #expect(SupportedRunners.build(loaderSHA256: String(build.loaderSHA256.dropLast())) == nil)
-        #expect(SupportedRunners.build(loaderSHA256: build.loaderSHA256 + " ") == nil)
-        #expect(SupportedRunners.build(id: build.id) != nil)
-        #expect(SupportedRunners.build(id: build.id + " ") == nil)
-    }
-
-    private func expectSHA256(_ value: String, _ label: String) {
-        #expect(value.count == 64, "\(label) is not a sha256")
-        #expect(value.allSatisfy { $0.isHexDigit && !$0.isUppercase }, "\(label) is not lowercase hex")
-    }
-}
-
-@Suite("Runner store")
-struct RunnerStoreTests {
-
-    @Test("The build comes out of the crossover- path component")
-    func buildIdentifierParsing() {
-        #expect(RunnerStore.buildIdentifier(
-            inPath: "crossover-27.0.0.40921/CrossOver Preview.app/Contents/SharedSupport/CrossOver"
-        ) == "27.0.0.40921")
-
-        #expect(RunnerStore.buildIdentifier(
-            inPath: "../runners/crossover-1.2.3/CrossOver Preview.app/Contents/SharedSupport/CrossOver"
-        ) == "1.2.3")
-
-        #expect(RunnerStore.buildIdentifier(inPath: "CrossOver Preview.app/Contents") == nil)
-        #expect(RunnerStore.buildIdentifier(inPath: "") == nil)
+    @Test("Engines are named for people")
+    func names() {
+        #expect(EngineStore.displayName("dormison-b1") == "Dormison b1")
     }
 }
 

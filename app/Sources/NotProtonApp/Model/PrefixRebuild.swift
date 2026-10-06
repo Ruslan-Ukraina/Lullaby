@@ -6,7 +6,7 @@ extension PrefixTools {
     @discardableResult
     static func recreate(
         _ prefix: WinePrefix,
-        runner: URL = SupportPaths.currentRunner,
+        engine: any EngineProvider = DormisonEngine(),
         now: Date = .now,
         keepBackup: Bool = true
     ) throws -> URL? {
@@ -29,12 +29,11 @@ extension PrefixTools {
             )
         }
 
-        let loader = loader(runner: runner)
+        let loader = engine.wineloader
         guard FileManager.default.isExecutableFile(atPath: loader.path(percentEncoded: false)) else {
             throw StepFailure(
                 step: "Recreate prefix",
-                detail: "No compatibility tool at \(loader.path(percentEncoded: false)). "
-                    + "Use Set Up Compatibility Tool first."
+                detail: "No engine at \(loader.path(percentEncoded: false)). Install an engine first."
             )
         }
 
@@ -46,7 +45,7 @@ extension PrefixTools {
         defer { try? fm.removeItem(at: fresh) }
         try fm.createDirectory(at: fresh, withIntermediateDirectories: true)
 
-        var environment = environment(prefix: prefix, runner: runner)
+        var environment = environment(prefix: prefix, engine: engine)
         environment["WINEPREFIX"] = fresh.path(percentEncoded: false)
         layOutProfile(in: fresh)
         _ = try Shell.check(loader.path(percentEncoded: false), ["wineboot", "--init"], environment: environment)

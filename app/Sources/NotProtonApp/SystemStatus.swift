@@ -3,7 +3,6 @@
 import AppKit
 import Foundation
 import Observation
-import UniformTypeIdentifiers
 
 enum AppVersion {
     static let fallback = "0.1.0-dev"
@@ -17,36 +16,18 @@ struct StatusSnapshot: Sendable {
     var steam: SteamDeployment
     var steamRunning: Bool
     var updateBlocked: Bool
-    var crossOver: [CrossOverInstall]
-    var crossOverLicense: [String: CrossOverLicense.Status] = [:]
-    var runner: RunnerState
+    var runner: EngineState
     var payload: PayloadState
-    var installedRunners: [RunnerBuild] = []
-    var orphanedRunners: [String] = []
-    var damagedRunners: [String] = []
+    var installedEngines: [InstalledEngine] = []
 
     static func capture(bundledVersion: String) -> StatusSnapshot {
-        let installs = CrossOverSource.discover()
-        var licenses: [String: CrossOverLicense.Status] = [:]
-        for install in installs where install.isUsable {
-            licenses[install.id] = CrossOverLicense.check(crossOverRoot: install.crossOverRoot)
-        }
-
-        let runner = RunnerStore.state()
-
-        return StatusSnapshot(
+        StatusSnapshot(
             steam: SteamBundle.deployment(bundledVersion: bundledVersion),
             steamRunning: SteamBundle.isRunning,
             updateBlocked: UpdateBlock.isPresent(),
-            crossOver: installs,
-            crossOverLicense: licenses,
-            runner: runner,
-            payload: PayloadInspector.inspect(
-                build: runner.buildIdentifier.flatMap(SupportedRunners.build(id:))
-            ),
-            installedRunners: RunnerStore.installedBuilds(),
-            orphanedRunners: RunnerStore.orphanedClones(),
-            damagedRunners: RunnerStore.damagedClones()
+            runner: EngineStore.state(),
+            payload: PayloadInspector.inspect(),
+            installedEngines: EngineStore.installed()
         )
     }
 }
@@ -63,17 +44,14 @@ final class SystemStatus {
     private(set) var failureRemedy: Remedy?
 
     private var runInFlight = false
-    private var checkingLicense = false
 
-    var isBusy: Bool { activity != nil || runInFlight || checkingLicense }
+    var isBusy: Bool { activity != nil || runInFlight }
     var isIdle: Bool { !isBusy && !isRefreshing }
 
     enum Confirmation: Identifiable, Hashable {
         case replaceSteam
         case blockUpdates
-        case installUnlicensed
-        case toolUnlicensed
-        case removeBuild
+        case removeEngine
         case removeEverything
 
         var id: Self { self }
@@ -125,186 +103,42 @@ final class SystemStatus {
         failureRemedy = nil
     }
 
-    var usableCrossOver: CrossOverInstall? {
-        snapshot?.crossOver.first(where: \.isUsable)
-    }
-
-    var usableCrossOvers: [CrossOverInstall] {
-        snapshot?.crossOver.filter(\.isUsable) ?? []
-    }
-
-    var crossOverRowsOfferSetUp: Bool {
-        let usable = usableCrossOvers
-        guard usable.count > 1 else { return false }
-        let installed = snapshot?.installedRunners ?? []
-        return usable.contains { install in
-            if case .supported(let build) = install.support { return !installed.contains(build) }
-            return false
-        }
-    }
-
-    struct AvailableBuild: Identifiable {
-        let install: CrossOverInstall
-        let build: RunnerBuild
-
-        var id: String { build.id }
-    }
-
-    var repairSource: CrossOverInstall? {
-        let current = snapshot?.runner.buildIdentifier
-        return usableCrossOvers.first { install in
-            if case .supported(let build) = install.support { return build.id == current }
-            return false
-        }
-    }
-
-    var setupSource: CrossOverInstall? { repairSource ?? usableCrossOver }
-
-    var setupSourceIsDeployed: Bool {
-        guard case .supported(let build)? = setupSource?.support else { return false }
-        return snapshot?.installedRunners.contains(build) ?? false
-    }
-
-    var availableBuilds: [AvailableBuild] {
-        let installed = snapshot?.installedRunners ?? []
-        guard !installed.isEmpty else { return [] }
-        return usableCrossOvers.compactMap { install in
-            guard case .supported(let build) = install.support,
-                  !installed.contains(build) else { return nil }
-            return AvailableBuild(install: install, build: build)
-        }
-    }
-
-    func checkLicense(for chosen: CrossOverInstall? = nil) async -> CrossOverLicense.Status? {
-        guard let install = chosen ?? usableCrossOver else { return nil }
-        let status = await Task.detached(priority: .userInitiated) {
-            CrossOverLicense.check(crossOverRoot: install.crossOverRoot)
-        }.value
-        snapshot?.crossOverLicense[install.id] = status
-        return status
-    }
-
-    enum Request {
-        case install
-        case compatibilityTool
-    }
-
-    nonisolated static func activationQuestion(
-        _ request: Request, licensed: Bool?, runner: RunnerState
-    ) -> Confirmation? {
-        guard licensed == false else { return nil }
-        switch request {
-        case .install: return runner == RunnerState.none ? .installUnlicensed : nil
-        case .compatibilityTool: return .toolUnlicensed
-        }
-    }
-
     func requestInstall() async {
         guard isIdle else { return }
-        checkingLicense = true
-        defer { checkingLicense = false }
-        if let question = Self.activationQuestion(
-            .install,
-            licensed: await checkLicense()?.licensed,
-            runner: snapshot?.runner ?? RunnerState.none
-        ) {
-            pendingConfirmation = question
-        } else {
-            await installIntoSteam()
-        }
-    }
-
-    func requestCompatibilityTool(
-        from chosen: CrossOverInstall? = nil, replacingExisting: Bool = false
-    ) async {
-        guard isIdle else { return }
-        checkingLicense = true
-        defer { checkingLicense = false }
-        let install = chosen ?? setupSource
-        if let question = Self.activationQuestion(
-            .compatibilityTool,
-            licensed: await checkLicense(for: install)?.licensed,
-            runner: snapshot?.runner ?? RunnerState.none
-        ) {
-            pendingConfirmation = question
-        } else {
-            await setUpRunner(from: install, replacingExisting: replacingExisting)
-        }
+        await installIntoSteam()
     }
 
     private(set) var pendingRemoval: String?
 
-    func requestBuildRemoval(_ build: String) {
+    func requestEngineRemoval(_ tag: String) {
         guard isIdle else { return }
-        pendingRemoval = build
-        pendingConfirmation = .removeBuild
+        pendingRemoval = tag
+        pendingConfirmation = .removeEngine
     }
 
-    func cancelBuildRemoval() {
+    func cancelEngineRemoval() {
         pendingRemoval = nil
     }
 
-    func removePendingBuild() async {
-        guard let build = pendingRemoval else { return }
+    func removePendingEngine() async {
+        guard let tag = pendingRemoval else { return }
         pendingRemoval = nil
-        await perform(from: RunnerInstaller.removeStep) { _ in
+        await perform(from: EngineStore.removeStep) { _ in
             try await Task.detached(priority: .userInitiated) {
-                try RunnerInstaller.removeClone(forBuild: build)
+                try EngineStore.remove(tag)
             }.value
-            return "Removed build \(SupportedRunners.displayVersion(forID: build))."
+            return "Removed \(EngineStore.displayName(tag))."
         }
     }
 
-    func switchRunner(to build: RunnerBuild) async {
-        guard isIdle else { return }
-        guard build.id != snapshot?.runner.buildIdentifier else { return }
-        await perform(from: RunnerSetup.Phase.staging.label) { progress in
-            let result = try await Task.detached(priority: .userInitiated) {
-                try RunnerSetup.activate(build, report: { progress($0.label) })
+    func switchEngine(to tag: String) async {
+        guard isIdle, tag != EngineStore.currentTag() else { return }
+        await perform(from: EngineStore.step) { _ in
+            try await Task.detached(priority: .userInitiated) {
+                try EngineStore.switchTo(tag)
             }.value
-            return "Now using build \(result.build.displayVersion)."
+            return "Now using \(EngineStore.displayName(tag))."
         }
-    }
-
-    var chosenCrossOver: URL? { CrossOverSource.manualBundle }
-
-    // Lets the user pick a copy of CrossOver the search did not find/auto-select
-    func chooseCrossOver() async {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = false
-        panel.allowedContentTypes = [.application]
-        panel.prompt = "Choose"
-        panel.message = "Select a copy of CrossOver."
-        panel.directoryURL = URL(filePath: "/Applications", directoryHint: .isDirectory)
-
-        guard panel.runModal() == .OK, let picked = panel.url else { return }
-
-        clearFailure()
-        outcome = nil
-
-        guard CrossOverSource.looksLikeCrossOver(picked) else {
-            setFailure("\(picked.lastPathComponent) is not a valid copy of CrossOver.")
-            AppLog.note("crossOver choice refused: \(picked.path(percentEncoded: false))")
-            return
-        }
-
-        CrossOverSource.manualBundle = picked
-        AppLog.note("crossOver choice: \(picked.path(percentEncoded: false))")
-        await refresh()
-    }
-
-    func clearCrossOverChoice() async {
-        clearFailure()
-        outcome = nil
-        CrossOverSource.manualBundle = nil
-        AppLog.note("crossOver choice cleared")
-        await refresh()
-    }
-
-    private func runnerOutcome(_ result: RunnerSetup.Outcome) -> String {
-        result.stagedNothing ? "Compatibility tool is already set up." : "Compatibility tool ready."
     }
 
     func perform(
@@ -334,25 +168,6 @@ final class SystemStatus {
         await refresh()
     }
 
-    private func setUpRunner(from install: CrossOverInstall?, replacingExisting: Bool = false) async {
-        guard let install else {
-            setFailure("No supported copy of CrossOver found.")
-            AppLog.note("run refused: no supported CrossOver")
-            outcome = nil
-            return
-        }
-
-        await perform(from: RunnerSetup.Phase.cloning.label) { progress in
-            let result = try await Task.detached(priority: .userInitiated) {
-                try RunnerSetup.run(from: install, replacingExisting: replacingExisting) {
-                    progress($0.label)
-                }
-            }.value
-
-            return runnerOutcome(result)
-        }
-    }
-
     func fetchValveBinaries() async {
         await perform(from: ValveFetcher.Phase.verifying.label) { progress in
             let result = try await ValveFetcher.run { progress($0.label) }
@@ -362,8 +177,8 @@ final class SystemStatus {
 
     private static let restartHint = "Steam was stopped, so start it again."
 
-    private static let toolNotActivated =
-        "The compatibility tool was not set up because CrossOver is not activated."
+    private static let noEngine =
+        "No engine is installed yet: run engine/fetch-dormison.sh --activate until the app installs it."
 
     func installIntoSteam() async {
         await perform(from: InstallPhase.checkingPayload.label) { progress in
@@ -373,24 +188,10 @@ final class SystemStatus {
 
             var parts = ["NotProton successfully installed."]
             if result.stoppedClient { parts.append(Self.restartHint) }
-            let install = usableCrossOver
             let state = await Task.detached(priority: .userInitiated) {
-                (runner: RunnerStore.state(),
-                 payload: PayloadInspector.inspect(),
-                 license: install.map { CrossOverLicense.check(crossOverRoot: $0.crossOverRoot) })
+                (runner: EngineStore.state(), payload: PayloadInspector.inspect())
             }.value
-
-            if let install, state.license?.licensed == true, state.runner == .none {
-                progress("Setting up compatibility tool")
-                // A tool that came up is the expected case and goes unsaid. Failure
-                // throws, and an unactivated CrossOver is reported below.
-                _ = try await Task.detached(priority: .userInitiated) {
-                    try RunnerSetup.run(from: install) { progress($0.label) }
-                }.value
-            } else if install != nil, state.license?.licensed == false, state.runner == .none {
-                // Not a failure, NotProton was installed but without a compatibility tool
-                parts.append(Self.toolNotActivated)
-            }
+            if state.runner == .none { parts.append(Self.noEngine) }
 
             // Fetch binaries from Valve
             if state.payload.missing.contains(where: { $0.origin.isFetchable }) {
@@ -454,14 +255,14 @@ final class SystemStatus {
     func measureRunnerSizes() async {
         let known = Set(runnerSizes.keys)
         let present = await Task.detached(priority: .utility) {
-            Set(RunnerStore.clonedBuilds())
+            Set(EngineStore.installed().map(\.tag))
         }.value
 
         for stale in known.subtracting(present) { runnerSizes[stale] = nil }
 
-        for build in present.subtracting(known) {
-            runnerSizes[build] = await Task.detached(priority: .utility) {
-                RunnerStore.cloneSize(forBuild: build)
+        for tag in present.subtracting(known) {
+            runnerSizes[tag] = await Task.detached(priority: .utility) {
+                EngineStore.size(of: tag)
             }.value
         }
     }

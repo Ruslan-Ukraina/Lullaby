@@ -21,99 +21,39 @@ enum WineTool: String, CaseIterable, Sendable {
 
 enum PrefixTools {
 
-    static func syncBackend(prefix: WinePrefix, runner: URL = SupportPaths.currentRunner) -> String {
+    /// compat_run.sh's rule: msync+ is on, and only a marker that a Dormison run
+    /// wrote, which leaves a bottle.env in the prefix, can turn it off.
+    static func syncBackend(prefix: WinePrefix) -> String {
         let marker = prefix.root.appending(path: "notproton-msync")
         let recorded = (try? String(contentsOf: marker, encoding: .utf8))?
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        guard layout(runner: runner).isEngine else { return recorded == "1" ? "1" : "0" }
-        // compat_run.sh's rule for Dormison: msync is on, and only a marker a Dormison run
-        // wrote, which leaves a bottle.env in the prefix, can turn it off.
         let bottle = prefix.pfx.appending(path: ".sevo/bottle.env")
         let dormisonRun = FileManager.default.fileExists(atPath: bottle.path(percentEncoded: false))
         return dormisonRun && recorded == "0" ? "0" : "1"
     }
 
-    static func environment(prefix: WinePrefix, runner: URL = SupportPaths.currentRunner) -> [String: String] {
-        let root = runner.path(percentEncoded: false)
+    /// What compat_run.sh sets for the engine, for a tool opened on a prefix.
+    static func environment(
+        prefix: WinePrefix, engine: any EngineProvider = DormisonEngine()
+    ) -> [String: String] {
         var environment = ProcessInfo.processInfo.environment
-        let engine = layout(runner: runner)
-        if engine.isEngine {
-            // What compat_run.sh sets for the Dormison engine.
-            environment["WINELOADER"] = engine.loader.path(percentEncoded: false)
-            environment["WINESERVER"] = engine.server.path(percentEncoded: false)
-            environment["WINEDLLPATH"] = SupportPaths.bridge.path(percentEncoded: false)
-            environment["WINEPREFIX"] = prefix.pfx.path(percentEncoded: false)
-            environment["WINEMSYNC"] = syncBackend(prefix: prefix, runner: runner)
-            environment["SEVO_CLI"] = SupportPaths.sevoCLI.path(percentEncoded: false)
-            environment["PATH"] = runner.appending(path: "wine/bin").path(percentEncoded: false)
-                + ":" + (environment["PATH"] ?? "/usr/bin:/bin")
-            return environment
-        }
-        environment["CX_ROOT"] = root
-        environment["CX_HOME"] = SupportPaths.applicationSupport
-            .appending(path: "CrossOver").path(percentEncoded: false)
-        let wine = layout(runner: runner)
-        environment["WINELOADER"] = wine.loader.path(percentEncoded: false)
-        environment["WINESERVER"] = wine.server.path(percentEncoded: false)
-        environment["WINEDLLPATH"] = "\(root)/lib/wine/x86_64-windows:"
-            + wine.unixDir.path(percentEncoded: false)
+        environment["WINELOADER"] = engine.wineloader.path(percentEncoded: false)
+        environment["WINESERVER"] = engine.wineserver.path(percentEncoded: false)
+        environment["WINEDLLPATH"] = SupportPaths.bridge.path(percentEncoded: false)
         environment["WINEPREFIX"] = prefix.pfx.path(percentEncoded: false)
-        environment["WINEMSYNC"] = syncBackend(prefix: prefix, runner: runner)
-        environment["PATH"] = "\(root)/bin:" + (environment["PATH"] ?? "/usr/bin:/bin")
+        environment["WINEMSYNC"] = syncBackend(prefix: prefix)
+        environment["SEVO_CLI"] = SupportPaths.sevoCLI.path(percentEncoded: false)
+        environment["PATH"] = (engine.wineloader.path(percentEncoded: false) as NSString).deletingLastPathComponent
+            + ":" + (environment["PATH"] ?? "/usr/bin:/bin")
         return environment
     }
 
-    static func loader(runner: URL = SupportPaths.currentRunner) -> URL {
-        layout(runner: runner).loader
-    }
-
-    struct WineLayout {
-        let loader: URL
-        let server: URL
-        let unixDir: URL
-        // A Dormison engine under runners/<version> rather than a CrossOver clone.
-        var isEngine = false
-    }
-
-    static func layout(runner: URL = SupportPaths.currentRunner) -> WineLayout {
-        let fm = FileManager.default
-        let hosted = runner.appending(path: "CrossOver-Hosted Application")
-        func executable(_ url: URL) -> Bool {
-            fm.isExecutableFile(atPath: url.path(percentEncoded: false))
-        }
-
-        // Dormison, the paths compat_run.sh uses: the front door loader and the arm64
-        // server in wine/bin, the unix modules under wine/lib/wine.
-        let dormison = DormisonEngine(root: runner)
-        if dormison.isUsable {
-            return WineLayout(
-                loader: dormison.wineloader, server: dormison.wineserver,
-                unixDir: dormison.unixDirectory, isEngine: true)
-        }
-
-        let arm = runner.appending(path: "lib/wine/aarch64-unix")
-        let armLoader = arm.appending(path: "wine.app/Contents/MacOS/wine")
-        let armServer = hosted.appending(path: "wineserver-arm64")
-        if executable(armLoader), executable(armServer) {
-            return WineLayout(loader: armLoader, server: armServer, unixDir: arm)
-        }
-
-        let unix = runner.appending(path: "lib/wine/x86_64-unix")
-        let server = hosted.appending(path: "wineserver")
-        return WineLayout(
-            loader: unix.appending(path: "wine"),
-            server: executable(server) ? server : hosted.appending(path: "wineserver-x86"),
-            unixDir: unix
-        )
-    }
-
-    private static func readyLoader(step: String, prefix: WinePrefix, runner: URL) throws -> URL {
-        let loader = loader(runner: runner)
+    private static func readyLoader(step: String, prefix: WinePrefix, engine: any EngineProvider) throws -> URL {
+        let loader = engine.wineloader
         guard FileManager.default.isExecutableFile(atPath: loader.path(percentEncoded: false)) else {
             throw StepFailure(
                 step: step,
-                detail: "No compatibility tool at \(loader.path(percentEncoded: false)). "
-                    + "Use Set Up Compatibility Tool first."
+                detail: "No engine at \(loader.path(percentEncoded: false)). Install an engine first."
             )
         }
         guard FileManager.default.fileExists(atPath: prefix.pfx.path(percentEncoded: false)) else {
@@ -125,22 +65,22 @@ enum PrefixTools {
         return loader
     }
 
-    static func launch(_ tool: WineTool, in prefix: WinePrefix, runner: URL = SupportPaths.currentRunner) throws {
-        let loader = try readyLoader(step: "Open \(tool.label)", prefix: prefix, runner: runner)
+    static func launch(_ tool: WineTool, in prefix: WinePrefix, engine: any EngineProvider = DormisonEngine()) throws {
+        let loader = try readyLoader(step: "Open \(tool.label)", prefix: prefix, engine: engine)
         try Shell.detach(
             loader.path(percentEncoded: false),
             [tool.rawValue],
-            environment: environment(prefix: prefix, runner: runner)
+            environment: environment(prefix: prefix, engine: engine)
         )
     }
 
     static func run(
         _ executable: URL,
         in prefix: WinePrefix,
-        runner: URL = SupportPaths.currentRunner
+        engine: any EngineProvider = DormisonEngine()
     ) throws {
         let step = "Run \(executable.lastPathComponent)"
-        let loader = try readyLoader(step: step, prefix: prefix, runner: runner)
+        let loader = try readyLoader(step: step, prefix: prefix, engine: engine)
         guard FileManager.default.fileExists(atPath: executable.path(percentEncoded: false)) else {
             throw StepFailure(step: step, detail: "No file at \(executable.path(percentEncoded: false)).")
         }
@@ -155,7 +95,7 @@ enum PrefixTools {
         try Shell.detach(
             loader.path(percentEncoded: false),
             arguments,
-            environment: environment(prefix: prefix, runner: runner),
+            environment: environment(prefix: prefix, engine: engine),
             currentDirectory: executable.deletingLastPathComponent()
         )
     }
@@ -205,7 +145,6 @@ enum PrefixTools {
         }
     }
 
-    static func prefixArch(runner: URL = SupportPaths.currentRunner) -> PrefixArch {
-        layout(runner: runner).unixDir.lastPathComponent == "aarch64-unix" ? .arm64 : .x86_64
-    }
+    /// Dormison runs Windows programs through Rosetta only.
+    static func prefixArch() -> PrefixArch { .x86_64 }
 }

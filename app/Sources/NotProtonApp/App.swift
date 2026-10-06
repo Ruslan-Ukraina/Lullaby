@@ -66,9 +66,6 @@ struct NotProtonApp: App {
                 .keyboardShortcut("i", modifiers: .command)
                 .disabled(!status.isIdle)
 
-            Button("Set Up Compatibility Tool") { Task { await status.requestCompatibilityTool() } }
-                .disabled(!status.isIdle || status.setupSource == nil)
-
             Button("Fetch Valve Binaries") { Task { await status.fetchValveBinaries() } }
                 .disabled(!status.isIdle)
 

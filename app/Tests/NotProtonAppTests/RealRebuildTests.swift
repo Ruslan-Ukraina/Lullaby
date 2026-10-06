@@ -14,7 +14,7 @@ enum RealPrefixes {
     // One prefix per profile shape: steamuser real, steamuser linked, and both real, which is
     // the shape a save was lost from. All three have to come out on the steamuser layout.
     static var candidates: [WinePrefix] {
-        let loader = PrefixTools.layout(runner: SupportPaths.currentRunner).unixDir
+        let loader = DormisonEngine().unixDirectory
         guard FileManager.default.fileExists(
             atPath: loader.path(percentEncoded: false)) else { return [] }
         func realDirectory(_ url: URL) -> Bool {

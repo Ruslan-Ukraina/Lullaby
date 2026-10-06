@@ -171,19 +171,16 @@ struct StatusView: View {
         }
         .confirmationDialog(
             "Are you sure?",
-            isPresented: asking(.removeBuild),
+            isPresented: asking(.removeEngine),
             titleVisibility: .visible
         ) {
             Button("Remove", role: .destructive) {
-                Task { await status.removePendingBuild() }
+                Task { await status.removePendingEngine() }
             }
-            Button("Cancel", role: .cancel) { status.cancelBuildRemoval() }
+            Button("Cancel", role: .cancel) { status.cancelEngineRemoval() }
         } message: {
-            if let build = status.pendingRemoval {
-                Text(
-                    "Are you sure you want to remove "
-                        + "\(SupportedRunners.displayVersion(forID: build))?"
-                )
+            if let tag = status.pendingRemoval {
+                Text("Are you sure you want to remove \(EngineStore.displayName(tag))?")
             }
         }
         .confirmationDialog(
@@ -202,32 +199,7 @@ struct StatusView: View {
                     + "and Steam Play prefixes are not removed."
             )
         }
-        .confirmationDialog(
-            CrossOverLicense.notActivatedTitle,
-            isPresented: asking(.installUnlicensed),
-            titleVisibility: .visible
-        ) {
-            Button("Continue Anyway") {
-                Task { await status.installIntoSteam() }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(
-                CrossOverLicense.notActivatedAdvice
-                    + " NotProton can be deployed, but the CrossOver compatibility tool "
-                    + "cannot be installed without a valid license."
-            )
-        }
         .task { if status.snapshot == nil { await status.refresh() } }
-        .confirmationDialog(
-            CrossOverLicense.notActivatedTitle,
-            isPresented: asking(.toolUnlicensed),
-            titleVisibility: .visible
-        ) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(CrossOverLicense.notActivatedAdvice)
-        }
     }
 
     private func asking(_ confirmation: SystemStatus.Confirmation) -> Binding<Bool> {
@@ -279,21 +251,10 @@ struct StatusView: View {
                 updateBlockRow(snapshot.updateBlocked)
             }
 
-            Section {
-                crossOverRows(snapshot)
-                runnerRow(snapshot.runner, payload: snapshot.payload)
-                if snapshot.installedRunners.count > 1 || !snapshot.orphanedRunners.isEmpty
-                    || !snapshot.damagedRunners.isEmpty || !status.availableBuilds.isEmpty {
-                    buildRows(snapshot)
-                }
-            } header: {
-                Text("Compatibility Tool")
-            } footer: {
-                if status.usableCrossOvers.count > 1 {
-                    HStack {
-                        Spacer()
-                        crossOverLink
-                    }
+            Section("Engine") {
+                runnerRow(snapshot.runner)
+                if snapshot.installedEngines.count > 1 {
+                    engineRows(snapshot)
                 }
             }
 
@@ -424,215 +385,68 @@ struct StatusView: View {
     }
 
     @ViewBuilder
-    private func crossOverRows(_ snapshot: StatusSnapshot) -> some View {
-        let installs = snapshot.crossOver.filter(\.isUsable)
-        if !installs.isEmpty {
-            ForEach(installs) { install in
-                if case .supported(let build) = install.support {
-                    StatusRow(
-                        title: install.name,
-                        value: "Build \(build.displayVersion)",
-                        tone: snapshot.crossOverLicense[install.id]?.licensed == true ? .ok : .warning,
-                        detail: install.bundle.path(percentEncoded: false),
-                        action: installs.count > 1
-                            ? setUpAction(for: install, build: build, snapshot: snapshot)
-                            : crossOverAction()
-                    )
-                }
-            }
-        } else {
+    private func engineRows(_ snapshot: StatusSnapshot) -> some View {
+        let active = EngineStore.currentTag()
+        ForEach(snapshot.installedEngines) { engine in
+            let isActive = engine.tag == active
             StatusRow(
-                title: "CrossOver",
-                value: "Not found. Supported: \(SupportedRunners.versionList).",
-                tone: .bad,
-                action: crossOverAction()
+                title: EngineStore.displayName(engine.tag),
+                value: isActive ? "Active engine." : engineSize(engine.tag),
+                tone: isActive ? .ok : .neutral,
+                secondaryAction: isActive ? nil : removeAction(engine.tag),
+                action: isActive ? nil : useAction(engine.tag)
             )
         }
     }
 
-    private func crossOverAction(chooseLabel: String = "Choose\u{2026}") -> StatusAction {
-        if status.chosenCrossOver != nil {
-            return StatusAction(
-                label: "Use Search",
-                help: "Use the default CrossOver.",
-                isEnabled: status.isIdle
-            ) { Task { await status.clearCrossOverChoice() } }
-        }
-        return StatusAction(
-            label: chooseLabel,
-            help: "Pick a CrossOver install.",
-            isEnabled: status.isIdle
-        ) { Task { await status.chooseCrossOver() } }
-    }
-
-    @ViewBuilder
-    private var crossOverLink: some View {
-        let action = crossOverAction(chooseLabel: "Choose Another Copy\u{2026}")
-        Button(action.label, action: action.perform)
-            .buttonStyle(.link)
-            .disabled(!action.isEnabled)
-            .help(action.help ?? "")
-    }
-
-    private func setUpAction(
-        for install: CrossOverInstall, build: RunnerBuild, snapshot: StatusSnapshot
-    ) -> StatusAction? {
-        guard !snapshot.installedRunners.contains(build) else { return nil }
-        return StatusAction(
-            label: "Set Up",
-            isProminent: snapshot.runner == .none,
-            help: "Set up the compatibility tool from \(install.name).",
-            isEnabled: status.isIdle
-        ) {
-            Task { await status.requestCompatibilityTool(from: install) }
-        }
-    }
-
-    @ViewBuilder
-    private func buildRows(_ snapshot: StatusSnapshot) -> some View {
-        let active = snapshot.runner.buildIdentifier
-        ForEach(SupportedRunners.all) { build in
-            if snapshot.installedRunners.contains(build) {
-                let isActive = build.id == active
-                StatusRow(
-                    title: build.displayVersion,
-                    value: isActive ? "Active build." : buildSize(build.id),
-                    tone: isActive ? .ok : .neutral,
-                    secondaryAction: isActive ? nil : removeAction(build.id),
-                    action: isActive ? nil : useAction(build)
-                )
-            } else if snapshot.damagedRunners.contains(build.id) {
-                StatusRow(
-                    title: build.displayVersion,
-                    value: "Damaged Copy",
-                    tone: .warning,
-                    detail: buildSize(build.id),
-                    secondaryAction: removeAction(build.id),
-                    action: status.availableBuilds.first(where: { $0.id == build.id })
-                        .map(copyAction)
-                )
-            } else if let available = status.availableBuilds.first(where: { $0.id == build.id }) {
-                StatusRow(
-                    title: build.displayVersion,
-                    tone: .neutral,
-                    action: copyAction(available)
-                )
-            }
-        }
-        ForEach(snapshot.orphanedRunners, id: \.self) { build in
-            StatusRow(
-                title: SupportedRunners.displayVersion(forID: build),
-                value: "No longer supported.",
-                tone: .warning,
-                detail: buildSize(build),
-                secondaryAction: removeAction(build)
-            )
-        }
-    }
-
-    private func buildSize(_ build: String) -> String? {
-        status.runnerSizes[build].map {
+    private func engineSize(_ tag: String) -> String? {
+        status.runnerSizes[tag].map {
             ByteCountFormatter.string(fromByteCount: $0, countStyle: .file)
         }
     }
 
-    private func copyAction(_ available: SystemStatus.AvailableBuild) -> StatusAction {
-        StatusAction(
-            label: "Copy",
-            isProminent: true,
-            help: "Copy this CrossOver build and use it.",
-            isEnabled: status.isIdle
-        ) {
-            Task { await status.requestCompatibilityTool(from: available.install) }
-        }
-    }
-
-    private func useAction(_ build: RunnerBuild) -> StatusAction {
+    private func useAction(_ tag: String) -> StatusAction {
         StatusAction(
             label: "Use",
-            help: "Launch games with this CrossOver build.",
+            help: "Launch games with this engine.",
             isEnabled: status.isIdle
         ) {
-            Task { await status.switchRunner(to: build) }
+            Task { await status.switchEngine(to: tag) }
         }
     }
 
-    private func removeAction(_ build: String) -> StatusAction {
+    private func removeAction(_ tag: String) -> StatusAction {
         StatusAction(
             label: "Remove",
             role: .destructive,
-            help: "Delete this build from disk.",
+            help: "Delete this engine from disk.",
             isEnabled: status.isIdle
         ) {
-            status.requestBuildRemoval(build)
+            status.requestEngineRemoval(tag)
         }
     }
 
-    private func runnerAction(
-        label: String = "Set Up", replacingExisting: Bool = false
-    ) -> StatusAction {
-        StatusAction(
-            label: label,
-            isProminent: true,
-            help: "Set up the compatibility tool from CrossOver.",
-            isEnabled: status.isIdle && status.setupSource != nil
-        ) {
-            Task { await status.requestCompatibilityTool(replacingExisting: replacingExisting) }
-        }
-    }
-
-    private func runnerRow(_ state: RunnerState, payload: PayloadState) -> some View {
-        let patchedMissing = !payload.missing(origin: .patched).isEmpty
-
+    private func runnerRow(_ state: EngineState) -> some View {
         switch state {
         case .none:
             return StatusRow(
-                title: "Compatibility Tool",
-                value: "Not set up.",
+                title: "Engine",
+                value: "Not installed.",
                 tone: .neutral,
-                action: status.crossOverRowsOfferSetUp ? nil : runnerAction()
+                detail: "Until the app installs it, run engine/fetch-dormison.sh --activate."
             )
-        case .cloned(let build, let supported):
-            let satisfied = supported && !patchedMissing
-            let deployed = status.setupSourceIsDeployed
+        case .broken(let detail):
             return StatusRow(
-                title: "Compatibility Tool",
-                value: "Build \(SupportedRunners.displayVersion(forID: build))"
-                    + (supported ? "" : " (unsupported)"),
-                tone: satisfied ? .ok : .warning,
-                action: satisfied
-                    ? runnerAction(
-                        label: deployed ? "Copy Again" : "Copy", replacingExisting: true
-                    )
-                    : runnerAction()
-            )
-        case .unpatched(let build, _):
-            return StatusRow(
-                title: "Compatibility Tool",
-                value: "Build \(SupportedRunners.displayVersion(forID: build)), not patched.",
-                tone: .warning,
-                action: runnerAction()
-            )
-        case .bundleShaped(let build):
-            return StatusRow(
-                title: "Compatibility Tool",
-                value: "Build \(SupportedRunners.displayVersion(forID: build)), needs re-setup.",
-                tone: .warning,
-                action: runnerAction()
-            )
-        case .broken:
-            return StatusRow(
-                title: "Compatibility Tool",
+                title: "Engine",
                 value: "Unusable.",
                 tone: .bad,
-                action: runnerAction()
+                detail: detail
             )
         case .engine(let version):
             return StatusRow(
-                title: "Compatibility Tool",
-                value: "Dormison \(version.dropFirst("dormison-".count)).",
-                tone: .ok,
-                detail: "Phase 1 test build: the engine is set up by engine/fetch-dormison.sh."
+                title: "Engine",
+                value: EngineStore.displayName(version),
+                tone: .ok
             )
         }
     }

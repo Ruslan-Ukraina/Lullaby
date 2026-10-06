@@ -31,17 +31,7 @@ enum AppLog {
             "state runner=\(describe(snapshot.runner))",
         ]
 
-        if snapshot.crossOver.isEmpty {
-            lines.append("state crossOver=none found")
-        }
-        for install in snapshot.crossOver {
-            lines.append(
-                "state crossOver \(install.name) version=\(install.releaseVersion ?? "unreadable") "
-                    + "support=\(describe(install.support))"
-                    + (install.isManual ? " chosen" : "")
-                    + " at=\(install.bundle.path(percentEncoded: false))"
-            )
-        }
+        lines.append("state engines=\(snapshot.installedEngines.map(\.tag).joined(separator: ","))")
 
         let payload = snapshot.payload
         lines.append(
@@ -72,23 +62,11 @@ enum AppLog {
         }
     }
 
-    private static func describe(_ runner: RunnerState) -> String {
+    private static func describe(_ runner: EngineState) -> String {
         switch runner {
         case .none: "not set up"
-        case .cloned(let build, let supported): "cloned \(build) supported=\(supported)"
-        case .bundleShaped(let build): "cloned \(build) in an .app"
-        case .unpatched(let build, let problems):
-            "cloned \(build) unpatched: \(problems.joined(separator: ", "))"
         case .broken(let detail): "broken: \(detail)"
         case .engine(let version): "engine \(version)"
-        }
-    }
-
-    private static func describe(_ support: CrossOverSupport) -> String {
-        switch support {
-        case .supported(let build): "supported \(build.id)"
-        case .unsupportedBuild(let version): "unsupported build \(version)"
-        case .unreadable: "unreadable"
         }
     }
 
