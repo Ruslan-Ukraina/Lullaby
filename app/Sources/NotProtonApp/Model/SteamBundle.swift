@@ -28,6 +28,14 @@ enum SteamBundle {
         Shell.processIsRunning(named: "steam_osx")
     }
 
+    /// Wine of ours: an engine from notproton/runners or a game bundle from
+    /// notproton/launchers. Other Wine on the Mac (Sevoflurane bottles) does not count.
+    static var gameIsRunning: Bool {
+        [SupportPaths.runners, SupportPaths.launchers].contains {
+            Shell.processIsRunning(commandLineContaining: $0.path(percentEncoded: false))
+        }
+    }
+
     static func deployment(
         bundledVersion: String,
         app: URL = SupportPaths.Steam.app,

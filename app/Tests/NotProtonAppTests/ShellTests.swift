@@ -122,4 +122,13 @@ struct ShellTests {
         #expect(Shell.processIsRunning(named: "anything", pgrep: pgrep) == false)
         #expect(Shell.processIsRunning(named: "anything", pgrep: absentPath()) == false)
     }
+
+    @Test("A command-line match is passed to pgrep -f as an escaped literal")
+    func commandLineMatchIsEscaped() throws {
+        let (pgrep, dir) = try stubPgrep(body: "[ \"$1\" = -f ] && [ \"$2\" = 'a\\/b\\.c' ]")
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        #expect(Shell.processIsRunning(commandLineContaining: "a/b.c", pgrep: pgrep))
+        #expect(Shell.processIsRunning(commandLineContaining: "a/bxc", pgrep: pgrep) == false)
+    }
 }

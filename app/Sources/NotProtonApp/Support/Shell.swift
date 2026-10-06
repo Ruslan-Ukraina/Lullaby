@@ -132,4 +132,15 @@ enum Shell {
         else { return false }
         return result.succeeded
     }
+
+    /// A process whose command line contains `fragment` (a literal, not a regex).
+    static func processIsRunning(
+        commandLineContaining fragment: String, pgrep: String = "/usr/bin/pgrep",
+        drainTimeout: DispatchTimeInterval = outputDrainTimeout
+    ) -> Bool {
+        let escaped = NSRegularExpression.escapedPattern(for: fragment)
+        guard let result = try? run(pgrep, ["-f", escaped], drainTimeout: drainTimeout)
+        else { return false }
+        return result.succeeded
+    }
 }
