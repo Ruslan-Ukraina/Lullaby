@@ -342,3 +342,11 @@
 - В Steam всё ещё **старый dylib**: в run-логе `runner: x86_64 ntdll is the patched copy` без `(B1)` и без строки i386. Хук работает, потому что B1 уже стоит в `runners/dormison-b1`. Новый скрипт попадёт в Steam после SPIKE_TEST §9.0 (закрыть Steam → Install в NotProton.app).
 - Висящий `winedevice.exe` (pid 55389, запущен 4 октября) — не наш, `spike-check` его не считает. Не трогал.
 - Не проверено: достижения в оверлее (нужен глаз), ETS2, Deadlock, Isaac (32 бит), эксперимент §9.3.
+
+## 2026-10-06 15:22 CEST — Фаза 3: PEAK запущен без тебя (`open steam://rungameid/3527290`)
+
+- Первый кадр DXMT через 7,2 с, главное меню за ~40 с, 92 fps в меню, отсчёт «новий острів» из сети на месте. Снимки — в scratchpad сессии (`peak-b1.png`, `peak-menu.png`).
+- В `notproton-wine.log`: `redirect_steamclient … steamclient64.dll: 40 exports and the entry point lead to lsteamclient.dll` (это трассировка C-хука B1), ошибок `Don't recognize interface` нет.
+- Выход через Quit бандла (osascript): `bundle exited status=0` → `game exited status=0, killing wine prefix` → `session ending`.
+- `engine/spike-check.sh 3527290` — **10 ok, 0 failed**.
+- Не проверено: достижения в оверлее, ETS2, Deadlock, Isaac; в Steam всё ещё старый dylib (§9.0).
