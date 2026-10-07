@@ -283,8 +283,17 @@ static void set_dock_name(NSString *name) {
     FOCUS_LOG("Dock name %s: %d", name.UTF8String, (int)st);
 }
 
+// iconForFile: answers a 32 pt image (with representations up to 2048 px); the Dock
+// draws the tile from the image's size, so it is set to the largest tile first.
+static NSImage *steam_app_icon(void) {
+    NSImage *icon = [NSWorkspace.sharedWorkspace iconForFile:@"/Applications/Steam.app"];
+    icon.size = NSMakeSize(1024, 1024);
+    return icon;
+}
+
 static void become_steam_in_dock(void) {
-    NSApp.applicationIconImage = [NSWorkspace.sharedWorkspace iconForFile:@"/Applications/Steam.app"];
+    NSApp.applicationIconImage = steam_app_icon();
+    FOCUS_LOG("Dock icon: Steam.app's, %.0f pt", NSApp.applicationIconImage.size.width);
     set_dock_name(@"Steam");
 }
 
@@ -310,7 +319,7 @@ static void helper_tick(void) {
     FOCUS_LOG("Steam Helper is now %s (%s)", want ? "regular" : "accessory",
               want ? "a Steam window is open" : "no Steam window: steam_osx keeps the Dock icon");
     if (want)
-        NSApp.applicationIconImage = [NSWorkspace.sharedWorkspace iconForFile:@"/Applications/Steam.app"];
+        NSApp.applicationIconImage = steam_app_icon();
 }
 
 static void start_helper_dock(void) {
