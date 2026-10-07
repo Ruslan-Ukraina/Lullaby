@@ -19,7 +19,8 @@ for path in sorted((root / "dylib").rglob("*.c")):
 if not wanted:
     sys.exit("sigcheck: no signature names found in dylib/, the patterns are stale")
 
-dbs = sorted((root / "signatures").rglob("*.json"))
+# Databases only: signatures/manifest.json lists them and the builds they fit.
+dbs = sorted((root / "signatures").glob("macos.*/*.json"))
 if not dbs:
     sys.exit("sigcheck: no signature database under signatures/")
 

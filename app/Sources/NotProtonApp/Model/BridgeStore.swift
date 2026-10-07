@@ -413,8 +413,26 @@ struct BridgeUpdater: Sendable {
     }
 
     var active: BridgeRelease? {
-        guard let id = store.state.current, let engine else { return nil }
-        return catalog().release(id: id).flatMap { BridgeStore.mismatch($0, engine) == nil ? $0 : nil }
+        guard let engine else { return nil }
+        let catalog = catalog()
+        let fitting = catalog.candidates(for: engine.version).filter { BridgeStore.mismatch($0, engine) == nil }
+        return current(in: fitting)
+    }
+
+    /// The build state.json names, or, before anything wrote it (an install from
+    /// before Phase 5), the one whose files notproton/bridge already holds.
+    func current(in fitting: [BridgeRelease]) -> BridgeRelease? {
+        if let id = store.state.current { return fitting.first { $0.id == id } }
+        return fitting.first { release in
+            guard let root = release.root else { return false }
+            return BridgePayload.entries.allSatisfy { entry in
+                guard let file = release.files.first(where: { $0.name == entry.resource }),
+                      let path = entry.bridgePaths.first
+                else { return false }
+                let have = Digest.sha256IfPresent(store.live.appending(path: path))
+                return have != nil && have == Digest.sha256IfPresent(root.appending(path: file.path))
+            }
+        }
     }
 
     func check(refresh: Bool = true) async throws -> BridgeCheck {
@@ -428,8 +446,7 @@ struct BridgeUpdater: Sendable {
         guard let engine else { return .noEngine }
         let fitting = catalog.candidates(for: engine.version).filter { BridgeStore.mismatch($0, engine) == nil }
         guard let best = fitting.first else { return .noBridge(engine: engine.version) }
-        let current = store.state.current.flatMap { id in fitting.first { $0.id == id } }
-        guard let current else { return .available(best, current: nil) }
+        guard let current = current(in: fitting) else { return .available(best, current: nil) }
         return best.rev > current.rev ? .available(best, current: current) : .upToDate(current)
     }
 
@@ -454,6 +471,11 @@ struct BridgeUpdater: Sendable {
             local = try await store.obtain(release, key: feed.key, transport: transport, report: report)
         }
         report(.switching)
+        // An install from before Phase 5 has no state.json yet: the build already in
+        // notproton/bridge becomes the one Roll Back returns to.
+        if store.state.current == nil, let inferred = active {
+            try store.save(.init(current: inferred.id, previous: nil))
+        }
         let before = store.state.current
         try store.activate(local, engine: engine.root)
         prune()

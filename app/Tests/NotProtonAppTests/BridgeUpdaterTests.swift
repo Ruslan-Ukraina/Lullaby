@@ -31,6 +31,35 @@ struct BridgeUpdaterTests {
         #expect(updater.active?.id == "bridge-dormison-b1-1")
     }
 
+    @Test("Before state.json exists, the bridge already in notproton/bridge counts as active")
+    func inferredActive() async throws {
+        let rig = BridgeRig()
+        defer { rig.remove() }
+        try rig.engine()
+        try rig.bundled()
+        let updater = rig.updater
+        #expect(updater.active == nil)
+        // What SteamInstaller staged before Phase 5: the bundled files, no state.json.
+        _ = try BridgePayload.stage(
+            located: try #require(updater.catalog().release(id: "bridge-dormison-b1-1")).located(), bridge: rig.live)
+        #expect(updater.active?.id == "bridge-dormison-b1-1")
+        guard case .upToDate(let current) = try await updater.check(refresh: false) else {
+            Issue.record("the staged bundled bridge should be up to date")
+            return
+        }
+        #expect(current.id == "bridge-dormison-b1-1")
+
+        // A new revision then keeps the inferred one for Roll Back.
+        try rig.publishManifest(serial: 1, [try rig.artifact(rev: 2)])
+        guard case .available(let offered, _) = try await updater.check() else {
+            Issue.record("expected revision 2 on offer")
+            return
+        }
+        let outcome = try await updater.install(offered)
+        #expect(outcome.previous == "bridge-dormison-b1-1")
+        #expect(updater.rollbackTarget?.id == "bridge-dormison-b1-1")
+    }
+
     @Test("An incompatible engine/bridge pair is refused and nothing changes")
     func incompatiblePair() async throws {
         let rig = BridgeRig()

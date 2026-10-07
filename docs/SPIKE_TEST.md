@@ -744,7 +744,81 @@ NotProton уже поставлен (сборка `83FBEDB0`), Steam перез�
 
 > **§11–§11.14 больше не актуальны:** нативные окна Steam отложены (DECISIONS W19, BACKLOG «Отложено»). Переключатели выключены, Steam выглядит как до задачи.
 
-## 12. Очистка устаревших параметров запуска (ETS2)
+## 12. Проверка Фазы 5: мост, сигнатуры и обновления Steam
+
+Всё — в окне NotProton, Терминал не нужен. Логи смотрю я, напиши мне «логи».
+
+**Что уже сделано без тебя (7 октября, ~12:55):**
+- `/Applications/NotProton.app` — новая сборка. Прежняя — в `scratch/backups/NotProton.app-20261007-before-phase5`.
+- Сборка подключена к **тестовому фиду** — папке `scratch/testfeed/feed` с тестовым ключом. Боевой ключ ты создашь в Фазе 6 (DECISIONS P5-7). В фиде:
+  - мост «revision 2» — те же файлы, что встроенный, под новым номером;
+  - список сигнатур, serial 1.
+- Тот же цикл я прогнал без окна на отдельном дереве: установка моста, откат туда и обратно, появление сигнатур, повтор старого списка (PROGRESS, 7 октября).
+
+### 12.1 Обнови патч в Steam
+
+1. Открой NotProton → **Status**.
+   Ожидаемо: в строке «NotProton» — «Update available», «Out of date: Steam patch». Это новый `notproton.dylib`: базы сигнатур от новой к старой и возврат блока обновлений.
+2. Нажми **Update** → «Close Steam and Install» → **Open Steam**.
+   Ожидаемо: «NotProton successfully installed (build CB60C778)». Steam открывается, в нём есть Steam Play.
+
+### 12.2 Обновления Steam
+
+1. Строка **Steam updates**. Ожидаемо: «Steam stays on build 1788652215 because you blocked its updates.»
+   Твой блок, поставленный до Фазы 5, сохранён как ручной.
+2. Выключи **Block Steam client updates**.
+   - Ожидаемо в «Done»: «NotProton manages Steam updates. Steam 1788652215 is current and supported.»
+   - Строка «Steam updates» становится зелёной.
+   - Блок в Steam при этом остаётся: так задумано (P5-4). NotProton снимает его, только когда Valve предложит билд с сигнатурами.
+3. Включи переключатель снова и подтверди «Block Updates».
+   Ожидаемо: «Steam client updates are blocked until you turn this off.»
+   Оставь его в том положении, которое тебе нужно. Для п. 12.5 — выключенным.
+
+### 12.3 Сигнатуры
+
+Строка **Steam signatures**. Ожидаемо:
+- «Supported Steam builds: 1790904859, 1789086785, 1788652215 and 1 more.»;
+- ниже — «Newest database: 1790904859.json. New databases come from NotProton's signed releases…».
+
+Нажми **Check Now** в «Steam updates». Ожидаемо: «Checked ЧЧ:ММ», ошибок нет.
+
+### 12.4 Мост (Steam Bridge)
+
+1. Прокрути до раздела **Steam Bridge**. Ожидаемо:
+   - «Steam bridge — Revision 1 for Dormison b1 (built in).», commit `52c2a4b918d6`;
+   - «Updates — Steam bridge revision 2 for Dormison b1 is available.» и кнопка **Update**.
+2. Нажми **Update**. Steam закрывать не нужно.
+   - Ожидаемо: «The Steam bridge is now revision 2 for Dormison b1. bridge-dormison-b1-1 is kept for Roll Back…»;
+   - строка «Revision 2 … (downloaded)»;
+   - появилась строка **Previous Steam bridge** с кнопкой **Roll Back**.
+3. Нажми **Roll Back**. Ожидаемо: «The Steam bridge is back on bridge-dormison-b1-1.» и снова «(built in)».
+4. Нажми **Update** ещё раз: для игры оставим ревизию 2.
+5. Во время игры (п. 12.5) нажми **Update** или **Roll Back**.
+   Ожидаемо — отказ: «A game is running under NotProton. Quit the game, then try again.»
+
+### 12.5 Игра с новым мостом
+
+Запусти PEAK, дойди до главного меню, выйди. Ожидаемо: всё как раньше, оверлей Shift+Tab работает. Напиши «PEAK ок» — я прогоню `engine/spike-check.sh 3527290` и посмотрю логи.
+
+### 12.6 По желанию: «Steam N вышел, ждём поддержку» на бете Steam
+
+⚠️ Steam перейдёт на бету 1791249696 — только если ты на это согласен. Вернуться на обычную версию можно в конце.
+
+1. В NotProton выключи «Block Steam client updates» (как в 12.2).
+2. Steam → Настройки → Интерфейс → «Участие в бета-тестировании клиента» → бета Steam. Steam попросит перезапуск — согласись.
+   Ожидаемо: Steam **не обновляется**, NotProton держит блок.
+3. NotProton → **Check Now**. Ожидаемо: «Steam 1791249696 is out. Waiting for NotProton support.» (оранжевым).
+   - Если NotProton пишет другое, значит Steam хранит выбор беты не в `package/beta`, как я предполагаю. Напиши мне.
+4. Напиши мне «публикуй сигнатуры». Я выложу в тестовый фид список serial 2, где 1791249696 отнесён к базе 1790904859. Основание — проверка anchorcheck по пакетам этой беты (DECISIONS P5-8).
+5. **Check Now**. Ожидаемо: «Steam 1791249696 is supported. Steam updates to it the next time it starts.» Блок снят.
+6. Перезапусти Steam. Ожидаемо:
+   - Steam обновится до 1791249696, Steam Play на месте;
+   - **Check Now** в NotProton → «Steam 1791249696 is current and supported.»;
+   - блок вернул сам dylib — в `notproton/notproton.log` строка `update gate: Steam's update block is back` (проверю я).
+7. Возврат на обычную версию: в Steam выбери «Без бета-версии» и перезапусти. Обычная 1788652215 есть в списке, поэтому NotProton её пропустит.
+
+### 12.7 Очистка устаревших параметров запуска (ETS2), по желанию
+
 
 Сейчас у ETS2 (227300) параметры запуска `WINEMSYNC=1 CX_GRAPHICS_BACKEND=dxmt`, остались со времён CrossOver (BACKLOG 21).
 
@@ -753,3 +827,9 @@ NotProton уже поставлен (сборка `83FBEDB0`), Steam перез�
 3. Запусти ETS2 и выйди из неё. В `~/Library/Application Support/Steam/steamapps/compatdata/227300/notproton-run.log` ожидаемо:
    - `renderer: dxmt…`;
    - `sync: WINEMSYNC=1 from carried-over`. Раньше было `from launch-options`: теперь msync+ задаёт маркер, а не параметр запуска.
+
+### 12.8 Что прислать
+
+- По каждому пункту 12.1–12.5 (и 12.6, если делал): «ок» или что увидел вместо ожидаемого. Снимок окна — если текст отличается.
+- После 12.5 — «PEAK ок» (или что не так): логи я посмотрю сам.
+- После проверки скажи, оставить ли сборку с тестовым фидом или вернуть обычную (`make app`, фид выключен; BACKLOG 25).

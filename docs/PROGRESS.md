@@ -724,3 +724,55 @@ Spaces и Постановщик проверить сам не могу: нет
 - `panel-behavior` теперь включает `cleanup.js`.
 
 **Дальше:** Фаза 5 — в новой сессии, по твоему запуску.
+
+## 2026-10-07 10:00–13:00 CEST — Фаза 5: BridgeUpdater, SignatureUpdater, гейт Steam — жду ручной проверки (§12)
+
+**Сделано** (коммит `66a8349` и следующий; решения — DECISIONS P5-1…P5-8, риски — R45–R50, бэклог — 12, 13, 16, 22–25):
+
+- **Фид релизов.** Ключ и адрес в Info.plist (`NPReleasePublicKey`, `NPReleaseFeedURL`).
+  - Боевой ключ — заглушка (пусто): фид выключен, приложение работает со встроенными мостом и сигнатурами.
+  - Подпись Ed25519 проверяется над байтами; `serial` не убывает; проверенная копия — в `notproton/manifests`.
+  - Инструкция по ключу — `docs/RELEASING.md`. Инструменты: `release/feed.py`, `sign.swift`, `keygen.swift`.
+- **Мост.** `bridge-manifest.json` вместо `engine/support.json`.
+  - Скачанные сборки лежат в `notproton/bridges/<id>`, выбор — в `state.json`.
+  - Загрузка: докачка, sha256, подпись, каждый файл по списку.
+  - Активация ставит B1-пару в движок и четыре файла в `bridge/`; есть Roll Back.
+  - Новый движок без подходящего моста не ставится. Если мост есть только в фиде, EngineUpdater скачивает его сам.
+  - После обновления, отката и «Use» мост следует за движком (BACKLOG 13).
+- **Сигнатуры.** `signatures-manifest.json` — базы и билды Steam, к которым они проверены. Базы пишутся туда, где их читает dylib, без пересборки NotProton.
+- **Гейт Steam.**
+  - Блок стоит по умолчанию. Снимается, только пока Valve предлагает билд с сигнатурами; после обновления dylib возвращает его сам.
+  - Ручной переключатель — принудительный блок. Твой прежний блок сохранён как ручной.
+  - UI: «Steam N is out. Waiting for NotProton support.»
+- **dylib.** Базы перебираются от новой к старой; возврат блока — `feats/updategate.c`.
+- **Status.** Новые строки «Steam updates», «Steam signatures» и раздел «Steam Bridge». Проверка — при открытии и раз в 3 часа.
+- **Команда без окна** `--release check|gate|bridge-install|bridge-rollback`. `AppLog.flush` (BACKLOG 16).
+
+**Тесты.**
+- `make app-tests` — **345 тестов**, код 0 (было 326). Новые:
+  - `BridgeUpdaterTests` (9): несовместимая пара движок/мост, обновление и откат моста, поддельные подписи, sha256, лишний файл, повтор старого манифеста, без ключа, игра запущена, распознавание моста до `state.json`;
+  - `SteamGateTests` (9): билд без сигнатур, появление сигнатур, ручной блок, нет сети, поддельная подпись и битая база;
+  - 2 в `EngineUpdaterTests`: новый движок скачивает мост, откат возвращает мост старого движка.
+- `make updategate-check` (C), а также `runcheck scriptcheck sigcheck callscheck webpatch-fixtures peicon-fixtures panel-behavior spawn-env compatcheck compatsvc-check sigdb-fixtures steamwin-check overlay-shim-tests anchorcheck` — код 0. `sigcheck` теперь читает только папки баз.
+- `make app` — код 0 (12:57).
+
+**Живая проверка без тебя** — отдельное дерево `scratch/testfeed/support`, тестовый фид `file://`, настоящий ответ Valve:
+- `--release check` скачал 3 базы. На бете (`package/beta` = publicbeta) Valve предложил 1791249696, гейт ответил `waiting` и записал блок. Мост: `bridge-dormison-b1-2 available (active: bridge-dormison-b1-1)`;
+- `bridge-install` скачал 6,9 МБ, проверил, поставил B1 (`33bca058…`, `e0d5f658…`). Roll Back — на встроенный, и обратно;
+- найдено и исправлено: без `state.json` установка не запоминала встроенный мост для отката;
+- signatures serial 2 с 1791249696 → `update allowed 1788652215 → 1791249696, block=false`. «Steam обновился» → `current 1791249696, supported=true, block=true`. Повтор serial 1 → отказ `serial 1 < 2`.
+
+**Бета Steam 1791249696.** Скачаны пакеты Valve; sha256 совпали с манифестом Valve, подпись Valve (MXGJJ98X76).
+- `anchorcheck`: 17/17 якорей у каждой из трёх баз, 0 расхождений, vptr 8/8. Код 1 — от эвристики «живой сборки» (BACKLOG 22).
+- В боевой список не внесено (P5-8). Лог — `scratch/phase5-check/anchorcheck-beta.log`.
+
+**Оценка нативного arm64 Steam** — BACKLOG 24.
+- Клиент уже универсальный и работает как arm64; NotProton поддерживает только его.
+- Риск — Steam без x86_64-среза: `lsteamclient.so` грузит `steamclient.dylib` в x86_64-процесс игры.
+
+**Установлено.** `/Applications/NotProton.app` — сборка с тестовым фидом, прежняя — в `scratch/backups/NotProton.app-20261007-before-phase5`.
+- Steam не трогал: патч в Steam ты обновишь кнопкой Update (§12.1).
+- Приложение при запуске записало `notproton/steam-update-gate` = `manual` и закэшировало тестовые манифесты.
+- Снимок Status — `scratch/phase5-check/01-status-top.png`.
+
+**Дальше:** твоя проверка по SPIKE_TEST §12. Фаза 6 — по твоей команде.
