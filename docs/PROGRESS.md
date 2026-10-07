@@ -778,3 +778,36 @@ Spaces и Постановщик проверить сам не могу: нет
 **Дальше:** твоя проверка по SPIKE_TEST §12. Фаза 6 — по твоей команде.
 
 **Уведомление (~13:00 CEST):** `PushNotification` — «Terminal notification sent. Mobile push requested.». Снимок Status и SPIKE_TEST.md отправлены в сессию, системное уведомление macOS отправлено (код 0). Жду проверки по §12.
+
+## 2026-10-07 14:20–15:40 CEST — Фаза 6: CI, ключи, Sparkle — контрольная точка «ключи»
+
+**Сделано** (коммиты `d435768`, `a0a9c13`, `e928a82`, `898bd00`; решения — DECISIONS P6-1…P6-10, риски — R51–R56, бэклог — 12, 20, 22, 24–28; инструкция — RELEASING):
+
+- **Раннер.** Пробный workflow (ветка `ci/probe`) на `xcode-27`: Xcode 27.0 (как у тебя), mingw GCC 16.2.0 (как у тебя), Rosetta и графическая сессия есть; Dormison b1 скачан и проверен, `wineboot --init` и `cmd /c echo` — код 0 (P6-1).
+- **`dormison-bridge.yml`** — новый тег Dormison → B1-пара и мост из исходников того же коммита → тест хука в Wine (x86_64, i386 и контроль на релизном `ntdll.dll`) → подписанные тарбол и `bridge-manifest.json` → публикация с чтением обратно; ошибка — issue.
+- **`steam-signatures.yml`** + **`out/sigslice`** (BACKLOG 22) — новый билд Steam (stable и beta) → пакеты Valve (sha256, подпись Valve по срезам, x86_64) → нарезка базы → `anchorcheck` только по новой базе = 0 → подписанный `signatures-manifest.json`; не режется или нет x86_64 — issue.
+- **`release.yml`** — тег `v*` → релизная сборка с опубликованным мостом (P6-2: PE-сборка не воспроизводится побайтно), проверки релиза, C- и Swift-тесты, проверка фида собранным приложением, zip + подписанный appcast (Sparkle) → релиз GitHub, затем appcast.
+- **Ключи** (P6-5, P6-6): `ci-keys.sh` сверяет пару закрытый/открытый и отвергает тестовые; тестовые ключи — публичные (`release/testkeys.swift`), релизная сборка отвергает их и при сборке (`check-release.sh`), и в приложении (`BuildKind.swift`: фид и Sparkle выключаются).
+- **Sparkle** (P6-7): `SUFeedURL`/`SUPublicEDKey` из `make app`, подписанный appcast обязателен, `CFBundleVersion` = число коммитов, пре-релизы — канал `beta`; в Status раздел «NotProton»: версия, «Check for Updates…», «Pre-release versions».
+- **BACKLOG 20** закрыт: строка `steam-windows-debug` роняет релиз и `app.yml`; переключатель нативных окон в релизной сборке скрыт, пока выключен.
+- `app.yml`/`lint.yml` — на каждый push в `dormison`. Версия — 1.1.0.
+
+**Проверено локально:**
+- Нарезка беты 1791249696 из 1790904859: 17/17 якорей, 1 новый шаблон (`GetOSListOverrideForApp.oslist_gate`); `anchorcheck` по новой базе — код 0, по всем четырём — тоже 0 (в Фазе 5 было 1, P5-8).
+- **Обновление через Sparkle ad-hoc-приложения:** сборки 100 и 101 (тестовый ключ, отдельный bundle id, appcast на `127.0.0.1`). Сборка 100 сама нашла 101 (`app updates: found 1.1.0-sparkletest.101 (101)`), скачала, при выходе заменила себя; на месте — 101, `codesign --verify` ок. Тестовые настройки и кэши этого bundle id удалены.
+- `generate_appcast` при одном новом архиве в папке сохраняет старые записи и подписывает appcast; `sign_update --verify` — 0.
+- Ключ формата `keygen.swift` подходит Sparkle (`sign_update --ed-key-file`).
+- `make app` — код 0 (dev-сборка, «release check … sound dev build»); `make app-tests` — **351 тест**, код 0 (+6 `BuildKindTests`); `make scriptcheck runcheck` — 0.
+
+**Dry-run в CI (тестовые ключи, ничего не опубликовано):**
+- `steam-signatures` (`dryrun-signatures-1`, run 37623252800) — успех за 45 с: stable 1788652215 «already supported», бета 1791249696 — база нарезана, побайтно та же, что локально; манифест serial 2 подписан тестовым ключом (подпись проверена).
+- `app` (run 37624025741) — успех: dylib, шим, помощники, C-тесты, Swift-тесты (тесты payload пропущены — моста в этом CI нет).
+- Найдено и исправлено по первому прогону: `steam-shim/fetch-headers.sh` брал экспортированный `WINE_COMMIT` (коммит Dormison) за коммит Valve wine → 404 (теперь `VALVE_WINE_COMMIT`); тесты, которым нужен payload, падали в лёгком CI (теперь пропуск с причиной, а в релизе `NP_REQUIRE_PAYLOAD=1`).
+- `dormison-bridge` (`dryrun-bridge-2`, run 37624028981) — **успех**: движок b1 проверен; исходники Dormison `52c2a4b918` клонированы; `setup-wine-tree.sh`; `build-b1.sh --check-base` — непропатченная пересборка на раннере совпала с релизным кодом инструкция в инструкцию; lsteamclient и `steam.exe` собраны; `test-b1.sh`:
+  - x86_64 — 4 OK, в т. ч. «steamclient64.dll: 40 exports and the entry point lead to lsteamclient.dll»;
+  - i386 — OK;
+  - контроль: релизный `ntdll.dll` — FAIL на обеих архитектурах, как и должно быть.
+
+  Тарбол `bridge-dormison-b1-2` (6,9 МБ) и манифест serial 2 подписаны тестовым ключом (подписи проверены). sha256 B1 другие, чем у локальной сборки (`a02a69d7…`, `f012838c…`) — время сборки в PE (P6-2).
+- Найдено и исправлено: артефакт моста раскладывался под общий корень (`_temp/feed/…`), релизный dry-run искал `feed/…` — теперь один корень и поиск через `find`.
+- Временная ветка `ci/probe` удалена (локально и на GitHub).

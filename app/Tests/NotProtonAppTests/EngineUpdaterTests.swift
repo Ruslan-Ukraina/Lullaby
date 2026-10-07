@@ -737,7 +737,8 @@ struct EngineUpdaterTests {
         let releases = BridgeRelease.list(json, remote: nil, root: repo, bundled: true)
         let entry = try #require(releases.first { $0.engine == "dormison-b1" })
         #expect(entry.engineCommit == "52c2a4b918d6ec5f469ed4e5f58777598c9378ff")
-        #expect(entry.id == "bridge-dormison-b1-1")
+        // Any revision: a release bundles the one dormison-bridge published (DECISIONS P6-2).
+        #expect(entry.id == "bridge-dormison-b1-\(entry.rev)")
         #expect(Set(entry.ntdll.map(\.arch)) == ["x86_64", "i386"])
         #expect(Set(entry.files.map(\.name)) == BridgeRelease.fileNames)
         _ = EngineSignature.dormisonKey
