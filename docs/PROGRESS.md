@@ -659,3 +659,10 @@ Spaces и Постановщик проверить сам не могу: нет
 - `make steamwin-check webpatch-fixtures callscheck runcheck`.
 
 `/Applications/NotProton.app` и dylib в Steam (`FD8ADAFE`) — эта сборка.
+
+## 2026-10-07 ~08:20 CEST — Значок Helper в полном разрешении
+
+- Твоё замечание: значок Steam Helper в Dock размытый.
+- Причина: `iconForFile:` отдаёт изображение 32 pt (представления до 2048 px), и Dock рисовал плитку с этого размера.
+- Исправление: размер ставится 1024 pt; в логе `Dock icon: Steam.app's, 1024 pt`. Сборка `CFB79B3C` в Steam и в /Applications.
+- Две иконки и Постановщик — ждут твоего решения (BLOCKERS).
