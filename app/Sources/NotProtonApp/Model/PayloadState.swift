@@ -9,6 +9,7 @@ struct PayloadState: Sendable {
     var overlayShimPresent: Bool
     var iconmakerPresent: Bool
     var appinfoPresent: Bool
+    var settingsCLIPresent: Bool = true
     var signatureDatabase: String?
     var legacyCompatPresent: Int
     var legacyCompatExpected: Int
@@ -16,7 +17,7 @@ struct PayloadState: Sendable {
 
     var isComplete: Bool {
         manifestProblem == nil && missing.isEmpty && overlayShimPresent && iconmakerPresent
-            && appinfoPresent && signatureDatabase != nil
+            && appinfoPresent && settingsCLIPresent && signatureDatabase != nil
     }
 
     var isEmpty: Bool {
@@ -66,6 +67,7 @@ enum PayloadInspector {
             overlayShimPresent: fm.fileExists(atPath: SupportPaths.overlayShim.path(percentEncoded: false)),
             iconmakerPresent: fm.fileExists(atPath: SupportPaths.iconmaker.path(percentEncoded: false)),
             appinfoPresent: fm.fileExists(atPath: SupportPaths.appinfo.path(percentEncoded: false)),
+            settingsCLIPresent: fm.isExecutableFile(atPath: SupportPaths.settingsCLI.path(percentEncoded: false)),
             signatureDatabase: newestSignatureDatabase(),
             legacyCompatPresent: legacyPresent,
             legacyCompatExpected: legacyNames.count,

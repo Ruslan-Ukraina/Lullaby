@@ -527,6 +527,9 @@ app-payload: $(TARGET) $(OVERLAY_SHIM) $(ICONMAKER) $(APPINFO)
 	cp -f $(OVERLAY_SHIM) "$(APP_PAYLOAD)/overlay-shim.dylib"
 	cp -f $(ICONMAKER) "$(APP_PAYLOAD)/iconmaker"
 	cp -f $(APPINFO) "$(APP_PAYLOAD)/appinfo"
+	swift build --package-path app -c release --product notproton-settings
+	cp -f "$$(swift build --package-path app -c release --show-bin-path)/notproton-settings" \
+		"$(APP_PAYLOAD)/notproton-settings"
 	cp -f dylib/feats/compat_run.sh "$(APP_PAYLOAD)/compat_run.sh"
 	cp -f signatures/macos.arm64/*.json "$(APP_PAYLOAD)/signatures/macos.arm64/"
 ifeq ($(BRIDGE_FEED_DIR),)

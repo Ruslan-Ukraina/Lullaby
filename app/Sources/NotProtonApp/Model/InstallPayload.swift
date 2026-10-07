@@ -10,6 +10,8 @@ enum InstallPayload {
         let overlayShim: URL
         let iconmaker: URL
         let appinfo: URL
+        /// notproton-settings: the settings CLI the Steam panel and Dormison's View menu call.
+        let settingsCLI: URL
         /// compat_run.sh as the dylib embeds it, to compare with Steam's copy and to write it.
         let runScript: URL
 
@@ -39,6 +41,7 @@ enum InstallPayload {
         let shim = root.appending(path: "overlay-shim.dylib")
         let iconmaker = root.appending(path: "iconmaker")
         let appinfo = root.appending(path: "appinfo")
+        let settingsCLI = root.appending(path: SupportPaths.settingsCLIName)
         let runScript = root.appending(path: runScriptName)
 
         var missing: [String] = []
@@ -53,6 +56,9 @@ enum InstallPayload {
         }
         if !files.fileExists(atPath: appinfo.path(percentEncoded: false)) {
             missing.append("appinfo")
+        }
+        if !files.fileExists(atPath: settingsCLI.path(percentEncoded: false)) {
+            missing.append(SupportPaths.settingsCLIName)
         }
         if !files.fileExists(atPath: runScript.path(percentEncoded: false)) {
             missing.append(runScriptName)
@@ -75,7 +81,7 @@ enum InstallPayload {
 
         return Located(
             dylib: dylib, overlayShim: shim, iconmaker: iconmaker,
-            appinfo: appinfo, runScript: runScript, signatures: signatures
+            appinfo: appinfo, settingsCLI: settingsCLI, runScript: runScript, signatures: signatures
         )
     }
 }

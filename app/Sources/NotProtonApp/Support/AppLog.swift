@@ -52,6 +52,7 @@ enum AppLog {
                 + "overlayShim=\(payload.overlayShimPresent) "
                 + "iconmaker=\(payload.iconmakerPresent) "
                 + "appinfo=\(payload.appinfoPresent) "
+                + "settings=\(payload.settingsCLIPresent) "
                 + "signatures=\(payload.signatureDatabase ?? "none") "
                 + "legacycompat=\(payload.legacyCompatPresent)/\(payload.legacyCompatExpected)"
         )

@@ -19,9 +19,20 @@ let package = Package(
         .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.10.0"),
     ],
     targets: [
+        .target(
+            name: "NotProtonSettings",
+            path: "Sources/NotProtonSettings",
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        .executableTarget(
+            name: "notproton-settings",
+            dependencies: ["NotProtonSettings"],
+            path: "Sources/notproton-settings",
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
         .executableTarget(
             name: "NotProtonApp",
-            dependencies: [.product(name: "Sparkle", package: "Sparkle")],
+            dependencies: [.product(name: "Sparkle", package: "Sparkle"), "NotProtonSettings"],
             path: "Sources/NotProtonApp",
             resources: (hasPayload ? [.copy("Resources/payload")] : []) + [
                 .copy("Resources/payload.manifest"),
@@ -32,7 +43,7 @@ let package = Package(
     ] + (hasTests ? [
         .testTarget(
             name: "NotProtonAppTests",
-            dependencies: ["NotProtonApp"],
+            dependencies: ["NotProtonApp", "NotProtonSettings"],
             path: testsPath
         ),
     ] : [])

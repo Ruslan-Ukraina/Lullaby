@@ -28,6 +28,7 @@ struct PatchComparisonTests {
         try write("shim", to: shipped.appending(path: "overlay-shim.dylib"))
         try write("iconmaker", to: shipped.appending(path: "iconmaker"))
         try write("appinfo", to: shipped.appending(path: "appinfo"))
+        try write("settings", to: shipped.appending(path: SupportPaths.settingsCLIName))
         try write("#!/bin/sh\n", to: shipped.appending(path: InstallPayload.runScriptName))
         try write("{}", to: shipped.appending(path: "signatures/macos.arm64/1788652215.json"))
         for entry in BridgePayload.entries {
@@ -42,6 +43,7 @@ struct PatchComparisonTests {
             overlayShim: support.appending(path: "overlay-shim.dylib"),
             iconmaker: support.appending(path: "iconmaker"),
             appinfo: support.appending(path: "appinfo"),
+            settingsCLI: support.appending(path: SupportPaths.settingsCLIName),
             signatures: support.appending(path: "signatures/macos.arm64")
         )
         try write("dylib", to: installed.dylib)
@@ -49,6 +51,7 @@ struct PatchComparisonTests {
         try write("shim", to: installed.overlayShim)
         try write("iconmaker", to: installed.iconmaker)
         try write("appinfo", to: installed.appinfo)
+        try write("settings", to: installed.settingsCLI)
         try write("{}", to: installed.signatures.appending(path: "1788652215.json"))
         for entry in BridgePayload.entries {
             for path in entry.bridgePaths {

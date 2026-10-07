@@ -41,6 +41,7 @@ enum PatchComparison {
         var overlayShim: URL
         var iconmaker: URL
         var appinfo: URL
+        var settingsCLI: URL
         var signatures: URL
 
         static var live: Installed {
@@ -51,6 +52,7 @@ enum PatchComparison {
                 overlayShim: SupportPaths.overlayShim,
                 iconmaker: SupportPaths.iconmaker,
                 appinfo: SupportPaths.appinfo,
+                settingsCLI: SupportPaths.settingsCLI,
                 signatures: SupportPaths.signatures
             )
         }
@@ -93,6 +95,7 @@ enum PatchComparison {
             (installed.overlayShim, payload.overlayShim),
             (installed.iconmaker, payload.iconmaker),
             (installed.appinfo, payload.appinfo),
+            (installed.settingsCLI, payload.settingsCLI),
         ]
         // A database the feed revised (signatures-manifest.json) is current, not stale.
         let known = SignatureUpdater(signatures: installed.signatures).support()

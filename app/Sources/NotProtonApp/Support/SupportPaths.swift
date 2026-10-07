@@ -40,6 +40,10 @@ enum SupportPaths {
     static var overlayShim: URL { support.appending(path: "overlay-shim.dylib") }
     static var iconmaker: URL { support.appending(path: "iconmaker") }
     static var appinfo: URL { support.appending(path: "appinfo") }
+    static let settingsCLIName = "notproton-settings"
+    /// The settings CLI (NotProtonSettings): the Steam panel's writer, and what the stand-in
+    /// below hands Dormison's View menu calls to.
+    static var settingsCLI: URL { support.appending(path: settingsCLIName) }
     // The stand-in Dormison's View menu calls instead of Sevoflurane's CLI, written by
     // compat_run.sh (docs/DECISIONS.md S1).
     static var sevoCLI: URL { support.appending(path: "notproton-sevo") }

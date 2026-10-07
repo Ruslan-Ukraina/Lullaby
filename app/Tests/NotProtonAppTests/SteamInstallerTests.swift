@@ -48,6 +48,7 @@ struct SteamInstallerTests {
 
         let appinfo = root.appending(path: "appinfo")
         try FileManager.default.copyItem(at: dylib, to: appinfo)
+        try FileManager.default.copyItem(at: dylib, to: root.appending(path: SupportPaths.settingsCLIName))
 
         try Data("#!/bin/sh\necho shipped\n".utf8)
             .write(to: root.appending(path: InstallPayload.runScriptName))
@@ -70,6 +71,7 @@ struct SteamInstallerTests {
         var overlayShim: URL { support.appending(path: "overlay-shim.dylib") }
         var iconmaker: URL { support.appending(path: "iconmaker") }
         var appinfo: URL { support.appending(path: "appinfo") }
+        var settingsCLI: URL { support.appending(path: SupportPaths.settingsCLIName) }
         var deployedVersion: URL { support.appending(path: "dylib.version") }
         var backups: URL { support.appending(path: "backups") }
         var bridge: URL { support.appending(path: "bridge") }
@@ -112,6 +114,7 @@ struct SteamInstallerTests {
             overlayShim: fixture.overlayShim,
             iconmaker: fixture.iconmaker,
             appinfo: fixture.appinfo,
+            settingsCLI: fixture.settingsCLI,
             deployedVersion: fixture.deployedVersion,
             backups: fixture.backups,
             runScript: fixture.runScript,

@@ -93,40 +93,17 @@ echo "engine: $(readlink "$engine_root" 2>/dev/null || echo "$engine_root")" \
   >> "$log" 2>&1 || true
 
 # The stand-in SEVO_CLI names. Dormison runs it as
-# "app config <appid> <key> <value>" when a View menu setting changes. It logs
-# the call and writes the setting to the game's .sevo/apps/<program>.env, so
-# the choice holds on the next launch (the program name is in .sevo/game-exe).
+# "app config <appid> <key> <value>" when a View menu setting changes. It logs the
+# call and hands it to notproton-settings, which stores the choice in the game's
+# settings and rewrites its env files, so the choice holds on the next launch.
 sevo_stub=$(cat <<'STUB'
 #!/bin/sh
-# NotProton's stand-in for Sevoflurane's sevo CLI (docs/DECISIONS.md S1).
+# NotProton's stand-in for Sevoflurane's sevo CLI (docs/DECISIONS.md S1, P7A-5).
 log="$HOME/Library/Application Support/notproton/notproton-sevo.log"
 printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$log" 2>/dev/null
-[ "$1" = app ] && [ "$2" = config ] && [ -n "$5" ] || exit 0
-case "$4" in
-  (upscaler) var=SEVO_UPSCALER; value=$5 ;;
-  (filter) var=SEVO_FINAL_FILTER; value=$5 ;;
-  (windows) var=SEVO_RESIZABLE_WINDOWS; value=$5 ;;
-  (fps) var=SEVO_FPS ;;
-  (fps-graph) var=SEVO_FPS_GRAPH ;;
-  (*) exit 0 ;;
-esac
-case "$4" in
-  (fps|fps-graph) case "$5" in (on) value=1 ;; (off) value=0 ;; (*) exit 0 ;; esac ;;
-esac
-case "$value" in (*[!A-Za-z0-9_.-]*) exit 0 ;; esac
-[ -n "$WINEPREFIX" ] && [ -f "$WINEPREFIX/.sevo/game-exe" ] || exit 0
-exe=$(cat "$WINEPREFIX/.sevo/game-exe")
-file="$WINEPREFIX/.sevo/apps/$exe.env"
-mkdir -p "$WINEPREFIX/.sevo/apps" || exit 0
-if [ -f "$file" ]; then
-  awk -v k="$var" -v v="$value" '
-    { line = $0; sub(/^[ \t]+/, "", line) }
-    index(line, k "=") == 1 { if (!done) print k "=" v; done = 1; next }
-    { print }
-    END { if (!done) print k "=" v }' "$file" > "$file.np-new" && mv -f "$file.np-new" "$file"
-else
-  printf '%s=%s\n' "$var" "$value" > "$file"
-fi
+cli="$HOME/Library/Application Support/notproton/notproton-settings"
+[ "$1" = app ] && [ "$2" = config ] && [ -x "$cli" ] || exit 0
+"$cli" "$@" >> "$log" 2>&1
 exit 0
 STUB
 )
@@ -411,14 +388,51 @@ env_value() {
   done
   return 0
 }
+# A Wine registry switch a setting asks for, as y or nothing (deleted).
+reg_switch() {
+  key=$1
+  name=$2
+  if [ "$3" = 1 ]; then
+    "$WINELOADER" reg add "$key" /v "$name" /t REG_SZ /d y /f >> "$log" 2>&1 || true
+  else
+    "$WINELOADER" reg delete "$key" /v "$name" /f >> "$log" 2>&1 || true
+  fi
+}
 if [ -n "$STEAM_COMPAT_DATA_PATH" ]; then
   export WINEPREFIX="$STEAM_COMPAT_DATA_PATH/pfx"
-  [ -n "$NOTPROTON_RETINA" ] || NOTPROTON_RETINA=$(env_value NOTPROTON_RETINA)
   mkdir -p "$WINEPREFIX"
+  stage_step="prefix arch check"
+  refuse_foreign_prefix
+  # The settings catalog (notproton-settings, docs/ROADMAP.md §4): it records this
+  # game's programs, brings a prefix from before the catalog into it, and writes
+  # .sevo/bottle.env and every program's file before anything starts.
+  stage_step="game settings"
+  settings_cli="$support/notproton-settings"
+  if [ -x "$settings_cli" ] && [ "$app_id" != 0 ]; then
+    if "$settings_cli" launch --app "$app_id" --exe "$1" --prefix "$WINEPREFIX" \
+      ${STEAM_COMPAT_INSTALL_PATH:+--install} ${STEAM_COMPAT_INSTALL_PATH:+"$STEAM_COMPAT_INSTALL_PATH"} \
+      >> "$log" 2>&1; then
+      echo "settings: .sevo written by notproton-settings" >> "$log" 2>&1 || true
+    else
+      echo "=== notproton-settings failed, the prefix keeps its files ===" >> "$log" 2>&1 || true
+    fi
+  fi
+  # NotProton's own keys: a launch option first, then the program's file, then
+  # bottle.env (the engine reads its SEVO_* keys from those files itself).
+  [ -n "$NOTPROTON_RETINA" ] || NOTPROTON_RETINA=$(env_value NOTPROTON_RETINA)
+  [ -n "$NOTPROTON_EMULATE_MODESET" ] || NOTPROTON_EMULATE_MODESET=$(env_value NOTPROTON_EMULATE_MODESET)
+  [ -n "$NOTPROTON_COMMAND_IS_CTRL" ] || NOTPROTON_COMMAND_IS_CTRL=$(env_value NOTPROTON_COMMAND_IS_CTRL)
+  [ -n "$NOTPROTON_OPTION_IS_ALT" ] || NOTPROTON_OPTION_IS_ALT=$(env_value NOTPROTON_OPTION_IS_ALT)
+  [ -n "$NOTPROTON_DLSS" ] || NOTPROTON_DLSS=$(env_value NOTPROTON_DLSS)
+  [ -n "$NOTPROTON_DLL_OVERRIDES" ] || NOTPROTON_DLL_OVERRIDES=$(env_value NOTPROTON_DLL_OVERRIDES)
   msync_from=launch-options
-  # The marker carries a launch option's choice over to the runs that come
-  # without one. A marker written by an earlier tool can hold 0 as its default, so it
-  # only counts once the prefix has a bottle.env, which only Dormison runs write.
+  # msync+ is Dormison's sync and stays on; the catalog's per-game debugging switch
+  # (NOTPROTON_MSYNC in bottle.env) can turn it off. A prefix from before the
+  # catalog carries the old marker instead.
+  if [ -z "$WINEMSYNC" ]; then
+    WINEMSYNC=$(sed -n 's/^NOTPROTON_MSYNC=//p' "$WINEPREFIX/.sevo/bottle.env" 2>/dev/null | head -1)
+    [ -n "$WINEMSYNC" ] && msync_from=settings
+  fi
   if [ -z "$WINEMSYNC" ] && [ -r "$STEAM_COMPAT_DATA_PATH/notproton-msync" ] \
     && [ -f "$WINEPREFIX/.sevo/bottle.env" ]; then
     WINEMSYNC=$(tr -d ' \t\n' \
@@ -426,12 +440,7 @@ if [ -n "$STEAM_COMPAT_DATA_PATH" ]; then
     msync_from=carried-over
   fi
   [ -n "$WINEMSYNC" ] || msync_from=default
-  # msync+ is Dormison's sync and stays on; 0 is a per-game debugging switch.
   export WINEMSYNC="${WINEMSYNC:-1}"
-  printf '%s' "$WINEMSYNC" \
-    > "$STEAM_COMPAT_DATA_PATH/notproton-msync" 2>/dev/null || true
-  stage_step="prefix arch check"
-  refuse_foreign_prefix
   echo "sync: WINEMSYNC=$WINEMSYNC from $msync_from" >> "$log" 2>&1 || true
   stage_step="bottle settings"
   write_bottle_env
@@ -443,12 +452,17 @@ if [ -n "$STEAM_COMPAT_DATA_PATH" ]; then
   "$WINELOADER" reg add 'HKLM\Software\Wow6432Node\Microsoft\Windows NT\CurrentVersion\AeDebug' /v Auto /t REG_SZ /d 0 /f >> "$log" 2>&1 || true
   "$WINELOADER" reg add 'HKCU\Software\Wine\WineDbg' /v ShowCrashDialog /t REG_DWORD /d 0 /f >> "$log" 2>&1 || true
 
-  echo "video: RetinaMode=${NOTPROTON_RETINA:-0}" >> "$log" 2>&1 || true
-  if [ "$NOTPROTON_RETINA" = "1" ]; then
-    "$WINELOADER" reg add 'HKCU\Software\Wine\Mac Driver' /v RetinaMode /t REG_SZ /d y /f >> "$log" 2>&1 || true
-  else
-    "$WINELOADER" reg delete 'HKCU\Software\Wine\Mac Driver' /v RetinaMode /f >> "$log" 2>&1 || true
-  fi
+  # Registry settings of the catalog. Each prefix is one game's, so the prefix-wide
+  # keys are the game's own. RetinaMode is read with no program key at all
+  # (winemac.drv), EmulateModeset by win32u for every program, explorer.exe included.
+  echo "video: RetinaMode=${NOTPROTON_RETINA:-0} EmulateModeset=${NOTPROTON_EMULATE_MODESET:-0}" >> "$log" 2>&1 || true
+  reg_switch 'HKCU\Software\Wine\Mac Driver' RetinaMode "$NOTPROTON_RETINA"
+  reg_switch 'HKCU\Software\Wine\X11 Driver' EmulateModeset "$NOTPROTON_EMULATE_MODESET"
+  echo "keyboard: CommandIsCtrl=${NOTPROTON_COMMAND_IS_CTRL:-0} OptionIsAlt=${NOTPROTON_OPTION_IS_ALT:-0}" >> "$log" 2>&1 || true
+  reg_switch 'HKCU\Software\Wine\Mac Driver' LeftCommandIsCtrl "$NOTPROTON_COMMAND_IS_CTRL"
+  reg_switch 'HKCU\Software\Wine\Mac Driver' RightCommandIsCtrl "$NOTPROTON_COMMAND_IS_CTRL"
+  reg_switch 'HKCU\Software\Wine\Mac Driver' LeftOptionIsAlt "$NOTPROTON_OPTION_IS_ALT"
+  reg_switch 'HKCU\Software\Wine\Mac Driver' RightOptionIsAlt "$NOTPROTON_OPTION_IS_ALT"
 
   "$WINELOADER" reg add 'HKLM\Software\Classes\steam' /v 'URL Protocol' /t REG_SZ /d '' /f >> "$log" 2>&1 || true
   "$WINELOADER" reg add 'HKLM\Software\Classes\steam\shell\open\command' /ve /t REG_SZ /d '"C:\Program Files (x86)\Steam\steam.exe" "%1"' /f >> "$log" 2>&1 || true
@@ -567,12 +581,20 @@ renderers="$support/renderers"
 stage_renderer() {
   dir="$renderers/$1"
   case "$1" in
-    dxmt)
+    dxmt|dxmt-nvext)
       mkdir -p "$dir/x86_64-windows" "$dir/i386-windows" "$dir/x86_64-unix" || return 1
       for f in d3d11 d3d10core dxgi winemetal; do
         ln -sfn "$engine_root/dxmt/$f.dll" "$dir/x86_64-windows/$f.dll"
         ln -sfn "$engine_root/dxmt/i386-windows/$f.dll" "$dir/i386-windows/$f.dll"
       done
+      # DLSS -> MetalFX (the catalog's experimental switch): DXMT's own NVAPI and NGX
+      # answer the game, from a directory of their own so that no other game loads
+      # them. The prefix holds files of both names (Wine's), as the loader requires.
+      if [ "$1" = dxmt-nvext ]; then
+        for f in nvapi64 nvngx; do
+          ln -sfn "$engine_root/dxmt/$f.dll" "$dir/x86_64-windows/$f.dll"
+        done
+      fi
       # Wine looks for a builtin's unix half beside the directory it found the
       # PE in, and winemetal's is the engine's (32 bit games reach it via wow64).
       ln -sfn "$wine_unix/winemetal.so" "$dir/x86_64-unix/winemetal.so"
@@ -593,6 +615,7 @@ stage_renderer() {
       # In this order: Dormison names the renderer in its sevo:gfx log line by
       # finding "d3d10core,d3d11" in WINEDLLOVERRIDES (sevo_provenance.c).
       renderer_overrides="d3d10core,d3d11,dxgi,winemetal=b"
+      [ "$1" = dxmt-nvext ] && renderer_overrides="$renderer_overrides;nvapi64,nvngx=n,b"
       ;;
     dxvk)
       mkdir -p "$dir/x86_64-windows" || return 1
@@ -623,15 +646,25 @@ case "$renderer" in
     renderer=dxmt ;;
 esac
 unset WINEDLLPATH_PREPEND
+renderer_dir="$renderer"
+if [ "$renderer" = dxmt ] && [ "$NOTPROTON_DLSS" = 1 ]; then
+  renderer_dir=dxmt-nvext
+  echo "renderer: DLSS -> MetalFX through DXMT (experimental)" >> "$log" 2>&1 || true
+fi
 if [ "$renderer" != wined3d ]; then
-  if stage_renderer "$renderer"; then
-    export WINEDLLPATH_PREPEND="$renderers/$renderer"
+  if stage_renderer "$renderer_dir"; then
+    export WINEDLLPATH_PREPEND="$renderers/$renderer_dir"
     export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:+$WINEDLLOVERRIDES;}$renderer_overrides"
   else
     renderer=wined3d
   fi
 fi
 echo "renderer: $renderer${WINEDLLPATH_PREPEND:+ from $WINEDLLPATH_PREPEND}" >> "$log" 2>&1 || true
+# The catalog's DLL overrides follow NotProton's own: it refuses the libraries of the
+# Steam bridge and the renderers, so none of these names repeats one above.
+if [ -n "$NOTPROTON_DLL_OVERRIDES" ]; then
+  export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:+$WINEDLLOVERRIDES;}$NOTPROTON_DLL_OVERRIDES"
+fi
 echo "WINEDLLOVERRIDES=$WINEDLLOVERRIDES" >> "$log" 2>&1 || true
 
 # loaddll is a line per module, cheap, and shows lsteamclient coming in.

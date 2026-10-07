@@ -1,53 +1,52 @@
 #!/bin/sh
-# The View menu's stand-in for `sevo`: "app config <appid> <key> <value>" lands
-# in .sevo/apps/<program>.env, other keys and bad values change nothing. The
-# stub is cut out of compat_run.sh, so the real text is tested.
+# The View menu's stand-in for `sevo`: "app config <appid> <key> <value>" goes to
+# notproton-settings, which stores it (NotProtonSettings, SettingsCLITests); every
+# other call, and a call while the CLI is missing, changes nothing. The stub is cut
+# out of compat_run.sh, so the real text is tested.
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
 src="$here/../feats/compat_run.sh"
 work=$(mktemp -d "${TMPDIR:-/tmp}/stubcheck.XXXXXX") || exit 1
 trap 'rm -rf "${work:?}"' EXIT
 HOME="$work/home"; export HOME
-mkdir -p "$HOME/Library/Application Support/notproton" "$work/pfx/.sevo/apps"
-WINEPREFIX="$work/pfx"; export WINEPREFIX
+support="$HOME/Library/Application Support/notproton"
+mkdir -p "$support"
 sed -n "/^sevo_stub=\$(cat <<'STUB'/,/^STUB/p" "$src" | sed '1d;$d' > "$work/sevo"
 chmod +x "$work/sevo"
 
 fail=0
-env_file="$WINEPREFIX/.sevo/apps/game.exe.env"
-check() { # description, expected content
-  if [ "$(cat "$env_file" 2>/dev/null)" != "$2" ]; then
-    echo "FAIL: $1"; echo "--- got:"; cat "$env_file" 2>/dev/null; fail=1
+calls="$work/calls"
+check() { # description, expected calls
+  if [ "$(cat "$calls" 2>/dev/null)" != "$2" ]; then
+    echo "FAIL: $1"; echo "--- got:"; cat "$calls" 2>/dev/null; fail=1
   fi
 }
 
-"$work/sevo" app config 1 upscaler lanczos
-[ ! -f "$env_file" ] || { echo "FAIL: wrote without game-exe"; fail=1; }
+"$work/sevo" app config 1 upscaler lanczos || { echo "FAIL: exit status without the CLI"; fail=1; }
+check "nothing runs without the CLI" ""
 
-echo game.exe > "$WINEPREFIX/.sevo/game-exe"
-printf 'SEVO_LOADER=/x/wine\n' > "$env_file"
-"$work/sevo" app config 1 upscaler metalfx
-"$work/sevo" app config 1 fps on
-"$work/sevo" app config 1 fps-graph off
-"$work/sevo" app config 1 windows all
-"$work/sevo" app config 1 filter bilinear
-"$work/sevo" app config 1 upscaler anime4k
-check "settings are written, repeats replace" "SEVO_LOADER=/x/wine
-SEVO_UPSCALER=anime4k
-SEVO_FPS=1
-SEVO_FPS_GRAPH=0
-SEVO_RESIZABLE_WINDOWS=all
-SEVO_FINAL_FILTER=bilinear"
-"$work/sevo" app config 1 bogus x
-"$work/sevo" app config 1 upscaler 'a b;rm'
-"$work/sevo" app config 1 fps maybe
+cat > "$support/notproton-settings" <<EOF
+#!/bin/sh
+printf '%s\n' "\$*" >> "$calls"
+exit 3
+EOF
+chmod +x "$support/notproton-settings"
+
+"$work/sevo" app config 3527290 upscaler metalfx
+"$work/sevo" app config 3527290 fps on
 "$work/sevo" other config 1 fps on
-check "unknown keys and bad values change nothing" "SEVO_LOADER=/x/wine
-SEVO_UPSCALER=anime4k
-SEVO_FPS=1
-SEVO_FPS_GRAPH=0
-SEVO_RESIZABLE_WINDOWS=all
-SEVO_FINAL_FILTER=bilinear"
+"$work/sevo" app list
+"$work/sevo" || true
+check "app config calls reach the CLI, others do not" "app config 3527290 upscaler metalfx
+app config 3527290 fps on"
 
-[ "$fail" -eq 0 ] && echo "==> stubcheck: View menu choices reach .sevo/apps/<program>.env"
+"$work/sevo" app config 1 'a b;rm' x || { echo "FAIL: the CLI's status leaked out"; fail=1; }
+check "arguments arrive as they were given" "app config 3527290 upscaler metalfx
+app config 3527290 fps on
+app config 1 a b;rm x"
+
+grep -q 'app config 3527290 fps on' "$support/notproton-sevo.log" \
+  || { echo "FAIL: calls are not logged"; fail=1; }
+
+[ "$fail" -eq 0 ] && echo "==> stubcheck: View menu choices reach notproton-settings"
 exit "$fail"

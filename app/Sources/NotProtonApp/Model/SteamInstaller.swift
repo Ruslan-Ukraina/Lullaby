@@ -62,6 +62,7 @@ enum SteamInstaller {
         overlayShim: URL = SupportPaths.overlayShim,
         iconmaker: URL = SupportPaths.iconmaker,
         appinfo: URL = SupportPaths.appinfo,
+        settingsCLI: URL = SupportPaths.settingsCLI,
         deployedVersion: URL = SupportPaths.deployedVersion,
         backups: URL = SupportPaths.backups,
         runScript: URL = SupportPaths.Steam.compatTool.appending(path: "run"),
@@ -119,6 +120,7 @@ enum SteamInstaller {
         try install(payload.overlayShim, at: overlayShim)
         try install(payload.iconmaker, at: iconmaker)
         try install(payload.appinfo, at: appinfo)
+        try install(payload.settingsCLI, at: settingsCLI)
         try installRunScript(payload.runScript, at: runScript)
 
         var backedUp = false
