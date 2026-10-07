@@ -837,3 +837,15 @@ Spaces и Постановщик проверить сам не могу: нет
 - **Ветки:** Фаза 7 (7A–7D) делается только в `phase-7` — она создана от `dormison` на коммите с этой записью и запушена. В `dormison` не мержится, пока ты не закроешь Фазу 6 и не проверишь Фазу 7. После «ключи готовы» Фаза 6 доводится в `dormison` без кода Фазы 7 (RELEASING §2).
 - Рабочая копия оставлена на `dormison`; новая сессия Фазы 7 начинает с `git switch phase-7`.
 - Больше ничего не начинал: жду твою следующую задачу.
+
+## 2026-10-07 ~18:40 CEST — Фаза 7A начата (ветка `phase-7`): контрольная точка «макет и быстрые настройки»
+
+- Перечитаны CLAUDE.md, ROADMAP, docs/*.md; рабочая копия переключена на `phase-7` (= `dormison` @ `cd6725c`). Ключи, секреты и релизы Фазы 6 не трогаю, в `dormison` не мержу.
+- **Разведка (только чтение):**
+  - Sevoflurane `Core/SettingCatalog.swift`, `SettingCopy.swift`, `GameConfig.swift`, `ConfigMaterializer.swift`, `ConfigRegistry.swift` (MIT) — эталон каталога, файлов и наследования.
+  - Dormison `52c2a4b918`, `dlls/ntdll/unix/env.c`: значение из env-файла **перекрывает** окружение процесса (`setenv(…, 1)`), `KEY=` удаляет переменную; `WINEMSYNC`, `WINEPREFIX`, `WINESERVER`, `WINEARCH` принимаются **только из `bottle.env`**. Реестр: `RetinaMode` без app-ключа, `EmulateModeset` и `Left/RightCommandIsCtrl`, `Left/RightOptionIsAlt` — с app-ключом.
+  - DXMT движка b1: есть `DXMT_CONFIG`, `d3d11.preferredMaxFrameRate`, `dxgi.customVendorId`, `DXMT_ENABLE_NVEXT`; DXVK: `DXVK_FRAME_RATE`.
+  - Steam: компоненты страницы «Совместимость» и раздела Steam Play в настройках найдены в `chunk~2dcc5aaf7.js`; язык интерфейса — `SteamClient.Settings.GetCurrentLanguage()`. Панель сейчас умеет только параметры запуска, для файлов нужен новый канал JS → dylib (Steam Helper) → CLI.
+  - Текущие файлы у тебя (только чтение): PEAK `SEVO_FPS=1 SEVO_FPS_GRAPH=1 NOTPROTON_RETINA=1`; Deadlock `SEVO_FPS_GRAPH=1 NOTPROTON_RENDERER=dxmt ROSETTA_ADVERTISE_AVX=1 NOTPROTON_RETINA=1`; ETS2 `SEVO_FPS=1`; все `bottle.env` — профиль NotProton по умолчанию. Это и есть данные для миграции.
+- **Макет** — `docs/mockups/{1-properties,2-advanced,3-settings}.html` (HTML → PNG через QuickLook, не снимок экрана); PNG отправлены в сессию.
+- **Жду твоего «ок»** по макету и составу быстрых настроек (BLOCKERS). Код не менялся.

@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><title>NotProton 7A — макет</title>
+<style>
+  :root{--bg:#1b1d22;--win:#23262e;--nav:#1e2026;--text:#dcdedf;--dim:#8b929a;--line:#3a3f48;--field:#32363f;--blue:#1a9fff;--green:#59bf40}
+  *{box-sizing:border-box}
+  body{margin:0;padding:24px;background:#101114;font:14px/1.35 "Motiva Sans","SF Pro Text",-apple-system,Arial,sans-serif;color:var(--text);width:760px}
+  h1{font-size:18px;font-weight:600;margin:0 0 4px}
+  .note{color:var(--dim);font-size:12px;margin:0 0 18px}
+  .row{display:flex;gap:24px;align-items:flex-start}
+  .win{background:var(--win);border-radius:6px;box-shadow:0 10px 30px rgba(0,0,0,.6);overflow:hidden;flex:none}
+  .title{height:34px;background:#171a21;display:flex;align-items:center;padding:0 12px;color:var(--dim);font-size:12px;gap:8px}
+  .dot{width:11px;height:11px;border-radius:50%;background:#555}
+  .body{display:flex}
+  .navcol{width:150px;background:var(--nav);padding:14px 0}
+  .navcol div{padding:7px 16px;color:var(--dim);font-size:13px}
+  .navcol .on{color:#fff;background:#3d4450}
+  .page{padding:18px 22px 22px;width:560px}
+  .h{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:#fff;margin:2px 0 12px}
+  .chk{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}
+  .box{width:18px;height:18px;border-radius:3px;background:var(--blue);color:#fff;font-size:13px;line-height:18px;text-align:center;flex:none}
+  .dd{background:var(--field);border-radius:3px;padding:7px 10px;display:flex;justify-content:space-between;min-width:220px;color:#fff}
+  .dd:after{content:"▾";color:var(--dim)}
+  .sep{height:1px;background:var(--line);margin:16px 0 12px}
+  .np{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+  .np b{font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+  .np span{color:var(--dim);font-size:12px}
+  .set{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #2c3038}
+  .lab{display:flex;flex-direction:column;gap:3px}
+  .lab .t{display:flex;gap:6px;align-items:center}
+  .i{display:inline-block;width:15px;height:15px;border-radius:50%;border:1px solid var(--dim);color:var(--dim);font-size:10px;line-height:13px;text-align:center;font-style:normal}
+  .sub{font-size:12px;color:var(--dim)}
+  .sub a{color:var(--blue);text-decoration:none}
+  .own{color:#c7d5e0}
+  .tg{width:38px;height:20px;border-radius:10px;background:#4b5160;position:relative;flex:none}
+  .tg:after{content:"";position:absolute;width:16px;height:16px;border-radius:50%;background:#dcdedf;top:2px;left:2px}
+  .tg.on{background:var(--blue)}.tg.on:after{left:20px;background:#fff}
+  .btn{display:inline-block;background:#3d4450;color:#fff;border-radius:3px;padding:8px 16px;margin-top:14px}
+  .hint{font-size:12px;color:var(--dim);margin-top:8px}
+  .warn{color:#e4c046}
+  .label{font-size:12px;color:#7d8a99;margin:10px 0 6px}
+  /* dialog */
+  .shade{position:relative;background:rgba(0,0,0,.55);padding:26px 30px;border-radius:6px}
+  .dlg{background:#2a2e36;border-radius:4px;width:620px;box-shadow:0 12px 40px rgba(0,0,0,.7)}
+  .dlg .hd{padding:18px 22px 6px;font-size:20px;color:#fff}
+  .dlg .sb{padding:0 22px 12px;color:var(--dim);font-size:12px}
+  .dlg .bd{padding:0 22px 6px}
+  .grp{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#fff;margin:14px 0 2px}
+  .ft{display:flex;justify-content:space-between;padding:14px 22px 18px;border-top:1px solid var(--line);margin-top:8px}
+  .ft .btn{margin:0}
+  .prim{background:linear-gradient(90deg,#1a9fff,#1474e0)}
+  .muted{opacity:.55}
+</style></head><body><h1>NotProton · Фаза 7A · макет (не снимок экрана)</h1><p class="note">Свойства игры → Совместимость. Тексты — из каталога, язык — язык Steam (en/uk/ru, запасной en). Серый текст под строкой — наследование.</p><!-- 1. Game properties -->
+  <div class="win">
+    <div class="title"><span class="dot"></span><span class="dot"></span><span class="dot"></span>&nbsp; PEAK — Свойства</div>
+    <div class="body">
+      <div class="navcol"><div>Общие</div><div class="on">Совместимость</div><div>Контроллер</div><div>Обновления</div><div>Установленные файлы</div><div>Бета-версии</div></div>
+      <div class="page">
+        <div class="h">Совместимость</div>
+        <div class="chk"><div class="box">✓</div><div>Принудительно использовать особый инструмент совместимости Steam Play</div></div>
+        <div class="dd" style="width:300px">Dormison (NotProton)</div>
+        <div class="hint">Как Steam Play на Linux. Выбора движка Wine нет: движок один — Dormison.</div>
+
+        <div class="sep"></div>
+        <div class="np"><b>NotProton</b><span>Dormison b1 · применится при следующем запуске</span></div>
+
+        <div class="set"><div class="lab"><div class="t">Рендерер <i class="i">i</i></div><div class="sub">Для всех игр: DXMT</div></div><div class="dd">DXMT</div></div>
+        <div class="set"><div class="lab"><div class="t">Высокое разрешение (Retina) <i class="i">i</i></div><div class="sub own">Своё для этой игры · <a>Сбросить</a></div></div><div class="tg on"></div></div>
+        <div class="set"><div class="lab"><div class="t">Апскейлер <i class="i">i</i></div><div class="sub">Для всех игр: Выкл.</div></div><div class="dd">Выкл.</div></div>
+        <div class="set"><div class="lab"><div class="t">Счётчик FPS <i class="i">i</i></div><div class="sub own">Своё для этой игры · <a>Сбросить</a> &nbsp;·&nbsp; ⌥⌘F в игре</div></div><div class="tg on"></div></div>
+        <div class="set"><div class="lab"><div class="t">Ограничение FPS <i class="i">i</i></div><div class="sub">Для всех игр: Выкл. · DXMT/DXVK</div></div><div class="dd">Выкл.</div></div>
+
+        <div class="btn">Дополнительные настройки…</div>
+        <div class="hint">Игра запущена → вместо «при следующем запуске»: <span class="warn">«Применится после перезапуска игры»</span>.<br>Игру ещё не запускали → «Применится при первом запуске».</div>
+      </div>
+    </div>
+  </div>
+
+  </body></html>

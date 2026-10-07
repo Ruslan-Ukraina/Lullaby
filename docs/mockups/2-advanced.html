@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><title>NotProton 7A — макет</title>
+<style>
+  :root{--bg:#1b1d22;--win:#23262e;--nav:#1e2026;--text:#dcdedf;--dim:#8b929a;--line:#3a3f48;--field:#32363f;--blue:#1a9fff;--green:#59bf40}
+  *{box-sizing:border-box}
+  body{margin:0;padding:24px;background:#101114;font:14px/1.35 "Motiva Sans","SF Pro Text",-apple-system,Arial,sans-serif;color:var(--text);width:760px}
+  h1{font-size:18px;font-weight:600;margin:0 0 4px}
+  .note{color:var(--dim);font-size:12px;margin:0 0 18px}
+  .row{display:flex;gap:24px;align-items:flex-start}
+  .win{background:var(--win);border-radius:6px;box-shadow:0 10px 30px rgba(0,0,0,.6);overflow:hidden;flex:none}
+  .title{height:34px;background:#171a21;display:flex;align-items:center;padding:0 12px;color:var(--dim);font-size:12px;gap:8px}
+  .dot{width:11px;height:11px;border-radius:50%;background:#555}
+  .body{display:flex}
+  .navcol{width:150px;background:var(--nav);padding:14px 0}
+  .navcol div{padding:7px 16px;color:var(--dim);font-size:13px}
+  .navcol .on{color:#fff;background:#3d4450}
+  .page{padding:18px 22px 22px;width:560px}
+  .h{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:#fff;margin:2px 0 12px}
+  .chk{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}
+  .box{width:18px;height:18px;border-radius:3px;background:var(--blue);color:#fff;font-size:13px;line-height:18px;text-align:center;flex:none}
+  .dd{background:var(--field);border-radius:3px;padding:7px 10px;display:flex;justify-content:space-between;min-width:220px;color:#fff}
+  .dd:after{content:"▾";color:var(--dim)}
+  .sep{height:1px;background:var(--line);margin:16px 0 12px}
+  .np{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+  .np b{font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+  .np span{color:var(--dim);font-size:12px}
+  .set{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #2c3038}
+  .lab{display:flex;flex-direction:column;gap:3px}
+  .lab .t{display:flex;gap:6px;align-items:center}
+  .i{display:inline-block;width:15px;height:15px;border-radius:50%;border:1px solid var(--dim);color:var(--dim);font-size:10px;line-height:13px;text-align:center;font-style:normal}
+  .sub{font-size:12px;color:var(--dim)}
+  .sub a{color:var(--blue);text-decoration:none}
+  .own{color:#c7d5e0}
+  .tg{width:38px;height:20px;border-radius:10px;background:#4b5160;position:relative;flex:none}
+  .tg:after{content:"";position:absolute;width:16px;height:16px;border-radius:50%;background:#dcdedf;top:2px;left:2px}
+  .tg.on{background:var(--blue)}.tg.on:after{left:20px;background:#fff}
+  .btn{display:inline-block;background:#3d4450;color:#fff;border-radius:3px;padding:8px 16px;margin-top:14px}
+  .hint{font-size:12px;color:var(--dim);margin-top:8px}
+  .warn{color:#e4c046}
+  .label{font-size:12px;color:#7d8a99;margin:10px 0 6px}
+  /* dialog */
+  .shade{position:relative;background:rgba(0,0,0,.55);padding:26px 30px;border-radius:6px}
+  .dlg{background:#2a2e36;border-radius:4px;width:620px;box-shadow:0 12px 40px rgba(0,0,0,.7)}
+  .dlg .hd{padding:18px 22px 6px;font-size:20px;color:#fff}
+  .dlg .sb{padding:0 22px 12px;color:var(--dim);font-size:12px}
+  .dlg .bd{padding:0 22px 6px}
+  .grp{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#fff;margin:14px 0 2px}
+  .ft{display:flex;justify-content:space-between;padding:14px 22px 18px;border-top:1px solid var(--line);margin-top:8px}
+  .ft .btn{margin:0}
+  .prim{background:linear-gradient(90deg,#1a9fff,#1474e0)}
+  .muted{opacity:.55}
+</style></head><body><h1>NotProton · Фаза 7A · макет (не снимок экрана)</h1><p class="note">«Дополнительные настройки…» — модальное окно Steam внутри Steam.</p><!-- 2. Advanced dialog -->
+  <div class="shade">
+    <div class="dlg">
+      <div class="hd">Дополнительные настройки — PEAK</div>
+      <div class="sb">Окно Steam внутри Steam (не окно NotProton). Все строки каталога, кроме пяти быстрых.</div>
+      <div class="bd">
+        <div class="grp">Картинка</div>
+        <div class="set"><div class="lab"><div class="t">Изменяемые окна <i class="i">i</i></div><div class="sub">Для всех игр: Окна фиксированного размера</div></div><div class="dd">Окна фикс. размера</div></div>
+        <div class="set"><div class="lab"><div class="t">Финальный фильтр <i class="i">i</i></div><div class="sub">Для всех игр: Lanczos</div></div><div class="dd">Lanczos</div></div>
+        <div class="set"><div class="lab"><div class="t">Имитация смены разрешения <i class="i">i</i></div><div class="sub">Для всех игр: Выкл.</div></div><div class="tg"></div></div>
+        <div class="set"><div class="lab"><div class="t">График кадров <i class="i">i</i></div><div class="sub">⌥⌘G в игре · 1 % low</div></div><div class="tg"></div></div>
+        <div class="set"><div class="lab"><div class="t">Metal HUD <i class="i">i</i></div></div><div class="tg"></div></div>
+        <div class="set"><div class="lab"><div class="t">DLSS → MetalFX <i class="i">i</i> <span class="sub">эксперимент</span></div></div><div class="tg"></div></div>
+        <div class="grp">Мышь</div>
+        <div class="set"><div class="lab"><div class="t">Движение мыши <i class="i">i</i></div></div><div class="dd">Ускорение macOS</div></div>
+        <div class="set"><div class="lab"><div class="t">Курсор не уходит из окна <i class="i">i</i></div></div><div class="tg"></div></div>
+        <div class="grp">Производительность и совместимость</div>
+        <div class="set"><div class="lab"><div class="t">Ожидание потоков <i class="i">i</i></div></div><div class="dd">Стандарт</div></div>
+        <div class="set"><div class="lab"><div class="t">Процессоры <i class="i">i</i></div></div><div class="dd">Все</div></div>
+        <div class="set muted"><div class="lab"><div class="t">… Единая память · 4 ГБ для 32-бит · AVX · Видеокарта · Замены DLL · Переменные окружения</div></div></div>
+        <div class="grp">Клавиатура</div>
+        <div class="set"><div class="lab"><div class="t">Command как Control <i class="i">i</i></div></div><div class="tg"></div></div>
+        <div class="grp">Диагностика</div>
+        <div class="set"><div class="lab"><div class="t">msync+ <i class="i">i</i></div><div class="sub">Всегда включён; выключение — только для отладки этой игры</div></div><div class="tg on"></div></div>
+      </div>
+      <div class="ft"><div class="btn">Сбросить настройки игры</div><div class="btn prim">Готово</div></div>
+    </div>
+  </div>
+
+  </body></html>
