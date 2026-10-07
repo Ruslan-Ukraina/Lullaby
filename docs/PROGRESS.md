@@ -924,3 +924,10 @@ Spaces и Постановщик проверить сам не могу: нет
 - **Исправление:** диалог рисуется порталом React в `body` окна (react-dom, модуль 78325, с проверкой), и в свойствах игры, и в настройках Steam. Тест `catalog.js`: диалог в портале, без react-dom — в странице.
 - **Проверки (код 0):** `make app`, `panel-behavior`, `webpatch-fixtures`, `webpatch-syntax`, `settingsbridge-check`, `runcheck`, `compatcheck`. Swift не менялся (382 теста — прошлый прогон).
 - **В Steam ещё старая сборка.** Steam не перезапускал: ты им пользуешься. Новая — в `out/`, ставится кнопкой Update (SPIKE_TEST §14.0).
+
+## 2026-10-07 ~22:55 CEST — Откат Steam кнопкой Update: причина и исправление
+
+- **Твоё замечание:** после Update Steam оказался «до Фазы 7», исправления не видно.
+- **Причина:** ветка верная (`phase-7`, `5719fe6`). В `app.log` 20:54:22Z `install: begin version=1.0.2` — ставило **старое** `/Applications/NotProton.app` (сборка Фазы 5 с тестовым фидом), запущенное в 22:52. У него и у `out/NotProton.app` один bundle id, поэтому двойной щелчок по новой копии, вероятно, только вывел вперёд уже запущенную старую. dylib в Steam совпадал с payload старого приложения.
+- **Исправлено:** старое приложение закрыто (Quit), `out/NotProton.app --install-into-steam` → `build 503F5189`, dylib в Steam = `out/notproton.dylib`, `notproton-settings` = из `out/`. Steam запущен обычно, без порта отладки (R65 закрыт). В 22:57:04 патченый чанк отдан Steam Helper (`[forcetool] 9 gates`).
+- SPIKE_TEST §14.0 дополнен предупреждением про две копии приложения. `/Applications/NotProton.app` не менял (BACKLOG 25): в нём **Update не нажимать**, пока не заменим его сборкой Фазы 7.
