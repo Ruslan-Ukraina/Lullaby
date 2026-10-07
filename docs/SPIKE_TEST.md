@@ -728,3 +728,16 @@ ls "$HOME/Library/Application Support/notproton/runners/dormison-b1/wine/lib/win
    Клик по значку Helper открывает библиотеку, «Завершити» закрывает весь Steam.
 3. **Запуск игры.** Steam не закрывается, игра работает. Проверено мной на PEAK: запуск, оверлей Shift+Tab, выход, `spike-check` 10 ok.
 4. **Оверлей.** В окнах оверлея кнопки Valve на месте: у «Огляд гри» видна красная кнопка Valve (снимок `scratch/steam-windows/ov2-overlay.png`).
+
+### 11.14 Имя и значок Steam Helper, Постановщик
+
+NotProton уже поставлен (сборка `83FBEDB0`), Steam перезапущен. Режим «Steam as a regular app» включён.
+
+1. **Dock.** Открой библиотеку Steam. В Dock два значка Steam (так и задумано, W18).
+   - Наведи на второй значок. Ожидаемо: подпись «Steam», а не «Steam Helper». Значок такой же, как у Steam.app, и чёткий.
+2. **Постановщик.** Переключись на другое приложение, чтобы окно Steam ушло в боковую полосу.
+   - Ожидаемо: в полосе миниатюра окна Steam со значком Steam.
+   - Если окна в полосе нет или значок пустой, опиши, что видно: окна нет совсем, окно есть, но без значка, или окно пропадает через несколько секунд. Где смотреть: `~/Library/Application Support/notproton/notproton.log`, строки `focus[helper] Steam Helper is now …`.
+3. **Откат.** NotProton → Repair Steam.
+   - Ожидаемо: в `~/Library/Application Support/notproton/app.log` есть строка `steam helper: NotProton's name and icon files removed`, а во втором значке снова «Steam Helper».
+   - После проверки поставь NotProton обратно (Install).

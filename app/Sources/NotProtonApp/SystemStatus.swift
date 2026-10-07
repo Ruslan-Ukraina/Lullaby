@@ -275,7 +275,8 @@ final class SystemStatus {
                 self.offerSteamLaunch = true
             }
             let state = await Task.detached(priority: .userInitiated) {
-                (runner: EngineStore.state(), payload: PayloadInspector.inspect())
+                SteamHelperFiles.sync()
+                return (runner: EngineStore.state(), payload: PayloadInspector.inspect())
             }.value
             if state.runner == .none { parts.append(Self.noEngine) }
 
@@ -298,7 +299,10 @@ final class SystemStatus {
         let asApp = regularApp ?? (snapshot?.steamAsRegularApp ?? false)
         await perform(from: SteamWindows.step) { _ in
             try SteamWindows.set(enabled, regularApp: asApp)
-            let running = await Task.detached { SteamBundle.isRunning }.value
+            let running = await Task.detached {
+                SteamHelperFiles.sync(wanted: enabled)
+                return SteamBundle.isRunning
+            }.value
             self.offerSteamRestart = running
             return (enabled ? "Native Steam windows are on." : "Native Steam windows are off.")
                 + (running ? " Restart Steam to apply." : " They apply when Steam starts.")
@@ -343,6 +347,7 @@ final class SystemStatus {
 
     func repairSteam() async {
         await perform(from: RepairPhase.checking.label) { progress in
+            _ = await Task.detached(priority: .userInitiated) { SteamHelperFiles.remove() }.value
             let result = try await SteamRepair.run { progress($0.label) }
 
             var parts = ["Steam restored to its original state."]

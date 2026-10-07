@@ -666,3 +666,28 @@ Spaces и Постановщик проверить сам не могу: нет
 - Причина: `iconForFile:` отдаёт изображение 32 pt (представления до 2048 px), и Dock рисовал плитку с этого размера.
 - Исправление: размер ставится 1024 pt; в логе `Dock icon: Steam.app's, 1024 pt`. Сборка `CFB79B3C` в Steam и в /Applications.
 - Две иконки и Постановщик — ждут твоего решения (BLOCKERS).
+
+## 2026-10-07 08:20–08:40 CEST — Имя и значок Steam Helper через NotProton, причина выхода при одной иконке
+
+**Твои решения:** добавлять файлы в Steam Helper.app — да, через NotProton. Две иконки — сначала диагностика одной иконки.
+
+**Сделано:**
+1. **Имя и значок Helper** (W17). Новый `SteamHelperFiles.swift`:
+   - добавляет `InfoPlist.strings` с «Steam» (Base, en, uk, ru и языки Mac) и собственный значок бандла — значок Steam.app;
+   - список добавленного хранит в `.notproton-added`;
+   - когда: Install/Update/Reinstall и `--install-into-steam` при включённых нативных окнах, а также при переключении нативных окон;
+   - убирают Repair и Remove Everything;
+   - прошлые копии `Assets.car`/`Steam.icns` удалены (байт в байт совпадали со Steam.app).
+
+   Результат: `localizedName` у Helper — «Steam», обе плитки в Dock (Accessibility) — «Steam». Steam при старте файлы не тронул, в том числе при «Verifying all executable checksums».
+2. **Одна иконка — причина найдена** (W18, R43). Steam закрывает macOS: `loginwindow` спрашивает BTM, можно ли Steam работать в фоне, получает «нельзя» и через 20–32 с после того, как `steam_osx` убрал значок, завершает его. Все 10 выходов с полуночи — так. Запуск игры ни при чём: в 08:25:10 Steam был убит раньше моего `open steam://`. Две иконки остаются. Флаг диагностики `steam-windows-oneicon` удалён, Steam запущен снова.
+3. **Постановщик.** Пока ты не пользовался Mac, Helper был `regular` с 08:30:30 и не переключался. Проверить переход окна в боковую полосу я не успел: ты вернулся к Mac, и я перестал переключать приложения.
+
+**Проверки (все с кодом 0):**
+- `make app-tests` — **326 тестов** (+5 `SteamHelperFilesTests`);
+- `make app`;
+- `make steamwin-check webpatch-fixtures callscheck runcheck`.
+
+Сборка в Steam — `83FBEDB0`. `/Applications/NotProton.app` не обновлялся, ставил из `out/` через `--install-into-steam`.
+
+**Ждём тебя** (BLOCKERS): переключатель «Разрешать в фоне» у Steam (только посмотреть), подробности про Постановщик, SPIKE_TEST §11.14.

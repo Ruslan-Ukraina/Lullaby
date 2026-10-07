@@ -30,6 +30,7 @@ enum HeadlessInstall {
                     + "\(result.bridgeStaged) bridge file(s) staged, "
                     + "\(result.signatureDatabases) signature database(s), "
                     + "build \(result.build ?? "unknown")")
+                print("install: Steam Helper name and icon \(SteamHelperFiles.sync())")
 
                 if PayloadInspector.inspect().missing.contains(where: { $0.origin.isFetchable }) {
                     print("install: downloading Valve components")

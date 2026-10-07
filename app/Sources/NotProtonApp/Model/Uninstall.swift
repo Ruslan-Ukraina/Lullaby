@@ -45,7 +45,10 @@ enum Uninstall {
             SupportPaths.packageDownloads.deletingLastPathComponent(),
         ],
         report: @escaping @Sendable (UninstallPhase) -> Void = { _ in },
-        repair: Repair = { report in _ = try await SteamRepair.run(report: report) },
+        repair: Repair = { report in
+            SteamHelperFiles.remove()
+            _ = try await SteamRepair.run(report: report)
+        },
         stop: Stop = { onStopping in try SteamBundle.stopClient(step: step, onStopping: onStopping) }
     ) async throws -> UninstallOutcome {
         let stopped = try stop { report(.stoppingClient) }

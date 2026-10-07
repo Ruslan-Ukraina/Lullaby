@@ -12,6 +12,7 @@
 #include "../util/log.h"
 
 #include <dlfcn.h>
+#include <libproc.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -104,11 +105,59 @@ static BOOL t_ra_activate_from(id self, SEL _cmd, NSRunningApplication *from,
         self, _cmd, from, options);
 }
 
-// One Dock icon (steam_osx hidden while Steam Helper is regular) made Steam quit
-// itself as a game started, twice in a row (steam://exit with no terminate: and no
-// policy change of its own, DECISIONS W15); the cause was not found, so steam_osx
-// keeps its icon and Steam shows two Steam icons while a Steam window is open.
-static const BOOL kHideOsxIcon = NO;
+// One Dock icon (steam_osx hidden while Steam Helper is regular) ends Steam: about
+// 30 s after steam_osx becomes a background app, loginwindow asks Background Task
+// Management whether Steam may run in the background, hears no and quits it
+// (DECISIONS W16, W18). So by default steam_osx keeps its icon. The file
+// notproton/steam-windows-oneicon turns hiding on for diagnosis; then the Apple
+// Events steam_osx receives are traced (who sends quit or steam://exit).
+static BOOL kHideOsxIcon = NO;
+
+static BOOL one_icon_requested(void) {
+    NSString *path = [NSHomeDirectory() stringByAppendingPathComponent:
+        @"Library/Application Support/notproton/steam-windows-oneicon"];
+    return [NSFileManager.defaultManager fileExistsAtPath:path];
+}
+
+// MARK: Apple Event trace (steam_osx, one-icon diagnosis)
+
+typedef struct { AEEventHandlerUPP handler; SRefCon refcon; } np_ae_original_t;
+static np_ae_original_t g_quit_original, g_url_original;
+
+static NSString *ae_sender(const AppleEvent *event) {
+    pid_t pid = 0;
+    DescType type;
+    Size size;
+    if (AEGetAttributePtr(event, keySenderPIDAttr, typeSInt32, &type, &pid, sizeof(pid), &size) != noErr)
+        return @"unknown";
+    NSRunningApplication *app = [NSRunningApplication runningApplicationWithProcessIdentifier:pid];
+    char path[1024] = {0};
+    proc_pidpath(pid, path, sizeof(path));
+    return [NSString stringWithFormat:@"pid %d %@ (%s)", pid, app.localizedName ?: @"?", path];
+}
+
+static OSErr np_quit_handler(const AppleEvent *event, AppleEvent *reply, SRefCon refcon) {
+    FOCUS_LOG("Apple Event quit received from %s", ae_sender(event).UTF8String);
+    return g_quit_original.handler ? g_quit_original.handler(event, reply, g_quit_original.refcon) : errAEEventNotHandled;
+}
+
+static OSErr np_url_handler(const AppleEvent *event, AppleEvent *reply, SRefCon refcon) {
+    char url[512] = {0};
+    DescType type;
+    Size size;
+    AEGetParamPtr(event, keyDirectObject, typeUTF8Text, &type, url, sizeof(url) - 1, &size);
+    FOCUS_LOG("Apple Event open URL %s from %s", url, ae_sender(event).UTF8String);
+    return g_url_original.handler ? g_url_original.handler(event, reply, g_url_original.refcon) : errAEEventNotHandled;
+}
+
+static void trace_apple_events(void) {
+    if (AEGetEventHandler(kCoreEventClass, kAEQuitApplication, &g_quit_original.handler, &g_quit_original.refcon, false) == noErr)
+        AEInstallEventHandler(kCoreEventClass, kAEQuitApplication, NewAEEventHandlerUPP(np_quit_handler), 0, false);
+    if (AEGetEventHandler(kInternetEventClass, kAEGetURL, &g_url_original.handler, &g_url_original.refcon, false) == noErr)
+        AEInstallEventHandler(kInternetEventClass, kAEGetURL, NewAEEventHandlerUPP(np_url_handler), 0, false);
+    FOCUS_LOG("tracing quit and open-URL Apple Events (originals %p %p)",
+              g_quit_original.handler, g_url_original.handler);
+}
 
 // steam_osx sets itself regular again on its own (seen when a game starts). While
 // Steam Helper holds the Dock icon that would bring the second icon back, so the
@@ -264,10 +313,11 @@ static NSMenu *np_dock_menu(id self, SEL _cmd, NSApplication *app) {
 // Steam Helper.app's Info.plist says "Steam Helper" and has no icon, and it cannot be
 // changed: Steam's bootstrapper checks that file at every start and reinstalls its
 // package when it differs, which turned an edit at start into a relaunch loop
-// (DECISIONS W14). So Steam Helper takes Steam.app's look at run time, before it
-// becomes regular, so the Dock tile is created with it: Steam.app's own icon (the
-// same one /Applications/Steam.app shows) and the display name "Steam" through the
-// LaunchServices call Chromium uses for the same purpose (base/mac SetProcessName).
+// (DECISIONS W15). The name "Steam" and the bundle icon come from files NotProton.app
+// adds next to it (SteamHelperFiles.swift, W17). At run time Steam Helper also takes
+// Steam.app's icon before it becomes regular, so the Dock tile is created with it,
+// and asks LaunchServices for the name "Steam" the way Chromium does (base/mac
+// SetProcessName); that call alone did not change the Dock title.
 static void set_dock_name(NSString *name) {
     void *ls = dlopen("/System/Library/Frameworks/CoreServices.framework/Frameworks/"
                       "LaunchServices.framework/LaunchServices", RTLD_LAZY);
@@ -374,8 +424,11 @@ static void osx_tick(void) {
 }
 
 static void start_osx_dock(void) {
+    kHideOsxIcon = one_icon_requested();
     if (!kHideOsxIcon)
         return;
+    FOCUS_LOG("one Dock icon (diagnosis): steam_osx hides its icon while Steam Helper holds it");
+    trace_apple_events();
     osx_tick();
     [NSTimer scheduledTimerWithTimeInterval:1 repeats:YES block:^(NSTimer *t) { osx_tick(); }];
     NSNotificationCenter *ws = NSWorkspace.sharedWorkspace.notificationCenter;
