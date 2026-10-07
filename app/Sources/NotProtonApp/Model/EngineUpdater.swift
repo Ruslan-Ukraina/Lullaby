@@ -1,12 +1,15 @@
 // Installs, reinstalls and rolls back the Dormison engine (Phase 4).
 //
-// Install: signed engine.json → channel's release → is it supported (B1 ntdll
-// and bridge for its commit, EngineSupport) → tarball, resumed from a .part
-// file → size, sha256 from the manifest and the tarball's own Ed25519 signature
-// → unpack beside the runners into .<version>.partial → every file against
-// engine-manifest.json → B1 ntdll.dll pair over the release's (the release's
+// Install: signed engine.json → channel's release → is it supported (a Steam
+// bridge for the version, BridgeCatalog: bundled, downloaded, or in NotProton's
+// signed bridge-manifest.json) → tarball, resumed from a .part file → size,
+// sha256 from the manifest and the tarball's own Ed25519 signature → the bridge
+// downloaded and checked if it is not on disk (BridgeStore) → unpack beside the
+// runners into .<version>.partial → every file against engine-manifest.json →
+// commit is the bridge's → B1 ntdll.dll pair over the release's (the release's
 // kept as .notproton-orig) → smoke test in a throwaway prefix → Steam and games
-// closed → switch → prune to one previous engine.
+// closed → switch → the live bridge follows the engine → prune to one previous
+// engine.
 //
 // Layout under runners/:
 //   current  -> dormison-<tag>             what games use
@@ -57,6 +60,7 @@ enum EngineUpdatePhase: Sendable, Equatable {
     case checkingFiles
     case patching
     case testing
+    case bridge(BridgePhase)
     case stoppingSteam
     case switching
     case cleaning
@@ -71,6 +75,7 @@ enum EngineUpdatePhase: Sendable, Equatable {
         case .checkingFiles: "Checking the engine's files"
         case .patching: "Adding the Steam loader patch"
         case .testing: "Testing the engine"
+        case .bridge(let phase): phase.label
         case .stoppingSteam: "Stopping Steam"
         case .switching: "Switching engines"
         case .cleaning: "Cleaning up"
@@ -112,10 +117,20 @@ struct EngineUpdater: Sendable {
     var runners: URL = SupportPaths.runners
     var cache: URL = SupportPaths.engineDownloads
     var bridge: URL = SupportPaths.bridge
+    /// Downloaded Steam bridge builds (BridgeStore).
+    var bridges: URL = SupportPaths.bridges
     var manifestURL: URL = EngineManifest.url
     var key: Curve25519.Signing.PublicKey = EngineSignature.dormisonKey
     var transport: any EngineTransport = URLSessionEngineTransport()
-    var support: @Sendable () throws -> EngineSupport = { try EngineSupport.bundled() }
+    /// NotProton's own releases: the key bridge downloads are checked with.
+    var feed: ReleaseFeed.Setup = ReleaseFeed.configured
+    var support: @Sendable () throws -> BridgeCatalog = { BridgeUpdater().catalog() }
+    /// Reads the signed bridge list before a check, so a new engine's bridge is known.
+    var refreshBridges: @Sendable () async -> Void = {
+        do { try await BridgeUpdater().refreshManifest() } catch {
+            AppLog.note("engine: bridge list not refreshed: \(error.localizedDescription)")
+        }
+    }
     var gameIsRunning: @Sendable () -> Bool = { SteamBundle.gameIsRunning }
     var steamIsRunning: @Sendable () -> Bool = { SteamBundle.isRunning }
     var quitSteam: @Sendable () throws -> Bool = { try SteamBundle.quitClient() }
@@ -147,8 +162,13 @@ struct EngineUpdater: Sendable {
         return manifest
     }
 
+    var bridgeStore: BridgeStore {
+        BridgeStore(store: bridges, live: bridge, downloads: cache.appending(path: "bridge"))
+    }
+
     func check(channel: EngineChannel) async throws -> EngineUpdateCheck {
         let manifest = try await fetchManifest()
+        await refreshBridges()
         let result = try evaluate(manifest, channel: channel)
         AppLog.note("engine: check channel=\(channel.rawValue) installed=\(installedVersion ?? "none") → \(result.summary)")
         return result
@@ -217,7 +237,7 @@ struct EngineUpdater: Sendable {
             throw StepFailure(step: step, detail: Self.gameRunning)
         }
         report(.checking)
-        guard case .supported(let entry) = try support().verdict(for: version) else {
+        guard case .supported(var bridgeRelease) = try support().verdict(for: version) else {
             throw StepFailure(
                 step: step,
                 detail: "\(release.displayName) is out, but NotProton does not support it yet. Wait for a NotProton update.")
@@ -234,6 +254,15 @@ struct EngineUpdater: Sendable {
 
         let tarball = try await obtainTarball(release, report: report)
 
+        if case .remote = bridgeRelease.origin {
+            guard case .ready(let feed) = feed else {
+                throw StepFailure(step: step, detail: ReleaseFeed.noKey)
+            }
+            bridgeRelease = try await bridgeStore.obtain(
+                bridgeRelease, key: feed.key, transport: transport, report: { report(.bridge($0)) })
+        }
+        let entry = bridgeRelease
+
         let partial = runners.appending(path: ".\(version).partial")
         try removeIfPresent(partial)
         do {
@@ -246,16 +275,16 @@ struct EngineUpdater: Sendable {
 
             report(.checkingFiles)
             let commit = try EngineFiles.verify(root: partial, version: version)
-            guard commit == entry.commit else {
+            guard commit.lowercased() == entry.engineCommit else {
                 throw StepFailure(
                     step: step,
                     detail: "\(release.displayName) was built from \(commit.prefix(12)), "
-                        + "but NotProton's Steam bridge is for \(entry.commit.prefix(12)).")
+                        + "but NotProton's Steam bridge is for \(entry.engineCommit.prefix(12)).")
             }
             AppLog.note("engine: \(version) files match engine-manifest.json, commit \(commit.prefix(12))")
 
             report(.patching)
-            try applyB1(entry, to: partial, from: try support().root)
+            try BridgeStore.applyB1(entry, to: partial)
 
             report(.testing)
             let smoke = try smokeTest(partial)
@@ -299,6 +328,7 @@ struct EngineUpdater: Sendable {
             let switched = try activate(partial: prepared.partial, version: version)
             report(.cleaning)
             prune()
+            BridgeUpdater(store: bridgeStore, runners: runners, feed: feed, bundledRoot: nil).prune()
             // The tarball, its signature, and parts of downloads that were given up.
             for name in (try? fm.contentsOfDirectory(atPath: cache.path(percentEncoded: false))) ?? [] {
                 try? fm.removeItem(at: cache.appending(path: name))
@@ -405,32 +435,6 @@ struct EngineUpdater: Sendable {
         return tarball
     }
 
-    /// The release's ntdll.dll must be the one the B1 file was built against; it
-    /// is kept beside as .notproton-orig, as ntdll-patch/b1/install-b1.sh does.
-    func applyB1(_ entry: EngineSupportEntry, to engine: URL, from supportRoot: URL) throws {
-        let step = Self.step
-        let fm = FileManager.default
-        for item in entry.ntdll {
-            let live = engine.appending(path: item.path)
-            guard Digest.sha256IfPresent(live) == item.clean else {
-                throw StepFailure(
-                    step: step,
-                    detail: "\(item.path) in \(entry.version) is not the file the Steam loader patch was built for.")
-            }
-            let original = live.deletingLastPathComponent().appending(path: "ntdll.dll.notproton-orig")
-            try removeIfPresent(original)
-            try fm.copyItem(at: live, to: original)
-            let staging = live.deletingLastPathComponent().appending(path: ".ntdll.dll.new")
-            try removeIfPresent(staging)
-            try fm.copyItem(at: supportRoot.appending(path: item.file), to: staging)
-            try renameOrThrow(staging, live, step: step)
-            guard Digest.sha256IfPresent(live) == item.b1 else {
-                throw StepFailure(step: step, detail: "The patched \(item.path) did not check out.")
-            }
-            AppLog.note("engine: \(item.arch) ntdll.dll is B1 \(item.b1.prefix(12))")
-        }
-    }
-
     // MARK: Switching
 
     struct Switched: Equatable {
@@ -521,12 +525,15 @@ struct EngineUpdater: Sendable {
         return EngineRollbackOutcome(from: current, to: to, stoppedSteam: stopped)
     }
 
-    /// The env file compat_run.sh reads, and the bridge's copy of the B1 ntdll
-    /// it compares the engine against, follow the active engine.
+    /// The env file compat_run.sh reads, the Steam bridge (lsteamclient, steam.exe
+    /// and the B1 pair) and the bridge's copy of the B1 ntdll it compares the engine
+    /// against, all follow the active engine.
     func afterSwitch() {
         let engine = DormisonEngine(root: runners.appending(path: EngineStore.currentLink))
         engine.ensureEnvironmentFile()
-        EngineUpdater.syncBridgeNtdll(engine: engine.root.resolvingSymlinksInPath(), bridge: bridge)
+        let root = engine.root.resolvingSymlinksInPath()
+        if let catalog = try? support() { bridgeStore.follow(engine: root, catalog: catalog) }
+        EngineUpdater.syncBridgeNtdll(engine: root, bridge: bridge)
     }
 
     static func syncBridgeNtdll(engine: URL, bridge: URL) {

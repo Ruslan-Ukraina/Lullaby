@@ -73,7 +73,7 @@ enum SteamInstaller {
         AppLog.note("install: begin\(force ? " (reinstall)" : "") version=\(version)")
         report(.checkingPayload)
         let payload = try suppliedPayload ?? InstallPayload.locate()
-        let bridgeLocated = try suppliedBridge ?? BridgePayload.locate()
+        let bridgeLocated = try suppliedBridge ?? BridgePayload.active()
 
         report(.stagingBridge)
         let bridgeResult = try BridgePayload.stage(located: bridgeLocated, bridge: bridge)
@@ -103,8 +103,16 @@ enum SteamInstaller {
 
         report(.installingSignatures)
         try FileManager.default.createDirectory(at: signatures, withIntermediateDirectories: true)
+        let known = SignatureUpdater(signatures: signatures).support()
         for database in payload.signatures {
-            try install(database, at: signatures.appending(path: database.lastPathComponent))
+            let target = signatures.appending(path: database.lastPathComponent)
+            // A revision of the same database from NotProton's signed releases stays.
+            if let have = Digest.sha256IfPresent(target), have != Digest.sha256IfPresent(database),
+               known.accepted(database.lastPathComponent).contains(have)
+            {
+                continue
+            }
+            try install(database, at: target)
         }
 
         report(.installingOverlayShim)

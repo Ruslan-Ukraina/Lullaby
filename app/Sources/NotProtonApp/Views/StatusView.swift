@@ -119,10 +119,9 @@ struct StatusView: View {
     @Environment(SystemStatus.self) private var status
 
     private static let updateBlockPrompt =
-        "Steam client updates may break NotProton. If you don't want to wait for "
-            + "NotProton to be updated to be compatible with future Steam versions at the "
-            + "cost of not getting updates to the Steam client, you can stop the Steam "
-            + "client from updating itself."
+        "NotProton already lets Steam update only to builds it has signatures for. "
+            + "Blocking keeps Steam on its current build even when NotProton supports a newer one, "
+            + "so Steam gets no updates until you turn this off."
 
     var body: some View {
         Group {
@@ -234,6 +233,7 @@ struct StatusView: View {
         .task {
             if status.snapshot == nil { await status.refresh() }
             if status.engineCheck == nil { await status.checkEngineUpdates(quiet: true) }
+            status.startReleaseChecks()
             await status.runEngineUITestIfRequested()
         }
     }
@@ -309,7 +309,9 @@ struct StatusView: View {
                         tone: .info
                     )
                 }
-                updateBlockRow(snapshot.updateBlocked)
+                gateRow(snapshot.updates)
+                updateBlockRow(snapshot.updates.gateMode == .manual)
+                signaturesRow(snapshot.updates)
                 steamWindowsRow(snapshot.nativeSteamWindows)
                 if snapshot.nativeSteamWindows {
                     steamAsAppRow(snapshot.steamAsRegularApp)
@@ -326,6 +328,16 @@ struct StatusView: View {
                 channelRow
                 if snapshot.installedEngines.count > 1 {
                     engineRows(snapshot)
+                }
+            }
+
+            if snapshot.runner != .none {
+                Section("Steam Bridge") {
+                    bridgeRow(snapshot.updates)
+                    bridgeUpdateRow(snapshot.updates)
+                    if let target = snapshot.updates.bridgeRollback {
+                        bridgeRollbackRow(target)
+                    }
                 }
             }
 
@@ -473,15 +485,16 @@ struct StatusView: View {
                     .font(.headline)
                 Text(
                     blocked
-                        ? "The Steam client will not update itself."
-                        : "A Steam client update may break NotProton."
+                        ? "Steam does not update, even to builds NotProton supports."
+                        : "NotProton lets Steam update only to builds it has signatures for."
                 )
                 .foregroundStyle(.secondary)
             }
             .padding(.leading, StatusMetrics.textInset)
         }
         .disabled(!status.isIdle)
-        .help("Steam client updates may break NotProton.")
+        .help("On: Steam never updates. Off: NotProton holds Steam's updates until a new Steam build "
+            + "has signatures, then lets it update.")
     }
 
     private func steamWindowsRow(_ enabled: Bool) -> some View {
@@ -531,7 +544,7 @@ struct StatusView: View {
 
     private var blockUpdates: Binding<Bool> {
         Binding(
-            get: { status.snapshot?.updateBlocked ?? false },
+            get: { status.snapshot?.updates.gateMode == .manual },
             set: { wanted in
                 if wanted {
                     status.pendingConfirmation = .blockUpdates
@@ -547,10 +560,12 @@ struct StatusView: View {
         let active = EngineStore.currentTag()
         ForEach(snapshot.installedEngines) { engine in
             let isActive = engine.tag == active
+            let bridgeless = snapshot.updates.enginesWithoutBridge.contains(engine.tag)
             StatusRow(
                 title: EngineStore.displayName(engine.tag),
                 value: isActive ? "Active engine." : engineSize(engine.tag),
-                tone: isActive ? .ok : .neutral,
+                tone: bridgeless ? .warning : isActive ? .ok : .neutral,
+                detail: bridgeless ? "No Steam bridge fits it: Steam features in its games will not work." : nil,
                 secondaryAction: isActive ? nil : removeAction(engine.tag),
                 action: isActive ? nil : useAction(engine.tag)
             )
@@ -748,6 +763,146 @@ struct StatusView: View {
             .padding(.leading, StatusMetrics.textInset)
         }
         .disabled(!status.isIdle)
+    }
+
+    // MARK: Phase 5 rows
+
+    private var releasesCheckAction: StatusAction {
+        StatusAction(
+            label: "Check Now",
+            help: "Read NotProton's signed release lists and Valve's latest Steam version.",
+            isEnabled: status.isIdle
+        ) { Task { await status.checkReleases() } }
+    }
+
+    private var releasesCheckedDetail: String? {
+        status.releasesCheckedAt.map { "Checked \($0.formatted(date: .omitted, time: .shortened))." }
+    }
+
+    private func gateRow(_ updates: UpdatesSnapshot) -> some View {
+        let installed = SystemStatus.build(updates.installedSteam)
+        guard let decision = status.gateDecision else {
+            return StatusRow(
+                title: "Steam updates",
+                value: updates.gateMode == .manual
+                    ? "Blocked by you. Steam stays on build \(installed)."
+                    : "Managed by NotProton. Steam build \(installed).",
+                tone: .neutral,
+                detail: "Not checked yet.",
+                action: releasesCheckAction)
+        }
+        let tone: StatusTone
+        var detail: [String] = []
+        switch decision.state {
+        case .manual:
+            tone = .neutral
+        case .current(_, let supported):
+            tone = supported ? .ok : .warning
+            detail.append(supported
+                ? "When Valve releases a new Steam, NotProton lets it update once signatures for it arrive."
+                : "Steam Play may not work until signatures for this build arrive. NotProton checks on its own.")
+        case .updateAllowed:
+            tone = .ok
+        case .waiting(_, let current):
+            tone = .warning
+            detail.append("Steam keeps build \(SystemStatus.build(current)) until signatures for the new build "
+                + "arrive. Then the block lifts on its own.")
+        case .unknown(_, let reason):
+            tone = .warning
+            detail.append(reason + ".")
+        }
+        if let checked = releasesCheckedDetail { detail.append(checked) }
+        return StatusRow(
+            title: "Steam updates",
+            value: SystemStatus.gateSentence(decision.state),
+            tone: tone,
+            detail: detail.joined(separator: " "),
+            action: releasesCheckAction)
+    }
+
+    private func signaturesRow(_ updates: UpdatesSnapshot) -> some View {
+        let builds = updates.supportedBuilds.sorted(by: >)
+        let listed = builds.prefix(3).map(String.init).joined(separator: ", ")
+            + (builds.count > 3 ? " and \(builds.count - 3) more" : "")
+        var detail: [String] = []
+        if let newest = updates.newestDatabase { detail.append("Newest database: \(newest).") }
+        detail.append(updates.feedOff ?? "New databases come from NotProton's signed releases, no app update needed.")
+        if let problem = status.releaseProblem { detail.append("Last check: \(problem)") }
+        return StatusRow(
+            title: "Steam signatures",
+            value: builds.isEmpty ? "No Steam build is listed as supported." : "Supported Steam builds: \(listed).",
+            tone: builds.isEmpty ? .bad : updates.installedSteam.map { builds.contains($0) } == false ? .warning : .ok,
+            detail: detail.joined(separator: " "))
+    }
+
+    private func bridgeRow(_ updates: UpdatesSnapshot) -> some View {
+        guard let bridge = updates.activeBridge else {
+            return StatusRow(
+                title: "Steam bridge",
+                value: "No Steam bridge fits the active engine.",
+                tone: .bad,
+                detail: "Games start, but Steam features (achievements, overlay, cloud) do not work. "
+                    + "Check for Updates looks for one.")
+        }
+        return StatusRow(
+            title: "Steam bridge",
+            value: bridge.label.prefix(1).uppercased() + bridge.label.dropFirst()
+                + (bridge.isBundled ? " (built in)." : " (downloaded)."),
+            tone: .ok,
+            detail: "lsteamclient, steam.exe and the Steam loader patch, built against commit "
+                + "\(bridge.engineCommit.prefix(12)).")
+    }
+
+    @ViewBuilder
+    private func bridgeUpdateRow(_ updates: UpdatesSnapshot) -> some View {
+        switch status.bridgeCheck {
+        case .available(let release, _)?:
+            StatusRow(
+                title: "Updates",
+                value: "Steam bridge \(release.label) is available.",
+                tone: .warning,
+                detail: "Installing it needs no Steam restart; games started afterwards use it.",
+                secondaryAction: releasesCheckAction,
+                action: StatusAction(
+                    label: release.root == nil ? "Update" : "Use",
+                    isProminent: true,
+                    help: "Download if needed, verify and switch to \(release.id).",
+                    isEnabled: status.isIdle
+                ) { Task { await status.installBridge(release) } })
+        case .upToDate?:
+            StatusRow(
+                title: "Updates",
+                value: "Up to date.",
+                tone: .ok,
+                detail: [releasesCheckedDetail, updates.feedOff].compactMap { $0 }.joined(separator: " "),
+                action: releasesCheckAction)
+        case .noBridge(let engine)?:
+            StatusRow(
+                title: "Updates",
+                value: "No Steam bridge for \(EngineStore.displayName(engine)) yet.",
+                tone: .warning,
+                detail: updates.feedOff,
+                action: releasesCheckAction)
+        case .noEngine?, nil:
+            StatusRow(
+                title: "Updates",
+                value: "Not checked yet.",
+                tone: .neutral,
+                detail: updates.feedOff,
+                action: releasesCheckAction)
+        }
+    }
+
+    private func bridgeRollbackRow(_ target: BridgeRelease) -> some View {
+        StatusRow(
+            title: "Previous Steam bridge",
+            value: target.label.prefix(1).uppercased() + target.label.dropFirst() + ".",
+            tone: .neutral,
+            action: StatusAction(
+                label: "Roll Back",
+                help: "Switch games back to the previous Steam bridge.",
+                isEnabled: status.isIdle
+            ) { Task { await status.rollbackBridge() } })
     }
 
     private func fetchAction() -> StatusAction {

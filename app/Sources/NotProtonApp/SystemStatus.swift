@@ -26,6 +26,7 @@ struct StatusSnapshot: Sendable {
     var engineCapabilities = EngineCapabilities()
     var nativeSteamWindows = false
     var steamAsRegularApp = false
+    var updates = UpdatesSnapshot()
 
     static func capture(bundledVersion: String) -> StatusSnapshot {
         let patch = PatchComparison.inspect()
@@ -40,7 +41,8 @@ struct StatusSnapshot: Sendable {
             rollbackTarget: EngineUpdater().rollbackTarget,
             engineCapabilities: DormisonEngine().capabilities,
             nativeSteamWindows: SteamWindows.isOn(),
-            steamAsRegularApp: SteamWindows.isRegularApp()
+            steamAsRegularApp: SteamWindows.isRegularApp(),
+            updates: UpdatesSnapshot.capture()
         )
     }
 }
@@ -131,6 +133,13 @@ final class SystemStatus {
     var retryEngine: EngineAction?
     /// When the engine list was last read.
     var engineCheckedAt: Date?
+
+    // Phase 5: SystemStatus+Updates.swift.
+    var bridgeCheck: BridgeCheck?
+    var gateDecision: SteamGateDecision?
+    var releasesCheckedAt: Date?
+    var releaseProblem: String?
+    var releaseChecksStarted = false
 
     /// Set when an install stopped because Steam would not quit: the force flag to retry with.
     private(set) var retryInstallForce: Bool?
@@ -329,19 +338,6 @@ final class SystemStatus {
             AppLog.note("steam windows: restarting Steam")
             self.openSteam()
             return "Steam restarted."
-        }
-    }
-
-    func setUpdateBlock(_ blocked: Bool) async {
-        await perform(from: blocked ? "Blocking Steam client updates"
-                                    : "Allowing Steam client updates") { _ in
-            if blocked {
-                try UpdateBlock.write()
-                return "Steam client updates are blocked."
-            }
-
-            try UpdateBlock.remove()
-            return "Steam client updates are allowed."
         }
     }
 

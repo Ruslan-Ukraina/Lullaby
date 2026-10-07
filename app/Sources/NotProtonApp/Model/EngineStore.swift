@@ -96,9 +96,25 @@ enum EngineStore {
         if let old, old != tag {
             try? pointLink(EngineUpdater.previousLink, at: old, in: runners)
         }
-        EngineUpdater.syncBridgeNtdll(
-            engine: runners.appending(path: tag),
-            bridge: bridge ?? runners.deletingLastPathComponent().appending(path: "bridge"))
+        let support = runners.deletingLastPathComponent()
+        let live = bridge ?? support.appending(path: "bridge")
+        let store = BridgeStore(store: support.appending(path: "bridges"), live: live)
+        let engine = runners.appending(path: tag).resolvingSymlinksInPath()
+        let updater = BridgeUpdater(store: store, runners: runners)
+        if store.follow(engine: engine, catalog: updater.catalog()) == nil {
+            AppLog.note("engine: \(tag) is active without a Steam bridge that fits it")
+        }
+        EngineUpdater.syncBridgeNtdll(engine: engine, bridge: live)
+    }
+
+    /// Whether games on this engine reach Steam: a bridge on disk fits it, and Use
+    /// puts its B1 ntdll.dll pair in place (BACKLOG 13).
+    static func hasSteamBridge(_ tag: String, runners: URL = SupportPaths.runners, catalog: BridgeCatalog) -> Bool {
+        let root = runners.appending(path: tag).resolvingSymlinksInPath()
+        guard let info = BridgeStore.engineInfo(root) else { return false }
+        return catalog.candidates(for: info.version).contains {
+            $0.root != nil && BridgeStore.mismatch($0, info) == nil
+        }
     }
 
     /// runners/<name> -> <target>, replaced by rename.

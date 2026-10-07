@@ -42,6 +42,7 @@ SRCS := \
 	dylib/feats/compatsvc.c \
 	dylib/feats/webpatch.c \
 	dylib/feats/steamwin_css.c \
+	dylib/feats/updategate.c \
 	vendor/cJSON.c
 
 # Objective-C: AppKit through the runtime, for Steam Helper's windows.
@@ -65,7 +66,7 @@ DEPS := $(OBJS:.o=.d)
         tests-list overlay-shim overlay-shim-install overlay-shim-tests \
         overlay-shim-bench iconmaker icon \
         appinfo helpers-install ntdll-resolve bridge runcheck compatcheck \
-        compatsvc-check scriptcheck steamwin-check
+        compatsvc-check scriptcheck steamwin-check updategate-check
 
 APP_PAYLOAD := app/Sources/NotProtonApp/Resources/payload
 
@@ -242,6 +243,18 @@ $(STEAMWINCHECK): dylib/tests/steamwincheck.c dylib/feats/steamwin_css.c dylib/f
 
 steamwin-check:
 	@$(MAKE) -s $(STEAMWINCHECK) && $(STEAMWINCHECK)
+
+# Steam's update block written back inside the client, and the newest-first list of
+# signature databases the loader tries (Phase 5).
+UPDATEGATE_CHECK := $(OUT_DIR)/updategate-check
+
+updategate-check:
+	@mkdir -p $(OUT_DIR) && \
+	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -g -O1 \
+	  -Wall -Wextra -Wno-unused-parameter -Idylib -Ivendor -o $(UPDATEGATE_CHECK) \
+	  dylib/tests/updategate-check.c dylib/feats/updategate.c dylib/resolver/sigdb.c \
+	  dylib/util/file.c vendor/cJSON.c && \
+	$(UPDATEGATE_CHECK)
 
 SPAWN_ENV := $(OUT_DIR)/spawn-env
 
@@ -505,7 +518,8 @@ app-payload: $(TARGET) $(OVERLAY_SHIM) $(ICONMAKER) $(APPINFO)
 		elif [ -f "$$dst" ]; then echo "==> keeping staged $${spec##*:}"; \
 		else echo "$$src is missing and nothing is staged at $$dst, run: $(MAKE) bridge" >&2; exit 1; fi; \
 	done
-	python3 -I engine/stage-support.py engine/support.json scratch/ntdll-b1 "$(APP_PAYLOAD)/engine-support"
+	python3 -I release/feed.py stage-bridge bridge/bridge-manifest.json scratch/ntdll-b1 "$(APP_PAYLOAD)"
+	python3 -I release/feed.py stage-signatures signatures/manifest.json signatures/macos.arm64 "$(APP_PAYLOAD)"
 	@echo "==> Staged app payload in $(APP_PAYLOAD)"
 
 APP_BUNDLE  := $(OUT_DIR)/NotProton.app
@@ -514,6 +528,12 @@ APP_ZIP     := $(OUT_DIR)/NotProton.zip
 APP_VERSION := $(shell sed -n 's/^\#define NOTPROTON_VERSION "\(.*\)"/\1/p' dylib/version.h)
 
 APP_SIGN_ID ?= -
+
+# NotProton's release feed (docs/RELEASING.md). The key is the base64 Ed25519
+# public key; empty (the default until Phase 6) leaves the feed off and the app
+# uses the bridge and signatures it carries.
+NP_RELEASE_FEED ?= https://github.com/Ruslan-Ukraina/NotProton/releases/download/
+NP_RELEASE_KEY  ?=
 
 ICONGEN  := $(OUT_DIR)/icongen
 ICON_DOC := $(OUT_DIR)/NotProton.icon
@@ -543,7 +563,9 @@ app: app-payload $(ICON_CAR)
 	cp app/Info.plist "$(APP_BUNDLE)/Contents/Info.plist"
 	/usr/libexec/PlistBuddy -c \
 		"Set :CFBundleShortVersionString $(APP_VERSION)" -c \
-		"Set :CFBundleVersion $(APP_VERSION)" \
+		"Set :CFBundleVersion $(APP_VERSION)" -c \
+		"Set :NPReleaseFeedURL $(NP_RELEASE_FEED)" -c \
+		"Set :NPReleasePublicKey $(NP_RELEASE_KEY)" \
 		"$(APP_BUNDLE)/Contents/Info.plist"
 	cp "$$(swift build --package-path app -c release --show-bin-path)/NotProtonApp" \
 		"$(APP_BUNDLE)/Contents/MacOS/NotProtonApp"

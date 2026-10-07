@@ -21,6 +21,14 @@ enum SupportPaths {
     }
 
     static var bridge: URL { support.appending(path: "bridge") }
+    /// Downloaded Steam bridge builds, one folder each, and state.json naming the
+    /// active one and the one Roll Back returns to (BridgeStore).
+    static var bridges: URL { support.appending(path: "bridges") }
+    /// Verified copies of NotProton's signed release manifests, with their .sig files.
+    static var manifests: URL { support.appending(path: "manifests") }
+    /// `auto` or `manual`: who keeps Steam's update block (SteamUpdateGate). The dylib
+    /// reads it inside Steam, so the name is shared with dylib/feats/updategate.c.
+    static var steamUpdateGate: URL { support.appending(path: "steam-update-gate") }
     static var runners: URL { support.appending(path: "runners") }
     static var backups: URL { support.appending(path: "backups") }
     static var launchers: URL { support.appending(path: "launchers") }
@@ -43,6 +51,11 @@ enum SupportPaths {
     /// Engine tarballs while they download (a .part file survives an interruption).
     static var engineDownloads: URL {
         home.appending(path: "Library/Caches/\(supportDirName)/engine")
+    }
+
+    /// Steam bridge artifacts while they download.
+    static var bridgeDownloads: URL {
+        home.appending(path: "Library/Caches/\(supportDirName)/bridge")
     }
 
     static var deployedVersion: URL { support.appending(path: "dylib.version") }
@@ -75,6 +88,8 @@ enum SupportPaths {
         static var innerClient: URL { innerApp.appending(path: "Contents/MacOS") }
 
         static var innerConfigFile: URL { innerClient.appending(path: "steam.cfg") }
+        /// Valve's package manifests (steam_client*_osx.manifest) and `beta`.
+        static var package: URL { innerClient.appending(path: "package") }
         static var legacyCompat: URL { innerClient.appending(path: "legacycompat") }
 
         static var compatTool: URL {

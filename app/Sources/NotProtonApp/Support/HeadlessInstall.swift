@@ -51,6 +51,7 @@ enum HeadlessInstall {
             done.signal()
         }
         done.wait()
+        AppLog.flush()
         exit(code.value)
     }
 }

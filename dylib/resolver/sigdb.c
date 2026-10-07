@@ -5,6 +5,8 @@
 #include "../util/file.h"
 #include "../../vendor/cJSON.h"
 
+#include <dirent.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -276,4 +278,36 @@ void np_free_profile(np_sigdb_t *p) {
     free(p->signatures);
     p->signatures   = NULL;
     p->sig_count = 0;
+}
+
+// Candidates for the loader: newest build first, so a database for a newer Steam
+// is tried before older ones, and the loader falls back when it does not resolve.
+int np_sigdb_candidates(const char *dir, char (*paths)[NP_SIGDB_PATH_MAX], int max) {
+    DIR *dh = opendir(dir);
+    if (!dh) return -1;
+    uint64_t builds[NP_SIGDB_MAX_CANDIDATES];
+    int count = 0;
+    if (max > NP_SIGDB_MAX_CANDIDATES) max = NP_SIGDB_MAX_CANDIDATES;
+    struct dirent *e;
+    while ((e = readdir(dh)) != NULL) {
+        size_t len = strlen(e->d_name);
+        if (len < 6 || strcmp(e->d_name + len - 5, ".json") != 0) continue;
+        char *stop = NULL;
+        uint64_t build = strtoull(e->d_name, &stop, 10);
+        if (build == 0 || stop != e->d_name + len - 5 || e->d_name[0] == '0') continue;
+        // Insertion into a list kept newest first; the oldest drops off when full.
+        int at = count;
+        while (at > 0 && builds[at - 1] < build) at--;
+        if (at >= max) continue;
+        int last = count < max ? count : max - 1;
+        for (int i = last; i > at; i--) {
+            builds[i] = builds[i - 1];
+            memcpy(paths[i], paths[i - 1], NP_SIGDB_PATH_MAX);
+        }
+        builds[at] = build;
+        snprintf(paths[at], NP_SIGDB_PATH_MAX, "%s/%s", dir, e->d_name);
+        if (count < max) count++;
+    }
+    closedir(dh);
+    return count;
 }

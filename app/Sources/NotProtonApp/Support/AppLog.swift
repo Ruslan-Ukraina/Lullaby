@@ -19,6 +19,12 @@ enum AppLog {
         }
     }
 
+    /// Waits for every line queued so far: a command without the window exits right
+    /// after its last line, and the queue would lose it (BACKLOG 16).
+    static func flush() {
+        queue.sync {}
+    }
+
     static func note(_ message: String) {
         let line = "\(Date().ISO8601Format()) \(message)\n"
         queue.async { append(line) }

@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "serial": 1,
+  "databases": [
+    {
+      "file": "1788400362.json",
+      "sha256": "567a6b713b3f4287e0384fc23dcc4b8a2084da39ce200b339a121bdd021a26f8"
+    },
+    {
+      "file": "1789086785.json",
+      "sha256": "36761fd46834ab19827ab0716da8a39b8a833219b5295da5d00c62da040a7f65"
+    },
+    {
+      "file": "1790904859.json",
+      "sha256": "4841f5298c827e415fad7590dca9268423e10b0e9934fd07da0104f50c844399"
+    }
+  ],
+  "builds": [
+    {
+      "build": 1788400362,
+      "database": "1788400362.json",
+      "checked": "upstream"
+    },
+    {
+      "build": 1789086785,
+      "database": "1789086785.json",
+      "checked": "upstream"
+    },
+    {
+      "build": 1790904859,
+      "database": "1790904859.json",
+      "checked": "upstream"
+    },
+    {
+      "build": 1788652215,
+      "database": "1790904859.json",
+      "checked": "2026-10-06 make anchorcheck: 17 anchors resolved, 0 unresolved"
+    }
+  ]
+}

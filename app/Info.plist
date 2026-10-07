@@ -30,6 +30,10 @@
 	<true/>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NPReleaseFeedURL</key>
+	<string>https://github.com/Ruslan-Ukraina/NotProton/releases/download/</string>
+	<key>NPReleasePublicKey</key>
+	<string></string>
 	<key>SUEnableAutomaticChecks</key>
 	<false/>
 </dict>

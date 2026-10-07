@@ -59,7 +59,7 @@ enum PatchComparison {
     /// nil when the app carries no payload to compare with (a development build).
     static func inspect(installed: Installed = .live) -> InstalledPatch? {
         guard let payload = try? InstallPayload.locate(),
-            let bridge = try? BridgePayload.locate()
+            let bridge = try? BridgePayload.active()
         else { return nil }
         return compare(payload: payload, bridgePayload: bridge, installed: installed)
     }
@@ -94,8 +94,14 @@ enum PatchComparison {
             (installed.iconmaker, payload.iconmaker),
             (installed.appinfo, payload.appinfo),
         ]
-        pairs += payload.signatures.map {
-            (installed.signatures.appending(path: $0.lastPathComponent), $0)
+        // A database the feed revised (signatures-manifest.json) is current, not stale.
+        let known = SignatureUpdater(signatures: installed.signatures).support()
+        pairs += payload.signatures.compactMap {
+            let target = installed.signatures.appending(path: $0.lastPathComponent)
+            if let have = Digest.sha256IfPresent(target), known.accepted($0.lastPathComponent).contains(have) {
+                return nil
+            }
+            return (target, $0)
         }
         if pairs.contains(where: { Digest.sha256IfPresent($0.installed) != Digest.sha256IfPresent($0.shipped) }) {
             stale.append(.components)

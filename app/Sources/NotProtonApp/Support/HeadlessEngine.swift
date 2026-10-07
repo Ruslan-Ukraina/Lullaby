@@ -36,6 +36,7 @@ enum HeadlessEngine {
             updater.gameIsRunning = { Shell.processIsRunning(commandLineContaining: root.path(percentEncoded: false)) }
             // A scratch tree never touches the real bridge unless told to.
             updater.bridge = root.deletingLastPathComponent().appending(path: "bridge")
+            updater.bridges = root.deletingLastPathComponent().appending(path: "bridges")
         }
         if let bridge = option("--bridge") { updater.bridge = URL(filePath: bridge) }
         if let cache = option("--cache") { updater.cache = URL(filePath: cache) }
@@ -52,6 +53,7 @@ enum HeadlessEngine {
             done.signal()
         }
         done.wait()
+        AppLog.flush()
         exit(code.value)
     }
 

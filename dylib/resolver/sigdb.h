@@ -28,6 +28,13 @@ typedef struct {
     char            steam_build_date[32];
 } np_sigdb_t;
 
+#define NP_SIGDB_MAX_CANDIDATES 32
+#define NP_SIGDB_PATH_MAX       512
+
+// Database files in `dir` named <build>.json, newest build first. Returns how many
+// went into `paths` (at most `max`), or -1 when `dir` cannot be read.
+int  np_sigdb_candidates(const char *dir, char (*paths)[NP_SIGDB_PATH_MAX], int max);
+
 int  np_load_profile(const char *path, np_sigdb_t *out);
 void np_free_profile(np_sigdb_t *p);
 

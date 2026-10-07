@@ -9,6 +9,7 @@
 #include "../feats/compat.h"
 #include "../feats/steamwin.h"
 #include "../feats/steamfocus.h"
+#include "../feats/updategate.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,55 +53,22 @@ static void clear_relaunch_markers(void) {
     drop_marker_file(dir, ".forceupdate");
 }
 
-static int pick_latest_sigdb(const char *dir, char *buf, size_t buf_size) {
-    DIR *dh = opendir(dir);
-    if (!dh)
-        return -1;
-
-    uint64_t top = 0;
-    int found = 0;
-    struct dirent *e;
-    while ((e = readdir(dh)) != NULL) {
-        size_t len = strlen(e->d_name);
-        if (len < 6 || strcmp(e->d_name + len - 5, ".json") != 0)
-            continue;
-
-        char *stop = NULL;
-        uint64_t build = strtoull(e->d_name, &stop, 10);
-        if (build == 0 || stop != e->d_name + len - 5)
-            continue;
-
-        if (!found || build >= top) {
-            top = build;
-            found = 1;
-            snprintf(buf, buf_size, "%s/%s", dir, e->d_name);
-        }
-    }
-    closedir(dh);
-
-    return found ? 0 : -1;
-}
-
-static void sigdb_path_for(char *buf, size_t buf_size) {
+// The databases to try, newest first: NOTPROTON_SIG alone when set.
+static int sigdb_candidates(char (*paths)[NP_SIGDB_PATH_MAX], int max) {
     const char *env = getenv("NOTPROTON_SIG");
     if (env && env[0]) {
-        snprintf(buf, buf_size, "%s", env);
-        return;
+        snprintf(paths[0], NP_SIGDB_PATH_MAX, "%s", env);
+        return 1;
     }
 
     const char *home = np_home_dir();
-    if (!home) {
-        snprintf(buf, buf_size, "<no-home>/<none>.json");
-        return;
-    }
+    if (!home) return 0;
 
     char dir[512];
     np_support_path(dir, sizeof(dir), home, "signatures/macos.arm64");
-
-    if (pick_latest_sigdb(dir, buf, buf_size) == 0)
-        return;
-
-    snprintf(buf, buf_size, "%s/<none>.json", dir);
+    int n = np_sigdb_candidates(dir, paths, max);
+    if (n <= 0) NP_ERR("install_thread: no signature database in %s", dir);
+    return n < 0 ? 0 : n;
 }
 
 static pthread_t g_install;
@@ -169,30 +137,44 @@ static void *install_thread(void *unused) {
            STEAMCLIENT_DYLIB, (unsigned long)text_base, text_size,
            (unsigned long)slide);
 
+    // The client is up, so the bootstrapper's update check is over: Steam's update
+    // block goes back if NotProton's gate is on (feats/updategate.c).
+    np_update_gate_rearm();
+
+    static char candidates[NP_SIGDB_MAX_CANDIDATES][NP_SIGDB_PATH_MAX];
+    int candidate_count = sigdb_candidates(candidates, NP_SIGDB_MAX_CANDIDATES);
+
     np_sigdb_t sigdb = {0};
-
-    char sig_path[512];
-    sigdb_path_for(sig_path, sizeof(sig_path));
-
-    if (np_load_profile(sig_path, &sigdb) != 0) {
-        NP_ERR("install_thread: cannot load signature database from %s", sig_path);
-        return NULL;
-    }
-
     np_resolve_result_t resolved = {0};
+    int chosen = 0;
 
-    int resolved_count = np_resolve_signatures(mh, slide, &sigdb, STEAMCLIENT_DYLIB,
-                                               &resolved);
-    int required = np_required_for_module(&sigdb, STEAMCLIENT_DYLIB);
-    NP_LOG("install_thread: signatures %d/%d resolved", resolved_count, required);
-
-    // Safety feature :)
-    if (resolved_count < required) {
-        NP_ERR("install_thread: %d/%d signatures resolved, installing nothing; "
-               "the signature database is out of date for this Steam build",
-               resolved_count, required);
+    // Newest first; a database for a newer Steam that does not fit this build is
+    // passed over for the next one. Safety feature :) nothing installs unless
+    // every signature of one database resolves.
+    for (int i = 0; i < candidate_count && !chosen; i++) {
+        if (np_load_profile(candidates[i], &sigdb) != 0) {
+            NP_ERR("install_thread: cannot load signature database from %s", candidates[i]);
+            continue;
+        }
+        int resolved_count = np_resolve_signatures(mh, slide, &sigdb, STEAMCLIENT_DYLIB,
+                                                   &resolved);
+        int required = np_required_for_module(&sigdb, STEAMCLIENT_DYLIB);
+        NP_LOG("install_thread: signatures %d/%d resolved with %s", resolved_count,
+               required, candidates[i]);
+        if (resolved_count >= required) {
+            chosen = 1;
+            break;
+        }
+        NP_WARN("install_thread: %s does not fit this Steam build (%d/%d), trying an older one",
+                candidates[i], resolved_count, required);
         np_free_resolution(&resolved);
         np_free_profile(&sigdb);
+    }
+
+    if (!chosen) {
+        NP_ERR("install_thread: none of %d signature database(s) resolves every signature, "
+               "installing nothing; the signature database is out of date for this Steam build",
+               candidate_count);
         return NULL;
     }
 

@@ -83,7 +83,8 @@ struct URLSessionEngineTransport: EngineTransport {
             _ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
             completionHandler: @escaping (URLSession.ResponseDisposition) -> Void
         ) {
-            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            // A file: URL (a local test feed) has no HTTP status; it is the whole file.
+            let status = (response as? HTTPURLResponse)?.statusCode ?? (response.url?.isFileURL == true ? 200 : 0)
             switch status {
             case 206 where written > 0:
                 AppLog.note("engine: server resumed the download at byte \(written) (206)")

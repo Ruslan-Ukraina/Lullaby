@@ -72,6 +72,15 @@ enum BridgePayload {
         return Located(sources: sources)
     }
 
+    /// The bridge games should get: the active build when it fits the active engine
+    /// (a downloaded revision included, BridgeStore), otherwise the one this app carries.
+    static func active() throws -> Located {
+        if let release = BridgeUpdater().active, let located = try? release.located() {
+            return located
+        }
+        return try locate()
+    }
+
     struct Outcome: Sendable {
         let staged: [String]
         let unchanged: [String]

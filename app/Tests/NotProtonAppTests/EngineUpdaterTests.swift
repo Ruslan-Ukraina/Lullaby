@@ -67,6 +67,7 @@ private struct Rig {
     var runners: URL { root.appending(path: "runners") }
     var cache: URL { root.appending(path: "cache") }
     var bridge: URL { root.appending(path: "bridge") }
+    var bridges: URL { root.appending(path: "bridges") }
     var supportDir: URL { root.appending(path: "support") }
     var work: URL { root.appending(path: "work") }
     let key = Curve25519.Signing.PrivateKey()
@@ -93,8 +94,10 @@ private struct Rig {
         let flags = flags
         let supportDir = supportDir
         return EngineUpdater(
-            runners: runners, cache: cache, bridge: bridge, key: key.publicKey, transport: transport,
-            support: { try EngineSupport.load(root: supportDir) },
+            runners: runners, cache: cache, bridge: bridge, bridges: bridges, key: key.publicKey,
+            transport: transport, feed: .off("test"),
+            support: { BridgeCatalog(releases: BridgeCatalog.bundled(root: supportDir)) },
+            refreshBridges: {},
             gameIsRunning: { flags.game.withLock { $0 } },
             steamIsRunning: { flags.steam.withLock { $0 } },
             quitSteam: {
@@ -183,15 +186,22 @@ private struct Rig {
         }
     }
 
-    /// The app's support table: B1 files for `versions`, a bridge built against `bridgeCommits`.
-    func supporting(_ versions: [String], bridgeCommits: [String] = [commit], missingB1: Bool = false) throws {
+    /// The app's bundled bridge list: one bridge per version in `versions`, built
+    /// against `commit`, with its B1 files (i386 left out with `missingB1`).
+    func supporting(_ versions: [String], commit: String = commit, missingB1: Bool = false) throws {
         let fm = FileManager.default
         try? fm.removeItem(at: supportDir)
-        var engines: [[String: Any]] = []
+        var bridges: [[String: Any]] = []
+        let files = BridgePayload.entries.map(\.resource)
+        for name in files {
+            let url = supportDir.appending(path: "bridge/\(name)")
+            try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data("bridge file \(name)".utf8).write(to: url)
+        }
         for version in versions {
             var ntdll: [[String: String]] = []
             for arch in ["x86_64", "i386"] {
-                let file = "\(version)/\(arch)-ntdll.dll"
+                let file = "\(EngineSupport.directoryName)/\(version)/\(arch)-ntdll.dll"
                 let url = supportDir.appending(path: file)
                 try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
                 if !(missingB1 && arch == "i386") { try b1Ntdll(arch, version).write(to: url) }
@@ -201,13 +211,17 @@ private struct Rig {
                     "b1": Digest.sha256(of: b1Ntdll(arch, version)),
                 ])
             }
-            engines.append(["version": version, "commit": Self.commit, "ntdll": ntdll])
+            bridges.append([
+                "id": "bridge-\(version)-1", "engine": version, "engineCommit": commit, "rev": 1,
+                "files": files.map { ["name": $0, "path": "bridge/\($0)"] }, "ntdll": ntdll,
+            ])
         }
         let table = try JSONSerialization.data(withJSONObject: [
-            "schema": 1, "bridge": ["engineCommits": bridgeCommits], "engines": engines,
+            "schema": 1, "serial": 1, "bridges": bridges,
         ] as [String: Any])
-        try fm.createDirectory(at: supportDir, withIntermediateDirectories: true)
-        try table.write(to: supportDir.appending(path: "support.json"))
+        let dir = supportDir.appending(path: EngineSupport.directoryName)
+        try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        try table.write(to: dir.appending(path: BridgeCatalog.manifestName))
     }
 
     func release(_ version: String) async throws -> EngineRelease {
@@ -504,7 +518,7 @@ struct EngineUpdaterTests {
         try rig.publish("dormison-b1")
         try rig.announce("dormison-b1")
 
-        try rig.supporting(["dormison-b1"], bridgeCommits: ["0000000000000000000000000000000000000000"])
+        try rig.supporting(["dormison-b2"])
         guard case .waiting(_, let reason) = try await rig.updater.check(channel: .beta) else {
             Issue.record("expected waiting")
             return
@@ -662,13 +676,70 @@ struct EngineUpdaterTests {
         #expect(message.contains("no previous engine"))
     }
 
-    @Test("The shipped support table names dormison-b1 with its bridge commit")
+    @Test("A new engine brings its bridge from NotProton's releases; Roll Back brings the old engine's bridge back")
+    func engineFetchesBridge() async throws {
+        let rig = Rig()
+        defer { rig.remove() }
+        try rig.supporting(["dormison-b1"])
+        try rig.publish("dormison-b1")
+        try rig.announce("dormison-b1")
+        _ = try await rig.install("dormison-b1")
+        #expect(try Data(contentsOf: rig.bridge.appending(path: "steam.exe")) == Data("bridge file steam.exe".utf8))
+
+        // dormison-b2's bridge is only in the signed list of the release feed.
+        let feedRig = BridgeRig()
+        defer { feedRig.remove() }
+        let entry = try feedRig.artifact("dormison-b2", rev: 1, commit: Rig.commit)
+        rig.transport.state.withLock { state in
+            for (url, data) in feedRig.feed.transport.files.withLock({ $0 }) { state.files[url] = data }
+        }
+        let remote = BridgeRelease.list(["bridges": [entry]], remote: feedRig.feed.feed, root: nil, bundled: false)
+        #expect(remote.count == 1)
+        var updater = rig.updater
+        updater.feed = feedRig.feed.setup
+        let supportDir = rig.supportDir, bridges = rig.bridges
+        updater.support = {
+            BridgeCatalog(releases: BridgeCatalog.bundled(root: supportDir)
+                + BridgeStore.installedReleases(in: bridges) + remote)
+        }
+
+        try rig.publish("dormison-b2")
+        try rig.announce("dormison-b2")
+        guard case .available(let release) = try await updater.check(channel: .beta) else {
+            Issue.record("dormison-b2 should be installable: its bridge is on the feed")
+            return
+        }
+        _ = try await updater.install(release, mayQuitSteam: false)
+        #expect(rig.current() == "dormison-b2")
+        #expect(BridgeStore.installedReleases(in: rig.bridges).map(\.id) == ["bridge-dormison-b2-1"])
+        let b2 = rig.runners.appending(path: "dormison-b2/wine/lib/wine")
+        #expect(try Data(contentsOf: b2.appending(path: "x86_64-windows/ntdll.dll"))
+            == BridgeRig.b1("x86_64", "dormison-b2", rev: 1))
+        #expect(try Data(contentsOf: rig.bridge.appending(path: "steam.exe")) == BridgeRig.file("steam.exe", rev: 1))
+        #expect(try Data(contentsOf: rig.bridge.appending(path: "wine/i386-windows/ntdll.dll"))
+            == BridgeRig.b1("i386", "dormison-b2", rev: 1))
+        let store = updater.bridgeStore
+        #expect(store.state == .init(current: "bridge-dormison-b2-1", previous: "bridge-dormison-b1-1"))
+
+        _ = try updater.rollback(mayQuitSteam: false)
+        #expect(rig.current() == "dormison-b1")
+        #expect(try Data(contentsOf: rig.bridge.appending(path: "steam.exe")) == Data("bridge file steam.exe".utf8))
+        #expect(try Data(contentsOf: rig.bridge.appending(path: "wine/x86_64-windows/ntdll.dll"))
+            == rig.b1Ntdll("x86_64", "dormison-b1"))
+        #expect(store.state == .init(current: "bridge-dormison-b1-1", previous: "bridge-dormison-b2-1"))
+    }
+
+    @Test("The shipped bridge list names dormison-b1 with its commit and both B1 files")
     func shippedTable() throws {
-        let repo = URL(filePath: #filePath).deletingLastPathComponent().appending(path: "../../../engine")
-        let table = try EngineSupport.load(root: repo.standardizedFileURL)
-        let entry = try #require(table.entries.first { $0.version == "dormison-b1" })
-        #expect(table.bridgeCommits.contains(entry.commit))
+        let repo = URL(filePath: #filePath).deletingLastPathComponent().appending(path: "../../..").standardizedFileURL
+        let data = try Data(contentsOf: repo.appending(path: "bridge/bridge-manifest.json"))
+        let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let releases = BridgeRelease.list(json, remote: nil, root: repo, bundled: true)
+        let entry = try #require(releases.first { $0.engine == "dormison-b1" })
+        #expect(entry.engineCommit == "52c2a4b918d6ec5f469ed4e5f58777598c9378ff")
+        #expect(entry.id == "bridge-dormison-b1-1")
         #expect(Set(entry.ntdll.map(\.arch)) == ["x86_64", "i386"])
+        #expect(Set(entry.files.map(\.name)) == BridgeRelease.fileNames)
         _ = EngineSignature.dormisonKey
     }
 
