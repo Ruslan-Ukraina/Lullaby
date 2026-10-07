@@ -5,7 +5,7 @@ import Testing
 
 // The launcher builds a game's bundle name and icon from what this tool prints, so a parse
 // that reads the wrong key mislabels a bundle. Caches are synthetic: the installed one is v29.
-@Suite("appinfo tool")
+@Suite("appinfo tool", .enabled(if: StagedPayload.present, StagedPayload.reason))
 struct AppInfoToolTests {
 
     private struct Cache {

@@ -5,7 +5,7 @@ import Testing
 
 // Run against a real pinned Valve bundle staged into scratch, not /Applications/Steam.app.
 // The chain seals a dylib inside a bundle inside another signature. Serialized, one cache.
-@Suite("Steam installer", .serialized)
+@Suite("Steam installer", .serialized, .enabled(if: StagedPayload.present, StagedPayload.reason))
 struct SteamInstallerTests {
 
     private func scratch() throws -> URL {

@@ -152,6 +152,8 @@ jobs:
             compatcheck compatsvc-check updategate-check steamwin-check
 
       - name: Swift tests
+        env:
+          NP_REQUIRE_PAYLOAD: "1"
         run: make -s app-tests
 
       - name: The built app reads the published feed

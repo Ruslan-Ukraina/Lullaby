@@ -15,10 +15,10 @@ import Sparkle
 final class AppUpdater: NSObject, SPUUpdaterDelegate {
     static let shared = AppUpdater()
 
-    static let feedKey = "SUFeedURL"
-    static let keyKey = "SUPublicEDKey"
-    static let prereleaseDefault = "NotProtonPrereleaseUpdates"
-    static let prereleaseChannel = "beta"
+    nonisolated static let feedKey = "SUFeedURL"
+    nonisolated static let keyKey = "SUPublicEDKey"
+    nonisolated static let prereleaseDefault = "NotProtonPrereleaseUpdates"
+    nonisolated static let prereleaseChannel = "beta"
 
     enum Setup: Equatable, Sendable {
         case ready
@@ -38,7 +38,7 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
         return short == build ? short : "\(short) (\(build))"
     }
 
-    static func setup(feed: String?, key: String?, kind: BuildKind) -> Setup {
+    nonisolated static func setup(feed: String?, key: String?, kind: BuildKind) -> Setup {
         let keyText = (key ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let feedText = (feed ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !keyText.isEmpty, !feedText.isEmpty else {

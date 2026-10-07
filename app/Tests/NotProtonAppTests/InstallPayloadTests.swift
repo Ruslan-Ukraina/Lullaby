@@ -28,7 +28,7 @@ struct InstallPayloadTests {
         }
     }
 
-    @Test("The shipped app carries a payload staged by make")
+    @Test("The shipped app carries a payload staged by make", .enabled(if: StagedPayload.present, StagedPayload.reason))
     func shippedPayloadIsStaged() throws {
         let located = try InstallPayload.locate()
 
