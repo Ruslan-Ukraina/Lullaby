@@ -41,6 +41,7 @@ SRCS := \
 	dylib/feats/webui.c \
 	dylib/feats/compatsvc.c \
 	dylib/feats/webpatch.c \
+	dylib/feats/settingsbridge.c \
 	dylib/feats/steamwin_css.c \
 	dylib/feats/updategate.c \
 	vendor/cJSON.c
@@ -66,7 +67,7 @@ DEPS := $(OBJS:.o=.d)
         tests-list overlay-shim overlay-shim-install overlay-shim-tests \
         overlay-shim-bench iconmaker icon \
         appinfo helpers-install ntdll-resolve bridge runcheck compatcheck \
-        compatsvc-check scriptcheck steamwin-check updategate-check sigslice
+        compatsvc-check scriptcheck steamwin-check updategate-check settingsbridge-check sigslice
 
 APP_PAYLOAD := app/Sources/NotProtonApp/Resources/payload
 
@@ -267,6 +268,15 @@ updategate-check:
 	  dylib/tests/updategate-check.c dylib/feats/updategate.c dylib/resolver/sigdb.c \
 	  dylib/util/file.c vendor/cJSON.c && \
 	$(UPDATEGATE_CHECK)
+
+SETTINGSBRIDGE_CHECK := $(OUT_DIR)/settingsbridge-check
+
+settingsbridge-check:
+	@mkdir -p $(OUT_DIR) && \
+	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -g -O1 \
+	  -Wall -Wextra -Wno-unused-parameter -Idylib -o $(SETTINGSBRIDGE_CHECK) \
+	  dylib/tests/settingsbridge-check.c dylib/feats/settingsbridge.c dylib/util/file.c dylib/util/log.c && \
+	$(SETTINGSBRIDGE_CHECK)
 
 SPAWN_ENV := $(OUT_DIR)/spawn-env
 

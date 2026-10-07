@@ -403,7 +403,7 @@ if [ -n "$STEAM_COMPAT_DATA_PATH" ]; then
   mkdir -p "$WINEPREFIX"
   stage_step="prefix arch check"
   refuse_foreign_prefix
-  # The settings catalog (notproton-settings, docs/ROADMAP.md §4): it records this
+  # The settings catalog (notproton-settings, docs/ROADMAP.md, section 4): it records this
   # game's programs, brings a prefix from before the catalog into it, and writes
   # .sevo/bottle.env and every program's file before anything starts.
   stage_step="game settings"

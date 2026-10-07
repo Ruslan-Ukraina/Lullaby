@@ -5,6 +5,7 @@
 #include "../feats/webpatch.h"
 #include "../feats/compatsvc.h"
 #include "../feats/steamwin_css.h"
+#include "../feats/settingsbridge.h"
 #include "../util/file.h"
 #include "../util/log.h"
 
@@ -141,6 +142,15 @@ static int open_patched(const char *path) {
     if (!patched)
         return -1;
 
+    // The panel's requests carry this process's token (settingsbridge.h).
+    size_t keyed_len = 0;
+    char *keyed = np_settings_inject_token(patched, patched_len, np_settings_token(), &keyed_len);
+    if (keyed) {
+        free(patched);
+        patched = keyed;
+        patched_len = keyed_len;
+    }
+
     // Only this page pays for an unregistered service, and only here is it known that the
     // page arrived. UNTRIED is not a miss: the chunk can precede the first route lookup.
     if (shape && strcmp(shape, NP_SHAPE_SELECTTOOL) == 0 &&
@@ -199,6 +209,8 @@ static const int WRITE_INTENT = O_WRONLY | O_RDWR | O_CREAT | O_TRUNC | O_APPEND
 static int try_serve(const char *path, int oflag) {
     if (oflag & WRITE_INTENT)
         return -1;
+    if (np_settings_should_serve(path))
+        return np_settings_serve(path);
     if (np_webpatch_should_patch(path))
         return open_patched(path);
     if (np_steamwin_css_should_patch(path) && np_steamwin_mode() >= NP_SW_NATIVE)
