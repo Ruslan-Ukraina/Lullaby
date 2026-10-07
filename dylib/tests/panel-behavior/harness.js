@@ -20,8 +20,9 @@ const barrel = { XY: 'Section', m: 'Dropdown', Yh: 'Toggle' };
 
 // The two shapes take the payload in different forms and bind different names, which
 // is the whole of the difference between them.
+// The stable UI (forcetool) draws the catalog panel (catalog.js); the renderer panel
+// below is the beta UI's alone.
 const FORMS = {
-  component: { arg: 'component', react: 'i',  barrel: 'c'  },
   statement: { arg: 'statement', react: 'R0', barrel: 'B0' },
 };
 

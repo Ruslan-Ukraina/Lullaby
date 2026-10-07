@@ -148,6 +148,30 @@ struct SettingsCLITests {
         #expect(fixture.service.store.game(1422450).exes == ["deadlock.exe", "vconsole2.exe"])
     }
 
+    /// dylib/tests/panel-behavior/fixtures: what the panel tests draw.
+    static var panelFixtures: URL {
+        URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appending(path: "dylib/tests/panel-behavior/fixtures")
+    }
+
+    @Test("the panel's fixtures are what the CLI prints today")
+    func panelFixturesAreCurrent() throws {
+        let fixture = try SettingsFixture()
+        defer { fixture.cleanUp() }
+        let catalog = try JSONValue.parse(String(
+            contentsOf: Self.panelFixtures.appending(path: "catalog.json"), encoding: .utf8))
+        #expect(catalog == fixture.service.catalogJSON(),
+                "regenerate dylib/tests/panel-behavior/fixtures/catalog.json with notproton-settings catalog")
+        for (file, level) in [("state-game.json", SettingLevel.game), ("state-global.json", .global)] {
+            let state = try JSONValue.parse(String(
+                contentsOf: Self.panelFixtures.appending(path: file), encoding: .utf8))
+            let ids = Set(state.object?["values"]?.object?.keys.map { $0 } ?? [])
+            let wanted = Set(SettingCatalog.all.filter { $0.levels.contains(level) }.map(\.id.rawValue))
+            #expect(ids == wanted, "\(file) lists the settings of its level")
+        }
+    }
+
     @Test("executables: the game's own, not Windows' or the tools beside it")
     func executables() {
         #expect(GameExecutables.recordable("C:\\Games\\X\\Game.EXE") == "game.exe")

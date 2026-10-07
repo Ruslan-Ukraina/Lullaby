@@ -53,6 +53,7 @@ OUT_DIR     := out
 
 GENERATED_DIR := $(OUT_DIR)/generated
 RUN_SCRIPT_H  := $(GENERATED_DIR)/compat_run.h
+PANEL_JS_H    := $(GENERATED_DIR)/panel_js.h
 CFLAGS += -I$(GENERATED_DIR)
 
 ARM64_DYLIB := $(OUT_DIR)/notproton.arm64.dylib
@@ -67,7 +68,7 @@ DEPS := $(OBJS:.o=.d)
         tests-list overlay-shim overlay-shim-install overlay-shim-tests \
         overlay-shim-bench iconmaker icon \
         appinfo helpers-install ntdll-resolve bridge runcheck compatcheck \
-        compatsvc-check scriptcheck steamwin-check updategate-check settingsbridge-check sigslice
+        compatsvc-check scriptcheck steamwin-check updategate-check settingsbridge-check webpatch-syntax sigslice
 
 APP_PAYLOAD := app/Sources/NotProtonApp/Resources/payload
 
@@ -219,10 +220,10 @@ peicon-fixtures:
 GATECHECK         := $(OUT_DIR)/gatecheck
 WEBPATCH_FIXTURES := dylib/tests/webpatch-fixtures
 
-$(GATECHECK): dylib/tests/gatecheck.c dylib/feats/webpatch.c dylib/feats/webpatch.h
+$(GATECHECK): dylib/tests/gatecheck.c dylib/feats/webpatch.c dylib/feats/webpatch.h $(PANEL_JS_H)
 	@mkdir -p $(dir $@)
 	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -g -O1 \
-	  -Wall -Wextra -Wno-unused-parameter -Idylib -o $@ dylib/tests/gatecheck.c
+	  -Wall -Wextra -Wno-unused-parameter -Idylib -I$(GENERATED_DIR) -o $@ dylib/tests/gatecheck.c
 
 webpatch-fixtures:
 	@if [ ! -d $(WEBPATCH_FIXTURES) ] || [ ! -f dylib/tests/gatecheck.c ]; then \
@@ -278,6 +279,28 @@ settingsbridge-check:
 	  dylib/tests/settingsbridge-check.c dylib/feats/settingsbridge.c dylib/util/file.c dylib/util/log.c && \
 	$(SETTINGSBRIDGE_CHECK)
 
+# The webpatch on the Steam chunks of this Mac, checked by node as JavaScript: the
+# panel spliced into Steam's own code must parse. Skipped without Steam or node.
+STEAMUI_DIR ?= $(HOME)/Library/Application Support/Steam/Steam.AppBundle/Steam/Contents/MacOS/steamui
+
+webpatch-syntax: $(PANEL_JS_H)
+	@if ! command -v node >/dev/null 2>&1 || [ ! -d "$(STEAMUI_DIR)" ]; then \
+		echo "==> webpatch-syntax: no node or no Steam, skipped"; exit 0; fi; \
+	mkdir -p $(OUT_DIR) && \
+	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -g -O1 \
+	  -Wall -Wextra -Wno-unused-parameter -Idylib -I$(GENERATED_DIR) -o $(OUT_DIR)/webpatch-apply \
+	  dylib/tests/webpatch-apply.c dylib/feats/webpatch.c dylib/feats/settingsbridge.c \
+	  dylib/util/file.c dylib/util/log.c && \
+	tmp=$$(mktemp -d) && n=0 && \
+	for f in "$(STEAMUI_DIR)"/chunk~*.js "$(STEAMUI_DIR)"/library.js; do \
+		[ -f "$$f" ] && grep -q 'AppProperties_Compat' "$$f" || continue; \
+		$(OUT_DIR)/webpatch-apply "$$f" "$$tmp/patched.js" || { rm -rf "$${tmp:?}"; exit 1; }; \
+		node --check "$$tmp/patched.js" || { echo "webpatch-syntax: $$f does not parse after the webpatch"; rm -rf "$${tmp:?}"; exit 1; }; \
+		n=$$((n + 1)); \
+	done; \
+	rm -rf "$${tmp:?}"; \
+	echo "==> webpatch-syntax: $$n patched Steam chunk(s) parse"
+
 SPAWN_ENV := $(OUT_DIR)/spawn-env
 
 spawn-env:
@@ -323,9 +346,11 @@ panel-behavior:
 	if ! command -v node >/dev/null 2>&1; then \
 		echo "==> panel-behavior: node not found, skipped"; exit 0; fi; \
 	mkdir -p $(OUT_DIR) && \
+	$(MAKE) -s $(PANEL_JS_H) && \
 	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -g -O1 \
-	  -Wall -Wextra -Wno-unused-parameter -Idylib -o $(OUT_DIR)/panel-emit \
+	  -Wall -Wextra -Wno-unused-parameter -Idylib -I$(GENERATED_DIR) -o $(OUT_DIR)/panel-emit \
 	  $(PANEL_TESTS)/emit.c && \
+	node $(PANEL_TESTS)/catalog.js $(OUT_DIR)/panel-emit $(PANEL_TESTS)/fixtures && \
 	node $(PANEL_TESTS)/behavior.js $(OUT_DIR)/panel-emit && \
 	node $(PANEL_TESTS)/switching.js $(OUT_DIR)/panel-emit && \
 	node $(PANEL_TESTS)/cleanup.js $(OUT_DIR)/panel-emit && \
@@ -377,6 +402,12 @@ $(RUN_SCRIPT_H): dylib/feats/compat_run.sh dylib/embed_script.py
 	python3 dylib/embed_script.py $< $@ RUN_SCRIPT
 
 $(OUT_DIR)/dylib/feats/compat.o: $(RUN_SCRIPT_H)
+
+$(PANEL_JS_H): dylib/feats/panel.js dylib/embed_js.py
+	@mkdir -p $(GENERATED_DIR)
+	python3 dylib/embed_js.py $< $@ NP_PANEL_JS
+
+$(OUT_DIR)/dylib/feats/webpatch.o: $(PANEL_JS_H)
 
 SUPPORT_DIR        := $(HOME)/Library/Application Support/notproton
 OVERLAY_SHIM_SRC   := overlay-shim/overlay_shim.m

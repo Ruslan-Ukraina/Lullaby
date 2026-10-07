@@ -1,6 +1,7 @@
 // Enables Steam Play in the UI/enables the Compatibility tab in game properties
 #include "webpatch.h"
 #include "../util/log.h"
+#include "panel_js.h"  // NP_PANEL_JS, generated from feats/panel.js
 
 #include <stdlib.h>
 #include <string.h>
@@ -104,8 +105,9 @@ static int out_expand(np_out_t *o, const char *replace, const np_cap_t *caps) {
     return 1;
 }
 
-// Renderer panel: the one setting that has to be reachable from the game's own
-// Steam page. Everything else about a game lives in NotProton's Game Settings,
+// Renderer panel for the beta compat UI (selecttool), whose anchors give no name for
+// React, so the catalog panel cannot be built there (DECISIONS P7A-7): the one setting that
+// has to be reachable from the game's own Steam page. Everything else about a game lives in NotProton's Game Settings,
 // whose .sevo/apps/<exe>.env is the single source of truth (docs/DECISIONS.md V3).
 // The choice is a launch option, NOTPROTON_RENDERER=<name>, which compat_run.sh
 // reads ahead of the game's env file.
@@ -151,17 +153,30 @@ static int out_expand(np_out_t *o, const char *replace, const np_cap_t *caps) {
     "onChange:v=>s([[\"NOTPROTON_RENDERER\",v.data],[\"CX_GRAPHICS_BACKEND\",\"\"]])})},\"gfx\")" \
     "]})})}"
 
-#define NP_CX_OPTIONS_COMPONENT \
-    "MSCXOpts=" NP_CX_OPTIONS_BODY("e", "i", "c") ","
+// NotProton's settings panel (feats/panel.js, docs/ROADMAP.md section 5): one function
+// the page calls with its own JSX runtime, Steam's dialog controls and React. On the
+// Compatibility page of a game it draws the game's own values; in Settings > Compatibility
+// the values for all games. Both draw the catalog notproton-settings answers with.
+#define NP_PANEL_COMPONENT \
+    "NPPanel=(" NP_PANEL_JS ")(i,c,n),"
+
+#define NP_PANEL_GLOBAL_STATEMENT \
+    "var NPPanelG=(" NP_PANEL_JS ")(i,s,n);"
 
 // Valve is testing a new compatibility page UI, this logic relates to supporting that
 #define NP_CX_OPTIONS_STATEMENT \
     "var MSCXOpts=" NP_CX_OPTIONS_BODY("np", NP_C3, NP_C4) ";"
 
 static const np_gate_t g_gates_forcetool[] = {
-    // SteamPlay settings section
-    { "function ue(e){return(0,T.CI)()?",
-      "function ue(e){return true?", 1 },
+    // SteamPlay settings section, with NotProton's values for all games under it
+    { "function ue(e){return(0,T.CI)()?(0,i.jsxs)(s.XY,{label:(0,c.we)(\"#Settings_SteamPlay_SteamPlay\"),"
+      "children:[(0,i.jsx)(\"div\",{children:(0,c.we)(\"#Settings_SteamPlay_IsWildcardEnabled\")}),"
+      "(0,i.jsx)(R.i,{})]}):null}",
+      NP_PANEL_GLOBAL_STATEMENT
+      "function ue(e){return true?(0,i.jsxs)(i.Fragment,{children:[(0,i.jsxs)(s.XY,{label:(0,c.we)"
+      "(\"#Settings_SteamPlay_SteamPlay\"),children:[(0,i.jsx)(\"div\",{children:(0,c.we)"
+      "(\"#Settings_SteamPlay_IsWildcardEnabled\")}),(0,i.jsx)(R.i,{})]}),"
+      "(0,i.jsx)(NPPanelG.Global,{})]}):null}", 1 },
     // AppProperties Compatibility tab (app and non-Steam-shortcut variants)
     { "(0,f.CI)()&&o.push({title:(0,A.we)(\"#AppProperties_CompatibilityPage\")",
       "true&&o.push({title:(0,A.we)(\"#AppProperties_CompatibilityPage\")", 2 },
@@ -182,10 +197,10 @@ static const np_gate_t g_gates_forcetool[] = {
     { "Rt=(0,a.PA)(e=>(0,i.jsxs)(c.nB,{children:[(0,i.jsx)(\"div\",{className:K().HiddenIfNotLast,"
       "children:(0,A.we)(\"#AppProperties_CompatibilityNoOptions\")}),(0,i.jsx)(It,{...e}),"
       "(0,i.jsx)(xt,{...e})]}));",
-      NP_CX_OPTIONS_COMPONENT
+      NP_PANEL_COMPONENT
       "Rt=(0,a.PA)(e=>(0,i.jsxs)(c.nB,{children:[(0,i.jsx)(\"div\",{className:K().HiddenIfNotLast,"
       "children:(0,A.we)(\"#AppProperties_CompatibilityNoOptions\")}),(0,i.jsx)(It,{...e}),"
-      "(0,i.jsx)(xt,{...e}),(0,i.jsx)(MSCXOpts,{...e})]}));", 1 },
+      "(0,i.jsx)(xt,{...e}),(0,i.jsx)(NPPanel.Game,{...e})]}));", 1 },
     { "get is_invalid_os_type(){return this.most_available_per_client_data.is_invalid_os_type}",
       "get is_invalid_os_type(){return false}", 1 },
     // Reminder banner for 32 bit Mac games
