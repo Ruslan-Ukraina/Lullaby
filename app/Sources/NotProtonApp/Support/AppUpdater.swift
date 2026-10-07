@@ -11,6 +11,12 @@ import Sparkle
 //
 // Pre-release versions (tags like v1.1.0-pre.1) are published on Sparkle's "beta"
 // channel and offered only after "Pre-release versions" in Status is turned on.
+//
+// A private release repository (release/feed.json "access": "private", ROADMAP §3):
+// Sparkle sends the Keychain token through SPUUpdater.httpHeaders with
+// Accept: application/octet-stream, and the appcast's address is resolved through
+// GitHub's API before every check, since each release uploads it anew. The
+// appcast's enclosures are API asset addresses (release.yml writes them so).
 @MainActor
 final class AppUpdater: NSObject, SPUUpdaterDelegate {
     static let shared = AppUpdater()
@@ -26,8 +32,11 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
         case off(String)
     }
 
-    let setup: Setup
+    private(set) var setup: Setup
     private var controller: SPUStandardUpdaterController?
+    /// Private mode: the feed's transport and the appcast's API address once resolved.
+    private var privateFeed: GitHubAssetTransport?
+    private var resolvedAppcast: URL?
 
     var isAvailable: Bool { setup == .ready }
 
@@ -57,17 +66,61 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
     }
 
     override init() {
-        let info = Bundle.main.infoDictionary ?? [:]
-        setup = Self.setup(
-            feed: info[Self.feedKey] as? String, key: info[Self.keyKey] as? String, kind: .current)
+        setup = .off("")
         super.init()
+        start()
+    }
+
+    /// Reads the configuration again (a token added or removed) and starts Sparkle if it can.
+    func start() {
+        let info = Bundle.main.infoDictionary ?? [:]
+        let feedText = info[Self.feedKey] as? String
+        setup = Self.setup(feed: feedText, key: info[Self.keyKey] as? String, kind: .current)
+        privateFeed = nil
+        if case .ready = setup, (info[ReleaseAccess.infoKey] as? String) == "private" {
+            let repository = info[ReleaseAccess.repositoryKey] as? String ?? ""
+            if let token = ReleaseToken.read(repository: repository),
+               let base = (info[ReleaseFeed.urlKey] as? String).flatMap(URL.init(string:)) {
+                privateFeed = GitHubAssetTransport(base: base, repository: repository, token: token)
+            } else {
+                setup = .off(ReleaseAccess.needsToken)
+            }
+        }
         if case .off(let reason) = setup {
             AppLog.note("app updates: off, \(reason)")
             return
         }
-        controller = SPUStandardUpdaterController(
-            startingUpdater: true, updaterDelegate: self, userDriverDelegate: nil)
-        AppLog.note("app updates: on, \(version), pre-releases \(Self.prereleases ? "on" : "off")")
+        if controller == nil {
+            controller = SPUStandardUpdaterController(
+                startingUpdater: privateFeed == nil, updaterDelegate: self, userDriverDelegate: nil)
+        }
+        if let privateFeed {
+            controller?.updater.httpHeaders = [
+                "Authorization": "Bearer \(privateFeed.token)",
+                "Accept": "application/octet-stream",
+                "X-GitHub-Api-Version": "2022-11-28",
+            ]
+            Task { await resolveAppcast(then: { [weak self] in
+                guard let self, let controller = self.controller else { return }
+                if !controller.updater.sessionInProgress { controller.startUpdater() }
+            }) }
+        }
+        AppLog.note("app updates: on, \(version), \(privateFeed == nil ? "public" : "private") releases, "
+            + "pre-releases \(Self.prereleases ? "on" : "off")")
+    }
+
+    /// Private mode: the appcast's current API address, from its public-style one.
+    private func resolveAppcast(then done: @escaping @MainActor () -> Void) async {
+        guard let privateFeed,
+              let text = Bundle.main.object(forInfoDictionaryKey: Self.feedKey) as? String,
+              let url = URL(string: text), let (tag, file) = privateFeed.asset(of: url)
+        else { return }
+        do {
+            resolvedAppcast = try await privateFeed.assetURL(tag: tag, file: file)
+            done()
+        } catch {
+            AppLog.note("app updates: the private appcast cannot be reached: \(error.localizedDescription)")
+        }
     }
 
     static var prereleases: Bool {
@@ -83,7 +136,27 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
     func check() {
         guard let controller else { return }
         AppLog.note("app updates: check requested")
+        if privateFeed != nil {
+            Task { await resolveAppcast(then: { [weak self] in
+                guard let controller = self?.controller else { return }
+                if !controller.updater.canCheckForUpdates { controller.startUpdater() }
+                controller.checkForUpdates(nil)
+            }) }
+            return
+        }
         controller.checkForUpdates(nil)
+    }
+
+    var isPrivate: Bool {
+        (Bundle.main.object(forInfoDictionaryKey: ReleaseAccess.infoKey) as? String) == "private"
+    }
+
+    var repository: String {
+        Bundle.main.object(forInfoDictionaryKey: ReleaseAccess.repositoryKey) as? String ?? ""
+    }
+
+    func feedURLString(for updater: SPUUpdater) -> String? {
+        resolvedAppcast?.absoluteString
     }
 
     var lastCheck: Date? { controller?.updater.lastUpdateCheckDate }

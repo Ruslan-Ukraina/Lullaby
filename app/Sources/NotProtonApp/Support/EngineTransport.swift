@@ -19,23 +19,34 @@ struct TransportFailure: LocalizedError, Equatable {
 }
 
 /// URLSession, one session per transfer, data written to disk as it arrives.
-struct URLSessionEngineTransport: EngineTransport {
+/// Requests may carry headers (the private release mode, ReleaseAccess.swift); a
+/// redirect to another host drops Authorization (RedirectPolicy).
+struct URLSessionEngineTransport: EngineTransport, RequestTransport {
 
     func fetch(_ url: URL, limit: Int) async throws -> Data {
-        var request = URLRequest(url: url)
+        try await fetch(URLRequest(url: url), limit: limit)
+    }
+
+    func fetch(_ original: URLRequest, limit: Int) async throws -> Data {
+        var request = original
         request.cachePolicy = .reloadIgnoringLocalCacheData
-        request.timeoutInterval = 30
-        let (data, response) = try await URLSession.shared.data(for: request)
+        if request.timeoutInterval == 60 { request.timeoutInterval = 30 }
+        let name = request.url?.lastPathComponent ?? "the file"
+        let (data, response) = try await URLSession.shared.data(for: request, delegate: RedirectGuard())
         if let http = response as? HTTPURLResponse, http.statusCode != 200 {
-            throw TransportFailure(detail: "\(url.lastPathComponent): the server answered \(http.statusCode).")
+            throw TransportFailure(detail: "\(name): the server answered \(http.statusCode).")
         }
         guard data.count <= limit else {
-            throw TransportFailure(detail: "\(url.lastPathComponent) is larger than expected.")
+            throw TransportFailure(detail: "\(name) is larger than expected.")
         }
         return data
     }
 
     func download(_ url: URL, to part: URL, progress: @escaping @Sendable (Int64) -> Void) async throws {
+        try await download(URLRequest(url: url), to: part, progress: progress)
+    }
+
+    func download(_ original: URLRequest, to part: URL, progress: @escaping @Sendable (Int64) -> Void) async throws {
         let fm = FileManager.default
         if !fm.fileExists(atPath: part.path(percentEncoded: false)) {
             fm.createFile(atPath: part.path(percentEncoded: false), contents: nil)
@@ -44,7 +55,7 @@ struct URLSessionEngineTransport: EngineTransport {
         defer { try? handle.close() }
         let offset = try handle.seekToEnd()
 
-        var request = URLRequest(url: url)
+        var request = original
         request.cachePolicy = .reloadIgnoringLocalCacheData
         request.timeoutInterval = 60
         if offset > 0 { request.setValue("bytes=\(offset)-", forHTTPHeaderField: "Range") }
@@ -110,6 +121,13 @@ struct URLSessionEngineTransport: EngineTransport {
             }
         }
 
+        func urlSession(
+            _ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+            newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void
+        ) {
+            completionHandler(RedirectPolicy.follow(request, from: task.originalRequest))
+        }
+
         func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
             do {
                 try handle.write(contentsOf: data)
@@ -134,5 +152,15 @@ struct URLSessionEngineTransport: EngineTransport {
             }
             continuation = nil
         }
+    }
+}
+
+/// RedirectPolicy for URLSession's one-shot requests.
+private final class RedirectGuard: NSObject, URLSessionTaskDelegate, Sendable {
+    func urlSession(
+        _ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest
+    ) async -> URLRequest? {
+        RedirectPolicy.follow(request, from: task.originalRequest)
     }
 }

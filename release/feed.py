@@ -18,6 +18,7 @@ Phase 6 CI (.github/workflows, docs/RELEASING.md):
 
     feed.py valve-manifest <steam_client[_publicbeta]_osx>        version and packages, as JSON
     feed.py engine-versions <engine.json>                          "<channel> <version>" lines
+    feed.py config <key>                                           a value of release/feed.json
     feed.py bridge-artifact --files-dir <dir> --b1-dir <dir> --engine E --commit C --rev N \
         --feed <base url> --out <feed dir>                         a bridge built from source
     feed.py publish-bridges --repo bridge/bridge-manifest.json [--current <published>] \
@@ -325,14 +326,14 @@ def publish_signatures(args):
     for d in (current or {"databases": []})["databases"]:
         databases[d["file"]] = d
     for d in repo["databases"]:
-        databases[d["file"]] = {**d, "url": f"{feed}signatures/{d['file']}"}
+        databases[d["file"]] = {**d, "url": f"{feed}{args.tag}/{d['file']}"}
         sources[d["file"]] = os.path.join(args.dir, d["file"])
     for path in args.add_db or []:
         name = os.path.basename(path)
         db = json.load(open(path))
         if db.get("schema_version") != 3 or db.get("arch") != "arm64" or f"{db.get('steam_build')}.json" != name:
             raise SystemExit(f"{path}: not a schema 3 arm64 database named after its steam_build")
-        databases[name] = {"file": name, "sha256": sha256(path), "url": f"{feed}signatures/{name}"}
+        databases[name] = {"file": name, "sha256": sha256(path), "url": f"{feed}{args.tag}/{name}"}
         sources[name] = path
     builds = {}
     for b in (current or {"builds": []})["builds"] + repo["builds"]:
@@ -393,6 +394,36 @@ def engine_versions(args):
             print(channel, info["version"])
 
 
+CONFIG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "feed.json")
+
+
+def feed_config(path=CONFIG):
+    """release/feed.json: where NotProton publishes and how the app downloads (DECISIONS P6-11).
+    Everything else (the feed base, the appcast URL) is derived from it."""
+    c = json.load(open(path))
+    if c.get("schema") != 1:
+        raise SystemExit(f"{path}: schema {c.get('schema')}, expected 1")
+    repo = c.get("repository", "")
+    if repo.count("/") != 1 or not all(repo.split("/")):
+        raise SystemExit(f"{path}: repository must be owner/name, not {repo!r}")
+    if c.get("access") not in ("public", "private"):
+        raise SystemExit(f"{path}: access must be public or private")
+    for key in ("manifestTag", "signaturesTag", "appcast"):
+        if not c.get(key) or "/" in c[key]:
+            raise SystemExit(f"{path}: {key} must be a plain name")
+    engine = c.get("engineManifest", "")
+    if not engine.startswith("https://github.com/") or "/releases/download/" not in engine:
+        raise SystemExit(f"{path}: engineManifest must be a GitHub release download over https")
+    c["feed"] = f"https://github.com/{repo}/releases/download/"
+    c["appcastURL"] = f"{c['feed']}{c['manifestTag']}/{c['appcast']}"
+    return c
+
+
+def config(args):
+    value = feed_config(args.file or CONFIG)[args.key]
+    print(value)
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -418,9 +449,13 @@ def main():
     s = sub.add_parser("publish-signatures")
     for name in ("--repo", "--dir", "--feed", "--out"):
         s.add_argument(name, required=True)
+    s.add_argument("--tag", default="signatures")
     s.add_argument("--current"); s.add_argument("--add-db", action="append")
     s.add_argument("--add-build", action="append")
     s.set_defaults(run=publish_signatures)
+    s = sub.add_parser("config")
+    s.add_argument("key"); s.add_argument("--file")
+    s.set_defaults(run=config)
     s = sub.add_parser("valve-manifest")
     s.add_argument("file")
     s.set_defaults(run=valve_manifest)

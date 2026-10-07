@@ -7,6 +7,10 @@ name: steam-signatures
 # Dry run (a dryrun-signatures-* tag, or "Run workflow" with dry_run): the TEST
 # keys, nothing published, no issues; the feed it would publish is an artifact.
 
+# The schedule is a parameter: repository variable NP_STEAM_CHECK_HOURS (default 3, 0 = never
+# by schedule, rounded up to a multiple of 3, how often the cron fires). The cron
+# starts only a short Linux gate; the macOS job runs when Valve offers a build without a database (DECISIONS P6-13).
+
 on:
   schedule:
     - cron: "23 */3 * * *"
@@ -28,15 +32,44 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  FEED: https://github.com/${{ github.repository }}/releases/download/
   DRY_RUN: ${{ github.event_name == 'push' || inputs.dry_run == true }}
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Anything to do
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HOURS: ${{ vars.NP_STEAM_CHECK_HOURS }}
+          DEFAULT_HOURS: "3"
+          CRON_HOURS: "3"
+          NP_RELEASE_PRIVATE_KEY: ${{ secrets.NP_RELEASE_PRIVATE_KEY }}
+        run: |
+          release/ci-gate.sh steam | tee -a "$GITHUB_OUTPUT"
+          grep '^reason=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2- >> "$GITHUB_STEP_SUMMARY"
+
   signatures:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
     runs-on: xcode-27
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
+
+      - name: Where to publish (release/feed.json)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ "$DRY_RUN" = true ] || release/gh-publish.sh check-repo
+          { echo "FEED=$(python3 -I release/feed.py config feed)"
+            echo "MANIFEST_TAG=$(python3 -I release/feed.py config manifestTag)"
+            echo "SIGNATURES_TAG=$(python3 -I release/feed.py config signaturesTag)"; } >> "$GITHUB_ENV"
 
       - name: Keys
         id: keys
@@ -61,19 +94,24 @@ jobs:
 
       - name: Read what is published
         if: steps.keys.outputs.skip != 'true' && env.DRY_RUN != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           cur="$RUNNER_TEMP/current"
-          if release/gh-publish.sh fetch "$FEED" manifest signatures-manifest.json "$cur"; then
+          if release/gh-publish.sh fetch "$MANIFEST_TAG" signatures-manifest.json "$cur"; then
             release/gh-publish.sh verify "$NP_RELEASE_KEY" "$cur/signatures-manifest.json"
             echo "CURRENT=$cur/signatures-manifest.json" >> "$GITHUB_ENV"
+            # Through the API, so a private repository reads the same way (ROADMAP §3).
+            for name in $(python3 -I -c 'import json,sys; [print(d["file"]) for d in json.load(open(sys.argv[1]))["databases"]]' "$cur/signatures-manifest.json"); do
+              release/gh-publish.sh fetch "$SIGNATURES_TAG" "$name" "$cur/dbs" --no-sig
+            done
             python3 -I - "$cur/signatures-manifest.json" "$cur/dbs" <<'PY'
-          import hashlib, json, os, sys, urllib.request
-          m = json.load(open(sys.argv[1])); os.makedirs(sys.argv[2], exist_ok=True)
+          import hashlib, json, os, sys
+          m = json.load(open(sys.argv[1]))
           for d in m["databases"]:
-              data = urllib.request.urlopen(d["url"]).read()
+              data = open(os.path.join(sys.argv[2], d["file"]), "rb").read()
               if hashlib.sha256(data).hexdigest() != d["sha256"]:
                   sys.exit(f"{d['file']}: published bytes do not match the signed manifest")
-              open(os.path.join(sys.argv[2], d["file"]), "wb").write(data)
               print("published", d["file"])
           PY
             echo "PUBLISHED_DBS=$cur/dbs" >> "$GITHUB_ENV"
@@ -120,17 +158,21 @@ jobs:
 
       - name: Publish
         if: steps.cut.outputs.publish == 'true' && env.DRY_RUN != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           feed="$RUNNER_TEMP/feed"
-          release/gh-publish.sh upload signatures "Steam signature databases" "$feed"/signatures/*.json
-          release/gh-publish.sh upload manifest "Signed manifests" \
+          release/gh-publish.sh upload "$SIGNATURES_TAG" "Steam signature databases" "$feed"/signatures/*.json
+          release/gh-publish.sh upload "$MANIFEST_TAG" "Signed manifests" \
             "$feed/manifest/signatures-manifest.json" "$feed/manifest/signatures-manifest.json.sig"
 
       - name: Check what was published
         if: steps.cut.outputs.publish == 'true' && env.DRY_RUN != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           back="$RUNNER_TEMP/published"
-          release/gh-publish.sh fetch "$FEED" manifest signatures-manifest.json "$back"
+          release/gh-publish.sh fetch "$MANIFEST_TAG" signatures-manifest.json "$back"
           cmp "$back/signatures-manifest.json" "$RUNNER_TEMP/feed/manifest/signatures-manifest.json"
           release/gh-publish.sh verify "$NP_RELEASE_KEY" "$back/signatures-manifest.json"
           echo "The published manifest is the signed one." >> "$GITHUB_STEP_SUMMARY"

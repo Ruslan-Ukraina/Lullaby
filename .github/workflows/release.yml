@@ -23,7 +23,6 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  FEED: https://github.com/${{ github.repository }}/releases/download/
   DRY_RUN: ${{ startsWith(github.ref_name, 'dryrun-') }}
   DOBBY_COMMIT: "5dfc8546954ce3b3198132ab13fddb89ee92cdd7"
   SPARKLE_BIN: app/.build/artifacts/sparkle/Sparkle/bin
@@ -36,6 +35,16 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
+      - name: Where to publish (release/feed.json)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ "$DRY_RUN" = true ] || release/gh-publish.sh check-repo
+          { echo "FEED=$(python3 -I release/feed.py config feed)"
+            echo "MANIFEST_TAG=$(python3 -I release/feed.py config manifestTag)"
+            echo "APPCAST=$(python3 -I release/feed.py config appcast)"
+            echo "ACCESS=$(python3 -I release/feed.py config access)"; } >> "$GITHUB_ENV"
 
       - name: Version
         run: |
@@ -111,7 +120,7 @@ jobs:
             echo "Bundled bridge: \`$id\` from dormison-bridge run $run (TEST key)" >> "$GITHUB_STEP_SUMMARY"
           else
             for id in $(python3 -I -c 'import json; [print(e["id"]) for e in json.load(open("bridge/bridge-manifest.json"))["bridges"]]'); do
-              release/gh-publish.sh fetch "$FEED" "$id" "$id.tar.xz" "$dir/$id" \
+              release/gh-publish.sh fetch "$id" "$id.tar.xz" "$dir/$id" \
                 || { echo "$id is not published; run dormison-bridge and commit its entry into bridge/bridge-manifest.json"; exit 1; }
               echo "Bundled bridge: \`$id\` (published)" >> "$GITHUB_STEP_SUMMARY"
             done
@@ -135,14 +144,14 @@ jobs:
           # The same bundle with a TEST key in a release build must be refused (BuildKind.swift).
           if [ "$KIND" = release ]; then
             if NP_BUILD_KIND=release NP_RELEASE_KEY="$(swift release/testkeys.swift release)" SPARKLE_KEY="$SPARKLE_KEY" \
-              NP_RELEASE_FEED="$FEED" SPARKLE_FEED="${FEED}manifest/appcast.xml" release/check-release.sh config 2>/dev/null; then
+              NP_RELEASE_FEED="$FEED" SPARKLE_FEED="$(python3 -I release/feed.py config appcastURL)" release/check-release.sh config 2>/dev/null; then
               echo "a release configuration with the TEST key passed the check"; exit 1
             fi
           fi
           plist() { /usr/libexec/PlistBuddy -c "Print :$1" out/NotProton.app/Contents/Info.plist; }
           {
             echo '```'
-            for k in CFBundleShortVersionString CFBundleVersion NPBuildKind NPReleaseFeedURL NPReleasePublicKey SUFeedURL SUPublicEDKey SUEnableAutomaticChecks SURequireSignedFeed; do
+            for k in CFBundleShortVersionString CFBundleVersion NPBuildKind NPReleaseFeedURL NPReleaseAccess NPReleaseRepository NPReleaseManifestTag NPEngineManifestURL NPReleasePublicKey SUFeedURL SUPublicEDKey SUEnableAutomaticChecks SURequireSignedFeed; do
               echo "$k = $(plist $k)"
             done
             echo '```'
@@ -160,10 +169,16 @@ jobs:
 
       - name: The built app reads the published feed
         if: env.DRY_RUN != 'true'
+        env:
+          # Private mode: the job's token stands in for the user's read-only one.
+          NP_RELEASE_TOKEN: ${{ github.token }}
         run: |
           support="$RUNNER_TEMP/np-support"; mkdir -p "$support" "$RUNNER_TEMP/np-steam"
+          private=""; [ "$ACCESS" = private ] && private="--repository $GITHUB_REPOSITORY"
+          # shellcheck disable=SC2086
           out/NotProton.app/Contents/MacOS/NotProtonApp --release check --support "$support" \
-            --steam "$RUNNER_TEMP/np-steam" --feed "$FEED" --key "$NP_RELEASE_KEY" | tee "$RUNNER_TEMP/feed-check.log"
+            --steam "$RUNNER_TEMP/np-steam" --feed "$FEED" --key "$NP_RELEASE_KEY" \
+            --manifest-tag "$MANIFEST_TAG" $private | tee "$RUNNER_TEMP/feed-check.log"
           grep -q "release: bridge" "$RUNNER_TEMP/feed-check.log"
 
       - name: Archive, sign and write the appcast
@@ -175,12 +190,13 @@ jobs:
           [ -n "$notes" ] || notes="NotProton $VERSION."
           printf '%s\n' "$notes" > "$arch/NotProton-$VERSION.md"
           swift package resolve --package-path app
-          if [ "$DRY_RUN" != true ] && curl -fsSL -o "$arch/appcast.xml" "${FEED}manifest/appcast.xml"; then
+          if [ "$DRY_RUN" != true ] && release/gh-publish.sh fetch "$MANIFEST_TAG" "$APPCAST" "$RUNNER_TEMP/appcast" --no-sig; then
+            cp "$RUNNER_TEMP/appcast/$APPCAST" "$arch/appcast.xml"
             echo "Adding to the published appcast."
           fi
           channel=""; [ "$PRE" = true ] && channel="--channel beta"
           "$SPARKLE_BIN/generate_appcast" --ed-key-file "$RUNNER_TEMP/keys/sparkle.key" \
-            --download-url-prefix "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/" \
+            --download-url-prefix "${FEED}$GITHUB_REF_NAME/" \
             --embed-release-notes --maximum-versions 1000 $channel "$arch"
           grep -Eq "sparkle:version>$APP_BUILD<|sparkle:version=\"$APP_BUILD\"" "$arch/appcast.xml"
           grep -q "sparkle:edSignature" "$arch/appcast.xml"
@@ -203,9 +219,28 @@ jobs:
           pre=""; [ "$PRE" = true ] && pre="--prerelease"
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag $pre \
             --title "NotProton $VERSION" --notes-file "$ARCHIVES/NotProton-$VERSION.md" "$ARCHIVES/$ZIP"
-          release/gh-publish.sh upload manifest "Signed manifests" "$ARCHIVES/appcast.xml"
-          curl -fsSL -o "$RUNNER_TEMP/appcast-back.xml" "${FEED}manifest/appcast.xml"
-          cmp "$RUNNER_TEMP/appcast-back.xml" "$ARCHIVES/appcast.xml"
-          curl -fsSL -o "$RUNNER_TEMP/back.zip" "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/$ZIP"
-          cmp "$RUNNER_TEMP/back.zip" "$ARCHIVES/$ZIP"
-          echo "Published $GITHUB_REF_NAME and the appcast; both read back and match." >> "$GITHUB_STEP_SUMMARY"
+          if [ "$ACCESS" = private ]; then
+            # A private repository's download links need a browser session, so the
+            # enclosure points at the asset's API address, which Sparkle reads with
+            # the token (ROADMAP §3). The edit changes the appcast: sign it again.
+            api=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" \
+              --jq ".assets[] | select(.name == \"$ZIP\") | .url")
+            [ -n "$api" ] || { echo "the uploaded $ZIP has no API address"; exit 1; }
+            python3 -I - "$ARCHIVES/appcast.xml" "${FEED}$GITHUB_REF_NAME/$ZIP" "$api" <<'PY'
+          import sys
+          path, public, api = sys.argv[1:4]
+          text = open(path).read()
+          if f'url="{public}"' not in text:
+              sys.exit(f"{public} is not an enclosure of the appcast")
+          open(path, "w").write(text.replace(f'url="{public}"', f'url="{api}"'))
+          PY
+            "$SPARKLE_BIN/sign_update" --ed-key-file "$RUNNER_TEMP/keys/sparkle.key" "$ARCHIVES/appcast.xml"
+            "$SPARKLE_BIN/sign_update" --verify --ed-key-file "$RUNNER_TEMP/keys/sparkle.key" "$ARCHIVES/appcast.xml"
+          fi
+          cp "$ARCHIVES/appcast.xml" "$RUNNER_TEMP/$APPCAST"
+          release/gh-publish.sh upload "$MANIFEST_TAG" "Signed manifests" "$RUNNER_TEMP/$APPCAST"
+          release/gh-publish.sh fetch "$MANIFEST_TAG" "$APPCAST" "$RUNNER_TEMP/back" --no-sig
+          cmp "$RUNNER_TEMP/back/$APPCAST" "$ARCHIVES/appcast.xml"
+          release/gh-publish.sh fetch "$GITHUB_REF_NAME" "$ZIP" "$RUNNER_TEMP/back" --no-sig
+          cmp "$RUNNER_TEMP/back/$ZIP" "$ARCHIVES/$ZIP"
+          echo "Published $GITHUB_REF_NAME and the appcast ($ACCESS); both read back and match." >> "$GITHUB_STEP_SUMMARY"

@@ -118,6 +118,9 @@ struct StatusRow: View {
 struct StatusView: View {
     @Environment(SystemStatus.self) private var status
     @AppStorage(AppUpdater.prereleaseDefault) private var prereleaseUpdates = false
+    @State private var showingTokenSheet = false
+    @State private var tokenDraft = ""
+    @State private var tokenRevision = 0
 
     private static let updateBlockPrompt =
         "NotProton already lets Steam update only to builds it has signatures for. "
@@ -791,6 +794,9 @@ struct StatusView: View {
                     ) { updater.check() }
                     : nil
             )
+            if updater.isPrivate {
+                tokenRow(updater)
+            }
             if updater.isAvailable {
                 Toggle(isOn: Binding(
                     get: { prereleaseUpdates },
@@ -808,6 +814,57 @@ struct StatusView: View {
                     .padding(.leading, StatusMetrics.textInset)
                 }
             }
+        }
+    }
+
+    /// Private releases only (ROADMAP §3): the read-only token, kept in the Keychain.
+    private func tokenRow(_ updater: AppUpdater) -> some View {
+        let present = ReleaseToken.read(repository: updater.repository) != nil
+        return StatusRow(
+            title: "Access token",
+            value: present
+                ? "Saved in the Keychain. NotProton reads its private releases with it."
+                : "NotProton's releases are private. Add the read-only token you were given.",
+            tone: present ? .ok : .warning,
+            secondaryAction: present
+                ? StatusAction(label: "Remove", role: .destructive) {
+                    ReleaseToken.remove(repository: updater.repository)
+                    AppLog.note("release access: token removed")
+                    updater.start()
+                    tokenRevision += 1
+                }
+                : nil,
+            action: StatusAction(label: present ? "Replace…" : "Add Token…", isProminent: !present) {
+                tokenDraft = ""
+                showingTokenSheet = true
+            }
+        )
+        .id(tokenRevision)
+        .sheet(isPresented: $showingTokenSheet) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Access token for \(updater.repository)")
+                    .font(.headline)
+                Text("A read-only token for the releases. It is stored in your Keychain and sent only to GitHub.")
+                    .foregroundStyle(.secondary)
+                SecureField("Token", text: $tokenDraft)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(minWidth: 360)
+                HStack {
+                    Spacer()
+                    Button("Cancel", role: .cancel) { showingTokenSheet = false }
+                    Button("Save") {
+                        ReleaseToken.save(tokenDraft, repository: updater.repository)
+                        tokenDraft = ""
+                        showingTokenSheet = false
+                        updater.start()
+                        tokenRevision += 1
+                        Task { await status.checkReleases() }
+                    }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(tokenDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .padding(20)
         }
     }
 

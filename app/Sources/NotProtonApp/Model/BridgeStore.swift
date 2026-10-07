@@ -405,7 +405,8 @@ struct BridgeUpdater: Sendable {
     func refreshManifest() async throws {
         guard case .ready(let feed) = feed else { return }
         _ = try await SignedDocument.fetch(
-            feed.bridgeManifestURL, feed: feed, transport: transport, cache: manifests, schema: BridgeCatalog.schema)
+            feed.bridgeManifestURL, feed: feed, transport: feed.transport(over: transport), cache: manifests,
+            schema: BridgeCatalog.schema)
     }
 
     var engine: BridgeStore.EngineInfo? {
@@ -468,7 +469,7 @@ struct BridgeUpdater: Sendable {
         var local = release
         if case .remote = release.origin {
             guard case .ready(let feed) = feed else { throw StepFailure(step: step, detail: ReleaseFeed.noKey) }
-            local = try await store.obtain(release, key: feed.key, transport: transport, report: report)
+            local = try await store.obtain(release, key: feed.key, transport: feed.transport(over: transport), report: report)
         }
         report(.switching)
         // An install from before Phase 5 has no state.json yet: the build already in

@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "repository": "Ruslan-Ukraina/NotProton",
+  "access": "public",
+  "manifestTag": "manifest",
+  "signaturesTag": "signatures",
+  "appcast": "appcast.xml",
+  "engineManifest": "https://github.com/kageroumado/dormison/releases/download/manifest/engine.json"
+}

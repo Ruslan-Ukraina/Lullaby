@@ -10,6 +10,10 @@ name: dormison-bridge
 # nothing published, no issues; with nothing new it rebuilds the beta channel's
 # engine, so the whole path still runs. The feed it would publish is an artifact.
 
+# The schedule is a parameter: repository variable NP_DORMISON_CHECK_HOURS (default 24, 0 = never
+# by schedule, rounded up to a multiple of 24, how often the cron fires). The cron
+# starts only a short Linux gate; the macOS job runs when a Dormison release has no bridge (DECISIONS P6-13).
+
 on:
   schedule:
     - cron: "41 5 * * *"
@@ -39,20 +43,48 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  FEED: https://github.com/${{ github.repository }}/releases/download/
   DRY_RUN: ${{ github.event_name == 'push' || inputs.dry_run == true }}
   REBUILD: ${{ inputs.rebuild == true }}
   REV: ${{ inputs.rev }}
   # Pinned in Sevoflurane's Core/Setup/EngineSignature.swift (engine/fetch-dormison.sh).
   DORMISON_PUBKEY: 7uDuIZdCZyobjZcPL12zL+UNOCpHSvLXvVRFHA7bzzA=
-  DORMISON_MANIFEST: https://github.com/kageroumado/dormison/releases/download/manifest/engine.json
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Anything to do
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HOURS: ${{ vars.NP_DORMISON_CHECK_HOURS }}
+          DEFAULT_HOURS: "24"
+          CRON_HOURS: "24"
+          NP_RELEASE_PRIVATE_KEY: ${{ secrets.NP_RELEASE_PRIVATE_KEY }}
+        run: |
+          release/ci-gate.sh dormison | tee -a "$GITHUB_OUTPUT"
+          grep '^reason=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2- >> "$GITHUB_STEP_SUMMARY"
+
   bridge:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
     runs-on: xcode-27
     timeout-minutes: 150
     steps:
       - uses: actions/checkout@v5
+
+      - name: Where to publish (release/feed.json)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ "$DRY_RUN" = true ] || release/gh-publish.sh check-repo
+          { echo "FEED=$(python3 -I release/feed.py config feed)"
+            echo "MANIFEST_TAG=$(python3 -I release/feed.py config manifestTag)"
+            echo "DORMISON_MANIFEST=$(python3 -I release/feed.py config engineManifest)"; } >> "$GITHUB_ENV"
 
       - name: Keys
         id: keys
@@ -74,6 +106,8 @@ jobs:
       - name: Which engine needs a bridge
         id: detect
         if: steps.keys.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           swiftc -O -o "$RUNNER_TEMP/verify-ed25519" engine/verify-ed25519.swift
           d="$RUNNER_TEMP/dormison"; mkdir -p "$d"
@@ -81,7 +115,7 @@ jobs:
           curl -fsSL -o "$d/engine.json.sig" "$DORMISON_MANIFEST.sig"
           "$RUNNER_TEMP/verify-ed25519" "$DORMISON_PUBKEY" "$d/engine.json" "$d/engine.json.sig"
           current=""
-          if [ "$DRY_RUN" != true ] && release/gh-publish.sh fetch "$FEED" manifest bridge-manifest.json "$RUNNER_TEMP/current"; then
+          if [ "$DRY_RUN" != true ] && release/gh-publish.sh fetch "$MANIFEST_TAG" bridge-manifest.json "$RUNNER_TEMP/current"; then
             release/gh-publish.sh verify "$NP_RELEASE_KEY" "$RUNNER_TEMP/current/bridge-manifest.json"
             current="$RUNNER_TEMP/current/bridge-manifest.json"
             echo "CURRENT=$current" >> "$GITHUB_ENV"
@@ -130,7 +164,8 @@ jobs:
         env:
           CHANNEL: ${{ steps.detect.outputs.channel }}
         run: |
-          RUNNERS="$RUNNER_TEMP/runners" CACHE="$RUNNER_TEMP/engine" engine/fetch-dormison.sh --activate
+          MANIFEST_URL="$DORMISON_MANIFEST" RUNNERS="$RUNNER_TEMP/runners" CACHE="$RUNNER_TEMP/engine" \
+            engine/fetch-dormison.sh --activate
           eng=$(cd -P "$RUNNER_TEMP/runners/current" && pwd)
           version=$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$eng/engine-info.json")
           commit=$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["commit"])' "$eng/engine-info.json")
@@ -224,15 +259,17 @@ jobs:
 
       - name: Publish
         if: steps.detect.outputs.engine && env.DRY_RUN != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           feed="$RUNNER_TEMP/feed"
           release/gh-publish.sh upload "$ID" "Steam bridge $ID" "$feed/$ID/$ID.tar.xz" "$feed/$ID/$ID.tar.xz.sig"
-          release/gh-publish.sh upload manifest "Signed manifests" \
+          release/gh-publish.sh upload "$MANIFEST_TAG" "Signed manifests" \
             "$feed/manifest/bridge-manifest.json" "$feed/manifest/bridge-manifest.json.sig"
           back="$RUNNER_TEMP/published"
-          release/gh-publish.sh fetch "$FEED" manifest bridge-manifest.json "$back"
+          release/gh-publish.sh fetch "$MANIFEST_TAG" bridge-manifest.json "$back"
           cmp "$back/bridge-manifest.json" "$feed/manifest/bridge-manifest.json"
-          release/gh-publish.sh fetch "$FEED" "$ID" "$ID.tar.xz" "$back"
+          release/gh-publish.sh fetch "$ID" "$ID.tar.xz" "$back"
           cmp "$back/$ID.tar.xz" "$feed/$ID/$ID.tar.xz"
           echo "Published $ID and the bridge manifest; both read back and match." >> "$GITHUB_STEP_SUMMARY"
 

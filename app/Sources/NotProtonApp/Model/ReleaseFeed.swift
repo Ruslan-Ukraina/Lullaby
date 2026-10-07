@@ -21,6 +21,10 @@ struct ReleaseFeed: Sendable {
     /// Ends with "/". Assets are <base><tag>/<file>, as GitHub serves release downloads.
     let base: URL
     let key: Curve25519.Signing.PublicKey
+    /// Public downloads, or a private repository read with a token (ReleaseAccess.swift).
+    var access: ReleaseAccess = .public
+    /// The release that holds the signed manifests (release/feed.json manifestTag).
+    var manifestTag = "manifest"
 
     enum Setup: Sendable {
         case ready(ReleaseFeed)
@@ -31,11 +35,54 @@ struct ReleaseFeed: Sendable {
     static let noKey =
         "This build of NotProton has no release key, so it uses the bridge and signatures it carries."
 
-    /// From the app's Info.plist (Bundle.main): what a release build carries.
+    /// From the app's Info.plist (Bundle.main), which `make app` fills from
+    /// release/feed.json; a private feed takes its token from the Keychain.
     static var configured: Setup {
-        setup(url: Bundle.main.object(forInfoDictionaryKey: urlKey) as? String,
-              key: Bundle.main.object(forInfoDictionaryKey: keyKey) as? String,
-              kind: .current)
+        let info = Bundle.main
+        let mode = info.object(forInfoDictionaryKey: ReleaseAccess.infoKey) as? String ?? "public"
+        let repository = info.object(forInfoDictionaryKey: ReleaseAccess.repositoryKey) as? String ?? ""
+        return setup(
+            url: info.object(forInfoDictionaryKey: urlKey) as? String,
+            key: info.object(forInfoDictionaryKey: keyKey) as? String,
+            kind: .current,
+            access: mode, repository: repository,
+            token: mode == "private" ? ReleaseToken.read(repository: repository) : nil,
+            manifestTag: info.object(forInfoDictionaryKey: ReleaseAccess.manifestTagKey) as? String)
+    }
+
+    /// `access` is "public" or "private"; a private feed needs the repository
+    /// (owner/name) and a token, or it is off with the reason.
+    static func setup(
+        url: String?, key: String?, kind: BuildKind = .dev,
+        access: String, repository: String, token: String?, manifestTag: String?
+    ) -> Setup {
+        guard case .ready(var feed) = setup(url: url, key: key, kind: kind) else {
+            return setup(url: url, key: key, kind: kind)
+        }
+        if let tag = manifestTag?.trimmingCharacters(in: .whitespaces), !tag.isEmpty, !tag.contains("/") {
+            feed.manifestTag = tag
+        }
+        switch access {
+        case "public":
+            return .ready(feed)
+        case "private":
+            let parts = repository.split(separator: "/")
+            guard parts.count == 2, parts.allSatisfy({ !$0.isEmpty }) else {
+                return .off("The private release feed in this build names no repository.")
+            }
+            guard let token, !token.isEmpty else { return .off(ReleaseAccess.needsToken) }
+            feed.access = .private(repository: repository, token: token)
+            return .ready(feed)
+        default:
+            return .off("The release feed in this build has an unknown access mode '\(access)'.")
+        }
+    }
+
+    /// What reads this feed's files: `transport` itself for a public feed, GitHub's
+    /// API with the token for a private one. Other addresses pass through untouched.
+    func transport(over transport: any EngineTransport) -> any EngineTransport {
+        guard case .private(let repository, let token) = access else { return transport }
+        return GitHubAssetTransport(base: base, repository: repository, token: token)
     }
 
     /// A release build takes neither a TEST key (BuildKind.swift) nor a feed other than https.
@@ -64,8 +111,8 @@ struct ReleaseFeed: Sendable {
         base.appending(path: "\(tag)/\(file)")
     }
 
-    var bridgeManifestURL: URL { asset("manifest", "bridge-manifest.json") }
-    var signaturesManifestURL: URL { asset("manifest", "signatures-manifest.json") }
+    var bridgeManifestURL: URL { asset(manifestTag, "bridge-manifest.json") }
+    var signaturesManifestURL: URL { asset(manifestTag, "signatures-manifest.json") }
 
     /// Only files under the feed: same scheme and host, path below the base, no "..".
     func allows(_ url: URL) -> Bool {

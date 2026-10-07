@@ -1,9 +1,11 @@
 #!/bin/sh
 # GitHub side of the release workflows (Phase 6, docs/RELEASING.md). Needs gh with
-# GH_TOKEN and GITHUB_REPOSITORY, as a workflow step has them.
+# GH_TOKEN and GITHUB_REPOSITORY, as a workflow step has them. Tags come from
+# release/feed.json (feed.py config manifestTag / signaturesTag).
 #
-#   gh-publish.sh fetch <feed base> <tag> <file> <dir>
-#       download a published file and its .sig into <dir>; exit 1 when not published
+#   gh-publish.sh fetch <tag> <file> <dir> [--no-sig]
+#       download a published file and its .sig into <dir> through the API, so a
+#       private repository works the same (ROADMAP §3); exit 1 when not published
 #   gh-publish.sh verify <public key> <file>
 #       <file>.sig must be the release key's signature over <file>
 #   gh-publish.sh upload <tag> <title> <file>...
@@ -22,10 +24,19 @@ die() { echo "==> gh-publish: $*" >&2; exit 1; }
 
 case "${1:-}" in
 fetch)
-	base=$2 tag=$3 file=$4 dir=$5
+	tag=$2 file=$3 dir=$4
 	mkdir -p "$dir"
-	curl -fsSL --retry 3 -o "$dir/$file" "$base$tag/$file" 2>/dev/null || { rm -f "$dir/$file"; exit 1; }
-	curl -fsSL --retry 3 -o "$dir/$file.sig" "$base$tag/$file.sig" || die "$tag/$file is published without its .sig"
+	rm -f "${dir:?}/$file" "${dir:?}/$file.sig"
+	if ! gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern "$file" --dir "$dir" 2>/dev/null \
+		|| [ ! -f "$dir/$file" ]; then
+		exit 1
+	fi
+	if [ "${5:-}" != --no-sig ]; then
+		if ! gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern "$file.sig" --dir "$dir" 2>/dev/null \
+			|| [ ! -f "$dir/$file.sig" ]; then
+			die "$tag/$file is published without its .sig"
+		fi
+	fi
 	;;
 verify)
 	[ -x "$VERIFY" ] || swiftc -O -o "$VERIFY" "$here/../engine/verify-ed25519.swift"
@@ -53,8 +64,15 @@ issue)
 		gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body-file "$body"
 	fi
 	;;
+check-repo)
+	# The app trusts files only under the feed release/feed.json names; publishing
+	# anywhere else would give it addresses it refuses.
+	want=$(python3 -I "$here/feed.py" config repository)
+	[ "$want" = "$GITHUB_REPOSITORY" ] \
+		|| die "release/feed.json names $want, but this runs in $GITHUB_REPOSITORY; update the file first"
+	;;
 *)
-	echo "usage: $0 fetch|verify|upload|issue ..." >&2
+	echo "usage: $0 fetch|verify|upload|issue|check-repo ..." >&2
 	exit 2
 	;;
 esac

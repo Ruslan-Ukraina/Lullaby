@@ -19,6 +19,10 @@ env:
 jobs:
   build:
     name: build and test
+    # Repository variable NP_CI_ON_PUSH=false turns the per-push run off (macOS
+    # minutes in a private repository, DECISIONS P6-13); pull requests and
+    # "Run workflow" still run it.
+    if: github.event_name != 'push' || vars.NP_CI_ON_PUSH != 'false'
     runs-on: xcode-27
     timeout-minutes: 45
     steps:

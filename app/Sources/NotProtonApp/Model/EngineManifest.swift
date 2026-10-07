@@ -34,7 +34,16 @@ enum EngineSignature {
         try! Curve25519.Signing.PublicKey(rawRepresentation: Data(base64Encoded: dormisonKeyBase64)!)
     }
 
-    static let assetPathPrefix = "/kageroumado/dormison/releases/download/"
+    /// The releases the engine manifest lives in (NPEngineManifestURL, from
+    /// release/feed.json), and the only place engine tarballs may come from.
+    /// Dormison's own by default; any other location still needs Dormison's signature.
+    static var assetPathPrefix: String {
+        let path = EngineManifest.url.path(percentEncoded: false)
+        guard let range = path.range(of: "/releases/download/") else { return defaultAssetPathPrefix }
+        return String(path[..<range.upperBound])
+    }
+
+    static let defaultAssetPathPrefix = "/kageroumado/dormison/releases/download/"
 
     static func signatureURL(for asset: URL) -> URL {
         URL(string: asset.absoluteString + ".sig") ?? asset.appendingPathExtension("sig")
@@ -75,7 +84,20 @@ struct EngineRelease: Sendable, Equatable {
 }
 
 struct EngineManifest: Sendable, Equatable {
-    static let url = URL(string: "https://github.com/kageroumado/dormison/releases/download/manifest/engine.json")!
+    static let defaultURL = URL(string: "https://github.com/kageroumado/dormison/releases/download/manifest/engine.json")!
+    static let infoKey = "NPEngineManifestURL"
+
+    /// NPEngineManifestURL when it is a GitHub release download over https, else Dormison's.
+    static var url: URL { configuredURL(Bundle.main.object(forInfoDictionaryKey: infoKey) as? String) }
+
+    static func configuredURL(_ text: String?) -> URL {
+        guard let text, let url = URL(string: text), url.scheme == "https", url.host() == "github.com",
+              url.user == nil, url.query == nil,
+              url.path(percentEncoded: false).contains("/releases/download/"),
+              !url.path(percentEncoded: false).contains("/../")
+        else { return defaultURL }
+        return url
+    }
     static let step = "Check for engine updates"
 
     let releases: [EngineChannel: EngineRelease]

@@ -160,6 +160,7 @@ struct SignatureUpdater: Sendable {
             let support = support()
             return SignatureOutcome(installed: [], supportedBuilds: support.supportedBuilds(installedIn: signatures))
         }
+        let transport = feed.transport(over: self.transport)
         let document = try await SignedDocument.fetch(
             feed.signaturesManifestURL, feed: feed, transport: transport, cache: manifests,
             schema: SignatureSupport.schema)

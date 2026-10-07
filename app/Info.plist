@@ -34,6 +34,14 @@
 	<string>https://github.com/Ruslan-Ukraina/NotProton/releases/download/</string>
 	<key>NPReleasePublicKey</key>
 	<string></string>
+	<key>NPReleaseAccess</key>
+	<string>public</string>
+	<key>NPReleaseRepository</key>
+	<string>Ruslan-Ukraina/NotProton</string>
+	<key>NPReleaseManifestTag</key>
+	<string>manifest</string>
+	<key>NPEngineManifestURL</key>
+	<string>https://github.com/kageroumado/dormison/releases/download/manifest/engine.json</string>
 	<key>NPBuildKind</key>
 	<string>dev</string>
 	<key>SUEnableAutomaticChecks</key>

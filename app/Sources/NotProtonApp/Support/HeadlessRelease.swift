@@ -10,6 +10,8 @@
 //   --steam DIR        stands for ~/Library/Application Support/Steam: steam.cfg and
 //                      Steam.AppBundle/…/package (with Steam's manifests, if any)
 //   --feed URL --key BASE64   a test feed and its key; only with --support
+//   --repository OWNER/NAME   with --feed: a private feed, read through GitHub's API
+//                             with the token in NP_RELEASE_TOKEN (never an argument)
 // Exits 0 on success, 1 otherwise.
 
 import Foundation
@@ -47,7 +49,11 @@ enum HeadlessRelease {
             setup.gate.file = support.appending(path: "steam-update-gate")
             setup.gate.signatures = setup.signatures.signatures
             if let feed = option("--feed"), let key = option("--key") {
-                let configured = ReleaseFeed.setup(url: feed, key: key)
+                let repository = option("--repository")
+                let configured = ReleaseFeed.setup(
+                    url: feed, key: key, access: repository == nil ? "public" : "private",
+                    repository: repository ?? "", token: ProcessInfo.processInfo.environment["NP_RELEASE_TOKEN"],
+                    manifestTag: option("--manifest-tag"))
                 setup.bridge.feed = configured
                 setup.signatures.feed = configured
             }

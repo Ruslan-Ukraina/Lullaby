@@ -122,6 +122,7 @@ done
 if [ $# -gt 0 ]; then
 	python3 -I "$here/feed.py" publish-signatures --repo "$repo/signatures/manifest.json" \
 		--dir "$repo/signatures/macos.arm64" --feed "$FEED" --out "$FEED_DIR" \
+		--tag "$(python3 -I "$here/feed.py" config signaturesTag)" \
 		${CURRENT:+--current "$CURRENT"} "$@"
 fi
 exit "$failed"

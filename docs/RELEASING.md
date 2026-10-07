@@ -24,6 +24,61 @@
 Порядок публикации всегда один: сначала файлы, потом манифест или appcast. Иначе приложение увидело бы в манифесте файл, которого ещё нет.
 `serial` манифеста = больший из опубликованного и репозиторного + 1: приложение не принимает манифест старше уже виденного.
 
+## Конфигурация публикации — `release/feed.json` (ROADMAP §3)
+
+Все адреса — в одном файле, а не в коде:
+
+```json
+{
+  "schema": 1,
+  "repository": "Ruslan-Ukraina/NotProton",
+  "access": "public",
+  "manifestTag": "manifest",
+  "signaturesTag": "signatures",
+  "appcast": "appcast.xml",
+  "engineManifest": "https://github.com/kageroumado/dormison/releases/download/manifest/engine.json"
+}
+```
+
+- Из него выводятся адрес фида (`https://github.com/<repository>/releases/download/`) и appcast (`<фид><manifestTag>/<appcast>`).
+- `make app` пишет значения в Info.plist (`NPReleaseFeedURL`, `NPReleaseAccess`, `NPReleaseRepository`, `NPReleaseManifestTag`, `NPEngineManifestURL`, `SUFeedURL`); workflow читают тот же файл (`python3 -I release/feed.py config <ключ>`).
+- Workflow с публикацией сверяют `repository` с репозиторием, где запущены (`gh-publish.sh check-repo`): иначе приложение получило бы адреса, которые отвергает.
+- `engineManifest` — по умолчанию манифест Dormison. Другой адрес допускается только как релиз GitHub по https, и подпись Dormison всё равно обязательна.
+- Тест `ReleaseAccessTests.configAgreement` следит, чтобы файл и Info.plist в репозитории совпадали.
+
+### Публичный и приватный доступ
+
+| `access` | Как скачивает приложение | Как скачивает CI |
+|---|---|---|
+| `public` (сейчас) | https по адресам `…/releases/download/<тег>/<файл>`, как в манифестах | `gh release download` с `GITHUB_TOKEN` |
+| `private` (Фаза 9) | те же адреса — как имена: `GET /repos/<repo>/releases/tags/<тег>` → id ассета → `GET /repos/<repo>/releases/assets/<id>` с `Accept: application/octet-stream` и токеном. При переходе на хранилище GitHub заголовок `Authorization` снимается | так же |
+
+- **Токен** — read-only (fine-grained, доступ только на чтение содержимого репозитория), хранится в Keychain пользователя (`ReleaseToken`). Ввод — Status → NotProton → «Access token» (строка видна только в приватной сборке). В файлы, лог и Info.plist токен не попадает.
+- **Sparkle** в приватном режиме: токен идёт в `SPUUpdater.httpHeaders` вместе с `Accept: application/octet-stream`; адрес appcast перед каждой проверкой разрешается через API (у каждого выпуска новый id ассета). `release.yml` в приватном режиме записывает в appcast API-адрес архива и подписывает appcast заново.
+- Подписи и проверки (Ed25519, sha256, `serial`) в обоих режимах одинаковые: токен даёт доступ, а не доверие.
+- Переключение в приватный режим — Фаза 9: поменять `repository` и `access` в `feed.json`, выпустить новую версию приложения.
+
+### Расписания CI — параметр
+
+Переменные репозитория (Settings → Secrets and variables → Actions → Variables):
+
+| Переменная | По умолчанию | Что значит |
+|---|---|---|
+| `NP_STEAM_CHECK_HOURS` | 3 | как часто искать новый билд Steam; округляется вверх до кратного 3; `0` — только вручную |
+| `NP_DORMISON_CHECK_HOURS` | 24 | как часто искать новый Dormison; округляется вверх до кратного 24; `0` — только вручную |
+| `NP_CI_ON_PUSH` | (не задана = вкл.) | `false` — не гонять `app.yml` на каждый push (PR и «Run workflow» остаются) |
+
+По расписанию сначала идёт короткая проверка на Linux (`release/ci-gate.sh`: есть ли билд Steam без базы или Dormison без моста), и только тогда — задача на macOS. Сколько это стоит в минутах — DECISIONS P6-13.
+
+## Лицензии и раздача бинарников
+
+Мы раздаём бинарники: приложение (GPL-3.0 — NotProton), мост и B1-`ntdll.dll` (изменённый Wine — LGPL-2.1+; lsteamclient — Steamworks SDK License; `steam.exe`-шим — BSD-3). GPL и LGPL обязывают дать каждому получателю бинарника исходники, из которых он собран (для B1 — Dormison того же коммита плюс наш патч `ntdll-patch/b1/…patch`; для моста — `lsteamclient/`, `steam-shim/`, `bridge/`).
+
+- **Пока проект открытый** (сейчас): исходники лежат в этом же репозитории, рядом с релизами; каждый артефакт указывает коммит (`engineCommit`, тег релиза). Этого достаточно.
+- **Пока проект закрытый** (Фаза 9): артефакты тоже закрытые — только по токену, тем же людям, у кого есть доступ к исходникам. Публичных ссылок на бинарники быть не должно.
+- **При открытии проекта** — открыть исходники вместе с артефактами (весь репозиторий или как минимум всё, из чего собраны опубликованные бинарники, с тем же коммитом), иначе публичная раздача нарушит GPL/LGPL.
+- D3DMetal (Apple) не распространяется ни в каком виде (ROADMAP §2).
+
 ## Тестовые ключи и релизная сборка
 
 - Тестовые ключи выводятся из публичной фразы (`release/testkeys.swift release|sparkle`). Их может пересоздать кто угодно, поэтому они ничего не доказывают — и не должны.
@@ -42,8 +97,8 @@
 
 | Workflow | Когда | Что делает |
 |---|---|---|
-| `dormison-bridge.yml` | каждый день 05:41 UTC; вручную | Подписанный `engine.json` Dormison → версия канала без моста → движок (подпись, sha256, каждый файл) → исходники Dormison того же коммита → `setup-wine-tree.sh`, `build-b1.sh --check-base` (непропатченный код совпадает с релизным инструкция в инструкцию), lsteamclient, `steam.exe` → `test-b1.sh` в Wine: x86_64 и i386 OK, а релизный `ntdll.dll` обязан провалить тот же тест → тарбол, `bridge-manifest.json`, подписи → публикация и чтение обратно. Ошибка — issue |
-| `steam-signatures.yml` | каждые 3 часа; вручную | Манифесты Valve stable и publicbeta → новый билд → пакеты Valve (sha256 из манифеста Valve, подпись Valve `MXGJJ98X76` по каждому срезу, наличие x86_64 — BACKLOG 24) → `out/sigslice` режет базу из самой новой подходящей → `out/anchorcheck` только по новой базе обязан дать 0 → `signatures-manifest.json`, подпись → публикация. Не режется или нет x86_64 — issue |
+| `dormison-bridge.yml` | раз в сутки (`NP_DORMISON_CHECK_HOURS`); вручную | Подписанный `engine.json` Dormison → версия канала без моста → движок (подпись, sha256, каждый файл) → исходники Dormison того же коммита → `setup-wine-tree.sh`, `build-b1.sh --check-base` (непропатченный код совпадает с релизным инструкция в инструкцию), lsteamclient, `steam.exe` → `test-b1.sh` в Wine: x86_64 и i386 OK, а релизный `ntdll.dll` обязан провалить тот же тест → тарбол, `bridge-manifest.json`, подписи → публикация и чтение обратно. Ошибка — issue |
+| `steam-signatures.yml` | каждые 3 часа (`NP_STEAM_CHECK_HOURS`); вручную | Манифесты Valve stable и publicbeta → новый билд → пакеты Valve (sha256 из манифеста Valve, подпись Valve `MXGJJ98X76` по каждому срезу, наличие x86_64 — BACKLOG 24) → `out/sigslice` режет базу из самой новой подходящей → `out/anchorcheck` только по новой базе обязан дать 0 → `signatures-manifest.json`, подпись → публикация. Не режется или нет x86_64 — issue |
 | `release.yml` | тег `v*` | Версия из тега (база должна совпасть с `dylib/version.h`), CFBundleVersion = число коммитов → мост из опубликованного артефакта (sha256 из `bridge/bridge-manifest.json` + подпись) → `make app NP_BUILD_KIND=release` → проверки релиза → C-тесты и Swift-тесты (с `NP_REQUIRE_PAYLOAD=1`) → собранное приложение читает опубликованный фид (`--release check`) → zip, подпись Sparkle, appcast (старые записи сохраняются; пре-релиз — канал `beta`) → релиз GitHub, затем appcast; оба читаются обратно |
 | `app.yml`, `lint.yml` | push в `dormison`, PR | dylib, шим, помощники, C-тесты, Swift-тесты (без собранного payload часть пропускается), shellcheck |
 

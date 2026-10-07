@@ -557,19 +557,26 @@ APP_SIGN_ID ?= -
 # NotProton's release feed (docs/RELEASING.md). The key is the base64 Ed25519
 # public key; empty (the default until Phase 6) leaves the feed off and the app
 # uses the bridge and signatures it carries.
-NP_RELEASE_FEED ?= https://github.com/Ruslan-Ukraina/NotProton/releases/download/
+# Where NotProton publishes and how the app downloads come from one file,
+# release/feed.json (DECISIONS P6-11); the release workflows read the same file.
+feed_config = $(shell python3 -I release/feed.py config $(1))
+NP_RELEASE_FEED       ?= $(call feed_config,feed)
+NP_RELEASE_ACCESS     ?= $(call feed_config,access)
+NP_RELEASE_REPOSITORY ?= $(call feed_config,repository)
+NP_RELEASE_MANIFEST_TAG ?= $(call feed_config,manifestTag)
+NP_ENGINE_MANIFEST    ?= $(call feed_config,engineManifest)
 NP_RELEASE_KEY  ?=
 
 # Sparkle, for NotProton.app's own updates (Phase 6): the appcast and its EdDSA
 # public key. Empty (the default) leaves the updater off. The appcast sits next to
 # the signed manifests, in the release tagged `manifest`.
-SPARKLE_FEED ?= $(NP_RELEASE_FEED)manifest/appcast.xml
+SPARKLE_FEED ?= $(call feed_config,appcastURL)
 SPARKLE_KEY  ?=
 
 # release (the release workflow), test (its dry run, TEST keys only) or dev.
 # release/check-release.sh holds each kind to its keys before and after the build.
 NP_BUILD_KIND ?= dev
-export NP_BUILD_KIND NP_DEV NP_RELEASE_KEY NP_RELEASE_FEED SPARKLE_KEY SPARKLE_FEED
+export NP_BUILD_KIND NP_DEV NP_RELEASE_KEY NP_RELEASE_FEED SPARKLE_KEY SPARKLE_FEED NP_RELEASE_ACCESS
 
 ICONGEN  := $(OUT_DIR)/icongen
 ICON_DOC := $(OUT_DIR)/NotProton.icon
@@ -603,6 +610,10 @@ app: app-config app-payload $(ICON_CAR)
 		"Set :NPReleaseFeedURL $(NP_RELEASE_FEED)" -c \
 		"Set :NPReleasePublicKey $(NP_RELEASE_KEY)" -c \
 		"Set :NPBuildKind $(NP_BUILD_KIND)" -c \
+		"Set :NPReleaseAccess $(NP_RELEASE_ACCESS)" -c \
+		"Set :NPReleaseRepository $(NP_RELEASE_REPOSITORY)" -c \
+		"Set :NPReleaseManifestTag $(NP_RELEASE_MANIFEST_TAG)" -c \
+		"Set :NPEngineManifestURL $(NP_ENGINE_MANIFEST)" -c \
 		"Set :SUFeedURL $(if $(SPARKLE_KEY),$(SPARKLE_FEED))" -c \
 		"Set :SUPublicEDKey $(SPARKLE_KEY)" -c \
 		"Set :SUEnableAutomaticChecks $(if $(SPARKLE_KEY),true,false)" \
