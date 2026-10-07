@@ -849,3 +849,41 @@ Spaces и Постановщик проверить сам не могу: нет
   - Текущие файлы у тебя (только чтение): PEAK `SEVO_FPS=1 SEVO_FPS_GRAPH=1 NOTPROTON_RETINA=1`; Deadlock `SEVO_FPS_GRAPH=1 NOTPROTON_RENDERER=dxmt ROSETTA_ADVERTISE_AVX=1 NOTPROTON_RETINA=1`; ETS2 `SEVO_FPS=1`; все `bottle.env` — профиль NotProton по умолчанию. Это и есть данные для миграции.
 - **Макет** — `docs/mockups/{1-properties,2-advanced,3-settings}.html` (HTML → PNG через QuickLook, не снимок экрана); PNG отправлены в сессию.
 - **Жду твоего «ок»** по макету и составу быстрых настроек (BLOCKERS). Код не менялся.
+
+## 2026-10-07 ~18:45–19:20 CEST — Фаза 7A: каталог, панель в Steam, меню View — ждёт твоей проверки (§14)
+
+Макет отправлен в 18:40, твоего «ок» ещё нет. Пока жду, сделал часть, которая от вида не зависит (CLAUDE.md §7.3), и панель по предложенному макету. Если ответишь с правками — переделаю.
+
+**Сделано** (коммиты `e152278`, `4421aa8`, `d343e04`, `ec819b9`; решения — DECISIONS P7A-1…P7A-13, риски — R59–R64, бэклог — 8, 21, 30–34):
+- **Каталог `NotProtonSettings`** (Swift, общий для приложения, CLI и тестов):
+  - 24 настройки ROADMAP §4, тексты и подсказки (i) на en/uk/ru — из `SettingCopy` Sevoflurane, сокращены и переведены (MIT, `NOTICE`);
+  - хранилище по appid (`notproton/settings`);
+  - `.sevo/bottle.env` и `.sevo/apps/<exe>.env` в формате Sevoflurane: наследование, явные `=0`/`=1`, `SEVO_CPU_COUNT=0`, `KEY=` для составных;
+  - несколько exe на игру: Deadlock → `deadlock.exe`, `vconsole2.exe` из папки установки;
+  - миграция значений Фазы 2 с копией в `.sevo/pre-catalog-backup/`.
+- **`notproton-settings`** (CLI в payload, ставится рядом с `appinfo`):
+  - `catalog`, `state`, `set`, `reset`, `launch`, `materialize`, `migrate`, `panel`;
+  - `app config` для меню View (§5.3): выбор в игре теперь сохраняется.
+- **`compat_run.sh`:**
+  - перед стартом вызывает CLI;
+  - msync+ берётся из каталога;
+  - реестр: Retina, EmulateModeset, Command/Option;
+  - замены DLL;
+  - DLSS → MetalFX через DXMT.
+- **Канал «панель → CLI»** (`settingsbridge.c`):
+  - виртуальные файлы `steamloopback.host` (P7A-2);
+  - проверено дизассемблером Steam Helper: файлы `steamui` читаются через `CefStreamReader::CreateForFile` → `fopen`.
+- **Панель в Steam** (`dylib/feats/panel.js`, встраивается в чанк):
+  - Свойства игры → Совместимость: 5 быстрых строк контролами Steam, наследование под строкой, (i), статус, «Дополнительные настройки…» — диалог поверх окна, «Сбросить настройки игры»;
+  - Настройки Steam → Совместимость: «NotProton — для всех игр»;
+  - язык — по языку Steam;
+  - параметры запуска с рендерером переносятся в каталог.
+- **NotProton.app:** окно «Настройки игры» удалено (§5.4); CLI — в payload, сравнении и установке.
+
+**Проверки (все с кодом 0):**
+- `make app` (19:17): `out/NotProton.app (1.1.0, dev)`, `codesign --verify --strict` ок, `notproton-settings` в payload;
+- `make app-tests` — **382 теста** (было 359);
+- C- и скриптовые проверки: `runcheck`, `scriptcheck`, `sigcheck`, `callscheck`, `webpatch-fixtures`, `peicon-fixtures`, `panel-behavior` (+57 проверок `catalog.js`), `spawn-env`, `compatcheck`, `compatsvc-check`, `sigdb-fixtures`, `steamwin-check`, `overlay-shim-tests`, `updategate-check`, новые `settingsbridge-check` и `webpatch-syntax` (настоящий чанк Steam этого Mac после патча парсится в node), `anchorcheck` — 17/17.
+- На копиях твоих `.sevo` (scratchpad) миграция перенесла PEAK `fps, fpsGraph, retina`, Deadlock `fpsGraph, renderer=dxmt, avx, retina`, ETS2 `fps`; `SEVO_LOADER` сохранён.
+
+**Не проверено (нужен ты, SPIKE_TEST §14):** панель в живом Steam, канал (R59), действие настроек в играх, язык по Steam, DLSS (R63). Steam, игры, `/Applications/NotProton.app` и твои префиксы я не трогал: новая сборка — в `out/`.
