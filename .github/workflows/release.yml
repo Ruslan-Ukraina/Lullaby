@@ -96,10 +96,12 @@ jobs:
               --json databaseId --jq '.[0].databaseId')
             [ -n "$run" ] || { echo "no successful dormison-bridge run to take a bridge from"; exit 1; }
             gh run download "$run" --repo "$GITHUB_REPOSITORY" --name dormison-bridge --dir "$RUNNER_TEMP/bridge-run"
-            entry=$(ls "$RUNNER_TEMP"/bridge-run/feed/*.entry.json | head -1)
+            entry=$(find "$RUNNER_TEMP/bridge-run" -name '*.entry.json' | head -1)
+            [ -n "$entry" ] || { echo "run $run left no bridge entry"; exit 1; }
             id=$(basename "$entry" .entry.json)
+            src=$(dirname "$entry")/$id
             mkdir -p "$dir/$id"
-            cp "$RUNNER_TEMP/bridge-run/feed/$id/$id.tar.xz" "$RUNNER_TEMP/bridge-run/feed/$id/$id.tar.xz.sig" "$dir/$id/"
+            cp "$src/$id.tar.xz" "$src/$id.tar.xz.sig" "$dir/$id/"
             python3 -I - "$entry" bridge/bridge-manifest.json <<'PY'
           import json, sys
           entry = json.load(open(sys.argv[1])); repo = json.load(open(sys.argv[2]))

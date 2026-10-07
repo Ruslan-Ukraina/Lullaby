@@ -204,6 +204,14 @@ jobs:
           echo "ID=$id" >> "$GITHUB_ENV"
           { echo "Packaged \`$id\`:"; echo '```json'; cat "$feed/$id.entry.json"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Gather the run's output
+        if: always() && steps.detect.outputs.engine
+        run: |
+          # One root for the artifact, so it unpacks as feed/… and logs/… (release.yml reads it).
+          mkdir -p "$RUNNER_TEMP/logs"
+          cp scratch/ntdll-b1/*/b1.json scratch/ntdll-b1/*/build.log "$RUNNER_TEMP/logs/" 2>/dev/null || true
+          mv "$RUNNER_TEMP"/b1-*.log "$RUNNER_TEMP/logs/" 2>/dev/null || true
+
       - name: Keep the run's output
         if: always() && steps.detect.outputs.engine
         uses: actions/upload-artifact@v5
@@ -211,10 +219,7 @@ jobs:
           name: dormison-bridge
           path: |
             ${{ runner.temp }}/feed
-            ${{ runner.temp }}/b1-test.log
-            ${{ runner.temp }}/b1-clean.log
-            scratch/ntdll-b1/*/b1.json
-            scratch/ntdll-b1/*/build.log
+            ${{ runner.temp }}/logs
           if-no-files-found: ignore
 
       - name: Publish
