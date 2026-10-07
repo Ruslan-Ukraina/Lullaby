@@ -104,7 +104,41 @@ static BOOL t_ra_activate_from(id self, SEL _cmd, NSRunningApplication *from,
         self, _cmd, from, options);
 }
 
+// One Dock icon (steam_osx hidden while Steam Helper is regular) made Steam quit
+// itself as a game started, twice in a row (steam://exit with no terminate: and no
+// policy change of its own, DECISIONS W15); the cause was not found, so steam_osx
+// keeps its icon and Steam shows two Steam icons while a Steam window is open.
+static const BOOL kHideOsxIcon = NO;
+
+// steam_osx sets itself regular again on its own (seen when a game starts). While
+// Steam Helper holds the Dock icon that would bring the second icon back, so the
+// request is answered without being carried out.
+static IMP o_set_policy;
+static BOOL helper_holds_icon(void);
+
+static BOOL t_set_policy(id self, SEL _cmd, NSApplicationActivationPolicy policy) {
+    FOCUS_LOG("setActivationPolicy:%ld from %s", (long)policy, callers().UTF8String);
+    if (kHideOsxIcon && g_is_osx && policy == NSApplicationActivationPolicyRegular && helper_holds_icon()) {
+        if (g_suppressed++ < 40)
+            FOCUS_LOG("kept steam_osx without a Dock icon: Steam Helper holds it (from %s)", callers().UTF8String);
+        return YES;
+    }
+    return ((BOOL (*)(id, SEL, NSApplicationActivationPolicy))o_set_policy)(self, _cmd, policy);
+}
+
+// Who asks steam_osx to quit (seen: Steam exiting as a game starts while steam_osx
+// has no Dock icon).
+static IMP o_terminate;
+
+static void t_terminate(id self, SEL _cmd, id sender) {
+    FOCUS_LOG("NSApp terminate: (sender %s) from %s", sender ? class_getName([sender class]) : "nil",
+              callers().UTF8String);
+    ((void (*)(id, SEL, id))o_terminate)(self, _cmd, sender);
+}
+
 static void trace_calls(void) {
+    o_terminate = swap_in([NSApplication class], @selector(terminate:), (IMP)t_terminate);
+    o_set_policy = swap_in([NSApplication class], @selector(setActivationPolicy:), (IMP)t_set_policy);
     o_activate_ignoring = swap_in([NSApplication class], @selector(activateIgnoringOtherApps:), (IMP)t_activate_ignoring);
     o_activate = swap_in([NSApplication class], @selector(activate), (IMP)t_activate);
     o_ra_activate = swap_in([NSRunningApplication class], @selector(activateWithOptions:), (IMP)t_ra_activate);
@@ -135,7 +169,6 @@ static void trace_notifications(void) {
 
 static NSString *const kHelperID = @"com.valvesoftware.steam.helper";
 
-static void use_steam_icon(void);
 
 static BOOL is_person_window(NSWindow *w) {
     return [NSStringFromClass([w class]) containsString:@"SDL"] && w.canBecomeMainWindow && !w.parentWindow
@@ -228,8 +261,13 @@ static NSMenu *np_dock_menu(id self, SEL _cmd, NSApplication *app) {
     return [g_dock menu];
 }
 
-// The Dock tile's name: the private call Chromium uses for the same purpose
-// (base/mac: SetProcessName). Missing symbols leave "Steam Helper".
+// Steam Helper.app's Info.plist says "Steam Helper" and has no icon, and it cannot be
+// changed: Steam's bootstrapper checks that file at every start and reinstalls its
+// package when it differs, which turned an edit at start into a relaunch loop
+// (DECISIONS W14). So Steam Helper takes Steam.app's look at run time, before it
+// becomes regular, so the Dock tile is created with it: Steam.app's own icon (the
+// same one /Applications/Steam.app shows) and the display name "Steam" through the
+// LaunchServices call Chromium uses for the same purpose (base/mac SetProcessName).
 static void set_dock_name(NSString *name) {
     void *ls = dlopen("/System/Library/Frameworks/CoreServices.framework/Frameworks/"
                       "LaunchServices.framework/LaunchServices", RTLD_LAZY);
@@ -238,15 +276,15 @@ static void set_dock_name(NSString *name) {
         ls ? dlsym(ls, "_LSSetApplicationInformationItem") : NULL;
     CFStringRef *key = ls ? dlsym(ls, "_kLSDisplayNameKey") : NULL;
     if (!get_asn || !set_item || !key || !*key) {
-        FOCUS_LOG("Dock name: LaunchServices calls not found, the tile keeps its name");
+        FOCUS_LOG("Dock name: LaunchServices calls not found");
         return;
     }
     OSStatus st = set_item(-2 /* kLSDefaultSessionID */, get_asn(), *key, (__bridge CFStringRef)name, NULL);
-    FOCUS_LOG("Dock name set to %s: %d", name.UTF8String, (int)st);
+    FOCUS_LOG("Dock name %s: %d", name.UTF8String, (int)st);
 }
 
 static void become_steam_in_dock(void) {
-    use_steam_icon();
+    NSApp.applicationIconImage = [NSWorkspace.sharedWorkspace iconForFile:@"/Applications/Steam.app"];
     set_dock_name(@"Steam");
 }
 
@@ -257,16 +295,22 @@ static void helper_tick(void) {
     BOOL has = NO;
     for (NSWindow *w in NSApp.windows)
         if (is_person_window(w)) { has = YES; break; }
+    // Steam hides its windows (for instance when a game starts): hidden is not
+    // closed, so the icon stays with Helper until a window is really gone.
+    if (NSApp.isHidden && g_helper_regular)
+        has = YES;
     g_without_windows = has ? 0 : g_without_windows + 1;
-    BOOL want = has || (g_helper_regular && g_without_windows < 3);
+    BOOL want = has || (g_helper_regular && g_without_windows < 5);
     if (want == g_helper_regular)
         return;
     g_helper_regular = want;
+    if (want)
+        become_steam_in_dock();
     [NSApp setActivationPolicy:want ? NSApplicationActivationPolicyRegular : NSApplicationActivationPolicyAccessory];
     FOCUS_LOG("Steam Helper is now %s (%s)", want ? "regular" : "accessory",
               want ? "a Steam window is open" : "no Steam window: steam_osx keeps the Dock icon");
     if (want)
-        become_steam_in_dock();
+        NSApp.applicationIconImage = [NSWorkspace.sharedWorkspace iconForFile:@"/Applications/Steam.app"];
 }
 
 static void start_helper_dock(void) {
@@ -290,20 +334,39 @@ static void start_helper_dock(void) {
     [NSTimer scheduledTimerWithTimeInterval:1 repeats:YES block:^(NSTimer *t) { helper_tick(); }];
 }
 
-static void osx_tick(void) {
-    BOOL helper_regular = NO;
+static BOOL helper_holds_icon(void) {
     for (NSRunningApplication *app in [NSRunningApplication runningApplicationsWithBundleIdentifier:kHelperID])
         if (!app.isTerminated && app.activationPolicy == NSApplicationActivationPolicyRegular)
-            helper_regular = YES;
+            return YES;
+    return NO;
+}
+
+static void osx_tick(void) {
+    BOOL helper_regular = helper_holds_icon();
     NSApplicationActivationPolicy want = helper_regular ? NSApplicationActivationPolicyAccessory
                                                         : NSApplicationActivationPolicyRegular;
     if (NSApp.activationPolicy == want)
         return;
-    BOOL ok = [NSApp setActivationPolicy:want];
+    // Without a Dock icon and windows steam_osx would be a candidate for macOS's
+    // automatic termination; it must stay up.
+    static BOOL held;
+    if (helper_regular && !held) {
+        [NSProcessInfo.processInfo disableAutomaticTermination:@"NotProton: Steam Helper holds Steam's Dock icon"];
+        [NSProcessInfo.processInfo disableSuddenTermination];
+        held = YES;
+    } else if (!helper_regular && held) {
+        [NSProcessInfo.processInfo enableAutomaticTermination:@"NotProton: Steam Helper holds Steam's Dock icon"];
+        [NSProcessInfo.processInfo enableSuddenTermination];
+        held = NO;
+    }
+    BOOL ok = ((BOOL (*)(id, SEL, NSApplicationActivationPolicy))o_set_policy)(
+        NSApp, @selector(setActivationPolicy:), want);
     FOCUS_LOG("steam_osx %s its Dock icon (%d)", helper_regular ? "hides" : "shows", ok);
 }
 
 static void start_osx_dock(void) {
+    if (!kHideOsxIcon)
+        return;
     osx_tick();
     [NSTimer scheduledTimerWithTimeInterval:1 repeats:YES block:^(NSTimer *t) { osx_tick(); }];
     NSNotificationCenter *ws = NSWorkspace.sharedWorkspace.notificationCenter;
@@ -328,18 +391,6 @@ static void await_app(int attempt, void (^ready)(void)) {
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 100 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
         await_app(attempt + 1, ready);
     });
-}
-
-// Steam's own icon, from the client bundle Steam Helper lives in
-// (Steam.AppBundle/Steam/Contents/Frameworks/Steam Helper.app), for its Dock tile.
-static void use_steam_icon(void) {
-    NSURL *icns = [[NSBundle.mainBundle.bundleURL URLByAppendingPathComponent:@"../../Resources/Steam.icns"]
-        URLByStandardizingPath];
-    NSImage *image = [[NSImage alloc] initWithContentsOfURL:icns];
-    if (!image)
-        image = [NSWorkspace.sharedWorkspace iconForFile:@"/Applications/Steam.app"];
-    NSApp.applicationIconImage = image;
-    FOCUS_LOG("Dock icon from %s", image ? icns.path.UTF8String : "nowhere");
 }
 
 void np_steamfocus_start(const char *who, int make_regular) {

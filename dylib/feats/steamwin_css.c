@@ -78,15 +78,21 @@ int np_steamwin_css_should_patch(const char *path) {
 // main window, where the row lines up, is not touched:
 //   friends list   its header (avatar, name) is `.friendListHeaderContainer
 //                  .titleBarContainer.OSX`, which has no padding of its own;
-//   every dialog   popups Steam opens as `html.ModalDialogPopup > body.ModalDialogBody`
-//                  (servers, players, About, the launch option chooser…): one rule
-//                  moves the whole body down, border-box keeps the height.
+//   every dialog   popups Steam opens as `html.ModalDialogPopup` (servers, players,
+//                  About, the launch option chooser…): their outermost
+//                  `.DialogContent`, the box that paints the dialog's background,
+//                  gets a transparent top border. The background shows through it
+//                  (background-clip is the border box) and starts at the border
+//                  (background-origin), so the freed strip continues the dialog's
+//                  own gradient: no black, no band; border-box keeps the height.
+//                  Popups without a DialogContent are not moved.
 const char NP_STEAMWIN_CSS[] =
     "\n/* NotProton: native Steam windows */\n"
     ".TitleBar.OSX.NPDesktop .title-bar-actions.window-controls{visibility:hidden!important}\n"
     ".friendListHeaderContainer.titleBarContainer.OSX:has(> .TitleBar.NPDesktop){padding-top:12px!important}\n"
-    "html.ModalDialogPopup > body.ModalDialogBody:has(.TitleBar.NPDesktop)"
-    "{padding-top:14px!important;box-sizing:border-box!important}\n";
+    "html.ModalDialogPopup:has(.TitleBar.NPDesktop) .DialogContent:not(.DialogContent .DialogContent)"
+    "{border-top:14px solid transparent!important;box-sizing:border-box!important;"
+    "background-origin:border-box!important}\n";
 
 static const char ANCHOR[] = ".title-bar-actions";
 

@@ -37,8 +37,10 @@ int main(void) {
           "Valve's buttons hidden only where the TitleBar is tagged NPDesktop");
     CHECK(out && strstr(out, ":has(> .TitleBar.NPDesktop){padding-top:12px!important}"),
           "friends header moves below the traffic lights, outside the overlay");
-    CHECK(out && strstr(out, "html.ModalDialogPopup > body.ModalDialogBody:has(.TitleBar.NPDesktop)"),
-          "one rule for every dialog popup");
+    CHECK(out && strstr(out, "html.ModalDialogPopup:has(.TitleBar.NPDesktop) .DialogContent:not(.DialogContent .DialogContent)"
+                             "{border-top:14px solid transparent!important"),
+          "one rule for every dialog popup, inside the box that paints its background");
+    CHECK(out && !strstr(out, "body.ModalDialogBody:has"), "the body is not moved (that showed the window's black)");
     CHECK(out && !strstr(out, ".DialogHeader"), "no per-header rule left");
     CHECK(out && out_len == strlen(sheet) + strlen(NP_STEAMWIN_CSS), "rule appended once");
     char *again = out ? np_steamwin_css_transform((const uint8_t *)out, out_len, &out_len) : NULL;
