@@ -109,12 +109,29 @@ static int out_expand(np_out_t *o, const char *replace, const np_cap_t *caps) {
 // whose .sevo/apps/<exe>.env is the single source of truth (docs/DECISIONS.md V3).
 // The choice is a launch option, NOTPROTON_RENDERER=<name>, which compat_run.sh
 // reads ahead of the game's env file.
+//
+// Launch options left from CrossOver days are rewritten the first time the panel
+// shows for a game, because the run script lets launch options win: the old
+// CX_GRAPHICS_BACKEND=<name> would outvote Game Settings while the list shows
+// "Automatic", and WINEMSYNC=1 (msync+ is on anyway) would undo Game Settings'
+// msync debugging switch at every start. A known renderer moves over to
+// NOTPROTON_RENDERER unless that is already set; WINEMSYNC=0 is a deliberate
+// debugging choice and stays. Options without either are not written.
 #define NP_CX_OPTIONS_CSS \
     "\".MSCXPanel{margin-top:10px}\""
 
+#define NP_CX_OPTIONS_CLEAN \
+    "x=>{const a=x.split(\" \"),c=a.find(p=>p.indexOf(\"CX_GRAPHICS_BACKEND=\")===0);" \
+    "if(!c&&a.indexOf(\"WINEMSYNC=1\")<0)return x;" \
+    "const k=a.filter(p=>p&&p.indexOf(\"CX_GRAPHICS_BACKEND=\")!==0&&p!==\"WINEMSYNC=1\")," \
+    "v=c?c.slice(20):\"\";" \
+    "if(!k.some(p=>p.indexOf(\"NOTPROTON_RENDERER=\")===0)" \
+    "&&[\"dxmt\",\"dxvk\",\"wined3d\"].indexOf(v)>=0)k.unshift(\"NOTPROTON_RENDERER=\"+v);" \
+    "return k.join(\" \")}"
+
 #define NP_CX_OPTIONS_BODY(ARG, RT, BARREL) \
     ARG "=>{" \
-    "const t=" ARG ".details,o=t.strLaunchOptions||\"\"," \
+    "const t=" ARG ".details,r=t.strLaunchOptions||\"\",o=(" NP_CX_OPTIONS_CLEAN ")(r)," \
     "g=k=>{const p=o.split(\" \").find(x=>x.indexOf(k+\"=\")===0);return p?p.slice(k.length+1):\"\"}," \
     "s=ps=>{const a=o.split(\" \").filter(x=>x&&!ps.some(p=>x.indexOf(p[0]+\"=\")===0));" \
     "ps.forEach(p=>{if(p[1])a.unshift(p[0]+\"=\"+p[1])});" \
@@ -126,6 +143,7 @@ static int out_expand(np_out_t *o, const char *replace, const np_cap_t *caps) {
     "{data:\"wined3d\",label:\"WineD3D\"}];" \
     "if(t.unAppID<2147483648&&(t.vecPlatforms||[]).indexOf(\"osx\")>=0" \
     "&&!t.strCompatToolName)return null;" \
+    "o!==r&&SteamClient.Apps.SetAppLaunchOptions(t.unAppID,o);" \
     "return(0," RT ".jsx)(\"div\",{className:\"MSCXPanel\",children:(0," RT ".jsxs)(" RT ".Fragment,{children:[" \
     "(0," RT ".jsx)(\"style\",{children:" NP_CX_OPTIONS_CSS "})," \
     "(0," RT ".jsx)(" BARREL ".XY,{label:\"Graphics\",children:" \

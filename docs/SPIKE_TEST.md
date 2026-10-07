@@ -741,3 +741,15 @@ NotProton уже поставлен (сборка `83FBEDB0`), Steam перез�
 3. **Откат.** NotProton → Repair Steam.
    - Ожидаемо: в `~/Library/Application Support/notproton/app.log` есть строка `steam helper: NotProton's name and icon files removed`, а во втором значке снова «Steam Helper».
    - После проверки поставь NotProton обратно (Install).
+
+> **§11–§11.14 больше не актуальны:** нативные окна Steam отложены (DECISIONS W19, BACKLOG «Отложено»). Переключатели выключены, Steam выглядит как до задачи.
+
+## 12. Очистка устаревших параметров запуска (ETS2)
+
+Сейчас у ETS2 (227300) параметры запуска `WINEMSYNC=1 CX_GRAPHICS_BACKEND=dxmt`, остались со времён CrossOver (BACKLOG 21).
+
+1. В Steam: ETS2 → «Властивості» → «Сумісність». Ожидаемо: в списке «Graphics» выбран **DXMT**.
+2. Там же → «Загальні» → «Параметри запуску». Ожидаемо: `NOTPROTON_RENDERER=dxmt`, без `WINEMSYNC=1` и `CX_GRAPHICS_BACKEND`.
+3. Запусти ETS2 и выйди из неё. В `~/Library/Application Support/Steam/steamapps/compatdata/227300/notproton-run.log` ожидаемо:
+   - `renderer: dxmt…`;
+   - `sync: WINEMSYNC=1 from carried-over`. Раньше было `from launch-options`: теперь msync+ задаёт маркер, а не параметр запуска.

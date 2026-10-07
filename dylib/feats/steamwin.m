@@ -81,6 +81,7 @@ static const char *policy_name(NSApplicationActivationPolicy p) {
     return "?";
 }
 
+#ifdef NP_STEAMWIN_DEBUG
 // What decides how a window behaves with Spaces, Stage Manager and the Dock.
 static NSString *describe_spaces(NSWindow *w) {
     return [NSString stringWithFormat:
@@ -90,6 +91,7 @@ static NSString *describe_spaces(NSWindow *w) {
         [w isKindOfClass:[NSPanel class]] ? ((NSPanel *)w).isFloatingPanel : -1,
         w.hidesOnDeactivate, w.isOnActiveSpace, w.canHide, w.isExcludedFromWindowsMenu, w.isVisible];
 }
+#endif
 
 static NSString *describe(NSWindow *w) {
     NSRect f = w.frame;
@@ -343,6 +345,8 @@ static void survey(NSString *why) {
 
 // MARK: Debug commands
 //
+// Built only with `make NP_DEV=1` (NP_STEAMWIN_DEBUG) and never in a release
+// (docs/BACKLOG.md 20); without the native windows switch nothing here runs anyway.
 // notproton/steam-windows-debug, one command per line, run once and deleted. For
 // checking the frame without a mouse: Steam Helper acts on its own windows, and
 // events it sends itself need no accessibility permission. Target: the window
@@ -352,6 +356,7 @@ static void survey(NSString *why) {
 //   click X Y | dblclick X Y points from the window's top left corner
 //   key CODE                 a key press (53 is Escape)
 
+#ifdef NP_STEAMWIN_DEBUG
 static NSWindow *debug_target(NSString *title) {
     NSWindow *fallback = nil;
     for (NSWindow *w in NSApp.windows) {
@@ -523,6 +528,7 @@ static void poll_debug(void) {
     for (NSString *line in [text componentsSeparatedByString:@"\n"])
         run_debug(line);
 }
+#endif
 
 // MARK: Start
 
@@ -569,15 +575,19 @@ static void observe(void) {
         }];
     }
 
+#ifdef NP_STEAMWIN_DEBUG
     char path[512];
     np_support_path(path, sizeof(path), np_home_dir() ?: "/tmp", "steam-windows-debug");
     g_debug_path = @(path);
+#endif
 
     // New windows are framed here at the latest; a light poll also sees menus and
     // tooltips, which never become key.
     [NSTimer scheduledTimerWithTimeInterval:0.25 repeats:YES block:^(NSTimer *t) {
         survey(@"poll");
+#ifdef NP_STEAMWIN_DEBUG
         poll_debug();
+#endif
     }];
     survey(@"start");
     NP_LOG("steamwin: watching windows (mode %s), Steam Helper activation policy %s",

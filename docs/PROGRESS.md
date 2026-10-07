@@ -691,3 +691,36 @@ Spaces и Постановщик проверить сам не могу: нет
 Сборка в Steam — `83FBEDB0`. `/Applications/NotProton.app` не обновлялся, ставил из `out/` через `--install-into-steam`.
 
 **Ждём тебя** (BLOCKERS): переключатель «Разрешать в фоне» у Steam (только посмотреть), подробности про Постановщик, SPIKE_TEST §11.14.
+
+## 2026-10-07 08:55–09:15 CEST — Закрытие при одной иконке вживую; нативные окна отложены
+
+**Закрытие при одной иконке (ты смотрел).**
+- 08:55:53 — `steam_osx` убрал значок.
+- 08:56:26.048 — `loginwindow`: *«"Steam" is not allowed to run non-foreground and has never been user-visible, so killing the process and its subordinate processes»*, после ответа BTM *«not allowed to run background processes»*.
+- 08:56:29.243 — процесс исчез. 08:55:44 — это был мой мягкий перезапуск, не то закрытие.
+
+Положение переключателя «Разрешать в фоне» ты не указал.
+
+**Твоё решение: нативные окна Steam отложены** (W19, BACKLOG «Отложено»).
+1. **Оба переключателя выключены**, одна иконка тоже. Резервная копия прежнего значения — `notproton/steam-windows.before-off`.
+   - Установка (`--install-into-steam`, сборка `B412F3F0`) убрала добавленные в Steam Helper.app файлы: в бандле только файлы Valve, флага своего значка нет.
+   - Steam перезапущен (09:06:35): 0 строк `steamwin`/`focus` в логе, webpatch отдал только патч совместимости (без `library.js` и CSS). Helper — «Steam Helper», `accessory`, в Dock одна плитка Steam, проверка файлов Steam прошла.
+   - `/Applications/NotProton.app` — эта же сборка. Старая копия — в папке временных файлов сессии.
+2. **Код оставлен** под переключателями. В BACKLOG п. 15, 17–19 перенесены в «Отложено» со всеми находками (раздел 15).
+3. **Отладочный канал** (W20, BACKLOG 20 «блокирует релиз»):
+   - без переключателей не запускался и раньше;
+   - теперь собирается только с `make NP_DEV=1`, в обычной сборке строки `steam-windows-debug` нет (`strings`).
+4. **Устаревшие параметры запуска** (P4-9, BACKLOG 21). Раньше отдельной очистки не было: только при ручном выборе рендерера убирался `CX_GRAPHICS_BACKEND`. Теперь панель «Graphics» при первом показе игры:
+   - переписывает `CX_GRAPHICS_BACKEND` в `NOTPROTON_RENDERER`;
+   - убирает `WINEMSYNC=1`, который отменял переключатель msync+ в Game Settings.
+
+   У тебя затронута только ETS2 — при открытии её страницы совместимости (SPIKE_TEST §12).
+5. **Висящий `winedevice.exe`** (pid 55389, 2,5 суток) — наш: временный префикс `notproton-procmon-engine-…` из тестов, движок — тестовая копия Dormison из корзины. SIGTERM он проигнорировал (его wineserver давно завершён), завершён SIGKILL. Временный префикс (387 МБ) удалён. Wine-процессов не осталось.
+
+**Проверки (все с кодом 0):**
+- `make app-tests` — **326 тестов**;
+- `make app`;
+- `make steamwin-check webpatch-fixtures panel-behavior callscheck runcheck sigcheck`;
+- `panel-behavior` теперь включает `cleanup.js`.
+
+**Дальше:** Фаза 5 — в новой сессии, по твоему запуску.

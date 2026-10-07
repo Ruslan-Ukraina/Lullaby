@@ -6,8 +6,8 @@ const { panel, walk, details, runner, FORMS } = require('./harness');
 const emit = process.argv[2];
 if (!emit) { console.error('usage: switching.js <emit>'); process.exit(2); }
 
-const KEEP = ['-novid', 'MTL_HUD_ENABLED=1', 'WINEMSYNC=1', 'NOTPROTON_RETINA=1', 'DXMT_CONFIG=x', '%command%'];
-const FROM = '-novid NOTPROTON_RENDERER=dxmt CX_GRAPHICS_BACKEND=dxvk MTL_HUD_ENABLED=1 WINEMSYNC=1 '
+const KEEP = ['-novid', 'MTL_HUD_ENABLED=1', 'WINEMSYNC=0', 'NOTPROTON_RETINA=1', 'DXMT_CONFIG=x', '%command%'];
+const FROM = '-novid NOTPROTON_RENDERER=dxmt CX_GRAPHICS_BACKEND=dxvk MTL_HUD_ENABLED=1 WINEMSYNC=0 '
            + 'NOTPROTON_RETINA=1 DXMT_CONFIG=x %command%';
 
 let failed = 0;

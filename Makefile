@@ -293,6 +293,7 @@ panel-behavior:
 	  $(PANEL_TESTS)/emit.c && \
 	node $(PANEL_TESTS)/behavior.js $(OUT_DIR)/panel-emit && \
 	node $(PANEL_TESTS)/switching.js $(OUT_DIR)/panel-emit && \
+	node $(PANEL_TESTS)/cleanup.js $(OUT_DIR)/panel-emit && \
 	echo "==> panel behavior: renders as expected, no stale arguments"
 
 CX_ROOT ?= /Applications/CrossOver Preview.app
@@ -326,6 +327,11 @@ $(OUT_DIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 OBJCFLAGS := $(filter-out -std=c17,$(CFLAGS)) -fobjc-arc -fobjc-weak
+# Steam Helper's debug command channel (notproton/steam-windows-debug) is for
+# development only: `make NP_DEV=1 ...`. Never in a release (docs/BACKLOG.md 20).
+ifeq ($(NP_DEV),1)
+OBJCFLAGS += -DNP_STEAMWIN_DEBUG=1
+endif
 
 $(OUT_DIR)/%.o: %.m
 	@mkdir -p $(dir $@)
