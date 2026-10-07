@@ -162,8 +162,6 @@ public struct ConfigValues: Codable, Equatable, Sendable {
     public var dllOverrides: [String: String]?
     /// Extra `KEY=VALUE` lines, in order.
     public var environment: [String]?
-    public var commandIsControl: Bool?
-    public var optionIsAlt: Bool?
     /// Game level only, a debugging switch: msync+ stays on otherwise.
     public var msync: Bool?
 
@@ -211,8 +209,6 @@ public enum ConfigDefaults {
         v.gpu = .asIs
         v.dllOverrides = [:]
         v.environment = []
-        v.commandIsControl = false
-        v.optionIsAlt = false
         v.msync = true
         return v
     }()

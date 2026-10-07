@@ -52,8 +52,6 @@ struct SettingCatalogTests {
         (.gpu, .string("intel-arc-a750"), "SEVO_GPU_DEVICE_ID=0x56a1"),
         (.dllOverrides, .object(["d3dcompiler_47": .string("n,b")]), "NOTPROTON_DLL_OVERRIDES=d3dcompiler_47=n,b"),
         (.environment, .array([.string("DXVK_HUD=1")]), "DXVK_HUD=1"),
-        (.commandIsControl, .bool(true), "NOTPROTON_COMMAND_IS_CTRL=1"),
-        (.optionIsAlt, .bool(true), "NOTPROTON_OPTION_IS_ALT=1"),
     ]
 
     @Test("every game setting reaches its key, and inherit writes none")
@@ -199,6 +197,16 @@ struct SettingCatalogTests {
         #expect(lines.contains("SEVO_OBJECT_SPIN=7"))
         try SettingCatalog.setting(.tuning).write(&game, .string("standard"))
         #expect(game.tuningParameters == nil)
+    }
+
+    @Test("a store written with settings since removed still reads")
+    func removedSettingsDecode() throws {
+        let old = #"{"commandIsControl":true,"optionIsAlt":false,"fps":true,"exes":["a.exe"]}"#
+        let values = try JSONDecoder().decode(ConfigValues.self, from: Data(old.utf8))
+        #expect(values.fps == true)
+        #expect(values.exes == ["a.exe"])
+        let lines = ConfigMaterializer.gameLines(appID: 1, stack: ConfigStack(global: .empty, game: values))
+        #expect(!lines.contains { $0.contains("COMMAND") || $0.contains("OPTION") })
     }
 
     @Test("defaults reproduce NotProton's profile, as the engine reads it")

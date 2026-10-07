@@ -96,8 +96,6 @@ public enum ConfigMaterializer {
     static let markers: [(key: String, path: KeyPath<ConfigValues, Bool?> & Sendable)] = [
         ("NOTPROTON_RETINA", \.retina),
         ("NOTPROTON_EMULATE_MODESET", \.emulateModeset),
-        ("NOTPROTON_COMMAND_IS_CTRL", \.commandIsControl),
-        ("NOTPROTON_OPTION_IS_ALT", \.optionIsAlt),
         ("NOTPROTON_DLSS", \.dlss),
     ]
 

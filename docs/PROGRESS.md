@@ -931,3 +931,20 @@ Spaces и Постановщик проверить сам не могу: нет
 - **Причина:** ветка верная (`phase-7`, `5719fe6`). В `app.log` 20:54:22Z `install: begin version=1.0.2` — ставило **старое** `/Applications/NotProton.app` (сборка Фазы 5 с тестовым фидом), запущенное в 22:52. У него и у `out/NotProton.app` один bundle id, поэтому двойной щелчок по новой копии, вероятно, только вывел вперёд уже запущенную старую. dylib в Steam совпадал с payload старого приложения.
 - **Исправлено:** старое приложение закрыто (Quit), `out/NotProton.app --install-into-steam` → `build 503F5189`, dylib в Steam = `out/notproton.dylib`, `notproton-settings` = из `out/`. Steam запущен обычно, без порта отладки (R65 закрыт). В 22:57:04 патченый чанк отдан Steam Helper (`[forcetool] 9 gates`).
 - SPIKE_TEST §14.0 дополнен предупреждением про две копии приложения. `/Applications/NotProton.app` не менял (BACKLOG 25): в нём **Update не нажимать**, пока не заменим его сборкой Фазы 7.
+
+## 2026-10-08 ~00:05–00:30 CEST — Твоя проверка 7A: шесть замечаний
+
+Работало у тебя: MetalFX Spatial, счётчик FPS, ⌥⌘F, жёлтая строка «Гра запущена», «для всех игр» на ETS2, смена языка.
+
+1. **Выпадающие списки за диалогом (блокер)** — диалог стоял с `z-index` 10000, меню Steam рисуются с 1600 (`.DialogMenuPosition`), модальный фон Steam — 1500. Теперь 1500 (P7A-22), тест в `catalog.js`.
+2. **DXVK крашит PEAK** — не регрессия каталога. Без игры, D3D11-пробой во временном префиксе: без `VK_DRIVER_FILES` загрузчик Vulkan берёт чужие ICD из `/usr/local` → `VK_KHR_surface not supported` → `dxvk::DxvkError` = 0x20474343; с ICD движка — устройство Apple M4 Pro, 11_0. run-скрипт теперь закрепляет ICD движка (P7A-18, R26 закрыт).
+3. **Metal HUD** — на пробе DXMT HUD работает (окно, 120 кадров). Логи твоих сессий 23:30–23:36 не сохранились. Возможно, то же чужое Vulkan (R67); проверка на PEAK — SPIKE_TEST §14.2 п. 3 или мной с твоего разрешения.
+4. **Ограничение FPS** — у DXMT работает, но шагами частоты экрана: 30 → 34–40, 60 → 62–68, 90 → 68 (и с MetalFX). У PEAK без ограничения 75–95, поэтому 60 было почти незаметно. Пресеты: 30, 40, 60, 120; подпись «DXMT: шагами частоты экрана. DXVK: точно» (P7A-19).
+5. **Один сброс** — «Скинути налаштування гри» под блоком и в диалоге, пометка «Своє» (P7A-21). Теряем сброс одной строки.
+6. **Command как Control / Option как Alt** — переключатели убраны, run-скрипт ставит оба всегда (P7A-20). Риски — R66.
+
+Попутно: `ExcUserFault_steam_osx` 00:03 и 00:04 — «имитированные» отчёты macOS о смене иконки загрузчиком Steam, к NotProton отношения не имеют.
+
+**Проверки (все с кодом 0):** `make app-tests` — 383 теста; `make app`; `runcheck`, `scriptcheck`, `sigcheck`, `callscheck`, `webpatch-fixtures`, `peicon-fixtures`, `panel-behavior`, `spawn-env`, `compatcheck`, `compatsvc-check`, `sigdb-fixtures`, `steamwin-check`, `overlay-shim-tests`, `updategate-check`, `settingsbridge-check`, `webpatch-syntax`, `anchorcheck`. Фикстуры панели перегенерированы CLI.
+
+**Установлено в Steam** (00:25, `out/` = Steam, Steam открыт обычным образом). Игры я не запускал. SPIKE_TEST §14 переписан: шаги 3 и 5 стали 14.4 и 14.6, проще.

@@ -12,13 +12,12 @@ public enum SettingID: String, CaseIterable, Sendable, Codable {
     case windows, filter, emulateModeset, fpsGraph, hud, dlss
     case mouse, cursorConfine
     case tuning, processors, unifiedMemory, largeAddressAware, avx, gpu, dllOverrides, environment
-    case commandIsControl, optionIsAlt
     case msync
 }
 
 /// The groups the Advanced dialog shows, in order.
 public enum SettingGroup: String, CaseIterable, Sendable, Codable {
-    case picture, mouse, performance, keyboard, diagnostics
+    case picture, mouse, performance, diagnostics
 }
 
 public enum SettingLevel: String, CaseIterable, Sendable, Codable {
@@ -183,7 +182,7 @@ public enum SettingCatalog {
             id: .fpsLimit, group: .picture, levels: [.global, .game], quick: 5, experimental: false,
             copy: .fpsLimit,
             control: .limit(
-                [SettingChoice(.number(0), Words.off)] + [30, 60, 90, 120].map { SettingChoice(.number($0), .same("\($0)")) },
+                [SettingChoice(.number(0), Words.off)] + [30, 40, 60, 120].map { SettingChoice(.number($0), .same("\($0)")) },
                 range: fpsLimitRange),
             carrier: .environment(["DXMT_CONFIG", "DXVK_FRAME_RATE"]),
             read: { $0.fpsLimit.map(JSONValue.number) },
@@ -252,10 +251,6 @@ public enum SettingCatalog {
         gpuSetting,
         dllSetting,
         environmentSetting,
-        .flag(.commandIsControl, in: .keyboard, key: \.commandIsControl, copy: .commandIsControl,
-              carrier: .registry(values: ["LeftCommandIsCtrl", "RightCommandIsCtrl"], marker: "NOTPROTON_COMMAND_IS_CTRL")),
-        .flag(.optionIsAlt, in: .keyboard, key: \.optionIsAlt, copy: .optionIsAlt,
-              carrier: .registry(values: ["LeftOptionIsAlt", "RightOptionIsAlt"], marker: "NOTPROTON_OPTION_IS_ALT")),
         .flag(.msync, in: .diagnostics, levels: [.game], key: \.msync, copy: .msync,
               carrier: .bottleOnly(["WINEMSYNC"])),
     ]

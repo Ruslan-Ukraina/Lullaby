@@ -63,7 +63,6 @@ public enum GroupTitles {
         case .performance:
             L10n("Performance and compatibility", uk: "Продуктивність і сумісність",
                  ru: "Производительность и совместимость")
-        case .keyboard: L10n("Keyboard", uk: "Клавіатура", ru: "Клавиатура")
         case .diagnostics: L10n("Diagnostics", uk: "Діагностика", ru: "Диагностика")
         }
     }
@@ -82,10 +81,8 @@ public enum PanelText {
         "inherited": L10n("For all games: %@", uk: "Для всіх ігор: %@", ru: "Для всех игр: %@"),
         "defaultValue": L10n("NotProton default: %@", uk: "Типово в NotProton: %@",
                              ru: "По умолчанию в NotProton: %@"),
-        "own": L10n("Set for this game", uk: "Своє для цієї гри", ru: "Своё для этой игры"),
-        "ownGlobal": L10n("Changed from the NotProton default", uk: "Змінено щодо типового NotProton",
-                          ru: "Изменено относительно NotProton по умолчанию"),
-        "reset": L10n("Reset", uk: "Скинути", ru: "Сбросить"),
+        "own": L10n("Custom", uk: "Своє", ru: "Своё"),
+        "ownGlobal": L10n("Changed", uk: "Змінено", ru: "Изменено"),
         "advanced": L10n("Advanced settings…", uk: "Додаткові налаштування…", ru: "Дополнительные настройки…"),
         "advancedTitle": L10n("Advanced settings — %@", uk: "Додаткові налаштування — %@",
                               ru: "Дополнительные настройки — %@"),
@@ -222,17 +219,19 @@ extension SettingCopy {
 
     static let fpsLimit = SettingCopy(
         L10n("Frame rate limit", uk: "Обмеження FPS", ru: "Ограничение FPS"),
-        caption: L10n("Works with DXMT and DXVK.", uk: "Працює з DXMT і DXVK.", ru: "Работает с DXMT и DXVK."),
+        caption: L10n("DXMT: in steps of the display's rate. DXVK: exact.",
+                      uk: "DXMT: кроками частоти екрана. DXVK: точно.",
+                      ru: "DXMT: шагами частоты экрана. DXVK: точно."),
         help: SettingHelp(
-            L10n("The renderer holds the game to this many frames per second: a cooler, quieter Mac and steadier frame times.",
-                 uk: "Рендерер тримає гру на цій кількості кадрів за секунду: Mac холодніший і тихіший, кадри рівніші.",
-                 ru: "Рендерер держит игру на этом числе кадров в секунду: Mac холоднее и тише, кадры ровнее."),
+            L10n("The renderer holds the game to about this many frames per second: a cooler, quieter Mac and steadier frame times.",
+                 uk: "Рендерер тримає гру приблизно на цій кількості кадрів за секунду: Mac холодніший і тихіший, кадри рівніші.",
+                 ru: "Рендерер держит игру примерно на этом числе кадров в секунду: Mac холоднее и тише, кадры ровнее."),
             entries: [
                 HelpEntry(.same("DXMT"), L10n(
-                    "Through its own setting d3d11.preferredMaxFrameRate.",
-                    uk: "Через власне налаштування d3d11.preferredMaxFrameRate.",
-                    ru: "Через собственную настройку d3d11.preferredMaxFrameRate.")),
-                HelpEntry(.same("DXVK"), L10n("Through DXVK_FRAME_RATE.", uk: "Через DXVK_FRAME_RATE.", ru: "Через DXVK_FRAME_RATE.")),
+                    "Paces frames to the display: on a 120 Hz screen 120, 60, 40 or 30, a few frames above the limit. A value in between takes the step above it.",
+                    uk: "Підлаштовує кадри під екран: на екрані 120 Гц — 120, 60, 40 або 30, на кілька кадрів більше за обмеження. Проміжне значення бере крок вище.",
+                    ru: "Подстраивает кадры под экран: на экране 120 Гц — 120, 60, 40 или 30, на несколько кадров больше ограничения. Промежуточное значение берёт шаг выше.")),
+                HelpEntry(.same("DXVK"), L10n("Holds the exact number.", uk: "Тримає точне число.", ru: "Держит точное число.")),
                 HelpEntry(.same("WineD3D"), L10n(
                     "Has no limit of its own; use the game's setting.",
                     uk: "Власного обмеження не має; скористайтеся налаштуванням гри.",
@@ -512,32 +511,6 @@ extension SettingCopy {
             footnote: L10n("Variables NotProton sets itself (WINEDLLOVERRIDES, WINEPREFIX, WINEMSYNC and the ones settings above own) are refused.",
                            uk: "Змінні, які NotProton задає сам (WINEDLLOVERRIDES, WINEPREFIX, WINEMSYNC і ті, що належать налаштуванням вище), не приймаються.",
                            ru: "Переменные, которые NotProton задаёт сам (WINEDLLOVERRIDES, WINEPREFIX, WINEMSYNC и те, что принадлежат настройкам выше), не принимаются.")))
-
-    static let commandIsControl = SettingCopy(
-        L10n("Command as Control", uk: "Command як Control", ru: "Command как Control"),
-        caption: L10n("⌘C, ⌘V and the like reach the game as Ctrl+C, Ctrl+V.",
-                      uk: "⌘C, ⌘V тощо надходять у гру як Ctrl+C, Ctrl+V.",
-                      ru: "⌘C, ⌘V и подобные приходят в игру как Ctrl+C, Ctrl+V."),
-        help: SettingHelp(
-            L10n("Both Command keys act as Control in the game. macOS shortcuts with Command stop working in it.",
-                 uk: "Обидві клавіші Command діють у грі як Control. Скорочення macOS з Command у ній перестають працювати.",
-                 ru: "Обе клавиши Command работают в игре как Control. Сочетания macOS с Command в ней перестают работать."),
-            footnote: L10n("Written to the game's Wine registry when it starts.",
-                           uk: "Записується в реєстр Wine гри під час запуску.",
-                           ru: "Записывается в реестр Wine игры при запуске.")))
-
-    static let optionIsAlt = SettingCopy(
-        L10n("Option as Alt", uk: "Option як Alt", ru: "Option как Alt"),
-        caption: L10n("Option reaches the game as Alt instead of typing special characters.",
-                      uk: "Option надходить у гру як Alt замість введення спецсимволів.",
-                      ru: "Option приходит в игру как Alt вместо ввода спецсимволов."),
-        help: SettingHelp(
-            L10n("Both Option keys act as Alt, which games bind to actions.",
-                 uk: "Обидві клавіші Option діють як Alt, на який ігри призначають дії.",
-                 ru: "Обе клавиши Option работают как Alt, на который игры назначают действия."),
-            footnote: L10n("Written to the game's Wine registry when it starts.",
-                           uk: "Записується в реєстр Wine гри під час запуску.",
-                           ru: "Записывается в реестр Wine игры при запуске.")))
 
     static let msync = SettingCopy(
         .same("msync+"),

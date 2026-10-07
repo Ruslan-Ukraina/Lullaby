@@ -421,8 +421,6 @@ if [ -n "$STEAM_COMPAT_DATA_PATH" ]; then
   # bottle.env (the engine reads its SEVO_* keys from those files itself).
   [ -n "$NOTPROTON_RETINA" ] || NOTPROTON_RETINA=$(env_value NOTPROTON_RETINA)
   [ -n "$NOTPROTON_EMULATE_MODESET" ] || NOTPROTON_EMULATE_MODESET=$(env_value NOTPROTON_EMULATE_MODESET)
-  [ -n "$NOTPROTON_COMMAND_IS_CTRL" ] || NOTPROTON_COMMAND_IS_CTRL=$(env_value NOTPROTON_COMMAND_IS_CTRL)
-  [ -n "$NOTPROTON_OPTION_IS_ALT" ] || NOTPROTON_OPTION_IS_ALT=$(env_value NOTPROTON_OPTION_IS_ALT)
   [ -n "$NOTPROTON_DLSS" ] || NOTPROTON_DLSS=$(env_value NOTPROTON_DLSS)
   [ -n "$NOTPROTON_DLL_OVERRIDES" ] || NOTPROTON_DLL_OVERRIDES=$(env_value NOTPROTON_DLL_OVERRIDES)
   msync_from=launch-options
@@ -458,11 +456,12 @@ if [ -n "$STEAM_COMPAT_DATA_PATH" ]; then
   echo "video: RetinaMode=${NOTPROTON_RETINA:-0} EmulateModeset=${NOTPROTON_EMULATE_MODESET:-0}" >> "$log" 2>&1 || true
   reg_switch 'HKCU\Software\Wine\Mac Driver' RetinaMode "$NOTPROTON_RETINA"
   reg_switch 'HKCU\Software\Wine\X11 Driver' EmulateModeset "$NOTPROTON_EMULATE_MODESET"
-  echo "keyboard: CommandIsCtrl=${NOTPROTON_COMMAND_IS_CTRL:-0} OptionIsAlt=${NOTPROTON_OPTION_IS_ALT:-0}" >> "$log" 2>&1 || true
-  reg_switch 'HKCU\Software\Wine\Mac Driver' LeftCommandIsCtrl "$NOTPROTON_COMMAND_IS_CTRL"
-  reg_switch 'HKCU\Software\Wine\Mac Driver' RightCommandIsCtrl "$NOTPROTON_COMMAND_IS_CTRL"
-  reg_switch 'HKCU\Software\Wine\Mac Driver' LeftOptionIsAlt "$NOTPROTON_OPTION_IS_ALT"
-  reg_switch 'HKCU\Software\Wine\Mac Driver' RightOptionIsAlt "$NOTPROTON_OPTION_IS_ALT"
+  # Command reaches every game as Control and Option as Alt (DECISIONS P7A-20). winemac.drv's
+  # own default is the other way round: Command is Alt and Option types special characters.
+  echo "keyboard: Command is Control, Option is Alt" >> "$log" 2>&1 || true
+  for key in LeftCommandIsCtrl RightCommandIsCtrl LeftOptionIsAlt RightOptionIsAlt; do
+    reg_switch 'HKCU\Software\Wine\Mac Driver' "$key" 1
+  done
 
   "$WINELOADER" reg add 'HKLM\Software\Classes\steam' /v 'URL Protocol' /t REG_SZ /d '' /f >> "$log" 2>&1 || true
   "$WINELOADER" reg add 'HKLM\Software\Classes\steam\shell\open\command' /ve /t REG_SZ /d '"C:\Program Files (x86)\Steam\steam.exe" "%1"' /f >> "$log" 2>&1 || true
@@ -666,6 +665,16 @@ if [ -n "$NOTPROTON_DLL_OVERRIDES" ]; then
   export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:+$WINEDLLOVERRIDES;}$NOTPROTON_DLL_OVERRIDES"
 fi
 echo "WINEDLLOVERRIDES=$WINEDLLOVERRIDES" >> "$log" 2>&1 || true
+
+# Vulkan (DXVK, and every game that probes it) goes to the engine's own MoltenVK. The loader
+# finds the engine's ICD manifest beside the main executable only, and a game runs from its
+# bundle's copy of the loader, so without this it takes whatever /usr/local offers
+# (KosmicKrisp, another MoltenVK) and DXVK fails on VK_KHR_surface (DECISIONS P7A-18).
+vk_icd="$wine_unix/vulkan/icd.d/MoltenVK_icd.json"
+if [ -f "$vk_icd" ]; then
+  export VK_DRIVER_FILES="$vk_icd" VK_ICD_FILENAMES="$vk_icd"
+  echo "vulkan: $vk_icd" >> "$log" 2>&1 || true
+fi
 
 # loaddll is a line per module, cheap, and shows lsteamclient coming in.
 export WINEDEBUG="${WINEDEBUG:-err+all,fixme-all,+loaddll}"

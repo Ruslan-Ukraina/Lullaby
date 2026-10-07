@@ -137,7 +137,8 @@
       h.footnote ? el("div", { className: "NPFoot" }, L(ctx, h.footnote)) : null);
   }
 
-  // The line under a row: what it inherits, or that it is its own, with Reset.
+  // The line under a row: what it inherits, or that the value is this level's own. One
+  // button under the block resets them all (no Reset per row).
   function describe(ctx, s, v, info) {
     var line;
     if (v.own === null) {
@@ -145,9 +146,7 @@
       var shared = !ctx.global && s.levels.indexOf("global") >= 0;
       line = T(ctx, shared ? "inherited" : "defaultValue", L(ctx, v.inheritedLabel));
     } else {
-      line = el("span", null, T(ctx, ctx.global ? "ownGlobal" : "own"), DOT,
-        el("a", { className: "NPLink", role: "button", onClick: function (e) { stop(e); ctx.change(s.id, null); } },
-          T(ctx, "reset")));
+      line = T(ctx, ctx.global ? "ownGlobal" : "own");
     }
     return el("span", { className: "NPDesc" },
       s.caption ? el("span", { className: "NPCaption" }, L(ctx, s.caption)) : null,
@@ -369,7 +368,9 @@
       ctx.global ? el("div", { className: "NPCaption NPTop" }, T(ctx, "globalCaption")) : null,
       rows(ctx, settingsAt(ctx, true)),
       el("div", { className: "NPActions" },
-        el(B.$n, { onClick: function () { ctx.setAdvanced(true); } }, T(ctx, "advanced"))),
+        el(B.$n, { onClick: function () { ctx.setAdvanced(true); } }, T(ctx, "advanced")),
+        el(B.$n, { className: "NPReset", onClick: function () { ctx.reset(); } },
+          T(ctx, ctx.global ? "resetGlobal" : "resetGame"))),
       statusLine(ctx),
       ctx.error ? el("div", { className: "NPError" }, T(ctx, "saveFailed", ctx.error)) : null,
       ctx.advanced ? overlay(ctx) : null);
@@ -422,10 +423,10 @@
     ".NPHelp{margin-top:6px;padding:8px 10px;background:rgba(0,0,0,.25);border-radius:3px;color:#c7d5e0;white-space:normal}" +
     ".NPHelp ul{margin:6px 0 0;padding-left:16px}.NPHelp b{color:#fff}.NPFoot{margin-top:6px;color:#8b929a}" +
     ".NPSub{padding:4px 0 8px 16px}" +
-    ".NPActions{margin-top:12px}" +
+    ".NPActions{margin-top:12px;display:flex;flex-direction:column;gap:8px}" +
     ".NPStatus{color:#8b929a;font-size:12px;margin-top:8px}.NPStatus.NPWarn{color:#e4c046}" +
     ".NPError{color:#ff7b7b;font-size:12px;margin-top:8px}" +
-    ".NPOverlay{position:fixed;left:0;top:0;right:0;bottom:0;z-index:10000;background:rgba(0,0,0,.65);" +
+    ".NPOverlay{position:fixed;left:0;top:0;right:0;bottom:0;z-index:1500;background:rgba(0,0,0,.65);" +
     "display:flex;align-items:center;justify-content:center;outline:none}" +
     ".NPDialog{background:#23262e;width:min(660px,92vw);max-height:86vh;display:flex;flex-direction:column;" +
     "border-radius:4px;box-shadow:0 12px 40px rgba(0,0,0,.7)}" +

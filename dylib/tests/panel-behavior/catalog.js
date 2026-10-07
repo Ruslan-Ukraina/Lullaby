@@ -129,13 +129,18 @@ for (const lang of ['en', 'uk', 'ru']) {
     'a toggle shows the value for all games it inherits');
   const fps = rowFor(tree, 'fps', 'ru');
   t.ok(text(fps.props.description).includes(catalog.text.own.ru), 'an own value says so');
-  const reset = walk(fps.props.description).find(n => n.props && n.props.className === 'NPLink');
-  reset.props.onClick({ stopPropagation() {}, preventDefault() {} });
+  t.ok(!walk(tree).some(n => n.props && n.props.className === 'NPLink'), 'no Reset in the rows');
   fps.props.onChange(false);
   const upscaler = rowFor(tree, 'upscaler', 'ru');
   upscaler.props.onChange({ data: JSON.stringify('metalfx') });
-  t.ok(JSON.stringify(ctx.calls) === JSON.stringify([['set', 'fps', null], ['set', 'fps', false], ['set', 'upscaler', 'metalfx']]),
-    `Reset inherits, a toggle and a list set values (${JSON.stringify(ctx.calls)})`);
+  const resetGame = walk(tree).filter(n => n.type === 'Button' && text(n) === catalog.text.resetGame.ru);
+  t.ok(resetGame.length === 1, 'one "Reset game settings" under the block');
+  resetGame[0].props.onClick();
+  t.ok(JSON.stringify(ctx.calls) === JSON.stringify([['set', 'fps', false], ['set', 'upscaler', 'metalfx'], ['reset']]),
+    `a toggle and a list set values, the button resets the game (${JSON.stringify(ctx.calls)})`);
+  const css = text(walk(tree).find(n => n.type === 'style'));
+  const z = Number((/\.NPOverlay\{[^}]*z-index:(\d+)/.exec(css) || [])[1]);
+  t.ok(z >= 1500 && z < 1600, `the dialog sits under Steam's menus (.DialogMenuPosition 1600), as Steam's own modals (1500): ${z}`);
 
   const info = walk(renderer.props.label).find(n => n.props && /NPInfo/.test(n.props.className || ''));
   t.ok(info && info.props.role === 'button', 'every row has an (i)');
