@@ -776,3 +776,5 @@ Spaces и Постановщик проверить сам не могу: нет
 - Снимок Status — `scratch/phase5-check/01-status-top.png`.
 
 **Дальше:** твоя проверка по SPIKE_TEST §12. Фаза 6 — по твоей команде.
+
+**Уведомление (~13:00 CEST):** `PushNotification` — «Terminal notification sent. Mobile push requested.». Снимок Status и SPIKE_TEST.md отправлены в сессию, системное уведомление macOS отправлено (код 0). Жду проверки по §12.
