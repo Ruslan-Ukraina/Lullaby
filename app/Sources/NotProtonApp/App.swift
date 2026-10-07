@@ -8,7 +8,7 @@ struct NotProtonApp: App {
     @State private var status = SystemStatus()
     @State private var prefixes = PrefixesModel()
     @State private var pane: Pane = .status
-    private let updater = AppUpdater()
+    private let updater = AppUpdater.shared
 
     init() {
         AppLog.start()

@@ -1,0 +1,240 @@
+name: dormison-bridge
+
+# A Dormison release without a bridge -> the B1 ntdll.dll pair and the bridge
+# (lsteamclient, steam.exe), built from Dormison's source at the commit that
+# release was built from -> tests in Wine -> the signed bridge-<engine>-<rev> and
+# bridge-manifest.json NotProton.app reads (docs/RELEASING.md, DECISIONS P5-1).
+# A build that fails gets an issue.
+#
+# Dry run (a dryrun-bridge-* tag, or "Run workflow" with dry_run): the TEST keys,
+# nothing published, no issues; with nothing new it rebuilds the beta channel's
+# engine, so the whole path still runs. The feed it would publish is an artifact.
+
+on:
+  schedule:
+    - cron: "41 5 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Dry run with the TEST keys (publishes nothing)
+        type: boolean
+        default: true
+      rebuild:
+        description: Build a new revision for the beta channel's engine even if it has a bridge
+        type: boolean
+        default: false
+  push:
+    tags: ["dryrun-bridge-*"]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: release-feed
+  cancel-in-progress: false
+
+env:
+  FEED: https://github.com/${{ github.repository }}/releases/download/
+  DRY_RUN: ${{ github.event_name == 'push' || inputs.dry_run == true }}
+  REBUILD: ${{ inputs.rebuild == true }}
+  # Pinned in Sevoflurane's Core/Setup/EngineSignature.swift (engine/fetch-dormison.sh).
+  DORMISON_PUBKEY: 7uDuIZdCZyobjZcPL12zL+UNOCpHSvLXvVRFHA7bzzA=
+  DORMISON_MANIFEST: https://github.com/kageroumado/dormison/releases/download/manifest/engine.json
+
+jobs:
+  bridge:
+    runs-on: xcode-27
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Keys
+        id: keys
+        env:
+          NP_RELEASE_PRIVATE_KEY: ${{ secrets.NP_RELEASE_PRIVATE_KEY }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          NP_RELEASE_PUBLIC_KEY: ${{ vars.NP_RELEASE_PUBLIC_KEY }}
+          SPARKLE_PUBLIC_KEY: ${{ vars.SPARKLE_PUBLIC_KEY }}
+        run: |
+          mode=release; [ "$DRY_RUN" = true ] && mode=dry-run
+          rc=0; release/ci-keys.sh "$mode" "$RUNNER_TEMP/keys" || rc=$?
+          if [ "$rc" = 3 ]; then
+            echo "::notice::The release keys are not set up yet (docs/RELEASING.md); nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          exit "$rc"
+
+      - name: Which engine needs a bridge
+        id: detect
+        if: steps.keys.outputs.skip != 'true'
+        run: |
+          swiftc -O -o "$RUNNER_TEMP/verify-ed25519" engine/verify-ed25519.swift
+          d="$RUNNER_TEMP/dormison"; mkdir -p "$d"
+          curl -fsSL -o "$d/engine.json" "$DORMISON_MANIFEST"
+          curl -fsSL -o "$d/engine.json.sig" "$DORMISON_MANIFEST.sig"
+          "$RUNNER_TEMP/verify-ed25519" "$DORMISON_PUBKEY" "$d/engine.json" "$d/engine.json.sig"
+          current=""
+          if [ "$DRY_RUN" != true ] && release/gh-publish.sh fetch "$FEED" manifest bridge-manifest.json "$RUNNER_TEMP/current"; then
+            release/gh-publish.sh verify "$NP_RELEASE_KEY" "$RUNNER_TEMP/current/bridge-manifest.json"
+            current="$RUNNER_TEMP/current/bridge-manifest.json"
+            echo "CURRENT=$current" >> "$GITHUB_ENV"
+          fi
+          python3 -I - "$d/engine.json" bridge/bridge-manifest.json "$current" "$DRY_RUN" "$REBUILD" >> "$GITHUB_OUTPUT" <<'PY'
+          import json, sys
+          engine, repo, current, dry_run, rebuild = sys.argv[1:6]
+          channels = json.load(open(engine))["channels"]
+          entries = json.load(open(repo))["bridges"] + (json.load(open(current))["bridges"] if current else [])
+          def revs(version): return [e["rev"] for e in entries if e["engine"] == version]
+          # The beta channel first: it is the one NotProton ships with today.
+          order = [c for c in ("beta", "stable") if c in channels and channels[c].get("version")]
+          target = next((c for c in order if not revs(channels[c]["version"])), None)
+          if target is None and (rebuild == "true" or dry_run == "true") and order:
+              target = order[0]
+          if target is None:
+              print("skip=true")
+              print("versions:", {c: channels[c]["version"] for c in order}, "all have a bridge", file=sys.stderr)
+          else:
+              version = channels[target]["version"]
+              print(f"channel={target}")
+              print(f"engine={version}")
+              print(f"rev={max(revs(version) + [0]) + 1}")
+          PY
+          cat "$GITHUB_OUTPUT"
+
+      - name: Nothing to build
+        if: steps.keys.outputs.skip != 'true' && steps.detect.outputs.skip == 'true'
+        run: echo "Every Dormison release on a channel has a bridge." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Toolchain
+        if: steps.detect.outputs.engine
+        run: |
+          sudo xcode-select -s /Applications/Xcode_27.0.app
+          brew install mingw-w64 bison flex
+          x86_64-w64-mingw32-gcc --version | head -1
+
+      - name: Fetch and check the engine
+        id: engine
+        if: steps.detect.outputs.engine
+        env:
+          CHANNEL: ${{ steps.detect.outputs.channel }}
+        run: |
+          RUNNERS="$RUNNER_TEMP/runners" CACHE="$RUNNER_TEMP/engine" engine/fetch-dormison.sh --activate
+          eng=$(cd -P "$RUNNER_TEMP/runners/current" && pwd)
+          version=$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$eng/engine-info.json")
+          commit=$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["commit"])' "$eng/engine-info.json")
+          [ "$version" = "${{ steps.detect.outputs.engine }}" ] || { echo "the $CHANNEL channel moved to $version"; exit 1; }
+          echo "ENGINE=$eng" >> "$GITHUB_ENV"
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          echo "### $version ($commit), bridge rev ${{ steps.detect.outputs.rev }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Dormison's source at the engine's commit
+        if: steps.detect.outputs.engine
+        run: |
+          git clone --filter=blob:none --no-checkout https://github.com/kageroumado/dormison.git "$RUNNER_TEMP/dormison-repo"
+          echo "DORMISON_REPO=$RUNNER_TEMP/dormison-repo" >> "$GITHUB_ENV"
+          echo "WINE_COMMIT=${{ steps.engine.outputs.commit }}" >> "$GITHUB_ENV"
+
+      - name: Configure the wine tree
+        if: steps.detect.outputs.engine
+        run: bridge/setup-wine-tree.sh
+
+      - name: Build the B1 ntdll.dll pair
+        if: steps.detect.outputs.engine
+        run: |
+          OUT="$PWD/scratch/ntdll-b1/${{ steps.detect.outputs.engine }}" ntdll-patch/b1/build-b1.sh --check-base
+
+      - name: Build lsteamclient and steam.exe
+        if: steps.detect.outputs.engine
+        run: |
+          lsteamclient/build.sh
+          steam-shim/build.sh
+          files="$RUNNER_TEMP/bridge-files"; mkdir -p "$files"
+          b=scratch/dormison-build
+          cp "$b/programs/steam.exe/x86_64-windows/steam.exe" "$files/steam.exe"
+          cp "$b/dlls/lsteamclient/x86_64-windows/lsteamclient.dll" "$files/x86_64-windows-lsteamclient.dll"
+          cp "$b/dlls/lsteamclient/lsteamclient.so" "$files/x86_64-unix-lsteamclient.so"
+          cp "$b/dlls/lsteamclient/i386-windows/lsteamclient.dll" "$files/i386-windows-lsteamclient.dll"
+          file "$files"/*
+
+      - name: Test the hook in Wine (x86_64 and i386)
+        if: steps.detect.outputs.engine
+        run: |
+          t="$RUNNER_TEMP/bridge-test"; f="$RUNNER_TEMP/bridge-files"
+          BRIDGE_DIR="$t" bridge/fetch-valve.sh --install
+          mkdir -p "$t/x86_64-windows" "$t/i386-windows" "$t/x86_64-unix"
+          cp "$f/x86_64-windows-lsteamclient.dll" "$t/x86_64-windows/lsteamclient.dll"
+          cp "$f/i386-windows-lsteamclient.dll" "$t/i386-windows/lsteamclient.dll"
+          cp "$f/x86_64-unix-lsteamclient.so" "$t/x86_64-unix/lsteamclient.so"
+          cp "$f/x86_64-windows-lsteamclient.dll" "$t/lsteamclient.dll"
+          cp "$f/x86_64-unix-lsteamclient.so" "$t/lsteamclient.so"
+          b1="scratch/ntdll-b1/${{ steps.detect.outputs.engine }}"
+          BRIDGE_DIR="$t" WORK="$RUNNER_TEMP/b1-test" ntdll-patch/b1/test-b1.sh "$b1" | tee "$RUNNER_TEMP/b1-test.log"
+          # The control: the release's own ntdll.dll must not lead to lsteamclient.
+          if BRIDGE_DIR="$t" WORK="$RUNNER_TEMP/b1-test" ntdll-patch/b1/test-b1.sh --clean > "$RUNNER_TEMP/b1-clean.log" 2>&1; then
+            echo "the release's ntdll.dll passed the hook test, so the test proves nothing"; exit 1
+          fi
+          { echo '```'; grep -E "^(OK|FAIL) |arch\(es\)" "$RUNNER_TEMP/b1-test.log"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Package and sign
+        if: steps.detect.outputs.engine
+        run: |
+          feed="$RUNNER_TEMP/feed"
+          python3 -I release/feed.py bridge-artifact --files-dir "$RUNNER_TEMP/bridge-files" \
+            --b1-dir "scratch/ntdll-b1/${{ steps.detect.outputs.engine }}" \
+            --engine "${{ steps.detect.outputs.engine }}" --commit "${{ steps.engine.outputs.commit }}" \
+            --rev "${{ steps.detect.outputs.rev }}" --feed "$FEED" --out "$feed"
+          id="bridge-${{ steps.detect.outputs.engine }}-${{ steps.detect.outputs.rev }}"
+          python3 -I release/feed.py publish-bridges --repo bridge/bridge-manifest.json \
+            ${CURRENT:+--current "$CURRENT"} --out "$feed/manifest/bridge-manifest.json" "$feed/$id.entry.json"
+          swift release/sign.swift "$RUNNER_TEMP/keys/release.key" "$feed/$id/$id.tar.xz" "$feed/manifest/bridge-manifest.json"
+          release/gh-publish.sh verify "$NP_RELEASE_KEY" "$feed/$id/$id.tar.xz"
+          release/gh-publish.sh verify "$NP_RELEASE_KEY" "$feed/manifest/bridge-manifest.json"
+          echo "ID=$id" >> "$GITHUB_ENV"
+          { echo "Packaged \`$id\`:"; echo '```json'; cat "$feed/$id.entry.json"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the run's output
+        if: always() && steps.detect.outputs.engine
+        uses: actions/upload-artifact@v5
+        with:
+          name: dormison-bridge
+          path: |
+            ${{ runner.temp }}/feed
+            ${{ runner.temp }}/b1-test.log
+            ${{ runner.temp }}/b1-clean.log
+            scratch/ntdll-b1/*/b1.json
+            scratch/ntdll-b1/*/build.log
+          if-no-files-found: ignore
+
+      - name: Publish
+        if: steps.detect.outputs.engine && env.DRY_RUN != 'true'
+        run: |
+          feed="$RUNNER_TEMP/feed"
+          release/gh-publish.sh upload "$ID" "Steam bridge $ID" "$feed/$ID/$ID.tar.xz" "$feed/$ID/$ID.tar.xz.sig"
+          release/gh-publish.sh upload manifest "Signed manifests" \
+            "$feed/manifest/bridge-manifest.json" "$feed/manifest/bridge-manifest.json.sig"
+          back="$RUNNER_TEMP/published"
+          release/gh-publish.sh fetch "$FEED" manifest bridge-manifest.json "$back"
+          cmp "$back/bridge-manifest.json" "$feed/manifest/bridge-manifest.json"
+          release/gh-publish.sh fetch "$FEED" "$ID" "$ID.tar.xz" "$back"
+          cmp "$back/$ID.tar.xz" "$feed/$ID/$ID.tar.xz"
+          echo "Published $ID and the bridge manifest; both read back and match." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report a failed build
+        if: failure() && steps.detect.outputs.engine
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Steam bridge for ${{ steps.detect.outputs.engine }} did not build"
+          body="$RUNNER_TEMP/issue.md"
+          {
+            echo "The dormison-bridge workflow: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo
+            echo "NotProton does not offer ${{ steps.detect.outputs.engine }} until it has a bridge (DECISIONS P5-1)."
+          } > "$body"
+          if [ "$DRY_RUN" = true ]; then
+            echo "Dry run, would open: **$title**" >> "$GITHUB_STEP_SUMMARY"
+          else
+            release/gh-publish.sh issue "$title" "$body"
+          fi

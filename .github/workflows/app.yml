@@ -1,11 +1,14 @@
 name: app
 
+# Checks on every push to dormison and every pull request: the dylib, the shim and
+# the helpers build, the hermetic C suites and the Swift tests pass. The release
+# build itself (bundle, keys, Sparkle) is release.yml.
+
 on:
   push:
-    branches: [main]
+    branches: [dormison]
   pull_request:
   workflow_dispatch:
-  workflow_call:
 
 permissions:
   contents: read
@@ -15,11 +18,11 @@ env:
 
 jobs:
   build:
-    name: full app build
+    name: build and test
     runs-on: xcode-27
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Record the toolchain
         run: |
@@ -28,15 +31,12 @@ jobs:
           swift --version
           echo "macOS SDK $(xcrun --sdk macosx --show-sdk-version)"
 
-      - name: Install cross compilers
-        run: brew install mingw-w64 bison flex
-
       - name: Clone Dobby at the pinned commit
         run: |
           git clone --no-checkout https://github.com/jmpews/Dobby.git vendor/dobby
-          git -C vendor/dobby checkout $DOBBY_COMMIT
+          git -C vendor/dobby checkout "$DOBBY_COMMIT"
 
-      - name: Restore Dobby build cache
+      - name: Restore the Dobby build
         id: dobby-cache
         uses: actions/cache@v4
         with:
@@ -47,71 +47,19 @@ jobs:
         if: steps.dobby-cache.outputs.cache-hit != 'true'
         run: make dobby
 
-      - name: Restore the Wine trees
-        id: wine-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            scratch/wine
-            scratch/wine-build-dual
-            scratch/wine-build-arm64
-          key: wine-xcode-27-${{ hashFiles('bridge/setup-wine-tree.sh', 'bridge/register-components.diff') }}
+      - name: Build the dylib, the shim and the helpers
+        run: make all overlay-shim iconmaker appinfo out/sigslice
 
-      - name: Restore Proton tarball cache
-        uses: actions/cache@v4
-        with:
-          path: scratch/proton-lsc
-          key: proton-tarball-${{ hashFiles('lsteamclient/fetch.sh') }}
-
-      - name: Build the dylib
-        run: make all
-
-      - name: Build the overlay shim
-        run: make overlay-shim
-
-      - name: Build helpers
-        run: make iconmaker appinfo
-
-      - name: Build the bridge
-        run: make bridge
-
-      - name: Save the Wine trees
-        if: steps.wine-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            scratch/wine
-            scratch/wine-build-dual
-            scratch/wine-build-arm64
-          key: wine-xcode-27-${{ hashFiles('bridge/setup-wine-tree.sh', 'bridge/register-components.diff') }}
-
-      - name: Stage the app payload
-        run: make app-payload
-
-      - name: Build the app
-        run: make app
-
-      - name: Run the hermetic C suites
+      - name: No debug channel in the dylib (BACKLOG 20)
         run: |
-          make -s sigcheck
-          make -s callscheck
-          make -s webpatch-fixtures
-          make -s peicon-fixtures
-          make -s panel-behavior
-          make -s spawn-env
-          make -s compatcheck
-          make -s compatsvc-check
+          if strings -a out/notproton.dylib | grep -q steam-windows-debug; then
+            echo "out/notproton.dylib carries the Steam Helper debug channel"; exit 1
+          fi
 
-      - name: Run the Swift tests
+      - name: Hermetic C suites
+        run: |
+          make -s sigcheck callscheck webpatch-fixtures peicon-fixtures panel-behavior spawn-env \
+            compatcheck compatsvc-check updategate-check steamwin-check
+
+      - name: Swift tests
         run: make -s app-tests
-
-      - name: Package the app bundle
-        run: |
-          mkdir -p out/artifact
-          ditto -c -k --keepParent out/NotProton.app out/artifact/NotProton.zip
-
-      - name: Upload the app bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: NotProton
-          path: out/artifact

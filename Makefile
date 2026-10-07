@@ -61,12 +61,12 @@ TARGET      := $(OUT_DIR)/notproton.dylib
 OBJS := $(patsubst %.c,$(OUT_DIR)/%.o,$(SRCS)) $(patsubst %.m,$(OUT_DIR)/%.o,$(OBJC_SRCS))
 DEPS := $(OBJS:.o=.d)
 
-.PHONY: all clean rebuild dobby deploy dylib-install sigcheck app-payload app app-zip \
+.PHONY: all clean rebuild dobby deploy dylib-install sigcheck app-payload app app-zip app-config \
         anchorcheck callscheck sigdb-fixtures webpatch-fixtures peicon-fixtures panel-behavior app-tests \
         tests-list overlay-shim overlay-shim-install overlay-shim-tests \
         overlay-shim-bench iconmaker icon \
         appinfo helpers-install ntdll-resolve bridge runcheck compatcheck \
-        compatsvc-check scriptcheck steamwin-check updategate-check
+        compatsvc-check scriptcheck steamwin-check updategate-check sigslice
 
 APP_PAYLOAD := app/Sources/NotProtonApp/Resources/payload
 
@@ -146,6 +146,18 @@ $(ANCHORCHECK): $(ANCHORCHECK_SRCS)
 anchorcheck:
 	@if [ ! -f dylib/tests/anchorcheck.c ]; then $(call SKIP,anchorcheck,dylib/tests/anchorcheck.c); exit 0; fi; \
 	$(MAKE) -s $(ANCHORCHECK) && $(ANCHORCHECK)
+
+# Cuts a database for a new client build from an older one (docs/BACKLOG.md 22):
+# out/sigslice <base.json> <build> <out.json>, with HOME as for anchorcheck.
+SIGSLICE := $(OUT_DIR)/sigslice
+
+$(SIGSLICE): dylib/tests/sigslice.c $(filter-out dylib/tests/anchorcheck.c,$(ANCHORCHECK_SRCS))
+	@mkdir -p $(dir $@)
+	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -g -O1 \
+	  -Wall -Wextra -Wno-unused-parameter -Idylib -Ivendor \
+	  -o $@ $^
+
+sigslice: $(SIGSLICE)
 
 CALLSCHECK := $(OUT_DIR)/callscheck
 CALLSCHECK_SRCS := dylib/tests/callscheck.c $(filter-out dylib/tests/anchorcheck.c,$(ANCHORCHECK_SRCS))
@@ -491,6 +503,11 @@ deploy: $(TARGET) dylib-install sigdb-install helpers-install
 # Dormison's loader is x86_64 only, so there is no arm64 tree.
 WINE_BUILD := scratch/dormison-build
 
+# A release bundles the bridges the bridge workflow published (DECISIONS P6-2):
+# BRIDGE_FEED_DIR holds <id>/<id>.tar.xz for each entry of bridge/bridge-manifest.json.
+# Empty, the bridge comes from the local wine tree and scratch/ntdll-b1.
+BRIDGE_FEED_DIR ?=
+
 BRIDGE_FILES := \
 	$(WINE_BUILD)/programs/steam.exe/x86_64-windows/steam.exe:steam.exe \
 	$(WINE_BUILD)/dlls/lsteamclient/x86_64-windows/lsteamclient.dll:x86_64-windows-lsteamclient.dll \
@@ -512,6 +529,7 @@ app-payload: $(TARGET) $(OVERLAY_SHIM) $(ICONMAKER) $(APPINFO)
 	cp -f $(APPINFO) "$(APP_PAYLOAD)/appinfo"
 	cp -f dylib/feats/compat_run.sh "$(APP_PAYLOAD)/compat_run.sh"
 	cp -f signatures/macos.arm64/*.json "$(APP_PAYLOAD)/signatures/macos.arm64/"
+ifeq ($(BRIDGE_FEED_DIR),)
 	@set -e; for spec in $(BRIDGE_FILES); do \
 		src="$${spec%%:*}"; dst="$(APP_PAYLOAD)/bridge/$${spec##*:}"; \
 		if [ -f "$$src" ]; then cp -f "$$src" "$$dst"; \
@@ -519,13 +537,20 @@ app-payload: $(TARGET) $(OVERLAY_SHIM) $(ICONMAKER) $(APPINFO)
 		else echo "$$src is missing and nothing is staged at $$dst, run: $(MAKE) bridge" >&2; exit 1; fi; \
 	done
 	python3 -I release/feed.py stage-bridge bridge/bridge-manifest.json scratch/ntdll-b1 "$(APP_PAYLOAD)"
+else
+	python3 -I release/feed.py stage-bridge --from-feed "$(BRIDGE_FEED_DIR)" \
+		bridge/bridge-manifest.json - "$(APP_PAYLOAD)"
+endif
 	python3 -I release/feed.py stage-signatures signatures/manifest.json signatures/macos.arm64 "$(APP_PAYLOAD)"
 	@echo "==> Staged app payload in $(APP_PAYLOAD)"
 
 APP_BUNDLE  := $(OUT_DIR)/NotProton.app
 APP_BUNDLE_PAYLOAD := $(APP_BUNDLE)/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload
 APP_ZIP     := $(OUT_DIR)/NotProton.zip
-APP_VERSION := $(shell sed -n 's/^\#define NOTPROTON_VERSION "\(.*\)"/\1/p' dylib/version.h)
+APP_VERSION ?= $(shell sed -n 's/^\#define NOTPROTON_VERSION "\(.*\)"/\1/p' dylib/version.h)
+# CFBundleVersion, what Sparkle compares. The release workflow passes a number that
+# only grows (the commit count); a local build keeps the marketing version.
+APP_BUILD   ?= $(APP_VERSION)
 
 APP_SIGN_ID ?= -
 
@@ -534,6 +559,17 @@ APP_SIGN_ID ?= -
 # uses the bridge and signatures it carries.
 NP_RELEASE_FEED ?= https://github.com/Ruslan-Ukraina/NotProton/releases/download/
 NP_RELEASE_KEY  ?=
+
+# Sparkle, for NotProton.app's own updates (Phase 6): the appcast and its EdDSA
+# public key. Empty (the default) leaves the updater off. The appcast sits next to
+# the signed manifests, in the release tagged `manifest`.
+SPARKLE_FEED ?= $(NP_RELEASE_FEED)manifest/appcast.xml
+SPARKLE_KEY  ?=
+
+# release (the release workflow), test (its dry run, TEST keys only) or dev.
+# release/check-release.sh holds each kind to its keys before and after the build.
+NP_BUILD_KIND ?= dev
+export NP_BUILD_KIND NP_DEV NP_RELEASE_KEY NP_RELEASE_FEED SPARKLE_KEY SPARKLE_FEED
 
 ICONGEN  := $(OUT_DIR)/icongen
 ICON_DOC := $(OUT_DIR)/NotProton.icon
@@ -556,16 +592,20 @@ $(ICON_CAR): $(ICONGEN)
 		--output-partial-info-plist "$(ICON_DIR)/partial.plist" >/dev/null
 	@echo "==> Built $@"
 
-app: app-payload $(ICON_CAR)
+app: app-config app-payload $(ICON_CAR)
 	swift build --package-path app -c release
 	rm -rf "$(APP_BUNDLE)"
 	@mkdir -p "$(APP_BUNDLE)/Contents/MacOS" "$(APP_BUNDLE)/Contents/Resources"
 	cp app/Info.plist "$(APP_BUNDLE)/Contents/Info.plist"
 	/usr/libexec/PlistBuddy -c \
 		"Set :CFBundleShortVersionString $(APP_VERSION)" -c \
-		"Set :CFBundleVersion $(APP_VERSION)" -c \
+		"Set :CFBundleVersion $(APP_BUILD)" -c \
 		"Set :NPReleaseFeedURL $(NP_RELEASE_FEED)" -c \
-		"Set :NPReleasePublicKey $(NP_RELEASE_KEY)" \
+		"Set :NPReleasePublicKey $(NP_RELEASE_KEY)" -c \
+		"Set :NPBuildKind $(NP_BUILD_KIND)" -c \
+		"Set :SUFeedURL $(if $(SPARKLE_KEY),$(SPARKLE_FEED))" -c \
+		"Set :SUPublicEDKey $(SPARKLE_KEY)" -c \
+		"Set :SUEnableAutomaticChecks $(if $(SPARKLE_KEY),true,false)" \
 		"$(APP_BUNDLE)/Contents/Info.plist"
 	cp "$$(swift build --package-path app -c release --show-bin-path)/NotProtonApp" \
 		"$(APP_BUNDLE)/Contents/MacOS/NotProtonApp"
@@ -591,7 +631,12 @@ app: app-payload $(ICON_CAR)
 	@echo "==> Payload complete in the bundle"
 	codesign -f -s "$(APP_SIGN_ID)" "$(APP_BUNDLE)"
 	codesign --verify --strict "$(APP_BUNDLE)"
-	@echo "==> Built $(APP_BUNDLE) ($(APP_VERSION))"
+	release/check-release.sh bundle "$(APP_BUNDLE)"
+	@echo "==> Built $(APP_BUNDLE) ($(APP_VERSION), build $(APP_BUILD), $(NP_BUILD_KIND))"
+
+# Stops a release or test build whose keys or switches are wrong before anything is built.
+app-config:
+	@release/check-release.sh config
 
 app-zip: app
 	rm -f "$(APP_ZIP)"

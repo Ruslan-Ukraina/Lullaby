@@ -12,15 +12,21 @@ import Foundation
 
 let arguments = CommandLine.arguments.dropFirst()
 guard arguments.count >= 2, let keyPath = arguments.first else {
-    FileHandle.standardError.write(Data("usage: swift release/sign.swift <private key file> <file>...\n".utf8))
+    FileHandle.standardError.write(Data("usage: swift release/sign.swift <private key file> <file>... | --public\n".utf8))
     exit(2)
 }
+let publicOnly = arguments.dropFirst().first == "--public"
 guard let text = try? String(contentsOfFile: keyPath, encoding: .utf8),
       let raw = Data(base64Encoded: text.trimmingCharacters(in: .whitespacesAndNewlines)),
       let key = try? Curve25519.Signing.PrivateKey(rawRepresentation: raw)
 else {
     FileHandle.standardError.write(Data("\(keyPath): not a base64 Ed25519 private key\n".utf8))
     exit(1)
+}
+if publicOnly {
+    // CI compares this with the public key the app is built with (release/ci-keys.sh).
+    print(key.publicKey.rawRepresentation.base64EncodedString())
+    exit(0)
 }
 print("public key \(key.publicKey.rawRepresentation.base64EncodedString())")
 for path in arguments.dropFirst() {

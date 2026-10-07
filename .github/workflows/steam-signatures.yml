@@ -1,0 +1,164 @@
+name: steam-signatures
+
+# New macOS Steam builds (stable and beta) -> signature databases -> the signed
+# signatures-manifest.json NotProton.app reads (docs/RELEASING.md, BACKLOG 22).
+# A build no database slices cleanly gets an issue instead.
+#
+# Dry run (a dryrun-signatures-* tag, or "Run workflow" with dry_run): the TEST
+# keys, nothing published, no issues; the feed it would publish is an artifact.
+
+on:
+  schedule:
+    - cron: "23 */3 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Dry run with the TEST keys (publishes nothing)
+        type: boolean
+        default: true
+  push:
+    tags: ["dryrun-signatures-*"]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: release-feed
+  cancel-in-progress: false
+
+env:
+  FEED: https://github.com/${{ github.repository }}/releases/download/
+  DRY_RUN: ${{ github.event_name == 'push' || inputs.dry_run == true }}
+
+jobs:
+  signatures:
+    runs-on: xcode-27
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Keys
+        id: keys
+        env:
+          NP_RELEASE_PRIVATE_KEY: ${{ secrets.NP_RELEASE_PRIVATE_KEY }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          NP_RELEASE_PUBLIC_KEY: ${{ vars.NP_RELEASE_PUBLIC_KEY }}
+          SPARKLE_PUBLIC_KEY: ${{ vars.SPARKLE_PUBLIC_KEY }}
+        run: |
+          mode=release; [ "$DRY_RUN" = true ] && mode=dry-run
+          rc=0; release/ci-keys.sh "$mode" "$RUNNER_TEMP/keys" || rc=$?
+          if [ "$rc" = 3 ]; then
+            echo "::notice::The release keys are not set up yet (docs/RELEASING.md); nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          exit "$rc"
+
+      - name: Build anchorcheck and sigslice
+        if: steps.keys.outputs.skip != 'true'
+        run: make -s out/anchorcheck out/sigslice
+
+      - name: Read what is published
+        if: steps.keys.outputs.skip != 'true' && env.DRY_RUN != 'true'
+        run: |
+          cur="$RUNNER_TEMP/current"
+          if release/gh-publish.sh fetch "$FEED" manifest signatures-manifest.json "$cur"; then
+            release/gh-publish.sh verify "$NP_RELEASE_KEY" "$cur/signatures-manifest.json"
+            echo "CURRENT=$cur/signatures-manifest.json" >> "$GITHUB_ENV"
+            python3 -I - "$cur/signatures-manifest.json" "$cur/dbs" <<'PY'
+          import hashlib, json, os, sys, urllib.request
+          m = json.load(open(sys.argv[1])); os.makedirs(sys.argv[2], exist_ok=True)
+          for d in m["databases"]:
+              data = urllib.request.urlopen(d["url"]).read()
+              if hashlib.sha256(data).hexdigest() != d["sha256"]:
+                  sys.exit(f"{d['file']}: published bytes do not match the signed manifest")
+              open(os.path.join(sys.argv[2], d["file"]), "wb").write(data)
+              print("published", d["file"])
+          PY
+            echo "PUBLISHED_DBS=$cur/dbs" >> "$GITHUB_ENV"
+          else
+            echo "No signatures manifest is published yet; starting from the repository's."
+          fi
+
+      - name: Cut databases for new Steam builds
+        id: cut
+        if: steps.keys.outputs.skip != 'true'
+        run: |
+          rc=0
+          release/steam-signatures.sh "$RUNNER_TEMP/work" "$RUNNER_TEMP/feed" "$FEED" \
+            "${CURRENT:-}" "${PUBLISHED_DBS:-}" || rc=$?
+          [ "$rc" -le 1 ] || exit "$rc"
+          echo "failed=$rc" >> "$GITHUB_OUTPUT"
+          if [ -f "$RUNNER_TEMP/feed/manifest/signatures-manifest.json" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+          {
+            echo "## Steam signatures ($([ "$DRY_RUN" = true ] && echo "dry run, TEST keys" || echo release))"
+            cat "$RUNNER_TEMP/work/summary.md"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Sign the manifest
+        if: steps.cut.outputs.publish == 'true'
+        run: |
+          swift release/sign.swift "$RUNNER_TEMP/keys/release.key" \
+            "$RUNNER_TEMP/feed/manifest/signatures-manifest.json"
+          release/gh-publish.sh verify "$NP_RELEASE_KEY" "$RUNNER_TEMP/feed/manifest/signatures-manifest.json"
+
+      - name: Keep the run's output
+        if: always() && steps.keys.outputs.skip != 'true'
+        uses: actions/upload-artifact@v5
+        with:
+          name: steam-signatures
+          path: |
+            ${{ runner.temp }}/feed
+            ${{ runner.temp }}/work/*.json
+            ${{ runner.temp }}/work/*.log
+            ${{ runner.temp }}/work/summary.md
+            ${{ runner.temp }}/work/result
+          if-no-files-found: ignore
+
+      - name: Publish
+        if: steps.cut.outputs.publish == 'true' && env.DRY_RUN != 'true'
+        run: |
+          feed="$RUNNER_TEMP/feed"
+          release/gh-publish.sh upload signatures "Steam signature databases" "$feed"/signatures/*.json
+          release/gh-publish.sh upload manifest "Signed manifests" \
+            "$feed/manifest/signatures-manifest.json" "$feed/manifest/signatures-manifest.json.sig"
+
+      - name: Check what was published
+        if: steps.cut.outputs.publish == 'true' && env.DRY_RUN != 'true'
+        run: |
+          back="$RUNNER_TEMP/published"
+          release/gh-publish.sh fetch "$FEED" manifest signatures-manifest.json "$back"
+          cmp "$back/signatures-manifest.json" "$RUNNER_TEMP/feed/manifest/signatures-manifest.json"
+          release/gh-publish.sh verify "$NP_RELEASE_KEY" "$back/signatures-manifest.json"
+          echo "The published manifest is the signed one." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report builds that need a person
+        if: steps.keys.outputs.skip != 'true' && always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          result="$RUNNER_TEMP/work/result"
+          [ -f "$result" ] || exit 0
+          while read -r what build channel; do
+            case "$what" in
+              failed) title="Steam $channel build $build needs a signature database" ;;
+              nox86)  title="Steam $channel build $build has no x86_64 steamclient.dylib" ;;
+              *) continue ;;
+            esac
+            body="$RUNNER_TEMP/issue-$build-$what.md"
+            {
+              echo "The steam-signatures workflow: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+              echo
+              cat "$RUNNER_TEMP/work/summary.md"
+              echo
+              echo "NotProton keeps Steam on its current build until this is solved (docs/BACKLOG.md 22, 24)."
+            } > "$body"
+            if [ "$DRY_RUN" = true ]; then
+              echo "Dry run, would open: **$title**" >> "$GITHUB_STEP_SUMMARY"
+            else
+              release/gh-publish.sh issue "$title" "$body"
+            fi
+          done < "$result"

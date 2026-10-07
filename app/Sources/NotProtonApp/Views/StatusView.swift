@@ -117,6 +117,7 @@ struct StatusRow: View {
 
 struct StatusView: View {
     @Environment(SystemStatus.self) private var status
+    @AppStorage(AppUpdater.prereleaseDefault) private var prereleaseUpdates = false
 
     private static let updateBlockPrompt =
         "NotProton already lets Steam update only to builds it has signatures for. "
@@ -312,7 +313,11 @@ struct StatusView: View {
                 gateRow(snapshot.updates)
                 updateBlockRow(snapshot.updates.gateMode == .manual)
                 signaturesRow(snapshot.updates)
-                steamWindowsRow(snapshot.nativeSteamWindows)
+                // Shelved (DECISIONS W19): a release build shows the switch only
+                // while it is on, so that it can be turned off.
+                if BuildKind.current != .release || snapshot.nativeSteamWindows {
+                    steamWindowsRow(snapshot.nativeSteamWindows)
+                }
                 if snapshot.nativeSteamWindows {
                     steamAsAppRow(snapshot.steamAsRegularApp)
                 }
@@ -342,6 +347,8 @@ struct StatusView: View {
             }
 
             componentsSection(snapshot.payload)
+
+            appSection
 
             dangerSection
         }
@@ -763,6 +770,45 @@ struct StatusView: View {
             .padding(.leading, StatusMetrics.textInset)
         }
         .disabled(!status.isIdle)
+    }
+
+    // MARK: NotProton.app updates (Phase 6)
+
+    private var appSection: some View {
+        let updater = AppUpdater.shared
+        return Section("NotProton") {
+            StatusRow(
+                title: "NotProton \(updater.version)",
+                value: {
+                    if case .off(let reason) = updater.setup { return reason }
+                    return "Updates itself from NotProton's releases on GitHub."
+                }(),
+                tone: updater.isAvailable ? .ok : .info,
+                action: updater.isAvailable
+                    ? StatusAction(
+                        label: "Check for Updates…",
+                        help: "Look for a newer NotProton now. It checks once a day by itself."
+                    ) { updater.check() }
+                    : nil
+            )
+            if updater.isAvailable {
+                Toggle(isOn: Binding(
+                    get: { prereleaseUpdates },
+                    set: { wanted in
+                        prereleaseUpdates = wanted
+                        updater.setPrereleases(wanted)
+                    }
+                )) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Pre-release versions")
+                            .font(.headline)
+                        Text("Also offer NotProton's test releases before they are final.")
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.leading, StatusMetrics.textInset)
+                }
+            }
+        }
     }
 
     // MARK: Phase 5 rows

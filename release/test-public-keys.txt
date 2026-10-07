@@ -1,0 +1,11 @@
+# Public halves of NotProton's TEST keys. A release build refuses every key here:
+# `make app NP_BUILD_KIND=release` stops, and the app's TestKeys (BuildKind.swift)
+# turns the feed and Sparkle off. One key per line, base64; TestKeysTests checks
+# that this file and TestKeys.publicKeys list the same keys.
+#
+# swift release/testkeys.swift release
+SmS/CorkBY2r0YPdJpEC1SU8XqyicnnnWEw5VKnnMyo=
+# swift release/testkeys.swift sparkle
+FG7qphnldCCsd2Be1KkWe+W8jLocglLjcfpTl6bc0lE=
+# the Phase 5 test feed on the owner's Mac (scratch/testfeed, DECISIONS P5-7)
+dXwoMYHG7v/BEEHtb/ifHpQrAz397JPWlea0Np7rVWk=

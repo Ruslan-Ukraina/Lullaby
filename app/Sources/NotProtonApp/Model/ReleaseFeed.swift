@@ -34,20 +34,27 @@ struct ReleaseFeed: Sendable {
     /// From the app's Info.plist (Bundle.main): what a release build carries.
     static var configured: Setup {
         setup(url: Bundle.main.object(forInfoDictionaryKey: urlKey) as? String,
-              key: Bundle.main.object(forInfoDictionaryKey: keyKey) as? String)
+              key: Bundle.main.object(forInfoDictionaryKey: keyKey) as? String,
+              kind: .current)
     }
 
-    static func setup(url: String?, key: String?) -> Setup {
+    /// A release build takes neither a TEST key (BuildKind.swift) nor a feed other than https.
+    static func setup(url: String?, key: String?, kind: BuildKind = .dev) -> Setup {
         let keyText = (key ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !keyText.isEmpty else { return .off(noKey) }
         guard let raw = Data(base64Encoded: keyText), raw.count == 32,
               let publicKey = try? Curve25519.Signing.PublicKey(rawRepresentation: raw)
         else { return .off("The release key in this build is not a valid Ed25519 public key.") }
+        if kind == .release, TestKeys.isTestKey(keyText) {
+            AppLog.note("release feed: off, this release build carries a TEST release key")
+            return .off(TestKeys.refused)
+        }
         guard var text = url?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else {
             return .off("This build of NotProton names no release feed.")
         }
         if !text.hasSuffix("/") { text += "/" }
-        guard let base = URL(string: text), ["https", "file"].contains(base.scheme?.lowercased() ?? ""),
+        let schemes = kind == .release ? ["https"] : ["https", "file"]
+        guard let base = URL(string: text), schemes.contains(base.scheme?.lowercased() ?? ""),
               base.user == nil, base.password == nil, base.query == nil
         else { return .off("The release feed address in this build is not usable.") }
         return .ready(ReleaseFeed(base: base, key: publicKey))

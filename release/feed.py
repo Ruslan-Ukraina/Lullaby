@@ -14,8 +14,24 @@ Publishing (CI in Phase 6, or a local test feed; signing is release/sign.swift):
     feed.py signatures --manifest signatures/manifest.json --dir signatures/macos.arm64 \
         --feed <base url> --serial N --out <feed dir> [--drop-build B]...
 
+Phase 6 CI (.github/workflows, docs/RELEASING.md):
+
+    feed.py valve-manifest <steam_client[_publicbeta]_osx>        version and packages, as JSON
+    feed.py engine-versions <engine.json>                          "<channel> <version>" lines
+    feed.py bridge-artifact --files-dir <dir> --b1-dir <dir> --engine E --commit C --rev N \
+        --feed <base url> --out <feed dir>                         a bridge built from source
+    feed.py publish-bridges --repo bridge/bridge-manifest.json [--current <published>] \
+        --out <feed dir>/manifest/bridge-manifest.json <entry.json>...
+    feed.py publish-signatures --repo signatures/manifest.json --dir signatures/macos.arm64 \
+        [--current <published>] [--add-db <file>] [--add-build B=<db file>:<checked>]... \
+        --feed <base url> --out <feed dir>
+    feed.py stage-bridge --from-feed <dir with <id>/<id>.tar.xz> ...   bundle a published bridge
+
 The feed directory mirrors GitHub's release downloads: <base>/<tag>/<file>.
 Manifests: <tag> = manifest; a bridge build: <tag> = its id; databases: <tag> = signatures.
+A published manifest's serial is one more than the larger of the published one and
+the repository's, so the app, which refuses a serial lower than one it has seen,
+always takes it.
 """
 import argparse
 import hashlib
@@ -73,8 +89,52 @@ def copy_checked(src, dst, want):
     os.replace(dst + ".new", dst)
 
 
+def unpack_bridge(tarball, entry, into):
+    """A published bridge tarball, checked against its manifest entry, unpacked under `into`."""
+    got = sha256(tarball)
+    if got != entry.get("sha256"):
+        raise SystemExit(f"{tarball}: sha256 {got}, the manifest says {entry.get('sha256')}")
+    os.makedirs(into, exist_ok=True)
+    subprocess.run(["tar", "-xJf", tarball, "-C", into], check=True)
+    top = os.path.join(into, entry["id"])
+    present = sorted(os.path.relpath(os.path.join(d, n), top)
+                     for d, _, names in os.walk(top) for n in names)
+    listed = sorted([f["path"] for f in entry["files"]] + [n["file"] for n in entry["ntdll"]])
+    if present != listed:
+        raise SystemExit(f"{tarball}: holds {present}, the manifest lists {listed}")
+    for f in entry["files"]:
+        if sha256(os.path.join(top, safe(f["path"]))) != f["sha256"]:
+            raise SystemExit(f"{entry['id']}: {f['path']} does not match the manifest")
+    for n in entry["ntdll"]:
+        if sha256(os.path.join(top, safe(n["file"]))) != n["b1"]:
+            raise SystemExit(f"{entry['id']}: {n['file']} does not match the manifest")
+    return top
+
+
 def stage_bridge(args):
     manifest = load(args.manifest)
+    if args.from_feed:
+        # A release bundles bridges the bridge workflow published, byte for byte:
+        # a PE rebuild differs in its timestamp, so a rebuild is never the same bridge.
+        for entry in manifest["bridges"]:
+            if not entry.get("url") or not entry.get("sha256"):
+                raise SystemExit(f"{entry['id']} is not published (no url/sha256 in {args.manifest}); "
+                                 "a release bundles only published bridges")
+            tarball = os.path.join(args.from_feed, entry["id"], f"{entry['id']}.tar.xz")
+            top = unpack_bridge(tarball, entry, os.path.join(args.from_feed, ".unpacked"))
+            for f in entry["files"]:
+                copy_checked(os.path.join(top, f["path"]),
+                             os.path.join(args.payload, "bridge", f["name"]), f["sha256"])
+            for n in entry["ntdll"]:
+                copy_checked(os.path.join(top, n["file"]), os.path.join(
+                    args.payload, "engine-support", entry["engine"], f"{n['arch']}-ntdll.dll"), n["b1"])
+        bundled = {**manifest, "bridges": [
+            {**e, "files": [{**f, "path": f"bridge/{f['name']}"} for f in e["files"]],
+             "ntdll": [{**n, "file": f"engine-support/{e['engine']}/{n['arch']}-ntdll.dll"} for n in e["ntdll"]]}
+            for e in manifest["bridges"]]}
+        write_json(os.path.join(args.payload, "engine-support", "bridge-manifest.json"), bundled)
+        print(f"==> staged published bridge {', '.join(e['id'] for e in manifest['bridges'])}")
+        return
     for entry in manifest["bridges"]:
         names = sorted(f["name"] for f in entry["files"])
         if names != sorted(BRIDGE_FILES):
@@ -118,7 +178,47 @@ def stage_signatures(args):
     print(f"==> staged signatures manifest: {len(listed)} databases, {len(manifest['builds'])} builds")
 
 
+def bridge_from_build(args):
+    """A bridge for engine `args.engine` from a CI build: the four files and build-b1.sh's output."""
+    b1 = json.load(open(os.path.join(args.b1_dir, "b1.json")))
+    if b1["engine"] != args.engine or b1["commit"] != args.commit:
+        raise SystemExit(f"b1.json is for {b1['engine']} {b1['commit']}, not {args.engine} {args.commit}")
+    new_id = f"bridge-{args.engine}-{args.rev}"
+    feed = args.feed if args.feed.endswith("/") else args.feed + "/"
+    with tempfile.TemporaryDirectory() as tmp:
+        top = os.path.join(tmp, new_id)
+        os.makedirs(os.path.join(top, "ntdll"))
+        files, ntdll = [], []
+        for name in BRIDGE_FILES:
+            dst = os.path.join(top, name)
+            shutil.copyfile(os.path.join(args.files_dir, name), dst)
+            os.chmod(dst, 0o755)
+            files.append({"name": name, "path": name, "sha256": sha256(dst)})
+        for arch in ("x86_64", "i386"):
+            rel_engine = f"wine/lib/wine/{arch}-windows/ntdll.dll"
+            pins = b1["files"][rel_engine]
+            rel = f"ntdll/{arch}-ntdll.dll"
+            copy_checked(os.path.join(args.b1_dir, f"{arch}-ntdll.dll"), os.path.join(top, rel), pins["b1"])
+            ntdll.append({"arch": arch, "path": rel_engine, "file": rel, "clean": pins["clean"], "b1": pins["b1"]})
+        out_dir = os.path.join(args.out, new_id)
+        os.makedirs(out_dir, exist_ok=True)
+        tarball = os.path.join(out_dir, f"{new_id}.tar.xz")
+        subprocess.run(["tar", "-cJf", tarball, "-C", tmp, new_id], check=True,
+                       env={**os.environ, "COPYFILE_DISABLE": "1"})
+    entry = {
+        "id": new_id, "engine": args.engine, "engineCommit": args.commit, "rev": args.rev,
+        "patch": b1["patch"], "patchSha256": b1["patchSha256"],
+        "files": files, "ntdll": ntdll,
+        "url": f"{feed}{new_id}/{new_id}.tar.xz",
+        "sha256": sha256(tarball), "sizeBytes": os.path.getsize(tarball),
+    }
+    write_json(os.path.join(args.out, f"{new_id}.entry.json"), entry)
+    print(f"==> {tarball} ({entry['sizeBytes']} bytes, sha256 {entry['sha256']})")
+
+
 def bridge_artifact(args):
+    if args.files_dir:
+        return bridge_from_build(args)
     manifest = load(args.manifest)
     like = next((e for e in manifest["bridges"] if e["id"] == args.like), None)
     if like is None:
@@ -189,21 +289,140 @@ def signatures_feed(args):
           + " ".join(str(b["build"]) for b in builds))
 
 
+def next_serial(*documents):
+    return max([d.get("serial", 0) for d in documents if d] + [0]) + 1
+
+
+def optional(path):
+    return load(path) if path and os.path.isfile(path) else None
+
+
+def publish_bridges(args):
+    """The published bridge manifest plus new entries; downloadable bridges only."""
+    repo, current = load(args.repo), optional(args.current)
+    entries = [e for e in (current or {"bridges": []})["bridges"]]
+    for path in args.entries:
+        entry = json.load(open(path))
+        if not entry.get("url"):
+            raise SystemExit(f"{path}: {entry['id']} has no url; only published bridges go in the feed")
+        entries = [e for e in entries if e["id"] != entry["id"]] + [entry]
+    serial = next_serial(repo, current)
+    write_json(args.out, {"schema": 1, "serial": serial, "bridges": entries})
+    print(f"==> {args.out}: serial {serial}, {', '.join(e['id'] for e in entries)}")
+
+
+def publish_signatures(args):
+    """The published signatures manifest: what was published, what the repository bundles,
+    and new databases and builds. Every database a build names goes in <out>/signatures."""
+    repo, current = load(args.repo), optional(args.current)
+    feed = args.feed if args.feed.endswith("/") else args.feed + "/"
+    sources = {}                                   # file -> local path with the bytes
+    databases = {}
+    for d in (current or {"databases": []})["databases"]:
+        databases[d["file"]] = d
+    for d in repo["databases"]:
+        databases[d["file"]] = {**d, "url": f"{feed}signatures/{d['file']}"}
+        sources[d["file"]] = os.path.join(args.dir, d["file"])
+    for path in args.add_db or []:
+        name = os.path.basename(path)
+        db = json.load(open(path))
+        if db.get("schema_version") != 3 or db.get("arch") != "arm64" or f"{db.get('steam_build')}.json" != name:
+            raise SystemExit(f"{path}: not a schema 3 arm64 database named after its steam_build")
+        databases[name] = {"file": name, "sha256": sha256(path), "url": f"{feed}signatures/{name}"}
+        sources[name] = path
+    builds = {}
+    for b in (current or {"builds": []})["builds"] + repo["builds"]:
+        builds[int(b["build"])] = b
+    for spec in args.add_build or []:
+        build, rest = spec.split("=", 1)
+        database, checked = rest.split(":", 1)
+        builds[int(build)] = {"build": int(build), "database": database, "checked": checked}
+    for b in builds.values():
+        if b["database"] not in databases:
+            raise SystemExit(f"build {b['build']} names {b['database']}, which is in no manifest")
+    out_dbs = os.path.join(args.out, "signatures")
+    os.makedirs(out_dbs, exist_ok=True)
+    used = sorted({b["database"] for b in builds.values()})
+    for name in used:
+        if name in sources:
+            copy_checked(sources[name], os.path.join(out_dbs, name), databases[name]["sha256"])
+    serial = next_serial(repo, current)
+    out = os.path.join(args.out, "manifest", "signatures-manifest.json")
+    write_json(out, {"schema": 1, "serial": serial,
+                     "databases": [databases[n] for n in used],
+                     "builds": [builds[k] for k in sorted(builds)]})
+    print(f"==> {out}: serial {serial}, {len(used)} databases, builds "
+          + " ".join(str(k) for k in sorted(builds)))
+
+
+def valve_manifest(args):
+    """Valve's client manifest (KeyValues text) as JSON: version and packages."""
+    import re
+    tokens = re.findall(r'"((?:[^"\\]|\\.)*)"|([{}])', open(args.file, encoding="utf-8").read())
+    stack, key, root = [{}], None, None
+    for text, brace in tokens:
+        if brace == "{":
+            child = {}
+            stack[-1][key] = child
+            stack.append(child)
+            key = None
+        elif brace == "}":
+            stack.pop()
+        elif key is None:
+            key = text
+        else:
+            stack[-1][key] = text
+            key = None
+    root = next(iter(stack[0].values()), None)
+    if not isinstance(root, dict) or not root.get("version", "").isdigit():
+        raise SystemExit(f"{args.file}: not a Steam client manifest")
+    packages = {k: v for k, v in root.items() if isinstance(v, dict) and "file" in v and "sha2" in v}
+    json.dump({"version": int(root["version"]), "packages": packages}, sys.stdout, indent=2)
+    print()
+
+
+def engine_versions(args):
+    """Dormison's engine.json (already verified): one "<channel> <version>" per channel."""
+    data = json.load(open(args.file))
+    for channel, info in sorted(data.get("channels", {}).items()):
+        if isinstance(info, dict) and info.get("version"):
+            print(channel, info["version"])
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("stage-bridge")
     s.add_argument("manifest"); s.add_argument("b1"); s.add_argument("payload")
+    s.add_argument("--from-feed")
     s.set_defaults(run=stage_bridge)
     s = sub.add_parser("stage-signatures")
     s.add_argument("manifest"); s.add_argument("dir"); s.add_argument("payload")
     s.set_defaults(run=stage_signatures)
     s = sub.add_parser("bridge-artifact")
-    for name in ("--manifest", "--like", "--root", "--feed", "--out"):
+    for name in ("--feed", "--out"):
         s.add_argument(name, required=True)
+    for name in ("--manifest", "--like", "--root", "--files-dir", "--b1-dir"):
+        s.add_argument(name)
     s.add_argument("--rev", type=int, required=True)
     s.add_argument("--engine"); s.add_argument("--commit")
     s.set_defaults(run=bridge_artifact)
+    s = sub.add_parser("publish-bridges")
+    s.add_argument("--repo", required=True); s.add_argument("--current"); s.add_argument("--out", required=True)
+    s.add_argument("entries", nargs="+")
+    s.set_defaults(run=publish_bridges)
+    s = sub.add_parser("publish-signatures")
+    for name in ("--repo", "--dir", "--feed", "--out"):
+        s.add_argument(name, required=True)
+    s.add_argument("--current"); s.add_argument("--add-db", action="append")
+    s.add_argument("--add-build", action="append")
+    s.set_defaults(run=publish_signatures)
+    s = sub.add_parser("valve-manifest")
+    s.add_argument("file")
+    s.set_defaults(run=valve_manifest)
+    s = sub.add_parser("engine-versions")
+    s.add_argument("file")
+    s.set_defaults(run=engine_versions)
     s = sub.add_parser("bridge-manifest")
     s.add_argument("--serial", type=int, required=True); s.add_argument("--out", required=True)
     s.add_argument("entries", nargs="+")
