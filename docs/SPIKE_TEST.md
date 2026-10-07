@@ -842,7 +842,7 @@ NotProton уже поставлен (сборка `83FBEDB0`), Steam перез�
 
 1. Открой NotProton → **Status** → в самом низу раздел **NotProton**.
    Ожидаемо: «NotProton 1.1.0-pre.1 (<номер сборки>)», «Updates itself from NotProton's releases on GitHub.», кнопка **Check for Updates…**, переключатель **Pre-release versions**.
-2. Раздел **Steam Bridge** и строка **Steam signatures**: Ожидаемо — без ошибок подписи; мост «bridge-dormison-b1-2» (или «available», если ещё не поставлен).
+2. Раздел **Steam Bridge** и строка **Steam signatures**: Ожидаемо — без ошибок подписи; мост «bridge-dormison-b1-3» (или «available», если ещё не поставлен).
 3. Если macOS при первом запуске скажет, что не может проверить разработчика: **Системные настройки → Конфиденциальность и безопасность → «Всё равно открыть»** (R52). Это один раз.
 
 ### 13.2 Обновление

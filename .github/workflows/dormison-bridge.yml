@@ -23,6 +23,10 @@ on:
         description: Build a new revision for the beta channel's engine even if it has a bridge
         type: boolean
         default: false
+      rev:
+        description: Revision number to use (empty = one more than any known); never reuse an id
+        type: string
+        default: ""
   push:
     tags: ["dryrun-bridge-*"]
 
@@ -38,6 +42,7 @@ env:
   FEED: https://github.com/${{ github.repository }}/releases/download/
   DRY_RUN: ${{ github.event_name == 'push' || inputs.dry_run == true }}
   REBUILD: ${{ inputs.rebuild == true }}
+  REV: ${{ inputs.rev }}
   # Pinned in Sevoflurane's Core/Setup/EngineSignature.swift (engine/fetch-dormison.sh).
   DORMISON_PUBKEY: 7uDuIZdCZyobjZcPL12zL+UNOCpHSvLXvVRFHA7bzzA=
   DORMISON_MANIFEST: https://github.com/kageroumado/dormison/releases/download/manifest/engine.json
@@ -81,9 +86,9 @@ jobs:
             current="$RUNNER_TEMP/current/bridge-manifest.json"
             echo "CURRENT=$current" >> "$GITHUB_ENV"
           fi
-          python3 -I - "$d/engine.json" bridge/bridge-manifest.json "$current" "$DRY_RUN" "$REBUILD" >> "$GITHUB_OUTPUT" <<'PY'
+          python3 -I - "$d/engine.json" bridge/bridge-manifest.json "$current" "$DRY_RUN" "$REBUILD" "$REV" >> "$GITHUB_OUTPUT" <<'PY'
           import json, sys
-          engine, repo, current, dry_run, rebuild = sys.argv[1:6]
+          engine, repo, current, dry_run, rebuild, forced = sys.argv[1:7]
           channels = json.load(open(engine))["channels"]
           entries = json.load(open(repo))["bridges"] + (json.load(open(current))["bridges"] if current else [])
           def revs(version): return [e["rev"] for e in entries if e["engine"] == version]
@@ -99,7 +104,12 @@ jobs:
               version = channels[target]["version"]
               print(f"channel={target}")
               print(f"engine={version}")
-              print(f"rev={max(revs(version) + [0]) + 1}")
+              rev = max(revs(version) + [0]) + 1
+              if forced:
+                  if int(forced) in revs(version):
+                      sys.exit(f"bridge-{version}-{forced} exists already; an id is never reused")
+                  rev = int(forced)
+              print(f"rev={rev}")
           PY
           cat "$GITHUB_OUTPUT"
 

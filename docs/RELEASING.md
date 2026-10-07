@@ -111,7 +111,7 @@
 
 ## 2. После «ключи готовы» — боевой прогон (делаю я)
 
-1. `dormison-bridge` вручную, `dry_run` = выкл., `rebuild` = вкл. → публикуется `bridge-dormison-b1-2` и `bridge-manifest.json` (serial 2). Запись моста — в `bridge/bridge-manifest.json` репозитория: релиз встраивает именно его.
+1. `dormison-bridge` вручную, `dry_run` = выкл., `rebuild` = вкл., `rev` = 3 → публикуется `bridge-dormison-b1-3` и `bridge-manifest.json` (serial 2). Номер 2 занят мостом тестового фида Фазы 5 (он мог остаться в `notproton/bridges`), а id никогда не повторяется. Запись моста — в `bridge/bridge-manifest.json` репозитория: релиз встраивает именно его.
 2. `steam-signatures` вручную, `dry_run` = выкл. → база беты 1791249696 и `signatures-manifest.json` (serial 2).
 3. Тег `v1.1.0-pre.1` → `release` → пре-релиз на GitHub и `appcast.xml`. Ставлю его в `/Applications` (старое приложение — в резервную копию), Status показывает «NotProton 1.1.0-pre.1», фид и Sparkle включены.
 4. Тег `v1.1.0-pre.2` → установленный NotProton с включённым «Pre-release versions» находит обновление через Sparkle и ставит его. Это и есть проверка обновления; шаги для тебя — SPIKE_TEST §13.
