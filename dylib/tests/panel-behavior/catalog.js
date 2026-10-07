@@ -224,6 +224,19 @@ for (const lang of ['en', 'uk', 'ru']) {
   }
 }
 
+// ---- Steam renamed a control ------------------------------------------------------------
+
+{
+  const partial = Object.assign({}, B);
+  delete partial.y4;
+  const broken = new Function('return ' + source)()(J, partial, R);
+  const tree = broken.view(ctxFor(clone(gameState), 'ru'));
+  t.ok(text(tree).includes(broken.FALLBACK.ru.replace('%@', 'Steam UI (y4)')), 'a control Steam renamed is reported, not drawn');
+  const noReact = new Function('return ' + source)()(J, B, {});
+  const out = noReact.Game({ details: { unAppID: 1, strCompatToolName: 'notproton', vecPlatforms: ['windows'] } });
+  t.ok(text(out).includes('React'), 'without React the panel says so instead of calling hooks');
+}
+
 // ---- launch options and requests -----------------------------------------------------------
 
 {

@@ -19,6 +19,14 @@
     ru: "\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438 NotProton \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u044b: %@"
   };
   var DOT = " \u00b7 ";
+  // Steam's controls the panel draws with. Their names are the page's own and not part of
+  // the webpatch anchors, so a Steam update can rename one; the panel then says so rather
+  // than take the Properties page down with it.
+  var MISSING = ["y4", "Vb", "FO", "$n", "m", "D0"].filter(function (k) {
+    var t = B && B[k] ? typeof B[k] : "";
+    return t !== "function" && t !== "object" && t !== "string";
+  });
+  if (!R || typeof R.useState !== "function" || typeof R.useEffect !== "function") MISSING.push("React");
 
   // React elements without JSX: el(type, props, ...children).
   function el(type, props) {
@@ -333,6 +341,11 @@
   }
 
   function view(ctx) {
+    if (MISSING.length) {
+      var lang = FALLBACK[ctx.lang] ? ctx.lang : "en";
+      return el("div", { className: "NPPanel" }, style(),
+        el("div", { className: "NPError" }, FALLBACK[lang].replace("%@", "Steam UI (" + MISSING.join(", ") + ")")));
+    }
     if (ctx.error && !ctx.state) {
       var fb = FALLBACK[ctx.lang] || FALLBACK.en;
       return el("div", { className: "NPPanel" }, style(), el("div", { className: "NPError" }, fb.replace("%@", ctx.error)));
@@ -471,11 +484,13 @@
 
   function GamePanel(props) {
     var d = props.details, on = runsThroughNotProton(d);
+    if (MISSING.indexOf("React") >= 0) return on ? view({ lang: "en" }) : null;
     var ctx = usePanel(d ? d.unAppID : 0, d, on);
     return on ? view(ctx) : null;
   }
 
   function GlobalPanel() {
+    if (MISSING.indexOf("React") >= 0) return view({ lang: "en" });
     return view(usePanel(undefined, null, true));
   }
 
