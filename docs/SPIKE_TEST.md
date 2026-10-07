@@ -876,10 +876,12 @@ NotProton уже поставлен (сборка `83FBEDB0`), Steam перез�
 
 ### 14.0 Установка
 
+Перед тобой я уже ставил сборки в Steam и проверял панель вживую (PROGRESS, 7 октября вечер). Steam сейчас запущен с портом отладки — он закроется на шаге 3.
+
 1. Закрой NotProton, если он открыт.
 2. В Finder открой папку `~/Projects/NotProton/out` и дважды щёлкни **NotProton.app**. Это новая сборка; `/Applications/NotProton.app` с тестовым фидом Фазы 5 я не трогал.
-3. **Status → Steam**: ожидаемо «Update available». Нажми **Update**. NotProton мягко закроет Steam (§8) и поставит новый патч и помощник `notproton-settings`.
-4. Нажми **Open Steam** или открой `/Applications/Steam.app`.
+3. **Status → Steam**: ожидаемо «Update available» — в `out/` последняя сборка с правками после моей проверки. Нажми **Update**. NotProton мягко закроет Steam (§8) и поставит новый патч и помощник `notproton-settings`.
+4. Нажми **Open Steam** или открой `/Applications/Steam.app` — обычный запуск, без порта отладки.
 
 ### 14.1 Свойства игры: вид и язык
 

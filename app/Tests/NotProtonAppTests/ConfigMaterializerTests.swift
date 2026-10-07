@@ -200,7 +200,7 @@ struct ConfigMigrationTests {
                       atomically: true, encoding: .utf8)
 
         // What the panel's first look at the game runs (SettingsCLI "state").
-        try fixture.service.migrateIfNeeded(appID: 1422450)
+        try fixture.service.prepare(appID: 1422450)
 
         let game = fixture.service.store.game(1422450)
         #expect(game.fpsGraph == true)

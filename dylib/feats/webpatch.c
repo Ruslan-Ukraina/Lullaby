@@ -160,23 +160,23 @@ static int out_expand(np_out_t *o, const char *replace, const np_cap_t *caps) {
 #define NP_PANEL_COMPONENT \
     "NPPanel=(" NP_PANEL_JS ")(i,c,n),"
 
+// The settings page's module does not import Steam's dialog controls, so they are
+// required by the module id the compat page's module imports them by (64608 in this
+// build); a module that is not there leaves the panel to say so rather than throw.
+// Built on first render, after every module of the chunk has loaded.
 #define NP_PANEL_GLOBAL_STATEMENT \
-    "var NPPanelG=(" NP_PANEL_JS ")(i,s,n);"
+    "var NPPanelG;function NPGlobal(){if(!NPPanelG)NPPanelG=(" NP_PANEL_JS ")(i," \
+    "(function(){try{var b=r(64608);return b&&b.y4?b:null}catch(x){return null}})(),n);" \
+    "return NPPanelG.Global()}"
 
 // Valve is testing a new compatibility page UI, this logic relates to supporting that
 #define NP_CX_OPTIONS_STATEMENT \
     "var MSCXOpts=" NP_CX_OPTIONS_BODY("np", NP_C3, NP_C4) ";"
 
 static const np_gate_t g_gates_forcetool[] = {
-    // SteamPlay settings section, with NotProton's values for all games under it
-    { "function ue(e){return(0,T.CI)()?(0,i.jsxs)(s.XY,{label:(0,c.we)(\"#Settings_SteamPlay_SteamPlay\"),"
-      "children:[(0,i.jsx)(\"div\",{children:(0,c.we)(\"#Settings_SteamPlay_IsWildcardEnabled\")}),"
-      "(0,i.jsx)(R.i,{})]}):null}",
-      NP_PANEL_GLOBAL_STATEMENT
-      "function ue(e){return true?(0,i.jsxs)(i.Fragment,{children:[(0,i.jsxs)(s.XY,{label:(0,c.we)"
-      "(\"#Settings_SteamPlay_SteamPlay\"),children:[(0,i.jsx)(\"div\",{children:(0,c.we)"
-      "(\"#Settings_SteamPlay_IsWildcardEnabled\")}),(0,i.jsx)(R.i,{})]}),"
-      "(0,i.jsx)(NPPanelG.Global,{})]}):null}", 1 },
+    // SteamPlay settings section
+    { "function ue(e){return(0,T.CI)()?",
+      "function ue(e){return true?", 1 },
     // AppProperties Compatibility tab (app and non-Steam-shortcut variants)
     { "(0,f.CI)()&&o.push({title:(0,A.we)(\"#AppProperties_CompatibilityPage\")",
       "true&&o.push({title:(0,A.we)(\"#AppProperties_CompatibilityPage\")", 2 },
@@ -201,6 +201,13 @@ static const np_gate_t g_gates_forcetool[] = {
       "Rt=(0,a.PA)(e=>(0,i.jsxs)(c.nB,{children:[(0,i.jsx)(\"div\",{className:K().HiddenIfNotLast,"
       "children:(0,A.we)(\"#AppProperties_CompatibilityNoOptions\")}),(0,i.jsx)(It,{...e}),"
       "(0,i.jsx)(xt,{...e}),(0,i.jsx)(NPPanel.Game,{...e})]}));", 1 },
+    // Settings > Compatibility: NotProton's values for all games under Steam Play's own
+    { "function h(e){return(0,i.jsxs)(A.sh,{children:[(0,i.jsx)(\"div\",{children:(0,l.we)"
+      "(\"#Settings_SteamPlay_IsWildcardEnabled\")}),(0,i.jsx)(g,{bottomSeparator:\"none\"})]})}",
+      NP_PANEL_GLOBAL_STATEMENT
+      "function h(e){return(0,i.jsxs)(A.sh,{children:[(0,i.jsx)(\"div\",{children:(0,l.we)"
+      "(\"#Settings_SteamPlay_IsWildcardEnabled\")}),(0,i.jsx)(g,{bottomSeparator:\"none\"}),"
+      "(0,i.jsx)(NPGlobal,{})]})}", 1 },
     { "get is_invalid_os_type(){return this.most_available_per_client_data.is_invalid_os_type}",
       "get is_invalid_os_type(){return false}", 1 },
     // Reminder banner for 32 bit Mac games

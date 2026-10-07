@@ -70,7 +70,7 @@ public struct SettingsCLI {
             return .ok(service.catalogJSON().text)
         case "state":
             let app = try option("--app", &rest).map(appID)
-            if let app { try service.migrateIfNeeded(appID: app) }
+            if let app { try service.prepare(appID: app) }
             return .ok(service.stateJSON(appID: app).text)
         case "set":
             let app = try option("--app", &rest).map(appID)
@@ -133,7 +133,7 @@ public struct SettingsCLI {
             case "catalog":
                 return .object(["ok": .bool(true), "catalog": service.catalogJSON()])
             case "state":
-                if let app { try service.migrateIfNeeded(appID: app) }
+                if let app { try service.prepare(appID: app) }
             case "set":
                 guard let id = object["id"]?.string else { throw SettingsError.usage("set needs id") }
                 let value = object["value"].flatMap { $0 == .null ? nil : $0 }

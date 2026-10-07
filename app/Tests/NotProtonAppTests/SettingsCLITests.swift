@@ -26,14 +26,22 @@ struct SettingsCLITests {
         #expect(settings.count == SettingID.allCases.count)
         #expect(settings.compactMap { $0.object?["quick"]?.number }.sorted() == [1, 2, 3, 4, 5])
 
-        var answer = try object(cli.panel(#"{"op":"state","app":3527290}"#).text)
+        // A game whose files are not installed yet has nothing to record.
+        var answer = try object(cli.panel(#"{"op":"state","app":3527291}"#).text)
         var state = try #require(answer["state"]?.object)
         #expect(state["status"] == .string("firstLaunch"))
+        #expect(state["exes"] == .array([]))
+
+        // The page of an installed game records its executables at once.
+        answer = try object(cli.panel(#"{"op":"state","app":3527290}"#).text)
+        state = try #require(answer["state"]?.object)
+        #expect(state["status"] == .string("nextLaunch"))
+        #expect(state["exes"] == .array([.string("peak.exe")]))
+        #expect(fixture.read(".sevo/apps/peak.exe.env", in: 3527290)?.hasPrefix(ConfigMaterializer.header) == true)
         #expect(state["name"] == .string("PEAK"))
         #expect(state["engine"] == .string("dormison-b1"))
         #expect(state["values"]?.object?["renderer"]?.object?["inheritedLabel"]?.object?["en"] == .string("DXMT"))
 
-        try fixture.service.record(appID: 3527290, exe: nil, installDirectory: nil)
         answer = try object(cli.panel(#"{"op":"set","app":3527290,"id":"fpsLimit","value":60}"#).text)
         state = try #require(answer["state"]?.object)
         #expect(state["status"] == .string("nextLaunch"))

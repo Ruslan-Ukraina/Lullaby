@@ -118,8 +118,11 @@ for (const lang of ['en', 'uk', 'ru']) {
   const ctx = ctxFor(clone(gameState), 'ru');
   const tree = api.view(ctx);
   const renderer = rowFor(tree, 'renderer', 'ru');
-  t.ok(text(renderer.props.description).includes(catalog.text.inherited.ru.replace('%@', 'DXMT')),
-    'an inherited row says what it inherits ("\u0414\u043b\u044f \u0432\u0441\u0435\u0445 \u0438\u0433\u0440: DXMT")');
+  t.ok(text(renderer.props.description).includes(catalog.text.defaultValue.ru.replace('%@', 'DXMT')),
+    'a game-only row names NotProton\'s default');
+  const up = rowFor(tree, 'upscaler', 'ru');
+  t.ok(text(up.props.description).includes(catalog.text.inherited.ru.replace('%@', catalog.settings.find(x => x.id === 'upscaler').control.choices[0].label.ru)),
+    'a row with a level for all games says what it inherits');
   const retina = rowFor(tree, 'retina', 'ru');
   t.ok(retina.props.checked === true && text(retina.props.description).includes(catalog.text.inherited.ru.replace('%@', '\u0412\u043a\u043b.')),
     'a toggle shows the value for all games it inherits');

@@ -141,7 +141,9 @@
   function describe(ctx, s, v, info) {
     var line;
     if (v.own === null) {
-      line = T(ctx, ctx.global ? "defaultValue" : "inherited", L(ctx, v.inheritedLabel));
+      // A setting no level above sets (the renderer, msync+) names NotProton's default.
+      var shared = !ctx.global && s.levels.indexOf("global") >= 0;
+      line = T(ctx, shared ? "inherited" : "defaultValue", L(ctx, v.inheritedLabel));
     } else {
       line = el("span", null, T(ctx, ctx.global ? "ownGlobal" : "own"), DOT,
         el("a", { className: "NPLink", role: "button", onClick: function (e) { stop(e); ctx.change(s.id, null); } },
@@ -306,12 +308,12 @@
       }
       case "dllOverrides":
         return el("div", { className: "NPBlock" },
-          el(B.D0, { label: lbl, description: desc, childrenLayout: "below" },
-            el(DLLEditor, { ctx: ctx, setting: s, own: v.own, key: key(v.own) })));
+          el(B.D0, { label: lbl, description: desc, bottomSeparator: "none" }),
+          el(DLLEditor, { ctx: ctx, setting: s, own: v.own, key: key(v.own) }));
       case "environment":
         return el("div", { className: "NPBlock" },
-          el(B.D0, { label: lbl, description: desc, childrenLayout: "below" },
-            el(EnvironmentEditor, { ctx: ctx, setting: s, own: v.own, key: key(v.own) })));
+          el(B.D0, { label: lbl, description: desc, bottomSeparator: "none" }),
+          el(EnvironmentEditor, { ctx: ctx, setting: s, own: v.own, key: key(v.own) }));
       default:
         return null;
     }
@@ -398,7 +400,7 @@
     ".NPHeader{display:flex;justify-content:space-between;align-items:baseline;margin:8px 0 2px;color:#fff}" +
     ".NPHeader b{font-size:13px;letter-spacing:.06em;text-transform:uppercase}" +
     ".NPHeader span{color:#8b929a;font-size:12px}" +
-    ".NPTop{display:block;margin-bottom:6px}" +
+    ".NPTop{display:block;margin-bottom:6px;font-size:13px}" +
     ".NPLabel{display:inline-flex;align-items:center;gap:6px}" +
     ".NPInfo{display:inline-block;width:14px;height:14px;border-radius:50%;border:1px solid #8b929a;color:#8b929a;" +
     "font:italic 10px/13px serif;text-align:center;cursor:pointer;flex:none}" +
@@ -418,15 +420,19 @@
     "display:flex;align-items:center;justify-content:center;outline:none}" +
     ".NPDialog{background:#23262e;width:min(660px,92vw);max-height:86vh;display:flex;flex-direction:column;" +
     "border-radius:4px;box-shadow:0 12px 40px rgba(0,0,0,.7)}" +
-    ".NPDialogHead{padding:20px 24px 6px;font-size:22px;color:#fff}" +
+    ".NPDialogHead{padding:20px 24px 12px;font-size:22px;color:#fff;border-bottom:1px solid rgba(255,255,255,.1)}" +
     ".NPDialogBody{padding:0 24px 8px;overflow-y:auto}" +
     ".NPDialogFoot{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 24px 18px;" +
     "border-top:1px solid rgba(255,255,255,.1)}" +
     ".NPGroup{margin:18px 0 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#fff}" +
-    ".NPInput,.NPArea{flex:1;background:#32363f;color:#fff;border:1px solid #3d4450;border-radius:3px;padding:6px 8px;" +
+    ".NPInput,.NPArea{background:#32363f;color:#fff;border:1px solid #3d4450;border-radius:3px;padding:6px 8px;" +
     "font-size:13px;box-sizing:border-box}" +
-    ".NPArea{width:100%;min-height:72px;font-family:Menlo,monospace}" +
-    ".NPListRow{display:flex;gap:8px;align-items:center;margin:4px 0}.NPListRow>span{flex:1}" +
+    ".NPInput{flex:1;min-width:0;height:34px}" +
+    ".NPArea{display:block;width:100%;min-height:84px;font-family:Menlo,monospace;resize:vertical}" +
+    ".NPBlock .NPSub{padding:0 0 12px}" +
+    ".NPListRow{display:flex;gap:8px;align-items:center;margin:4px 0}.NPListRow>span{flex:1;color:#dcdedf}" +
+    ".NPListRow>*:not(span):not(input){flex:none;margin-top:0!important;margin-bottom:0!important}" +
+    ".NPListRow button{width:auto!important;min-width:96px;padding:0 16px!important;height:34px}" +
     ".NPPrimary{background:linear-gradient(90deg,#1a9fff,#1474e0)!important;color:#fff!important}";
   function style() { return el("style", null, CSS); }
 

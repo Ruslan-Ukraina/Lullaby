@@ -87,11 +87,15 @@ public struct SettingsService: Sendable {
         ])
     }
 
-    /// Migrates the game's prefixes written before the catalog, so its state shows the
-    /// values the player chose there.
-    public func migrateIfNeeded(appID: Int) throws {
+    /// What the game's page needs before it shows its state: its prefixes from before the
+    /// catalog migrated, and the executables its install directory holds recorded (with
+    /// their env files written), so a setting reaches every one of them from the start.
+    public func prepare(appID: Int) throws {
         for prefix in library.prefixes(of: appID) where ConfigMigration.needsMigration(prefix: prefix) {
             try materialize(appID: appID, prefix: prefix)
+        }
+        if try !record(appID: appID, exe: nil, installDirectory: nil).isEmpty {
+            try materialize(appID: appID)
         }
     }
 
