@@ -128,8 +128,12 @@ def stage_bridge(args):
             for n in entry["ntdll"]:
                 copy_checked(os.path.join(top, n["file"]), os.path.join(
                     args.payload, "engine-support", entry["engine"], f"{n['arch']}-ntdll.dll"), n["b1"])
+        # The bundled form (DECISIONS P5-1): no download, and no sha256 per file,
+        # since SwiftPM strips Mach-O resources in a release build (RISKS R27). The
+        # bytes were checked above; the app's code signature covers them from here.
         bundled = {**manifest, "bridges": [
-            {**e, "files": [{**f, "path": f"bridge/{f['name']}"} for f in e["files"]],
+            {**{k: v for k, v in e.items() if k not in ("url", "sha256", "sizeBytes")},
+             "files": [{"name": f["name"], "path": f"bridge/{f['name']}"} for f in e["files"]],
              "ntdll": [{**n, "file": f"engine-support/{e['engine']}/{n['arch']}-ntdll.dll"} for n in e["ntdll"]]}
             for e in manifest["bridges"]]}
         write_json(os.path.join(args.payload, "engine-support", "bridge-manifest.json"), bundled)
