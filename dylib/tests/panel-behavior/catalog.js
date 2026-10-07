@@ -30,7 +30,8 @@ const R = {
 
 t.ok(!/__NP_SETTINGS_TOKEN__/.test(source) || source.includes('"__NP_SETTINGS_TOKEN__"'), 'the token is a placeholder the dylib replaces');
 t.ok(!/[^\x00-\x7f]/.test(source), 'the spliced source is ASCII');
-const api = new Function('return ' + source)()(J, B, R);
+const D = { createPortal: (child, host) => ({ type: 'Portal', props: { children: child }, host }) };
+const api = new Function('return ' + source)()(J, B, R, D);
 t.ok(typeof api.Game === 'function' && typeof api.Global === 'function', 'the panel gives the page two components');
 
 // ---- helpers ----------------------------------------------------------------------
@@ -85,7 +86,7 @@ function foreign(tree, lang, data) {
 function ctxFor(state, lang, extra) {
   const calls = [];
   return Object.assign({
-    lang, catalog, state, error: null, advanced: false, global: state.level === 'global',
+    lang, catalog, state, error: null, advanced: false, global: state.level === 'global', host: { body: true },
     setAdvanced: v => calls.push(['advanced', v]),
     change: (id, value) => { calls.push(['set', id, value]); return Promise.resolve(); },
     reset: () => { calls.push(['reset']); return Promise.resolve(); },
@@ -174,6 +175,12 @@ for (const lang of ['en', 'uk', 'ru']) {
   const tree = api.view(ctx);
   const overlay = walk(tree).find(n => n.props && n.props.className === 'NPOverlay');
   t.ok(!!overlay, 'Advanced settings opens over the window');
+  const portal = walk(tree).find(n => n.type === 'Portal');
+  t.ok(portal && portal.host === ctx.host && walk(portal).includes(overlay),
+    "the dialog goes into the window's body through a portal, not into the page");
+  const inline = new Function('return ' + source)()(J, B, R, null).view(ctxFor(clone(gameState), 'uk', { advanced: true }));
+  t.ok(!walk(inline).some(n => n.type === 'Portal') && walk(inline).some(n => n.props && n.props.className === 'NPOverlay'),
+    'without React DOM the dialog stays inline');
   const inDialog = rowsOf(overlay).map(n => text(n.props.label));
   const others = catalog.settings.filter(s => s.quick === undefined && s.levels.includes('game'));
   t.ok(others.every(s => inDialog.some(l => l.startsWith(s.title.uk))) && inDialog.length >= others.length,

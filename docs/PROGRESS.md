@@ -917,3 +917,10 @@ Spaces и Постановщик проверить сам не могу: нет
 **Проверки (все с кодом 0):** `make app-tests` — 382 теста; `make app`; `panel-behavior`, `webpatch-fixtures` (15 якорей), `webpatch-syntax`, `settingsbridge-check`, `runcheck`, `scriptcheck`, `sigcheck`, `callscheck`, `peicon-fixtures`, `spawn-env`, `compatcheck`, `compatsvc-check`, `sigdb-fixtures`, `steamwin-check`, `overlay-shim-tests`, `updategate-check`, `anchorcheck`.
 
 **Состояние:** Steam открыт (с портом отладки до следующего обычного запуска, R65), в нём сборка 19:37; последняя сборка — `out/`. Игры не запускались. Дальше — твоя проверка SPIKE_TEST §14.
+
+## 2026-10-07 ~22:50–23:10 CEST — Твоё замечание: диалог «для всех игр» в Настройках Steam выглядит плохо
+
+- **Причина** (DevTools, только чтение, Steam не перезапускал): оверлей занимал всё окно, но лежал внутри правой панели страницы, и левое меню настроек Steam рисовалось поверх него — левая часть диалога была закрыта (P7A-17). Проверка `elementFromPoint` в точке слева в диалоге: сейчас — элемент меню Steam; со статической копией диалога в `body` — диалог. Копия сразу удалена. Попытка снимка окна зависла (окно было перекрыто), копия убрана отдельной командой; состояние окна — как до проверки.
+- **Исправление:** диалог рисуется порталом React в `body` окна (react-dom, модуль 78325, с проверкой), и в свойствах игры, и в настройках Steam. Тест `catalog.js`: диалог в портале, без react-dom — в странице.
+- **Проверки (код 0):** `make app`, `panel-behavior`, `webpatch-fixtures`, `webpatch-syntax`, `settingsbridge-check`, `runcheck`, `compatcheck`. Swift не менялся (382 теста — прошлый прогон).
+- **В Steam ещё старая сборка.** Steam не перезапускал: ты им пользуешься. Новая — в `out/`, ставится кнопкой Update (SPIKE_TEST §14.0).

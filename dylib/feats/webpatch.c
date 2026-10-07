@@ -157,8 +157,13 @@ static int out_expand(np_out_t *o, const char *replace, const np_cap_t *caps) {
 // the page calls with its own JSX runtime, Steam's dialog controls and React. On the
 // Compatibility page of a game it draws the game's own values; in Settings > Compatibility
 // the values for all games. Both draw the catalog notproton-settings answers with.
+// React DOM, for the Advanced dialog's portal, by its module id in this build (78325);
+// without it the dialog stays inside the page.
+#define NP_PANEL_REACT_DOM \
+    "(function(){try{var d=r(78325);return d&&d.createPortal?d:null}catch(x){return null}})()"
+
 #define NP_PANEL_COMPONENT \
-    "NPPanel=(" NP_PANEL_JS ")(i,c,n),"
+    "NPPanel=(" NP_PANEL_JS ")(i,c,n," NP_PANEL_REACT_DOM "),"
 
 // The settings page's module does not import Steam's dialog controls, so they are
 // required by the module id the compat page's module imports them by (64608 in this
@@ -166,7 +171,8 @@ static int out_expand(np_out_t *o, const char *replace, const np_cap_t *caps) {
 // Built on first render, after every module of the chunk has loaded.
 #define NP_PANEL_GLOBAL_STATEMENT \
     "var NPPanelG;function NPGlobal(){if(!NPPanelG)NPPanelG=(" NP_PANEL_JS ")(i," \
-    "(function(){try{var b=r(64608);return b&&b.y4?b:null}catch(x){return null}})(),n);" \
+    "(function(){try{var b=r(64608);return b&&b.y4?b:null}catch(x){return null}})(),n," \
+    NP_PANEL_REACT_DOM ");" \
     "return NPPanelG.Global()}"
 
 // Valve is testing a new compatibility page UI, this logic relates to supporting that

@@ -3,14 +3,14 @@
 // games), each with its quick rows and an Advanced dialog, drawn with Steam's own controls.
 //
 // The webpatch puts this function expression into the page twice and calls it with the
-// names the page's module gives React's JSX runtime (J), Steam's dialog controls (B) and
-// React (R). Everything the panel shows comes from the catalog notproton-settings answers
+// names the page's module gives React's JSX runtime (J), Steam's dialog controls (B),
+// React (R) and React DOM (D, may be null). Everything the panel shows comes from the catalog notproton-settings answers
 // with (NotProtonSettings): it names no setting, key or text of its own, except the three
 // lines below for when the catalog cannot be reached. Requests travel as virtual files
 // under steamloopback.host (dylib/feats/settingsbridge.c); the dylib puts its token in.
 //
 // Kept to ASCII: dylib/embed_js.py embeds it as a C string.
-(function (J, B, R) {
+(function (J, B, R, D) {
   "use strict";
   var TOKEN = "__NP_SETTINGS_TOKEN__";
   var FALLBACK = {
@@ -342,6 +342,14 @@
       st.exes && st.exes.length ? el("div", null, T(ctx, "executables", st.exes.join(", "))) : null);
   }
 
+  // The Advanced dialog goes into the window's own body through a portal: a page's
+  // container can be a containing block for fixed elements (Settings > Compatibility is),
+  // which would pin the dialog inside the page and cut it. Without React DOM it stays inline.
+  function overlay(ctx) {
+    var d = dialog(ctx);
+    return D && typeof D.createPortal === "function" && ctx.host ? D.createPortal(d, ctx.host) : d;
+  }
+
   function view(ctx) {
     if (MISSING.length) {
       var lang = FALLBACK[ctx.lang] ? ctx.lang : "en";
@@ -355,7 +363,7 @@
     if (!ctx.catalog || !ctx.state) return el("div", { className: "NPPanel" }, style());
     var title = ctx.global ? T(ctx, "globalSection") : T(ctx, "section");
     var engine = ctx.state.engine ? ctx.state.engine.replace(/^dormison-/, "Dormison ") : "";
-    return el("div", { className: "NPPanel" },
+    return el("div", { className: "NPPanel", ref: ctx.hostRef },
       style(),
       el("div", { className: "NPHeader" }, el("b", null, title), engine ? el("span", null, engine) : null),
       ctx.global ? el("div", { className: "NPCaption NPTop" }, T(ctx, "globalCaption")) : null,
@@ -364,7 +372,7 @@
         el(B.$n, { onClick: function () { ctx.setAdvanced(true); } }, T(ctx, "advanced"))),
       statusLine(ctx),
       ctx.error ? el("div", { className: "NPError" }, T(ctx, "saveFailed", ctx.error)) : null,
-      ctx.advanced ? dialog(ctx) : null);
+      ctx.advanced ? overlay(ctx) : null);
   }
 
   // The Advanced dialog: every other row of the level, by group, over the window.
@@ -379,6 +387,7 @@
       onKeyDown: function (e) { if (e.key === "Escape") { stop(e); close(); } },
       onMouseDown: function (e) { if (e.target === e.currentTarget) close(); }
     },
+      style(),
       el("div", { className: "NPDialog DialogContent", role: "dialog", "aria-label": title },
         el("div", { className: "NPDialogHead" }, title),
         el("div", { className: "NPDialogBody" },
@@ -440,6 +449,7 @@
 
   function usePanel(appID, details, enabled) {
     var l = R.useState("en"), c = R.useState(null), s = R.useState(null), e = R.useState(null), a = R.useState(false);
+    var h = R.useState(null);
     R.useEffect(function () {
       if (!enabled) return undefined;
       var live = true;
@@ -460,6 +470,11 @@
     }
     return {
       lang: l[0], catalog: c[0], state: s[0], error: e[0], advanced: a[0], setAdvanced: a[1],
+      host: h[0],
+      hostRef: function (node) {
+        var body = node && node.ownerDocument ? node.ownerDocument.body : null;
+        if (body !== h[0]) h[1](body);
+      },
       global: appID === undefined,
       change: function (id, value) { return ask({ op: "set", app: appID, id: id, value: value }).then(answered); },
       reset: function () { return ask({ op: "reset", app: appID }).then(answered); }
