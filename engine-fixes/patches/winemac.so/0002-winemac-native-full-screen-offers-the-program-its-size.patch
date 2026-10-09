@@ -1,0 +1,97 @@
+NotProton-Dormison, 2026-10-10. In native full screen (the green button) a window whose program
+made it fixed-size is scaled by Dormison at the size the program drew at: Resident Evil Requiem
+in its windowed mode showed 2294x1496 with a black strip and bars. The window is now first
+offered the full-screen size, as a resizable one is; RE9 answers by rendering at it (3024x1898,
+checked with a SetWindowPos probe). A program that puts its old size back is scaled as before.
+NOTPROTON_FULLSCREEN_SCALES=1 keeps the scaling only.
+
+diff --git a/dlls/winemac.drv/cocoa_window.h b/dlls/winemac.drv/cocoa_window.h
+index 80ecbcbdf3..edb1b70b04 100644
+--- a/dlls/winemac.drv/cocoa_window.h
++++ b/dlls/winemac.drv/cocoa_window.h
+@@ -96,6 +96,10 @@ frame Wine believes in (wineFrame) differ in size. */
+     /* The program calls its window resizable and then puts back the size it had: seen once,
+        the window is presented through the scaler from then on. */
+     BOOL programRefusesResize;
++    /* NotProton: in native full screen a scaled window is first offered the full-screen
++       size; the program re-renders at it or puts its size back and is scaled as before. */
++    BOOL fullscreenOffered;
++    NSSize fullscreenOfferedFrom;
+     NSTimeInterval liveResizeEndTime;
+     /* The drag in progress keeps the program's size and scales the stage. */
+     BOOL liveResizeScaled;
+diff --git a/dlls/winemac.drv/cocoa_window.m b/dlls/winemac.drv/cocoa_window.m
+index bdd9e261b2..3b9d4abdb4 100644
+--- a/dlls/winemac.drv/cocoa_window.m
++++ b/dlls/winemac.drv/cocoa_window.m
+@@ -2904,6 +2904,18 @@ - (void) setFrameFromWine:(NSRect)contentRect
+         {
+             NSRect frame, oldFrame;
+ 
++            /* NotProton: the program's answer to the full-screen size. Its old size back
++               means it does not resize: scale it into the screen as before. */
++            if (fullscreenOffered && !presentationScalable &&
++                fabs(contentRect.size.width - fullscreenOfferedFrom.width) < 1 &&
++                fabs(contentRect.size.height - fullscreenOfferedFrom.height) < 1)
++            {
++                presentationScalable = YES;
++                wineContentRect = contentRect;
++                presentation_log(self, "program kept its size in full screen, scaling", self.frame,
++                                 [self frameRectForContentRect:contentRect], [wineContentView frame]);
++            }
++
+             if ([self programPutBackItsSize:contentRect])
+             {
+                 /* From here the size is the user's and the program's frame is scaled into
+@@ -3996,10 +4008,38 @@ - (void) windowDidEndLiveResize:(NSNotification *)notification
+         }
+     }
+ 
++    /* NotProton: whether native full screen offers a scaled window the screen's size
++       first (NOTPROTON_FULLSCREEN_SCALES=1 keeps Dormison's scaling only). */
++    static BOOL fullscreen_offers_size(void)
++    {
++        static int on = -1;
++        if (on < 0)
++        {
++            const char* env = getenv("NOTPROTON_FULLSCREEN_SCALES");
++            on = !(env && env[0] == '1');
++        }
++        return on;
++    }
++
+     - (void) windowDidEnterFullScreen:(NSNotification*)notification
+     {
+         enteringFullScreen = FALSE;
+         enteredFullScreenTime = [[NSProcessInfo processInfo] systemUptime];
++        /* A program that resizes re-renders at the full-screen size instead of having
++           its old frame scaled into it, the way a resizable window is asked. Its answer
++           comes back through setFrameFromWine:, which goes back to scaling when the
++           program put its old size back. */
++        if (presentationScalable && !presentationWindowed && !programRefusesResize &&
++            fullscreen_offers_size() && ([self styleMask] & NSWindowStyleMaskFullScreen))
++        {
++            fullscreenOffered = TRUE;
++            fullscreenOfferedFrom = [self wineContentSize];
++            presentationScalable = NO;
++            [self restoreUnscaledPresentation];
++            presentation_log(self, "full screen offers the program its size", self.frame, wineFrame,
++                             [wineContentView frame]);
++            [self postWindowFrameChanged:self.frame fullscreen:TRUE resizing:FALSE skipSizeMove:FALSE];
++        }
+         if (pendingOrderOut)
+             [self doOrderOut];
+     }
+@@ -4007,6 +4047,12 @@ - (void) windowDidEnterFullScreen:(NSNotification*)notification
+     - (void) windowDidExitFullScreen:(NSNotification*)notification
+     {
+         exitingFullScreen = FALSE;
++        if (fullscreenOffered)
++        {
++            /* Back in a window: scaled as before full screen. */
++            fullscreenOffered = FALSE;
++            presentationScalable = YES;
++        }
+         [self setFrameAndWineFrame:nonFullscreenFrame];
+         [self windowDidResize:nil];
+         if (pendingOrderOut)
