@@ -1006,3 +1006,15 @@ Spaces и Постановщик проверить сам не могу: нет
   - 18:41:06 — первый запуск после смены движка: `services.exe` не поднял службы вовремя (`1053`), через 41 с запуск остановлен (`TerminateProcessByPid`). Та же картина, что 08.10 00:31 (R67) — тогда тоже первый запуск после новой сборки;
   - 18:42:01 — работает: `engine: dormison-b2`, `runner: x86_64/i386 ntdll is the patched copy (B1)`, в Wine-логе `redirect_steamclient … steamclient64.dll: 40 exports and the entry point lead to lsteamclient.dll`, DXMT, первый кадр +8146 мс.
 - Откат не нужен. R67 уточнён: похоже на долгий первый старт префикса после обновления, а не на HUD.
+
+## 2026-10-09 ~18:45–19:00 CEST — Шаг 4: D3DMetal (7B) возвращён, RE9 на D3DMetal
+
+- `wip/7b-d3dmetal` перенесён на сегодняшний каталог (cherry-pick, конфликты разобраны вручную): `D3DMetalStore`, `toolkit add|choose|list` в CLI, рендерер `d3dmetal` (виден в списке только после установки), блок «D3DMetal · Apple Game Porting Toolkit» в диалоге, доставка `lib/external` в движок в `compat_run.sh`. Добавлено: `D3DM_ENABLE_METALFX` при DLSS (переменная — из Sevoflurane `Core/BottleGraphics.swift`), карта `D3DM_*` — автоматическая; проверка «D3DMetal не установлен» при выборе рендерера. Тесты: `make app-tests` — **392**, `panel-behavior`, `runcheck`, `make app` — код 0. Коммит `db1838f`. Файлов Apple в git нет.
+- **GPTK:** `~/Downloads/Game_Porting_Toolkit_4.0_beta_2.dmg` → `notproton-settings toolkit add` → `notproton/d3dmetal/4.0 beta 2` (5 с, образ смонтирован только для чтения и отмонтирован). macOS 27 — версия 4.0 beta 2 активна.
+- Сборка `0EB12868` в Steam (Steam закрыт мягко, мост b2 не тронут).
+- **RE9** (`4022369388`, ярлык из `~/GameHub`), рендерер D3DMetal, карта NVIDIA RTX 5060 Ti (DLSS у тебя включён для всех игр), `D3DM_ENABLE_METALFX=1`:
+  - запуск 1 (мой, 18:49): `d3dmetal: 4.0 beta 2 delivered into dormison-b2`, `renderer: d3dmetal`; загружены `d3d12`, `d3d11`, `dxgi`, `nvapi64`, `nvngx`; B1 — `steamclient64.dll: 40 exports … lead to lsteamclient.dll`; первый кадр +16 с; «Компиляция шейдеров…» (снимок окна), через ~6 мин процесс завершился сам (`bundle exited status=0`);
+  - запуск 2 (18:55:47, пришёл через Steam не от меня — перезапуск игрой или твоё «Играть»): первый кадр +9 с, **вступительная сцена в полноэкранном режиме** (снимок окна). Игра оставлена запущенной.
+  - в логе `steam.exe`: `ConnectToGlobalUser failed` — ярлык не из Steam, игра всё равно идёт.
+- **Forza Horizon 6 на этом Mac не установлена** (нет ни в Steam, ни в `~/GameHub`) — не проверялась.
+- Лимит: RE9 — 2 запуска (исчерпан), FH6 — 0.
