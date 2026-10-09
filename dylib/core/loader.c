@@ -7,6 +7,7 @@
 #include "../core/macho.h"
 #include "../hooks/hooks.h"
 #include "../feats/compat.h"
+#include "../feats/input_access.h"
 #include "../feats/steamwin.h"
 #include "../feats/steamfocus.h"
 #include "../feats/updategate.h"
@@ -140,6 +141,7 @@ static void *install_thread(void *unused) {
     // The client is up, so the bootstrapper's update check is over: Steam's update
     // block goes back if NotProton's gate is on (feats/updategate.c).
     np_update_gate_rearm();
+    np_input_access_check();
 
     static char candidates[NP_SIGDB_MAX_CANDIDATES][NP_SIGDB_PATH_MAX];
     int candidate_count = sigdb_candidates(candidates, NP_SIGDB_MAX_CANDIDATES);

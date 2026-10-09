@@ -200,7 +200,8 @@ enum SteamInstaller {
         plist: URL, dylib: URL, shipping: URL, app: URL, force: Bool = false
     ) throws -> Bool {
         let deployed = SteamBundle.currentInsert(at: plist) == dylib.path(percentEncoded: false)
-        if !force, deployed, let installed = MachOBuild.identity(of: dylib),
+        let blocked = SteamBundle.currentControllerBlock(at: plist) == SteamBundle.controllerBlockValue
+        if !force, deployed, blocked, let installed = MachOBuild.identity(of: dylib),
             let current = MachOBuild.identity(of: shipping), installed == current
         {
             AppLog.note("install: Steam already carries this dylib, installing for this account only")
@@ -304,6 +305,7 @@ enum SteamInstaller {
 
         var environment = dict[SteamBundle.environmentKey] as? [String: Any] ?? [:]
         environment[SteamBundle.insertKey] = dylib.path(percentEncoded: false)
+        environment[SteamBundle.controllerBlockKey] = SteamBundle.controllerBlockValue
         dict[SteamBundle.environmentKey] = environment
         try SteamBundle.writeInfoPlist(dict, at: plist)
     }

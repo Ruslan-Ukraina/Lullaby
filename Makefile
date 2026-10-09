@@ -10,7 +10,7 @@ LDFLAGS  := -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) \
             -dynamiclib -install_name @rpath/notproton.dylib
 
 # AppKit is weak: steam_osx and Steam Helper have it, nothing else needs it.
-FRAMEWORKS := -framework CoreFoundation -framework Foundation -weak_framework AppKit -lobjc
+FRAMEWORKS := -framework CoreFoundation -framework Foundation -framework CoreGraphics -weak_framework AppKit -lobjc
 
 DOBBY_DIR  := build/dobby
 DOBBY_LIBS := $(DOBBY_DIR)/libdobby.a \
@@ -45,6 +45,7 @@ SRCS := \
 	dylib/feats/settingsbridge.c \
 	dylib/feats/steamwin_css.c \
 	dylib/feats/updategate.c \
+	dylib/feats/input_access.c \
 	vendor/cJSON.c
 
 # Objective-C: AppKit through the runtime, for Steam Helper's windows.
@@ -92,7 +93,7 @@ runcheck:
 	@if ! command -v shellcheck >/dev/null 2>&1; then \
 		$(call SKIP,runcheck,shellcheck); exit 0; fi; \
 	shellcheck dylib/feats/compat_run.sh && sh -n dylib/feats/compat_run.sh && \
-	shellcheck dylib/tests/termcheck.sh dylib/tests/stubcheck.sh dylib/tests/watchdogcheck.sh && sh dylib/tests/termcheck.sh && sh dylib/tests/stubcheck.sh && sh dylib/tests/watchdogcheck.sh && \
+	shellcheck dylib/tests/termcheck.sh dylib/tests/stubcheck.sh dylib/tests/watchdogcheck.sh dylib/tests/routecheck.sh dylib/tests/settingscheck.sh && sh dylib/tests/termcheck.sh && sh dylib/tests/stubcheck.sh && sh dylib/tests/watchdogcheck.sh && sh dylib/tests/routecheck.sh dylib/feats/compat_run.sh && sh dylib/tests/settingscheck.sh dylib/feats/compat_run.sh && \
 	echo "==> runcheck: the run script lints and parses clean"
 
 # runcheck owns compat_run.sh, whose warnings wait for a change that can move

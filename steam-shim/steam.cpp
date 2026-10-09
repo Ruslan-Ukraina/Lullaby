@@ -119,6 +119,23 @@ static void set_client_dll_paths(void)
                     "SteamPath", REG_SZ, steam_dir, (DWORD)sizeof(steam_dir));
 }
 
+/* Values Proton's wine.inf sets. Ubisoft Connect needs them to see Steam (upstream
+ * NotProton 1.1.x, "Set the Steam install path registry values Ubisoft Connect checks"). */
+static void set_install_paths(void)
+{
+    static const char install_dir[] = "C:\\Program Files (x86)\\Steam";
+    static const char steam_exe[] = "C:\\Program Files (x86)\\Steam\\steam.exe";
+
+    RegSetKeyValueA(HKEY_LOCAL_MACHINE, "Software\\Wow6432Node\\Valve\\Steam",
+                    "InstallPath", REG_SZ, install_dir, (DWORD)sizeof(install_dir));
+    RegSetKeyValueA(HKEY_LOCAL_MACHINE, "Software\\Valve\\Steam",
+                    "InstallPath", REG_SZ, install_dir, (DWORD)sizeof(install_dir));
+    RegSetKeyValueA(HKEY_CURRENT_USER, "Software\\Valve\\Steam",
+                    "SteamExe", REG_SZ, steam_exe, (DWORD)sizeof(steam_exe));
+    RegSetKeyValueA(HKEY_CURRENT_USER, "Software\\Valve\\Steam\\ActiveProcess",
+                    "SteamPath", REG_SZ, install_dir, (DWORD)sizeof(install_dir));
+}
+
 static DWORD WINAPI create_steam_window(void *arg)
 {
     static WNDCLASSEXW wndclass = { sizeof(WNDCLASSEXW) };
@@ -1461,7 +1478,15 @@ run:
             si.wShowWindow = SW_HIDE;
         }
 
-        if (!CreateProcessW(NULL, cmdline, NULL, NULL, FALSE, flags, NULL, NULL, &si, &pi))
+        /* Hand the child our own std handles, otherwise everything it prints is lost
+         * (upstream NotProton 1.1.x, "Stop steam shim from discarding output of launched
+         * games"): the game's own output then reaches notproton-wine.log. */
+        si.dwFlags |= STARTF_USESTDHANDLES;
+        si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+        si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+        si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+
+        if (!CreateProcessW(NULL, cmdline, NULL, NULL, TRUE, flags, NULL, NULL, &si, &pi))
         {
             WINE_ERR("Failed to create process %s: %u\n", wine_dbgstr_w(cmdline), GetLastError());
             return INVALID_HANDLE_VALUE;
@@ -1792,6 +1817,7 @@ int main(int argc, char *argv[])
 
         set_active_process_pid();
         set_client_dll_paths();
+        set_install_paths();
 
         if (steam_client_init())
         {

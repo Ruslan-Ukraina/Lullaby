@@ -69,6 +69,10 @@ normalized_code() { # arch file -> disassembly without addresses
 }
 
 build() {
+	# The patch touches loader.c alone. make 3.81 compares whole seconds, so a patch applied
+	# in the second the previous build finished looks older than its object, and the build
+	# would keep the other variant (found 09.10 on a rebuild of a tree that was already built).
+	rm -f "$WINE_BUILD/dlls/ntdll/x86_64-windows/loader.o" "$WINE_BUILD/dlls/ntdll/i386-windows/loader.o"
 	make -C "$WINE_BUILD" -j"$(sysctl -n hw.ncpu)" \
 		dlls/ntdll/x86_64-windows/ntdll.dll dlls/ntdll/i386-windows/ntdll.dll > "$OUT/build.log" 2>&1 \
 		|| { tail -20 "$OUT/build.log" >&2; die "ntdll build failed, see $OUT/build.log"; }

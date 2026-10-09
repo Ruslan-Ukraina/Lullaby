@@ -176,7 +176,9 @@ struct SteamInstallerTests {
         let after = try #require(SteamBundle.readInfoPlist(at: fixture.plist))
         let environment = try #require(after[SteamBundle.environmentKey] as? [String: Any])
         #expect(environment["LC_ALL"] as? String == "en_US.UTF-8", "LC_ALL is Valve's and has to survive")
-        #expect(environment.count == 2, "only the insert should have been added")
+        #expect(
+            Set(environment.keys) == ["LC_ALL", SteamBundle.insertKey, SteamBundle.controllerBlockKey],
+            "only the insert and the controller block list should have been added")
         #expect(after["CFBundleVersion"] as? String == "6.1", "the rest of the plist was disturbed")
     }
 
@@ -424,6 +426,33 @@ struct SteamInstallerTests {
         )
 
         try Data("a different build".utf8).write(to: fixture.deployedDylib)
+
+        #expect(
+            try SteamInstaller.needsPatching(
+                plist: fixture.plist,
+                dylib: fixture.deployedDylib,
+                shipping: fixture.payload.dylib,
+                app: fixture.app
+            )
+        )
+    }
+
+    @Test("Install keeps the generic Steam Controller copy away from Steam, and a Steam without that is patched again")
+    func controllerBlockIsDeployed() async throws {
+        let work = try scratch()
+        defer { try? FileManager.default.removeItem(at: work) }
+        let fixture = try await self.fixture(into: work)
+
+        _ = try install(fixture)
+        #expect(SteamBundle.currentControllerBlock(at: fixture.plist) == SteamBundle.controllerBlockValue)
+        #expect(SteamBundle.currentInsert(at: fixture.plist) == fixture.deployedDylib.path(percentEncoded: false))
+
+        // A Steam patched by an older NotProton: the same dylib, no block list.
+        var dict = try #require(SteamBundle.readInfoPlist(at: fixture.plist))
+        var environment = try #require(dict[SteamBundle.environmentKey] as? [String: Any])
+        environment.removeValue(forKey: SteamBundle.controllerBlockKey)
+        dict[SteamBundle.environmentKey] = environment
+        try SteamBundle.writeInfoPlist(dict, at: fixture.plist)
 
         #expect(
             try SteamInstaller.needsPatching(

@@ -97,6 +97,7 @@ else
 fi
 [ "$(stat -f %z "$log" 2>/dev/null || echo 0)" -gt 262144 ] \
   && : > "$log" || true
+run_started=$(date +%s)
 {
   echo "=== notproton run $(date) ==="
   echo "verb=$verb"
@@ -159,8 +160,16 @@ case "$app_id" in ''|0) app_id=$(basename "$STEAM_COMPAT_DATA_PATH" 2>/dev/null)
 case "$app_id" in ''|*[!0-9]*) app_id=0 ;; esac
 echo "app_id=$app_id (STEAM_COMPAT_APP_ID=$STEAM_COMPAT_APP_ID)" >> "$log" 2>&1 || true
 
-[ -n "$SteamAppId" ] || export SteamAppId="$app_id"
-[ -n "$SteamGameId" ] || export SteamGameId="$app_id"
+# Steam does not set SteamAppId or SteamGameId for helpers like the install-script
+# evaluator. If they are set, SteamAPI_Init registers the helper as the running game so the
+# real launch fails with AppError_16 (upstream NotProton 1.1.0). Non-Steam shortcuts come in
+# as waitforexitandrun.
+case "$verb" in
+  waitforexitandrun)
+    [ -n "$SteamAppId" ] || export SteamAppId="$app_id"
+    [ -n "$SteamGameId" ] || export SteamGameId="$app_id"
+    ;;
+esac
 
 prefix_machine() {
   dll="$WINEPREFIX/drive_c/windows/system32/ntdll.dll"
@@ -412,15 +421,141 @@ env_value() {
   done
   return 0
 }
-# A Wine registry switch a setting asks for, as y or nothing (deleted).
-reg_switch() {
-  key=$1
-  name=$2
-  if [ "$3" = 1 ]; then
-    "$WINELOADER" reg add "$key" /v "$name" /t REG_SZ /d y /f >> "$log" 2>&1 || true
-  else
-    "$WINELOADER" reg delete "$key" /v "$name" /f >> "$log" 2>&1 || true
+# A Wine registry switch a setting asks for, as y or nothing (deleted), in .reg form.
+reg_switch_line() {
+  if [ "$2" = 1 ]; then printf '"%s"="y"' "$1"; else printf '"%s"=-' "$1"; fi
+}
+
+controller_ids() {
+  printf '%s\n' "$1" | tr ',' '\n' | tr 'A-F' 'a-f' \
+    | sed -n 's/^[[:space:]]*0x\([0-9a-f]\{4\}\)\/0x\([0-9a-f]\{4\}\)[[:space:]]*$/\1\/\2/p' \
+    | sort -u
+}
+
+ids_without() {
+  printf '%s\n' "$2" -- "$1" \
+    | awk '$0 == "--" { s = 1; next } !s { b[$0]; next } $0 != "" && !($0 in b)'
+}
+
+hidraw_lines() {
+  printf '%s\n' "$2" | while read -r id; do
+    [ -n "$id" ] || continue
+    if [ "$1" = add ]; then
+      printf '%s\r\n' "[HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\WineBus\\Devices\\$id]" \
+        '"Hidraw"=dword:00000000' ''
+    else
+      printf '%s\r\n' "[-HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\WineBus\\Devices\\$id]" ''
+    fi
+  done
+}
+
+write_owned_controllers() {
+  if printf '%s\n' "$1" | sed '/^$/d' | sort -u > "$controllers_file.new" \
+    && mv -f "$controllers_file.new" "$controllers_file"; then
+    return 0
   fi
+  rm -f "$controllers_file.new"
+  return 1
+}
+
+# Steam Input (upstream NotProton 1.1.x, "Fixes Steam Input issues", GPL-3.0). Proton hides
+# the controllers that Steam Input handles from the Wine process. winebus still reads a few
+# directly (DualSense, DualShock 4, Switch 1 Pro Controller and Joy-Cons: is_hidraw_enabled in
+# dlls/winebus.sys/main.c, the same in Dormison), so Hidraw=0 hides those too. The Switch
+# controllers get Hidraw=0 even when Steam Input is off, to avoid silently breaking
+# controller support in most games. NOTPROTON_RAW_CONTROLLERS=1 in the launch options
+# hands every controller back to the game.
+plan_hidden_controllers() {
+  controllers_file="$STEAM_COMPAT_DATA_PATH/notproton-hidden-controllers"
+  controllers_add=""
+  controllers_remove=""
+  controllers_wanted=""
+  [ -n "$STEAM_COMPAT_DATA_PATH" ] && [ ! -L "$controllers_file" ] || return 1
+  owned=""
+  [ ! -f "$controllers_file" ] || owned=$(sed -n '/^[0-9a-f]\{4\}\/[0-9a-f]\{4\}$/p' "$controllers_file")
+  in_registry=""
+  [ ! -f "$WINEPREFIX/system.reg" ] || in_registry=$(tr '[:upper:]' '[:lower:]' < "$WINEPREFIX/system.reg" \
+    | sed -n 's/^\[system\\\\controlset001\\\\services\\\\winebus\\\\devices\\\\\([0-9a-f]\{4\}\/[0-9a-f]\{4\}\)\].*/\1/p' \
+    | sort -u)
+  if [ "$NOTPROTON_RAW_CONTROLLERS" != "1" ]; then
+    controllers_wanted=$(ids_without "$(controller_ids "$SDL_GAMECONTROLLER_IGNORE_DEVICES")" \
+      "$(controller_ids "$SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT")")
+    controllers_wanted=$(printf '%s\n' "$controllers_wanted" 057e/2006 057e/2007 057e/2009 | sed '/^$/d' | sort -u)
+    # Steam sends install scripts no ignore list. Keep the game's hidden controllers instead of clearing them.
+    if [ "$verb" = run ]; then
+      controllers_wanted=$(printf '%s\n' "$controllers_wanted" "$owned" | sed '/^$/d' | sort -u)
+    fi
+    controllers_wanted=$(ids_without "$controllers_wanted" "$(ids_without "$in_registry" "$owned")")
+  fi
+  controllers_add=$(ids_without "$controllers_wanted" "$in_registry")
+  controllers_remove=$(ids_without "$owned" "$controllers_wanted")
+  write_owned_controllers "$owned
+$controllers_wanted"
+}
+
+# The prefix's registry for this launch, in one Wine process: under Rosetta every Wine
+# process costs about a second, and a reg add per key ran a dozen of them before each game
+# (measured 09.10; upstream NotProton 1.1.0, "Make games start about two seconds faster").
+# Each prefix is one game's, so the prefix-wide keys are the game's own. RetinaMode is read
+# with no program key at all (winemac.drv), EmulateModeset by win32u for every program,
+# explorer.exe included. Command reaches every game as Control and Option as Alt (DECISIONS
+# P7A-20); winemac.drv's own default is the other way round.
+import_prefix_settings() {
+  # A new prefix has no C: drive to hand the file over through yet: wineboot builds it.
+  if [ ! -d "$WINEPREFIX/drive_c" ]; then
+    "$WINELOADER" wineboot --init >> "$log" 2>&1 || true
+  fi
+  echo "video: RetinaMode=${NOTPROTON_RETINA:-0} EmulateModeset=${NOTPROTON_EMULATE_MODESET:-0}" >> "$log" 2>&1 || true
+  echo "keyboard: Command is Control, Option is Alt" >> "$log" 2>&1 || true
+  controllers_planned=0
+  if plan_hidden_controllers 2>/dev/null; then
+    controllers_planned=1
+  else
+    controllers_add=""
+    controllers_remove=""
+    echo "=== could not track the hidden controllers, leaving them as they are ===" >> "$log" 2>&1 || true
+  fi
+  settings_file=$(mktemp "$WINEPREFIX/drive_c/notproton-settings.XXXXXX" 2>/dev/null) \
+    || settings_file=""
+  if [ -z "$settings_file" ] || ! { printf '%s\r\n' \
+      'Windows Registry Editor Version 5.00' '' \
+      '[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\AeDebug]' '"Auto"="0"' '' \
+      '[HKEY_LOCAL_MACHINE\Software\Wow6432Node\Microsoft\Windows NT\CurrentVersion\AeDebug]' '"Auto"="0"' '' \
+      '[HKEY_CURRENT_USER\Software\Wine\WineDbg]' '"ShowCrashDialog"=dword:00000000' '' \
+      '[HKEY_CURRENT_USER\Software\Wine\Mac Driver]' "$(reg_switch_line RetinaMode "$NOTPROTON_RETINA")" \
+      '"LeftCommandIsCtrl"="y"' '"RightCommandIsCtrl"="y"' '"LeftOptionIsAlt"="y"' '"RightOptionIsAlt"="y"' '' \
+      '[HKEY_CURRENT_USER\Software\Wine\X11 Driver]' \
+      "$(reg_switch_line EmulateModeset "$NOTPROTON_EMULATE_MODESET")" '' \
+      '[HKEY_LOCAL_MACHINE\Software\Classes\steam]' '"URL Protocol"=""' '' \
+      '[HKEY_LOCAL_MACHINE\Software\Classes\steam\shell\open\command]' \
+      '@="\"C:\\Program Files (x86)\\Steam\\steam.exe\" \"%1\""' '' \
+      && hidraw_lines add "$controllers_add" && hidraw_lines remove "$controllers_remove"; } \
+      > "$settings_file" 2>/dev/null; then
+    [ -z "$settings_file" ] || rm -f "$settings_file"
+    echo "=== could not write the prefix settings, launching without them ===" >> "$log" 2>&1 || true
+    # the bridge staging still needs a built prefix
+    "$WINELOADER" wineboot --init >> "$log" 2>&1 || true
+    return 0
+  fi
+  "$WINELOADER" reg import "C:\\${settings_file##*/}" >> "$log" 2>&1 \
+    && import_status=0 || import_status=$?
+  rm -f "$settings_file"
+  if [ "$import_status" -eq 0 ] && [ "$controllers_planned" -eq 1 ]; then
+    write_owned_controllers "$controllers_wanted" 2>/dev/null || true
+    if [ -n "$controllers_add$controllers_remove" ]; then
+      # Wine only reads these keys when it starts, so restart Wine to apply them.
+      "$WINESERVER" -k >> "$log" 2>&1 || true
+      "$WINESERVER" -w >> "$log" 2>&1 || true
+    fi
+    if [ "$NOTPROTON_RAW_CONTROLLERS" = "1" ]; then
+      echo "controllers: games read them directly (NOTPROTON_RAW_CONTROLLERS=1)" >> "$log" 2>&1 || true
+    elif [ -n "$controllers_wanted" ]; then
+      echo "controllers: $(printf '%s\n' "$controllers_wanted" | grep -c .) kept off hidraw" \
+        >> "$log" 2>&1 || true
+    fi
+  fi
+  [ "$import_status" -eq 0 ] \
+    || echo "=== prefix settings import exited status=$import_status ===" >> "$log" 2>&1 || true
 }
 if [ -n "$STEAM_COMPAT_DATA_PATH" ]; then
   export WINEPREFIX="$STEAM_COMPAT_DATA_PATH/pfx"
@@ -468,26 +603,8 @@ if [ -n "$STEAM_COMPAT_DATA_PATH" ]; then
   "$WINESERVER" -k >> "$log" 2>&1 || true
   stage_step="profile layout"
   lay_out_proton_profile
-  "$WINELOADER" wineboot --init >> "$log" 2>&1 || true
-  "$WINELOADER" reg add 'HKLM\Software\Microsoft\Windows NT\CurrentVersion\AeDebug' /v Auto /t REG_SZ /d 0 /f >> "$log" 2>&1 || true
-  "$WINELOADER" reg add 'HKLM\Software\Wow6432Node\Microsoft\Windows NT\CurrentVersion\AeDebug' /v Auto /t REG_SZ /d 0 /f >> "$log" 2>&1 || true
-  "$WINELOADER" reg add 'HKCU\Software\Wine\WineDbg' /v ShowCrashDialog /t REG_DWORD /d 0 /f >> "$log" 2>&1 || true
-
-  # Registry settings of the catalog. Each prefix is one game's, so the prefix-wide
-  # keys are the game's own. RetinaMode is read with no program key at all
-  # (winemac.drv), EmulateModeset by win32u for every program, explorer.exe included.
-  echo "video: RetinaMode=${NOTPROTON_RETINA:-0} EmulateModeset=${NOTPROTON_EMULATE_MODESET:-0}" >> "$log" 2>&1 || true
-  reg_switch 'HKCU\Software\Wine\Mac Driver' RetinaMode "$NOTPROTON_RETINA"
-  reg_switch 'HKCU\Software\Wine\X11 Driver' EmulateModeset "$NOTPROTON_EMULATE_MODESET"
-  # Command reaches every game as Control and Option as Alt (DECISIONS P7A-20). winemac.drv's
-  # own default is the other way round: Command is Alt and Option types special characters.
-  echo "keyboard: Command is Control, Option is Alt" >> "$log" 2>&1 || true
-  for key in LeftCommandIsCtrl RightCommandIsCtrl LeftOptionIsAlt RightOptionIsAlt; do
-    reg_switch 'HKCU\Software\Wine\Mac Driver' "$key" 1
-  done
-
-  "$WINELOADER" reg add 'HKLM\Software\Classes\steam' /v 'URL Protocol' /t REG_SZ /d '' /f >> "$log" 2>&1 || true
-  "$WINELOADER" reg add 'HKLM\Software\Classes\steam\shell\open\command' /ve /t REG_SZ /d '"C:\Program Files (x86)\Steam\steam.exe" "%1"' /f >> "$log" 2>&1 || true
+  stage_step="prefix settings"
+  import_prefix_settings
 fi
 
 prefix_steam="$WINEPREFIX/drive_c/Program Files (x86)/Steam"
@@ -569,7 +686,8 @@ if [ -d "$bridge_src" ] && [ -n "$WINEPREFIX" ]; then
       echo "=== bridge missing $f ===" >> "$log" 2>&1 || true
       continue
     fi
-    cp -f "$src" "$prefix_steam/$f" || \
+    # A clone (APFS) costs no space and a fifth of the time; a copy where cloning cannot work.
+    cp -c -f "$src" "$prefix_steam/$f" 2>/dev/null || cp -f "$src" "$prefix_steam/$f" || \
       echo "=== failed to stage $f ===" >> "$log" 2>&1
   done
   for f in "$prefix_steam"/*.dll "$prefix_steam"/*.so "$prefix_steam"/*.exe; do
@@ -735,18 +853,33 @@ fi
 export WINEDEBUG="${WINEDEBUG:-err+all,fixme-all,+loaddll}"
 trap - EXIT
 printf 'launch_env=%s\n' "$launch_env" >> "$log" 2>&1 || true
+echo "prelaunch: $(( $(date +%s) - run_started )) s" >> "$log" 2>&1 || true
 echo "=== launching ($verb): $WINELOADER $* ===" >> "$log" 2>&1 || true
 
 target="$1"
-case "$target" in
-  "$STEAM_COMPAT_INSTALL_PATH"/*) foreground=1 ;;
+# The verb decides the route, as in Linux Steam (upstream NotProton 1.1.0, "Fix EA launcher"):
+# a game can arrive as a URL (steam2ea://, uplay://) with no install path to match.
+case "$verb" in
+  waitforexitandrun) foreground=1 ;;
   *) foreground=0 ;;
 esac
 
+shim_exe="C:\\Program Files (x86)\\Steam\\steam.exe"
+
 if [ "$foreground" = 0 ]; then
-  echo "=== running helper on raw loader: $* ===" >> "$log" 2>&1 || true
-  "$WINELOADER" "$@" >> "$log" 2>&1
-  status=$?
+  status=0  # set -e would exit before the status is read
+  case "$verb" in
+    # runinprefix is the one verb the Linux client keeps on the raw loader.
+    runinprefix)
+      echo "=== running helper on raw loader: $* ===" >> "$log" 2>&1 || true
+      "$WINELOADER" "$@" >> "$log" 2>&1 || status=$?
+      ;;
+    *)
+      # An install script, or a URL that steam.exe resolves.
+      echo "=== running helper through the shim: $* ===" >> "$log" 2>&1 || true
+      "$WINELOADER" "$shim_exe" "$@" >> "$log" 2>&1 || status=$?
+      ;;
+  esac
   echo "=== helper exited status=$status ===" >> "$log" 2>&1 || true
   exit $status
 fi
@@ -1040,8 +1173,6 @@ terminate() {
   exit 143
 }
 trap terminate TERM INT HUP
-
-shim_exe="C:\\Program Files (x86)\\Steam\\steam.exe"
 
 game_cwd="$(pwd)"
 if [ -n "$STEAM_DYLD_INSERT_LIBRARIES" ]; then
