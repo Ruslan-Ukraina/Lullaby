@@ -997,3 +997,12 @@ Spaces и Постановщик проверить сам не могу: нет
 - **Шаг 1:** `docs/strings-final.md` применён к `SettingCopy.swift` (настройки, `PanelText.all`, `GroupTitles`, `Words.custom`): 129 ключей, 0 конфликтов, 181 литерал; каталог из собранного CLI совпадает с файлом по всем ключам. `Localization` — зелёный; `make app-tests` — 387 тестов, код 0; `make app` — код 0; фикстура `catalog.json` обновлена, `panel-behavior` — зелёный. Коммит `4f8c5da`. В Steam ещё не поставлено (ставлю вместе с шагом 3).
 - **Шаг 2:** уже сделано в 7A (P7A-20): Command→Control, Option→Alt всегда, без переключателей; `compat_run.sh:484–485`, в run-логе PEAK — `keyboard: Command is Control, Option is Alt`.
 - **Шаг 3 (b2) — заблокирован:** команду переключения движка отклонил классификатор разрешений Claude Code. Точная команда для тебя и откат — `docs/BLOCKERS.md`. Шаг 4 (D3DMetal) не начат: ты просил идти по порядку.
+
+## 2026-10-09 ~18:35–18:45 CEST — Шаг 3: движок переключён на Dormison b2
+
+- Переключил ты командой из BLOCKERS (`--engine install --channel beta --quit-steam`, dev-сборка с локальным тестовым фидом): «installed dormison-b2 previous=dormison-b1 … in 60 s», smoke-тест — wineboot с B1 ntdll x86_64 и i386. Проверено мной: `runners/current → dormison-b2`, `previous → dormison-b1`; `bridges/state.json` — `current: bridge-dormison-b2-1`, `previous: bridge-dormison-b1-2`; файлы `notproton/bridge` (`steam.exe`, lsteamclient x86_64/i386/unix) совпадают по sha256 с `bridge-dormison-b2-1`.
+- `out/` пересобран обычным (без тестового фида), поставлен в Steam: «0 bridge file(s) staged» (мост b2 не тронут), тексты шага 1 в установленном `notproton-settings` («Графіка», «Типово: %@»). Steam запущен мной (`open -a Steam`).
+- **PEAK на b2 — запускал ты** (мой запуск не состоялся: мой цикл ожидания был с ошибкой, я его остановил, игр сам не запускал):
+  - 18:41:06 — первый запуск после смены движка: `services.exe` не поднял службы вовремя (`1053`), через 41 с запуск остановлен (`TerminateProcessByPid`). Та же картина, что 08.10 00:31 (R67) — тогда тоже первый запуск после новой сборки;
+  - 18:42:01 — работает: `engine: dormison-b2`, `runner: x86_64/i386 ntdll is the patched copy (B1)`, в Wine-логе `redirect_steamclient … steamclient64.dll: 40 exports and the entry point lead to lsteamclient.dll`, DXMT, первый кадр +8146 мс.
+- Откат не нужен. R67 уточнён: похоже на долгий первый старт префикса после обновления, а не на HUD.
