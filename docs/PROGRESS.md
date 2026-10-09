@@ -1031,3 +1031,21 @@ Spaces и Постановщик проверить сам не могу: нет
 - Вопрос «что даёт EA / Ubisoft для Steam» — ответ в чате, после разбора правок upstream.
 
 **Состояние:** в 21:46 у тебя запущен PEAK (рендерер D3DMetal) — Steam и установку не трогаю, пока игра идёт. BLOCKERS обновлён (запись про переключение b2 закрыта).
+
+## 2026-10-09 ~21:50–22:35 CEST — EA / Ubisoft / Steam Input / вывод игры, запуск быстрее на ~10 с
+
+Из upstream NotProton 1.1.x (GPL-3.0), подогнано под Dormison; решения — DECISIONS A0910-8…12. Коммит `e07284f`.
+
+- **EA (и ссылки вида `steam2ea://`, `uplay://`):** маршрут по команде Steam; помощники — через `steam.exe`; `SteamAppId` только игре. Тест `routecheck.sh`.
+- **Ubisoft Connect:** `steam.exe` пишет в реестр путь установки Steam, как Proton.
+- **Вывод игры** доходит до `notproton-wine.log` (PEAK: `[UnityMemory] …`).
+- **Steam Input:** пады, которые ведёт Steam, скрыты от Wine (`Hidraw=0`, PEAK — 52 ключа); `SDL_JOYSTICK_BLACKLIST_DEVICES` в окружении Steam; разрешение macOS на ввод — только лог: у тебя **`input access: missing`** (вопрос в BLOCKERS). У тебя геймпад Xbox Series X.
+- **Скорость:** один `reg import` вместо ~12 процессов Wine (замер: процесс Wine ≈ 1,0 с, импорт 0,9 с); мост — клоном APFS. **Подготовка: PEAK 4 с, RE9 3 с** (было ~12–15 с); от нажатия до кадра — 19 с.
+- **Мост `bridge-dormison-b2-2`** (новый `steam.exe`) — `release/local-bridge.sh REV=2`, ТЕСТОВЫЙ ключ, `--release bridge-install`; `test-b1.sh` 8 × OK; откат — `--release bridge-rollback` на `b2-1`. Попутно исправлен `build-b1.sh` (гонка секунд у `make` 3.81 давала `ntdll.dll` без хука — скрипт сам поймал).
+- **Проверки (код 0):** `make app-tests` — **393 теста**; `make app`; `runcheck` (+ `routecheck`, `settingscheck`), `scriptcheck` (30 скриптов), `compatcheck`, `compatsvc-check`, `spawn-env`, `launch-shell`, `callscheck`.
+- **Установка в Steam:** `--install-into-steam` (Steam закрыт мягко), сборка `A01322DA`, 9/9 перехватов, подпись Steam верна, `LSEnvironment` = вставка + `SDL_JOYSTICK_BLACKLIST_DEVICES`.
+- **Живая проверка:** PEAK (22:05) — хук lsteamclient, Retina и клавиши в реестре, 52 ключа падов, вывод Unity в логе, выход чистый. RE9 (22:06) — хук, `prelaunch: 3 s`, первый кадр +9,5 с; `spike-check.sh 4022369388` — **9 ok / 0 failed** (RE9 в проверках наравне с PEAK).
+- **RE9, замер:** сцена в отеле, 3024×1964, D3DMetal: **58 FPS, GPU 18,5 мс**, режим «Composited». Идеи — SPIKE_TEST §16.3 и BLOCKERS.
+- **Моя ошибка:** замеры RE9 в 22:06 и 22:10 запускали и закрывали игру, пока ты был за Mac (снимок 22:11 — меню «Настройки → Графика»). Временный `.sevo/debug.env` RE9 удалён. Правило: перед запуском игр смотрю простой ввода (`HIDIdleTime`), при активности не запускаю.
+
+**Дальше:** шаг 5а — Highball (только чтение, отчёт). Твоё: вопросы в BLOCKERS, по желанию SPIKE_TEST §16.
