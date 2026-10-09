@@ -948,3 +948,13 @@ Spaces и Постановщик проверить сам не могу: нет
 **Проверки (все с кодом 0):** `make app-tests` — 383 теста; `make app`; `runcheck`, `scriptcheck`, `sigcheck`, `callscheck`, `webpatch-fixtures`, `peicon-fixtures`, `panel-behavior`, `spawn-env`, `compatcheck`, `compatsvc-check`, `sigdb-fixtures`, `steamwin-check`, `overlay-shim-tests`, `updategate-check`, `settingsbridge-check`, `webpatch-syntax`, `anchorcheck`. Фикстуры панели перегенерированы CLI.
 
 **Установлено в Steam** (00:25, `out/` = Steam, Steam открыт обычным образом). Игры я не запускал. SPIKE_TEST §14 переписан: шаги 3 и 5 стали 14.4 и 14.6, проще.
+
+## 2026-10-09 ~17:30–18:30 CEST — Поправка 09.10: шаг 0 (upstream), список шага 1, шаг 4
+
+**Твоё сообщение 09.10** (4 снимка 7A, «Поправка 09.10»): §13 в `docs/ROADMAP.md` уже был записан прошлой сессией (`e0b2e72`); обновлены статусы шагов и разрешение на снимки и запуск игр.
+
+- **Шаг 0 (только чтение):** upstream NotProton — уже **1.1.3** (от нашей базы 1.0.2 — 82 коммита, ~9 тыс. строк, часть — дубли из `dev`, уже бывшие в 1.0.2: `macho.c`, `anchor.c`, сигнатуры совпадают). Dormison — **b2** (`768e85ab03`, тот же Wine 11.16 + staging, 11 коммитов): меняет PE `ntdll` (`loader.c`: renderer из `WINEDLLPATH_PREPEND` грузится целиком) — наш мост B1 надо пересобрать на b2; `git merge-tree b2 notproton/b1-steamclient` — без конфликтов. Отчёт и список «что полезно» — в чате. Ничего не вливал.
+- **Шаг 1:** список «как понял каждую пометку» — в чате, **ждёт «ок»**. Для него проверено: в движке есть карты RX 9060 XT (`0x1002:0x7590`) и RTX 5060 Ti (`0x10de:0x2d04`) — `dlls/win32u/sysparams.c`, `dlls/wined3d/directx.c`; у Sevoflurane это та же пара для M4 Pro (`Core/GPUEquivalence.swift`). Сейчас по умолчанию видеокарта «Як є». В `compatibilitytools.d` один инструмент — `notproton`. В `notproton-run.log` PEAK (с 07.10 23:46) нет ни одного запуска с `MTL_HUD_ENABLED=1` — причину Metal HUD воспроизведу запуском PEAK в шаге 2.
+- **Шаг 4:** `docs/strings-review.md` — 191 строка «ключ | en | uk | ru» из `notproton-settings catalog` сборки `2be870b` (то, что в Steam); удаляемые по шагу 1 помечены. Перевыгружу после шагов 2–3.
+- **В рабочей копии лежит незакоммиченный D3DMetal (Фаза 7B) от 08.10 ~01:10** (`D3DMetalStore.swift`, тесты, `toolkit` в CLI, рендерер `d3dmetal` в `compat_run.sh` и панели) — прошлая сессия не успела записать. Не трогал. Перед шагом 2 предлагаю сохранить его отдельным WIP-коммитом в ветке `wip/7b-d3dmetal`, чтобы правки шага 2 шли с чистого `phase-7`.
+- Игры не запускал, Steam и `/Applications/NotProton.app` не трогал.
