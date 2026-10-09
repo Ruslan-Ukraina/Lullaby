@@ -958,3 +958,24 @@ Spaces и Постановщик проверить сам не могу: нет
 - **Шаг 4:** `docs/strings-review.md` — 191 строка «ключ | en | uk | ru» из `notproton-settings catalog` сборки `2be870b` (то, что в Steam); удаляемые по шагу 1 помечены. Перевыгружу после шагов 2–3.
 - **В рабочей копии лежит незакоммиченный D3DMetal (Фаза 7B) от 08.10 ~01:10** (`D3DMetalStore.swift`, тесты, `toolkit` в CLI, рендерер `d3dmetal` в `compat_run.sh` и панели) — прошлая сессия не успела записать. Не трогал. Перед шагом 2 предлагаю сохранить его отдельным WIP-коммитом в ветке `wip/7b-d3dmetal`, чтобы правки шага 2 шли с чистого `phase-7`.
 - Игры не запускал, Steam и `/Applications/NotProton.app` не трогал.
+
+## 2026-10-09 ~18:30–19:10 CEST — Поправка 09.10, шаг 2: правки по пометкам, параметры запуска из upstream, живая проверка
+
+**Твоё решение:** «ок» по шагу 1 (а–к), «Своє» убрать совсем; параметры запуска из NotProton 1.1.x — сейчас; b2 → D3DMetal → EA/Ubisoft/Steam Input → Highball 5а; запуск PEAK для Metal HUD и перезапуск Steam разрешены (ROADMAP §13.3а).
+
+- **WIP D3DMetal** (08.10) сохранён: ветка `wip/7b-d3dmetal`, коммит в origin; `phase-7` начат с чистого дерева.
+- **Сделано** (DECISIONS A0910-1…6, коммит `1fec967` + этот):
+  - каталог: удалены 8 настроек; «Лічильник FPS» = Metal HUD; «DLSS MetalFX»; раздел «Старі ігри»;
+  - видеокарта автоматически: AMD RX 9060 XT / с DLSS — NVIDIA RTX 5060 Ti, во всех слоях + `dxvk.conf` префикса;
+  - хранилище, схема 2 с копией `settings/backup-before-schema-2/`; значение, равное наследуемому, = «наследую»; «Своє» убрано;
+  - панель: без «Dormison b1», строка под настройкой только при отличии, списки компактные, параметры запуска не трогает; список инструментов Steam скрыт, когда инструмент один;
+  - параметры запуска через `/bin/sh` (upstream 1.1.0 `hook_launch.c`, `np_rebind_import`, сигнатура `SteamVRSupportCheck`, тест `launch-shell`) + `NOTPROTON_ENV_BASE`: переменные из параметров доходят до игры. R68.
+- **Проверки (все с кодом 0):** `make app-tests` — **387 тестов**; `make app`; `panel-behavior`, `launch-shell` (с настоящим `/bin/sh`), `runcheck`, `scriptcheck`, `compatcheck`, `compatsvc-check`, `spawn-env`, `callscheck`, `sigcheck` (18 сигнатур), `anchorcheck` (18/18 на Steam этого Mac), `sigdb-fixtures`, `webpatch-fixtures`, `webpatch-syntax`, `peicon-fixtures`, `steamwin-check`, `updategate-check`, `settingsbridge-check`, `overlay-shim-tests`.
+- **Живая проверка** (Steam перезапущен с DevTools, снимки только окон Steam и PEAK, в git их нет):
+  - установка `5E6DD2D8`: в `notproton.log` — `[launch] V_ParseShellCommandLinePOSIX: 1 import slot(s) rebound`, `SteamVRSupportCheck: hooked`; первый вызов CLI перенёс хранилище (у PEAK остались `windows=all`, `dlss=false` — остальное равнялось общему), переписал 5 префиксов и их `dxvk.conf`;
+  - Свойства PEAK и Настройки Steam → Совместимость: без списка инструмента, без «Dormison b1», без «Своє», 4/3 быстрые строки; диалог по разделам; списки в диалоге были 42 px / 16 px против 34 px / 13 px на странице — подогнал CSS, проверил вживую;
+  - **Metal HUD на PEAK — работает:** запуск через `/bin/sh` с `NOTPROTON_ENV_BASE`, `libMTLHud` загружен, первый кадр +8,1 с, на снимке окна HUD Apple и 90 FPS. Второй запуск — HUD + счётчик Dormison (временный `.sevo/debug.env`, удалён) — тоже работает. Прошлый неудачный запуск (08.10 00:31:58) застрял до игры (`services.exe`, `1053`) — вероятно, не HUD (R67). Оба раза игра закрыта через бандл, `game exited status=0`; настройка PEAK возвращена.
+- **Итоговая сборка `3C98864C`** в Steam, Steam запущен обычно, порт DevTools закрыт.
+- `docs/strings-review.md` перевыгружен (129 строк), SPIKE_TEST §15 — твоя проверка.
+
+**Дальше (по твоему порядку):** Dormison b2 (мост B1 для b2 — только локально), затем шаг 3 D3DMetal из `wip/7b-d3dmetal`.

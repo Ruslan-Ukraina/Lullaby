@@ -310,6 +310,9 @@
     ".NPDialogFoot{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 24px 18px;" +
     "border-top:1px solid rgba(255,255,255,.1)}" +
     ".NPGroup{margin:18px 0 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#fff}" +
+    // Steam's .DialogContent draws lists larger (16px, 12px padding) than the Properties
+    // page around the dialog does; the dialog's lists match the page's.
+    ".NPDialog .DialogDropDown{font-size:13px;padding:8px 14px;line-height:18px}" +
     ".NPPrimary{background:linear-gradient(90deg,#1a9fff,#1474e0)!important;color:#fff!important}";
   function style() { return el("style", null, CSS); }
 

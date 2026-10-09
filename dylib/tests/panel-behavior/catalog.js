@@ -146,6 +146,7 @@ for (const lang of ['en', 'uk', 'ru']) {
   const css = text(walk(tree).find(n => n.type === 'style'));
   const z = Number((/\.NPOverlay\{[^}]*z-index:(\d+)/.exec(css) || [])[1]);
   t.ok(z >= 1500 && z < 1600, `the dialog sits under Steam's menus (.DialogMenuPosition 1600), as Steam's own modals (1500): ${z}`);
+  t.ok(/\.NPDialog \.DialogDropDown\{font-size:13px;padding:8px 14px/.test(css), "the dialog's lists are the page's size");
 
   const info = walk(renderer.props.label).find(n => n.props && /NPInfo/.test(n.props.className || ''));
   t.ok(info && info.props.role === 'button', 'every row has an (i)');

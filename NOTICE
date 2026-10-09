@@ -59,6 +59,18 @@ Ukrainian and Russian. Sevoflurane is MIT licensed:
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
 
+The automatic graphics card (app/Sources/NotProtonSettings: GPUIdentity in GameConfig,
+ConfigMaterializer's GPU lines and dxvk.conf) follows Sevoflurane's Core/GPUIdentity.swift
+and Core/GPUEquivalence.swift: which cards stand in for an Apple chip, their PCI ids, the
+driver version strings and the variables each renderer reads. Same MIT license as above,
+Copyright (c) 2026 kageroumado.
+
+dylib/hooks/hook_launch.c, np_rebind_import in dylib/core/macho.c, dylib/tests/launch-shell.c
+and the LaunchBuilder::SteamVRSupportCheck signature come from upstream NotProton 1.1.0
+(https://github.com/NotProtonNot/NotProton, GPL-3.0, the project this one is a fork of),
+written there by NotProtonNot with Logan (LaganYT); NotProton's own change records the
+names in NOTPROTON_ENV_BASE.
+
 Dormison, the engine NotProton runs games on, is Wine with wine-staging and its own
 changes, LGPL-2.1-or-later (https://github.com/kageroumado/dormison). NotProton downloads
 it from Dormison's own signed releases and does not change its sources outside the
