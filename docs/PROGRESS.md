@@ -979,3 +979,15 @@ Spaces и Постановщик проверить сам не могу: нет
 - `docs/strings-review.md` перевыгружен (129 строк), SPIKE_TEST §15 — твоя проверка.
 
 **Дальше (по твоему порядку):** Dormison b2 (мост B1 для b2 — только локально), затем шаг 3 D3DMetal из `wip/7b-d3dmetal`.
+
+## 2026-10-09 ~19:10–20:00 CEST — Dormison b2: мост собран локально, установка проверена на копии
+
+- `release/local-bridge.sh` (новый): шаги CI `dormison-bridge` на этом Mac, подпись ТЕСТОВЫМ ключом в локальный фид, без публикации (A0910-7). Код выхода 0, лог `scratch/local-bridge/run.log`:
+  - движок b2: подпись и sha256 манифеста, 5004 файла совпали с `engine-manifest.json` (commit `768e85ab0393`);
+  - `build-b1.sh --check-base`: «the rebuilt unpatched code is the release's, instruction for instruction» — x86_64 и i386;
+  - `test-b1.sh`: x86_64 и i386 — 8 × OK, «0 arch(es) failed»; контроль с релизным ntdll — «2 arch(es) failed» (i386 `steamclient.dll` — ошибка 126), как и должно быть;
+  - `bridge-dormison-b2-1` и `bridge-manifest.json` подписаны, подписи проверены.
+- **Установка приложением** на копию (`scratch/local-bridge/app-test/runners`, dev-сборка с этим фидом): «installed dormison-b2 … in 51 s», smoke-тест: «wineboot created a prefix with the B1 ntdll.dll (x86_64 and i386)». Потом `out/` пересобран обычным (без тестового фида).
+- **Настоящий движок не переключён** (`runners/current` = b1), Steam и игры не трогал. Переключение — одной командой после твоего «можно» (Steam закроется мягко); откат — `--engine rollback`.
+
+**Дальше:** твоя проверка §15 и «можно» на b2 → переключение и запуск PEAK на b2; затем шаг 3 (D3DMetal из `wip/7b-d3dmetal`; на b2 часть его обходных путей не нужна: b2 сам грузит renderer из `WINEDLLPATH_PREPEND` целиком).
