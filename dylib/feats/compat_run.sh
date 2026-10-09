@@ -6,24 +6,48 @@ set -e
 verb="$1"
 shift || true
 
-# Options set from the Compatibility page are passed along as
-# launch options.
+# Steam's launch options. hook_launch.c (from upstream NotProton 1.1.0) runs the launch
+# through /bin/sh as Linux Steam does: NAME=value ahead of %command% is a variable, what
+# follows %command% an argument of the game. The shell first notes the names it was handed
+# in NOTPROTON_ENV_BASE, so the variables the options set are the rest; they go on to the
+# game below, which LaunchServices starts with an environment of its own.
 launch_env=""
+launch_shell=0
+if [ -n "${NOTPROTON_ENV_BASE+x}" ]; then
+  launch_shell=1
+  for name in $(env | sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p'); do
+    case " $NOTPROTON_ENV_BASE " in *" $name "*) continue ;; esac
+    case "$name" in NOTPROTON_ENV_BASE|DYLD_*) continue ;; esac
+    launch_env="$launch_env $name"
+  done
+  unset NOTPROTON_ENV_BASE
+fi
+# Only NotProton's renderer list on Steam's newer Compatibility page (webpatch.c) still
+# writes its choice after the command; without the shell (an older dylib, or the hook
+# off) every option arrives after it, and the known prefixes are taken as before.
 argc=$#
 argi=0
 while [ "$argi" -lt "$argc" ]; do
   arg="$1"
   shift
   case "$arg" in
+    NOTPROTON_RENDERER=*|CX_GRAPHICS_BACKEND=*) take=1 ;;
     CX_GRAPHICS*=*|D3DM_*=*|DXMT_*=*|DXVK_*=*|MTL_*=*|NOTPROTON_*=*|ROSETTA_*=*|SEVO_*=*|WINE*=*)
-      # shellcheck disable=SC2163 # arg is a NAME=VALUE pair, which export takes as an assignment
-      export "$arg"
-      launch_env="$launch_env $arg"
-      ;;
-    *) set -- "$@" "$arg" ;;
+      [ "$launch_shell" = 1 ] && take=0 || take=1 ;;
+    *) take=0 ;;
   esac
+  if [ "$take" = 1 ]; then
+    # shellcheck disable=SC2163 # arg is a NAME=VALUE pair, which export takes as an assignment
+    export "$arg"
+    launch_env="$launch_env ${arg%%=*}"
+  else
+    set -- "$@" "$arg"
+  fi
   argi=$((argi+1))
 done
+# The player's own DLL overrides follow NotProton's (the bridge's and the renderer's).
+launch_dll_overrides=""
+case " $launch_env " in *" WINEDLLOVERRIDES "*) launch_dll_overrides="$WINEDLLOVERRIDES" ;; esac
 
 case "$verb" in
   getcompatpath)
@@ -422,7 +446,6 @@ if [ -n "$STEAM_COMPAT_DATA_PATH" ]; then
   [ -n "$NOTPROTON_RETINA" ] || NOTPROTON_RETINA=$(env_value NOTPROTON_RETINA)
   [ -n "$NOTPROTON_EMULATE_MODESET" ] || NOTPROTON_EMULATE_MODESET=$(env_value NOTPROTON_EMULATE_MODESET)
   [ -n "$NOTPROTON_DLSS" ] || NOTPROTON_DLSS=$(env_value NOTPROTON_DLSS)
-  [ -n "$NOTPROTON_DLL_OVERRIDES" ] || NOTPROTON_DLL_OVERRIDES=$(env_value NOTPROTON_DLL_OVERRIDES)
   msync_from=launch-options
   # msync+ is Dormison's sync and stays on; the catalog's per-game debugging switch
   # (NOTPROTON_MSYNC in bottle.env) can turn it off. A prefix from before the
@@ -659,10 +682,8 @@ if [ "$renderer" != wined3d ]; then
   fi
 fi
 echo "renderer: $renderer${WINEDLLPATH_PREPEND:+ from $WINEDLLPATH_PREPEND}" >> "$log" 2>&1 || true
-# The catalog's DLL overrides follow NotProton's own: it refuses the libraries of the
-# Steam bridge and the renderers, so none of these names repeats one above.
-if [ -n "$NOTPROTON_DLL_OVERRIDES" ]; then
-  export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:+$WINEDLLOVERRIDES;}$NOTPROTON_DLL_OVERRIDES"
+if [ -n "$launch_dll_overrides" ]; then
+  export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:+$WINEDLLOVERRIDES;}$launch_dll_overrides"
 fi
 echo "WINEDLLOVERRIDES=$WINEDLLOVERRIDES" >> "$log" 2>&1 || true
 
@@ -679,7 +700,7 @@ fi
 # loaddll is a line per module, cheap, and shows lsteamclient coming in.
 export WINEDEBUG="${WINEDEBUG:-err+all,fixme-all,+loaddll}"
 trap - EXIT
-echo "launch_env=$launch_env" >> "$log" 2>&1 || true
+printf 'launch_env=%s\n' "$launch_env" >> "$log" 2>&1 || true
 echo "=== launching ($verb): $WINELOADER $* ===" >> "$log" 2>&1 || true
 
 target="$1"
@@ -1003,6 +1024,17 @@ done
 if [ -n "$WINEDLLPATH_PREPEND" ]; then
   set -- --env WINEDLLPATH_PREPEND="$WINEDLLPATH_PREPEND" "$@"
 fi
+# What the launch options set and the list above leaves out. The ones NotProton builds
+# itself (below) carry the player's part already.
+for name in $launch_env; do
+  case "$name" in
+    Steam*|CX_GRAPHICS*|D3DM_*|DXMT_*|DXVK_*|MTL_*|ROSETTA_*|SEVO_*) continue ;;
+    WINESERVER|WINEDLLPATH|WINEDLLPATH_PREPEND|WINEDLLOVERRIDES|WINEMSYNC|WINEPREFIX|WINEDEBUG) continue ;;
+    PATH|STEAM_COMPAT_*|STEAM_DYLD_INSERT_LIBRARIES|NOTPROTON_GAME_CWD) continue ;;
+  esac
+  eval "value=\${$name-}"
+  set -- --env "$name=$value" "$@"
+done
 set -- \
   --env SEVO_CLI="$sevo_cli" \
   --env WINESERVER="$WINESERVER" \

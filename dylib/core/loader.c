@@ -181,6 +181,10 @@ static void *install_thread(void *unused) {
     // Registers compatibility tool.
     np_compat_ensure_tool_manifest();
 
+    // Launch options through a shell (hook_launch.c). Its one signature-backed hook, the
+    // backslash fix, needs the database that just fitted, so it comes after the check.
+    np_hooks_launch_install(mh, slide);
+
     int total = 0;
     int installed = np_hooks_install_all(mh, slide, &resolved, &total);
 

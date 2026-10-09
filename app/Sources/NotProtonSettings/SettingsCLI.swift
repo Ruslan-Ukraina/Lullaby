@@ -65,6 +65,7 @@ public struct SettingsCLI {
     func dispatch(_ arguments: [String]) throws -> Result {
         guard let command = arguments.first else { throw SettingsError.usage(Self.usage) }
         var rest = Array(arguments.dropFirst())
+        if command != "catalog" { try service.upgradeIfNeeded() }
         switch command {
         case "catalog":
             return .ok(service.catalogJSON().text)
@@ -129,6 +130,7 @@ public struct SettingsCLI {
                 }
                 return n
             }
+            if op != "catalog" { try service.upgradeIfNeeded() }
             switch op {
             case "catalog":
                 return .object(["ok": .bool(true), "catalog": service.catalogJSON()])
@@ -152,7 +154,9 @@ public struct SettingsCLI {
     // MARK: - Dormison's View menu
 
     /// `app config <appid> <key> <value>`, as winemac.drv's `sevoStoreSetting:` runs it:
-    /// upscaler and filter by name, fps and fps-graph on/off, windows by level name.
+    /// upscaler and filter by name, windows by level name. fps and fps-graph switch
+    /// Dormison's own counter, which is no NotProton setting since Amendment 09.10 (the
+    /// panel's counter is the Metal HUD): the switch lasts the session and is not kept.
     func sevoAppConfig(_ arguments: [String]) throws -> Result {
         guard arguments.count == 4, arguments[0] == "config" else {
             throw SettingsError.usage("app config APPID KEY VALUE")
@@ -172,8 +176,9 @@ public struct SettingsCLI {
             guard UpscalerChoice(rawValue: value) != nil else { throw SettingsError.invalidValue("upscaler", value) }
             try service.set("upscaler", .string(value), appID: app)
         case "filter": try service.set("filter", .string(value), appID: app)
-        case "fps": try service.set("fps", onOff(value), appID: app)
-        case "fps-graph": try service.set("fpsGraph", onOff(value), appID: app)
+        case "fps", "fps-graph":
+            _ = try onOff(value)
+            service.log("app \(app): View menu \(arguments[2])=\(value) not kept (Dormison's counter)")
         case "windows": try service.set("windows", .string(WindowTreatment(option: value).rawValue), appID: app)
         default: throw SettingsError.unknownSetting(arguments[2])
         }

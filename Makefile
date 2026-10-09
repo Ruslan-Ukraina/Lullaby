@@ -37,6 +37,7 @@ SRCS := \
 	dylib/hooks/hook_webui.c \
 	dylib/hooks/hook_webpatch.c \
 	dylib/hooks/hook_spawn.c \
+	dylib/hooks/hook_launch.c \
 	dylib/feats/compat.c \
 	dylib/feats/webui.c \
 	dylib/feats/compatsvc.c \
@@ -64,7 +65,7 @@ OBJS := $(patsubst %.c,$(OUT_DIR)/%.o,$(SRCS)) $(patsubst %.m,$(OUT_DIR)/%.o,$(O
 DEPS := $(OBJS:.o=.d)
 
 .PHONY: all clean rebuild dobby deploy dylib-install sigcheck app-payload app app-zip app-config \
-        anchorcheck callscheck sigdb-fixtures webpatch-fixtures peicon-fixtures panel-behavior app-tests \
+        anchorcheck callscheck sigdb-fixtures webpatch-fixtures peicon-fixtures panel-behavior app-tests launch-shell \
         tests-list overlay-shim overlay-shim-install overlay-shim-tests \
         overlay-shim-bench iconmaker icon \
         appinfo helpers-install ntdll-resolve bridge runcheck compatcheck \
@@ -300,6 +301,16 @@ webpatch-syntax: $(PANEL_JS_H)
 	done; \
 	rm -rf "$${tmp:?}"; \
 	echo "==> webpatch-syntax: $$n patched Steam chunk(s) parse"
+
+LAUNCH_SHELL := $(OUT_DIR)/launch-shell
+
+# Launch options through a shell, as on Linux (dylib/hooks/hook_launch.c, upstream 1.1.0).
+launch-shell:
+	@if [ ! -f dylib/tests/launch-shell.c ]; then $(call SKIP,launch-shell,dylib/tests/launch-shell.c); exit 0; fi; \
+	mkdir -p $(OUT_DIR) && \
+	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -g -O1 \
+	  -Wall -Wextra -Wno-unused-parameter -Idylib -o $(LAUNCH_SHELL) dylib/tests/launch-shell.c && \
+	$(LAUNCH_SHELL)
 
 SPAWN_ENV := $(OUT_DIR)/spawn-env
 

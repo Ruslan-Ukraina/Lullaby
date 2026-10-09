@@ -1,8 +1,8 @@
 // The catalog panel (feats/panel.js) as the gates splice it in, drawn from the catalog
 // and states notproton-settings printed (fixtures/, kept current by SettingsCLITests):
-// it shows the catalog's words in Steam's language and none of its own, the five quick
-// rows, inheritance and Reset, the Advanced dialog, the level for all games, and it moves
-// renderer launch options into the catalog.
+// it shows the catalog's words in Steam's language and none of its own, the four quick
+// rows, a line only under a value that differs from what it inherits, Reset, the Advanced
+// dialog by group, the level for all games; it leaves Steam's launch options alone.
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -22,7 +22,7 @@ const clone = x => JSON.parse(JSON.stringify(x));
 // React and Steam's controls, stubbed: elements are plain objects, hooks keep their first value.
 const mk = (type, props, key) => ({ type, props, key });
 const J = { jsx: mk, jsxs: mk, Fragment: 'Fragment' };
-const B = { y4: 'ToggleField', Vb: 'DropdownField', FO: 'TextField', $n: 'Button', m: 'Dropdown', D0: 'Field' };
+const B = { y4: 'ToggleField', Vb: 'DropdownField', FO: 'TextField', $n: 'Button' };
 const R = {
   useState: init => [init, () => {}],
   useEffect: () => {}, useCallback: f => f, useRef: v => ({ current: v }), useMemo: f => f(),
@@ -105,12 +105,13 @@ for (const lang of ['en', 'uk', 'ru']) {
   const tree = api.view(ctx);
   const quick = catalog.settings.filter(s => s.quick !== undefined).sort((a, b) => a.quick - b.quick);
   const titles = rowsOf(tree).map(n => text(n.props.label));
-  t.ok(quick.length === 5 && quick.every((s, i) => titles[i] && titles[i].startsWith(s.title[lang])),
-    `${lang}: the five quick rows in the catalog's order (${titles.join(' | ')})`);
+  t.ok(quick.length === 4 && quick.every((s, i) => titles[i] && titles[i].startsWith(s.title[lang])),
+    `${lang}: the four quick rows in the catalog's order (${titles.join(' | ')})`);
   t.ok(text(tree).includes(catalog.text.section[lang]), `${lang}: the header is the catalog's`);
   t.ok(text(tree).includes(catalog.text.advanced[lang]), `${lang}: Advanced settings button`);
-  const extra = foreign(tree, lang, ['Dormison', 'peak.exe', 'PEAK', 'NotProton']);
+  const extra = foreign(tree, lang, ['peak.exe', 'PEAK', 'NotProton']);
   t.ok(extra.length === 0, `${lang}: every word comes from the catalog (${JSON.stringify(extra)})`);
+  t.ok(!text(tree).includes('Dormison'), `${lang}: no engine name by the header`);
 }
 
 // ---- inheritance, Reset and changes -----------------------------------------------------
@@ -120,15 +121,19 @@ for (const lang of ['en', 'uk', 'ru']) {
   const tree = api.view(ctx);
   const renderer = rowFor(tree, 'renderer', 'ru');
   t.ok(text(renderer.props.description).includes(catalog.text.defaultValue.ru.replace('%@', 'DXMT')),
-    'a game-only row names NotProton\'s default');
+    'a game-only row of its own names NotProton\'s default');
   const up = rowFor(tree, 'upscaler', 'ru');
-  t.ok(text(up.props.description).includes(catalog.text.inherited.ru.replace('%@', catalog.settings.find(x => x.id === 'upscaler').control.choices[0].label.ru)),
-    'a row with a level for all games says what it inherits');
+  t.ok(!walk(up.props.description).some(n => n.props && n.props.className === 'NPInherit'),
+    'an inherited row has no line under it');
   const retina = rowFor(tree, 'retina', 'ru');
-  t.ok(retina.props.checked === true && text(retina.props.description).includes(catalog.text.inherited.ru.replace('%@', '\u0412\u043a\u043b.')),
-    'a toggle shows the value for all games it inherits');
+  t.ok(retina.props.checked === true && !text(retina.props.description).includes(catalog.text.inherited.ru.split('%@')[0]),
+    'a toggle shows the value for all games it inherits, without a line');
   const fps = rowFor(tree, 'fps', 'ru');
-  t.ok(text(fps.props.description).includes(catalog.text.own.ru), 'an own value says so');
+  t.ok(text(fps.props.description).includes(catalog.text.inherited.ru.replace('%@', '\u0412\u044b\u043a\u043b.')),
+    'a game\'s own value names the one for all games');
+  t.ok(!('own' in catalog.text) && !('ownGlobal' in catalog.text), 'no "Custom" label left in the catalog');
+  t.ok(rowsOf(tree).filter(n => n.type === 'DropdownField').every(n => n.props.childrenContainerWidth === 'min'),
+    'lists are as wide as their choices');
   t.ok(!walk(tree).some(n => n.props && n.props.className === 'NPLink'), 'no Reset in the rows');
   fps.props.onChange(false);
   const upscaler = rowFor(tree, 'upscaler', 'ru');
@@ -144,33 +149,6 @@ for (const lang of ['en', 'uk', 'ru']) {
 
   const info = walk(renderer.props.label).find(n => n.props && /NPInfo/.test(n.props.className || ''));
   t.ok(info && info.props.role === 'button', 'every row has an (i)');
-}
-
-// ---- the frame-rate limit's own value --------------------------------------------------
-
-{
-  const ctx = ctxFor(clone(gameState), 'en');
-  const tree = api.view(ctx);
-  const limit = rowFor(tree, 'fpsLimit', 'en');
-  t.ok(limit.props.selectedOption === JSON.stringify('__custom'), 'a limit outside the presets shows as Custom');
-  const field = walk(tree).find(n => n.type === 'TextField');
-  t.ok(field && field.props.value === '45', 'and its number is editable');
-  let typed = '45';
-  const make = value => {
-    const st = R.useState;
-    R.useState = init => (typeof init === 'string' ? [value, v => { typed = v; }] : [init, () => {}]);
-    const editor = walk(api.view(ctx)).find(n => n.type === 'TextField');
-    R.useState = st;
-    return editor;
-  };
-  make('60').props.onBlur();
-  make('5').props.onBlur();
-  make('x').props.onBlur();
-  t.ok(JSON.stringify(ctx.calls) === JSON.stringify([['set', 'fpsLimit', 60]]),
-    `a typed limit in range is set, others are not (${JSON.stringify(ctx.calls)})`);
-  limit.props.onChange({ data: JSON.stringify(30) });
-  t.ok(JSON.stringify(ctx.calls.pop()) === JSON.stringify(['set', 'fpsLimit', 30]), 'a preset is set as a number');
-  t.ok(typed === '45', 'typing goes through the field');
 }
 
 // ---- the Advanced dialog -------------------------------------------------------------------
@@ -198,10 +176,9 @@ for (const lang of ['en', 'uk', 'ru']) {
   overlay.props.onKeyDown({ key: 'Escape', stopPropagation() {}, preventDefault() {} });
   t.ok(JSON.stringify(ctx.calls) === JSON.stringify([['reset'], ['advanced', false], ['advanced', false]]),
     `Reset game settings, Done and Escape (${JSON.stringify(ctx.calls)})`);
-  const dll = walk(overlay).filter(n => n.type === 'Button' && text(n) === catalog.text.remove.uk);
-  dll[0].props.onClick();
-  t.ok(JSON.stringify(ctx.calls.pop()) === JSON.stringify(['set', 'dllOverrides', null]), 'removing the last DLL override inherits');
-  t.ok(foreign(tree, 'uk', ['Dormison', 'peak.exe', 'PEAK', 'NotProton', 'd3dcompiler_47']).length === 0,
+  t.ok(groups.includes(catalog.groups.find(g => g.id === 'oldGames').title.uk), 'old games have a group of their own');
+  t.ok(!walk(overlay).some(n => n.type === 'textarea' || n.type === 'input'), 'no variable or DLL editors');
+  t.ok(foreign(tree, 'uk', ['peak.exe', 'PEAK', 'NotProton']).length === 0,
     'the dialog speaks only the catalog\'s words');
 }
 
@@ -212,12 +189,13 @@ for (const lang of ['en', 'uk', 'ru']) {
   const tree = api.view(ctx);
   const titles = rowsOf(tree).map(n => text(n.props.label));
   t.ok(!titles.some(l => l.startsWith(titleOf('renderer', 'ru'))), 'no renderer for all games');
-  t.ok(titles.length === 4, `four quick rows for all games (${titles.join(' | ')})`);
+  t.ok(titles.length === 3, `three quick rows for all games (${titles.join(' | ')})`);
   t.ok(text(tree).includes(catalog.text.globalSection.ru), 'its own header');
   const retina = rowFor(tree, 'retina', 'ru');
-  t.ok(text(retina.props.description).includes(catalog.text.ownGlobal.ru), 'a changed value for all games says so');
+  t.ok(text(retina.props.description).includes(catalog.text.defaultValue.ru.replace('%@', '\u0412\u044b\u043a\u043b.')),
+    'a changed value for all games names NotProton\'s default');
   const fps = rowFor(tree, 'fps', 'ru');
-  t.ok(text(fps.props.description).includes(catalog.text.defaultValue.ru.replace('%@', '\u0412\u044b\u043a\u043b.')), 'and an unchanged one names the default');
+  t.ok(!walk(fps.props.description).some(n => n.props && n.props.className === 'NPInherit'), 'an unchanged one has no line');
   const dialog = walk(api.view(ctxFor(clone(globalState), 'ru', { advanced: true })))
     .find(n => n.props && n.props.className === 'NPOverlay');
   t.ok(!rowsOf(dialog).some(n => text(n.props.label).startsWith(titleOf('msync', 'ru'))), 'msync+ is a game\'s alone');
@@ -255,18 +233,7 @@ for (const lang of ['en', 'uk', 'ru']) {
 // ---- launch options and requests -----------------------------------------------------------
 
 {
-  const cases = [
-    ['', null],
-    ['-dx11 NOTPROTON_RENDERER=dxmt', { renderer: 'dxmt', options: '-dx11' }],
-    ['WINEMSYNC=1 CX_GRAPHICS_BACKEND=dxvk %command%', { renderer: 'dxvk', options: '%command%' }],
-    ['CX_GRAPHICS_BACKEND=d3dmetal %command% -x', { renderer: null, options: '%command% -x' }],
-    ['WINEMSYNC=0 %command%', null],
-    ['NOTPROTON_WATCHDOG=60 %command%', null],
-  ];
-  for (const [options, want] of cases) {
-    const got = api.legacyOptions(options);
-    t.ok(JSON.stringify(got) === JSON.stringify(want), `launch options ${JSON.stringify(options)} -> ${JSON.stringify(got)}`);
-  }
+  t.ok(!/SetAppLaunchOptions|strLaunchOptions/.test(source), "Steam's launch options stay the player's: the panel neither reads nor writes them");
   const p = api.requestPath({ op: 'set', app: 3527290, id: 'fps', value: true });
   const m = /^\/notproton-settings\/__NP_SETTINGS_TOKEN__\/[0-9a-z]{1,32}\/([A-Za-z0-9_-]+)\.json$/.exec(p);
   const body = m && Buffer.from(m[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');

@@ -16,17 +16,23 @@ struct SettingCatalogTests {
         #expect(ids.count == SettingID.allCases.count)
         for setting in SettingCatalog.all {
             #expect(!setting.levels.isEmpty, "\(setting.id)")
-            if setting.id != .environment {
-                #expect(!setting.carrier.envKeys.isEmpty, "\(setting.id) reaches no key")
-            }
+            #expect(!setting.carrier.envKeys.isEmpty, "\(setting.id) reaches no key")
         }
     }
 
-    @Test("the five quick settings, in order")
+    @Test("the four quick settings, in order; the Advanced groups, old games apart")
     func quickSettings() {
-        #expect(SettingCatalog.quick.map(\.id) == [.renderer, .retina, .upscaler, .fps, .fpsLimit])
+        #expect(SettingCatalog.quick.map(\.id) == [.renderer, .retina, .upscaler, .fps])
         #expect(SettingCatalog.setting(.renderer).levels == [.game])
         #expect(SettingCatalog.setting(.msync).levels == [.game])
+        func advanced(_ group: SettingGroup) -> [SettingID] {
+            SettingCatalog.settings(in: group, at: .game).filter { $0.quick == nil }.map(\.id)
+        }
+        #expect(advanced(.picture) == [.windows, .filter, .dlss])
+        #expect(advanced(.mouse) == [.mouse])
+        #expect(advanced(.performance) == [.tuning, .unifiedMemory, .avx])
+        #expect(advanced(.oldGames) == [.emulateModeset, .largeAddressAware])
+        #expect(advanced(.diagnostics) == [.msync])
     }
 
     /// A value other than the default for each setting, and a key it must reach.
@@ -34,24 +40,16 @@ struct SettingCatalogTests {
         (.renderer, .string("dxvk"), "NOTPROTON_RENDERER=dxvk"),
         (.retina, .bool(true), "NOTPROTON_RETINA=1"),
         (.upscaler, .string("metalfx"), "SEVO_UPSCALER=metalfx"),
-        (.fps, .bool(true), "SEVO_FPS=1"),
-        (.fpsLimit, .number(60), "DXVK_FRAME_RATE=60"),
+        (.fps, .bool(true), "MTL_HUD_ENABLED=1"),
         (.windows, .string("all"), "SEVO_RESIZABLE_WINDOWS=all"),
         (.filter, .string("nearest"), "SEVO_FINAL_FILTER=nearest"),
-        (.emulateModeset, .bool(true), "NOTPROTON_EMULATE_MODESET=1"),
-        (.fpsGraph, .bool(true), "SEVO_FPS_GRAPH=1"),
-        (.hud, .bool(true), "MTL_HUD_ENABLED=1"),
         (.dlss, .bool(true), "DXMT_ENABLE_NVEXT=1"),
         (.mouse, .string("linear"), "SEVO_LINEAR_MOUSE=1"),
-        (.cursorConfine, .bool(true), "SEVO_CURSOR_CONFINE=1"),
         (.tuning, .string("experimental"), "SEVO_WAIT_SPIN=5200"),
-        (.processors, .number(4), "SEVO_CPU_COUNT=4"),
         (.unifiedMemory, .bool(true), "SEVO_FORCE_UMA=1"),
-        (.largeAddressAware, .bool(true), "SEVO_LARGE_ADDRESS_AWARE=1"),
         (.avx, .bool(true), "ROSETTA_ADVERTISE_AVX=1"),
-        (.gpu, .string("intel-arc-a750"), "SEVO_GPU_DEVICE_ID=0x56a1"),
-        (.dllOverrides, .object(["d3dcompiler_47": .string("n,b")]), "NOTPROTON_DLL_OVERRIDES=d3dcompiler_47=n,b"),
-        (.environment, .array([.string("DXVK_HUD=1")]), "DXVK_HUD=1"),
+        (.emulateModeset, .bool(true), "NOTPROTON_EMULATE_MODESET=1"),
+        (.largeAddressAware, .bool(true), "SEVO_LARGE_ADDRESS_AWARE=1"),
     ]
 
     @Test("every game setting reaches its key, and inherit writes none")
@@ -85,90 +83,63 @@ struct SettingCatalogTests {
     func explicitSwitches() throws {
         var global = ConfigValues()
         global.fps = true
-        global.processors = 6
         var game = ConfigValues()
         game.fps = true
-        game.hud = false
-        game.processors = 0
+        game.largeAddressAware = false
         let lines = ConfigMaterializer.gameLines(appID: 1, stack: ConfigStack(global: global, game: game))
-        #expect(lines.contains("SEVO_FPS=1"))
-        #expect(lines.contains("MTL_HUD_ENABLED=0"))
-        #expect(lines.contains("SEVO_CPU_COUNT=0"), "every processor is an explicit 0")
-        #expect(!lines.contains { $0.hasPrefix("SEVO_FPS_GRAPH=") }, "an inherited switch is not written")
+        #expect(lines.contains("MTL_HUD_ENABLED=1"))
+        #expect(lines.contains("SEVO_LARGE_ADDRESS_AWARE=0"))
+        #expect(!lines.contains { $0.hasPrefix("ROSETTA_ADVERTISE_AVX=") }, "an inherited switch is not written")
 
         let bottle = ConfigMaterializer.bottleLines(global: global, msync: true, cli: "/x/sevo")
-        #expect(bottle.contains("SEVO_FPS=1"))
-        #expect(bottle.contains("SEVO_CPU_COUNT=6"))
+        #expect(bottle.contains("MTL_HUD_ENABLED=1"))
+        #expect(bottle.contains("SEVO_FPS=0"), "Dormison's own counter stays off")
+        #expect(bottle.contains("SEVO_FPS_GRAPH=0"))
         #expect(bottle.contains("SEVO_CLI=/x/sevo"))
         #expect(bottle.contains("NOTPROTON_MSYNC=1"))
         let env = ConfigMaterializer.effectiveEnvironment(bottle: bottle, program: lines)
-        #expect(env["SEVO_CPU_COUNT"] == "0")
-        #expect(env["MTL_HUD_ENABLED"] == "0")
+        #expect(env["SEVO_LARGE_ADDRESS_AWARE"] == "0")
+        #expect(env["MTL_HUD_ENABLED"] == "1")
     }
 
-    @Test("the engine ends up with what the levels resolve to")
-    func effectiveEnvironmentFollowsTheLevels() throws {
+    @Test("the card follows DLSS: AMD by default, NVIDIA with DLSS, in every layer")
+    func graphicsCardFollowsDLSS() throws {
         var global = ConfigValues()
-        try SettingCatalog.setting(.fps).write(&global, .bool(true))
-        try SettingCatalog.setting(.gpu).write(&global, .string("nvidia"))
-        try SettingCatalog.setting(.fpsLimit).write(&global, .number(30))
-        try SettingCatalog.setting(.mouse).write(&global, .string("linear"))
+        try SettingCatalog.setting(.dlss).write(&global, .bool(true))
         var game = ConfigValues()
-        try SettingCatalog.setting(.fps).write(&game, .bool(false))
-        try SettingCatalog.setting(.gpu).write(&game, .string("as-is"))
-        try SettingCatalog.setting(.mouse).write(&game, .string("system"))
-
-        let stack = ConfigStack(global: global, game: game)
-        let env = ConfigMaterializer.effectiveEnvironment(
+        let shared = ConfigMaterializer.effectiveEnvironment(
             bottle: ConfigMaterializer.bottleLines(global: global, msync: true, cli: nil),
-            program: ConfigMaterializer.gameLines(appID: 7, stack: stack))
-        #expect(env["SEVO_FPS"] == "0")
-        #expect(env["SEVO_LINEAR_MOUSE"] == "0")
-        #expect(env["SEVO_GPU_VENDOR_ID"] == nil, "as is over a shared preset removes the variable")
-        #expect(env["DXMT_CONFIG"] == "d3d11.preferredMaxFrameRate=30;", "the shared limit stays in DXMT's value")
-        #expect(env["DXVK_FRAME_RATE"] == "30")
+            program: ConfigMaterializer.gameLines(appID: 7, stack: ConfigStack(global: global, game: game)))
+        #expect(shared["SEVO_GPU_VENDOR_ID"] == "0x10DE")
+        #expect(shared["SEVO_GPU_DEVICE_ID"] == "0x2D04")
+        #expect(shared["SEVO_GPU_NAME"] == "NVIDIA GeForce RTX 5060 Ti")
+        #expect(shared["SEVO_GPU_DRIVER_VERSION"] == "32.0.16.1088")
+        #expect(shared["D3DM_DEVICE_ID"] == "0x2D04")
+        #expect(shared["DXMT_ENABLE_NVEXT"] == "1")
+        #expect(shared["DXMT_CONFIG"]?.contains("dxgi.customDeviceId = 2d04") == true)
 
-        // The game's own limit replaces the shared one in DXMT's composite value.
-        try SettingCatalog.setting(.fpsLimit).write(&game, .number(0))
+        // The game turns DLSS off: its own file names the AMD card over the shared NVIDIA.
+        try SettingCatalog.setting(.dlss).write(&game, .bool(false))
         let own = ConfigMaterializer.effectiveEnvironment(
             bottle: ConfigMaterializer.bottleLines(global: global, msync: true, cli: nil),
             program: ConfigMaterializer.gameLines(appID: 7, stack: ConfigStack(global: global, game: game)))
-        #expect(own["DXVK_FRAME_RATE"] == nil)
-        #expect(own["DXMT_CONFIG"] == nil)
-    }
-
-    @Test("DXMT's options join into one value")
-    func dxmtConfig() throws {
-        var game = ConfigValues()
-        try SettingCatalog.setting(.fpsLimit).write(&game, .number(60))
-        try SettingCatalog.setting(.gpu).write(&game, .object([
-            "preset": .string("custom"), "vendorID": .string("10DE"), "deviceID": .string("0x2c02"),
-            "name": .string("My Card"),
-        ]))
-        let stack = ConfigStack(global: .empty, game: game)
-        #expect(ConfigMaterializer.dxmtConfig(stack)
-            == "d3d11.preferredMaxFrameRate=60;dxgi.customVendorId=10de;dxgi.customDeviceId=2c02;")
-        let lines = ConfigMaterializer.gameLines(appID: 1, stack: stack)
-        #expect(lines.contains("SEVO_GPU_NAME=My Card"))
-        #expect(lines.contains("SEVO_GPU_MEMORY_MB="))
+        #expect(own["SEVO_GPU_VENDOR_ID"] == "0x1002")
+        #expect(own["SEVO_GPU_DEVICE_ID"] == "0x7590")
+        #expect(own["SEVO_GPU_NAME"] == "AMD Radeon RX 9060 XT")
+        #expect(own["SEVO_GPU_DRIVER_PROVIDER"] == "Advanced Micro Devices, Inc.")
+        #expect(own["D3DM_DEVICE_DESCRIPTION"] == "AMD Radeon RX 9060 XT")
+        #expect(own["DXMT_ENABLE_NVEXT"] == nil)
+        #expect(own["DXVK_CONFIG_FILE"] == #"C:\windows\dxvk.conf"#)
+        #expect(ConfigMaterializer.dxgiConfig(.amd)
+            == #"dxgi.customVendorId = 1002; dxgi.customDeviceId = 7590; dxgi.customDeviceDesc = "AMD Radeon RX 9060 XT"; dxgi.maxDeviceMemory = 16384"#)
     }
 
     @Test("values outside a setting are refused")
     func invalidValues() {
         var values = ConfigValues()
         let bad: [(SettingID, JSONValue)] = [
-            (.fps, .string("yes")), (.renderer, .string("d3dmetal")), (.fpsLimit, .number(5)),
-            (.fpsLimit, .number(5000)), (.processors, .number(-1)), (.windows, .number(1)),
+            (.fps, .string("yes")), (.renderer, .string("d3dmetal")), (.windows, .number(1)),
             (.tuning, .object(["preset": .string("custom"), "waitSpin": .number(2_000_000)])),
-            (.gpu, .object(["preset": .string("custom"), "vendorID": .string("zz")])),
-            (.dllOverrides, .object(["steamclient64": .string("n")])),
-            (.dllOverrides, .object(["d3dx9_43": .string("x")])),
-            (.dllOverrides, .object(["../evil": .string("n")])),
-            (.environment, .array([.string("WINEDLLOVERRIDES=x=n")])),
-            (.environment, .array([.string("DYLD_INSERT_LIBRARIES=/tmp/x")])),
-            (.environment, .array([.string("SEVO_FPS=1")])),
-            (.environment, .array([.string("1BAD=x")])),
-            (.environment, .array([.string("NOEQUALS")])),
         ]
         for (id, value) in bad {
             #expect(throws: SettingsError.self, "\(id) \(value.text)") {
@@ -178,13 +149,22 @@ struct SettingCatalogTests {
         #expect(values == .empty)
     }
 
-    @Test("environment lines from Steam launch options")
-    func environmentFromLaunchOptions() throws {
-        #expect(try SettingCatalog.environmentLines(from: ["DXVK_HUD=1 FOO=\"a\" %command% -novid VAR=2"])
-            == ["DXVK_HUD=1", "FOO=a"])
-        #expect(try SettingCatalog.environmentLines(from: ["A=1\nB=\n# note\nA=3"]) == ["B=", "A=3"])
+    @Test("a value equal to what the level inherits is no value of its own")
+    func withoutInherited() throws {
+        var global = ConfigValues()
+        global.retina = true
+        var game = ConfigValues()
+        game.retina = true
+        game.renderer = .dxmt
+        game.avx = true
+        game.exes = ["a.exe"]
+        let kept = SettingCatalog.withoutInherited(game, level: .game, global: global)
+        #expect(kept.retina == nil, "the shared value")
+        #expect(kept.renderer == nil, "NotProton's default renderer")
+        #expect(kept.avx == true)
+        #expect(kept.exes == ["a.exe"])
+        #expect(SettingCatalog.withoutInherited(global, level: .global, global: .empty).retina == true)
     }
-
     @Test("tuning keeps its custom parameters per level")
     func tuning() throws {
         var game = ConfigValues()
@@ -201,7 +181,7 @@ struct SettingCatalogTests {
 
     @Test("a store written with settings since removed still reads")
     func removedSettingsDecode() throws {
-        let old = #"{"commandIsControl":true,"optionIsAlt":false,"fps":true,"exes":["a.exe"]}"#
+        let old = #"{"commandIsControl":true,"optionIsAlt":false,"fps":true,"fpsLimit":60,"exes":["a.exe"]}"#
         let values = try JSONDecoder().decode(ConfigValues.self, from: Data(old.utf8))
         #expect(values.fps == true)
         #expect(values.exes == ["a.exe"])
@@ -215,11 +195,12 @@ struct SettingCatalogTests {
         let env = ConfigMaterializer.effectiveEnvironment(bottle: bottle, program: [])
         // "1" and "fixed" are one value to winemac.drv (resizable_windows_from_option).
         #expect(WindowTreatment(option: "1") == WindowTreatment(option: env["SEVO_RESIZABLE_WINDOWS"]!))
-        for (key, value) in ConfigMigration.oldProfile where key != "SEVO_RESIZABLE_WINDOWS" {
+        // The pointer confinement left the catalog; the engine's default is off.
+        for (key, value) in ConfigMigration.oldProfile where key != "SEVO_RESIZABLE_WINDOWS" && key != "SEVO_CURSOR_CONFINE" {
             #expect(env[key] == value, "\(key)")
         }
         #expect(env["SEVO_CPU_COUNT"] == nil)
-        #expect(env["DXMT_CONFIG"] == nil)
-        #expect(env["SEVO_GPU_VENDOR_ID"] == nil)
+        #expect(env["SEVO_GPU_VENDOR_ID"] == "0x1002", "games see the AMD card by default")
+        #expect(env["MTL_HUD_ENABLED"] == "0")
     }
 }

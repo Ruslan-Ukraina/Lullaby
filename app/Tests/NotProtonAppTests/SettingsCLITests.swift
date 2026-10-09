@@ -24,7 +24,7 @@ struct SettingsCLITests {
         #expect(catalog["ok"] == .bool(true))
         let settings = try #require(catalog["catalog"]?.object?["settings"]?.array)
         #expect(settings.count == SettingID.allCases.count)
-        #expect(settings.compactMap { $0.object?["quick"]?.number }.sorted() == [1, 2, 3, 4, 5])
+        #expect(settings.compactMap { $0.object?["quick"]?.number }.sorted() == [1, 2, 3, 4])
 
         // A game whose files are not installed yet has nothing to record.
         var answer = try object(cli.panel(#"{"op":"state","app":3527291}"#).text)
@@ -42,18 +42,18 @@ struct SettingsCLITests {
         #expect(state["engine"] == .string("dormison-b1"))
         #expect(state["values"]?.object?["renderer"]?.object?["inheritedLabel"]?.object?["en"] == .string("DXMT"))
 
-        answer = try object(cli.panel(#"{"op":"set","app":3527290,"id":"fpsLimit","value":60}"#).text)
+        answer = try object(cli.panel(#"{"op":"set","app":3527290,"id":"upscaler","value":"metalfx"}"#).text)
         state = try #require(answer["state"]?.object)
         #expect(state["status"] == .string("nextLaunch"))
         #expect(state["exes"] == .array([.string("peak.exe")]))
-        let limit = try #require(state["values"]?.object?["fpsLimit"]?.object)
-        #expect(limit["own"] == .number(60))
-        #expect(limit["inherited"] == .number(0))
-        #expect(limit["effective"] == .number(60))
-        #expect(fixture.read(".sevo/apps/peak.exe.env", in: 3527290)?.contains("DXVK_FRAME_RATE=60") == true)
+        let upscaler = try #require(state["values"]?.object?["upscaler"]?.object)
+        #expect(upscaler["own"] == .string("metalfx"))
+        #expect(upscaler["inherited"] == .string("off"))
+        #expect(upscaler["effective"] == .string("metalfx"))
+        #expect(fixture.read(".sevo/apps/peak.exe.env", in: 3527290)?.contains("SEVO_UPSCALER=metalfx") == true)
 
-        answer = try object(cli.panel(#"{"op":"set","app":3527290,"id":"fpsLimit","value":null}"#).text)
-        #expect(answer["state"]?.object?["values"]?.object?["fpsLimit"]?.object?["own"] == .null)
+        answer = try object(cli.panel(#"{"op":"set","app":3527290,"id":"upscaler","value":null}"#).text)
+        #expect(answer["state"]?.object?["values"]?.object?["upscaler"]?.object?["own"] == .null)
 
         answer = try object(cli.panel(#"{"op":"set","app":3527290,"id":"fps","value":"loud"}"#).text)
         #expect(answer["ok"] == .bool(false))
@@ -102,7 +102,7 @@ struct SettingsCLITests {
         #expect(cli.run(["bogus"]).status == 2)
     }
 
-    @Test("Dormison's View menu choices are stored for the game")
+    @Test("Dormison's View menu choices are stored for the game; its counter is not")
     func viewMenu() throws {
         let fixture = try SettingsFixture()
         defer { fixture.cleanUp() }
@@ -120,8 +120,7 @@ struct SettingsCLITests {
         let game = fixture.service.store.game(227300)
         #expect(game.upscaler == .metalfx)
         #expect(game.filter == .bilinear)
-        #expect(game.fps == true)
-        #expect(game.fpsGraph == false)
+        #expect(game.fps == nil, "the panel's counter is the Metal HUD, not Dormison's")
         #expect(game.windows == .window)
 
         #expect(cli.run(["app", "config", "227300", "upscaler", "anime4k"]).status == 1, "no shader packages")
@@ -136,7 +135,7 @@ struct SettingsCLITests {
         defer { fixture.cleanUp() }
         try fixture.install(1422450, name: "Deadlock", dir: "Deadlock",
                             exes: ["game/bin/win64/deadlock.exe", "game/bin/win64/vconsole2.exe"])
-        try fixture.service.store.updateGame(1422450) { $0.cursorConfine = true }
+        try fixture.service.store.updateGame(1422450) { $0.avx = true }
         let pfx = fixture.prefix(1422450)
         let result = SettingsCLI(service: fixture.service).run([
             "launch", "--app", "1422450", "--exe",
@@ -145,8 +144,8 @@ struct SettingsCLITests {
             "--prefix", pfx.path,
         ])
         #expect(result.status == 0, "\(result.error)")
-        #expect(fixture.read(".sevo/apps/deadlock.exe.env", in: 1422450)?.contains("SEVO_CURSOR_CONFINE=1") == true)
-        #expect(fixture.read(".sevo/apps/vconsole2.exe.env", in: 1422450)?.contains("SEVO_CURSOR_CONFINE=1") == true)
+        #expect(fixture.read(".sevo/apps/deadlock.exe.env", in: 1422450)?.contains("ROSETTA_ADVERTISE_AVX=1") == true)
+        #expect(fixture.read(".sevo/apps/vconsole2.exe.env", in: 1422450)?.contains("ROSETTA_ADVERTISE_AVX=1") == true)
         #expect(fixture.read(".sevo/bottle.env", in: 1422450)?.hasPrefix(ConfigMaterializer.header) == true)
 
         // A helper Steam runs in the prefix is not the game.
@@ -201,9 +200,9 @@ struct LocalizationTests {
             texts += setting.copy.texts.map { ("\(setting.id)", $0) }
             let choices: [SettingChoice]
             switch setting.control {
-            case let .choice(list), let .limit(list, _), let .tuning(list), let .gpu(list), let .dllOverrides(list):
+            case let .choice(list), let .tuning(list):
                 choices = list
-            case .toggle, .environment:
+            case .toggle:
                 choices = []
             }
             texts += choices.map { ("\(setting.id) choice \($0.value.text)", $0.label) }

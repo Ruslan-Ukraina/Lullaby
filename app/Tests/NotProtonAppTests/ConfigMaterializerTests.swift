@@ -82,8 +82,8 @@ struct ConfigMaterializerTests {
         let deadlock = try #require(fixture.read(".sevo/apps/deadlock.exe.env", in: 1422450))
         let vconsole = try #require(fixture.read(".sevo/apps/vconsole2.exe.env", in: 1422450))
         #expect(deadlock.hasPrefix(ConfigMaterializer.header))
-        #expect(deadlock.contains("SEVO_FPS=1"))
-        #expect(vconsole.contains("SEVO_FPS=1"))
+        #expect(deadlock.contains("MTL_HUD_ENABLED=1"))
+        #expect(vconsole.contains("MTL_HUD_ENABLED=1"))
         #expect(deadlock.contains("SEVO_LOADER=/b/Deadlock.app/Contents/MacOS/wine"), "the run script's line stays")
         #expect(!vconsole.contains("SEVO_LOADER"))
         #expect(fixture.read(".sevo/apps/crashreporter.exe.env", in: 1422450) == nil)
@@ -105,7 +105,7 @@ struct ConfigMaterializerTests {
         try fixture.service.set("fps", .bool(true), appID: nil)
         bottle = try #require(fixture.read(".sevo/bottle.env", in: 5))
         #expect(bottle.contains("WINEMSYNC=1"))
-        #expect(bottle.contains("SEVO_FPS=1"))
+        #expect(bottle.contains("MTL_HUD_ENABLED=1"))
     }
 
     @Test("rewrites are whole-file and idempotent; files of others are left alone")
@@ -141,6 +141,40 @@ struct ConfigMaterializerTests {
         #expect(fixture.read(".sevo/bottle.env", in: 10)?.contains("SEVO_UPSCALER=lanczos") == true)
         #expect(fixture.read(".sevo/bottle.env", in: 20)?.contains("SEVO_UPSCALER=lanczos") == true)
         #expect(fixture.read(".sevo/bottle.env", in: 30) == nil, "a prefix NotProton never ran is not touched")
+    }
+
+    @Test("DXVK's dxvk.conf names the game's card in its prefix; someone else's stays")
+    func dxvkConfig() throws {
+        let fixture = try SettingsFixture()
+        defer { fixture.cleanUp() }
+        let windows = fixture.prefix(12).appending(path: "drive_c/windows")
+        try FileManager.default.createDirectory(at: windows, withIntermediateDirectories: true)
+        try fixture.service.materialize(appID: 12)
+        #expect(fixture.read("drive_c/windows/dxvk.conf", in: 12)?.contains("dxgi.customDeviceId = 7590") == true)
+        try fixture.service.set("dlss", .bool(true), appID: 12)
+        let conf = try #require(fixture.read("drive_c/windows/dxvk.conf", in: 12))
+        #expect(conf.hasPrefix(ConfigMaterializer.header))
+        #expect(conf.contains("dxgi.customDeviceId = 2d04"))
+        #expect(conf.contains(#"dxgi.customDeviceDesc = "NVIDIA GeForce RTX 5060 Ti""#))
+
+        try fixture.write("dxgi.customVendorId = 8086\n", "drive_c/windows/dxvk.conf", in: 12)
+        try fixture.service.set("dlss", .bool(false), appID: 12)
+        #expect(fixture.read("drive_c/windows/dxvk.conf", in: 12) == "dxgi.customVendorId = 8086\n")
+    }
+
+    @Test("a value set equal to what the game inherits is stored as inherit")
+    func equalToInherited() throws {
+        let fixture = try SettingsFixture()
+        defer { fixture.cleanUp() }
+        try fixture.service.set("retina", .bool(true), appID: nil)
+        try fixture.service.set("retina", .bool(true), appID: 8)
+        try fixture.service.set("renderer", .string("dxmt"), appID: 8)
+        #expect(fixture.service.store.game(8).retina == nil)
+        #expect(fixture.service.store.game(8).renderer == nil)
+        try fixture.service.set("retina", .bool(false), appID: 8)
+        #expect(fixture.service.store.game(8).retina == false)
+        try fixture.service.set("upscaler", .string("off"), appID: nil)
+        #expect(fixture.service.store.global().upscaler == nil, "NotProton's default")
     }
 
     @Test("reset returns a game to inherit and keeps its executables")
@@ -203,21 +237,19 @@ struct ConfigMigrationTests {
         try fixture.service.prepare(appID: 1422450)
 
         let game = fixture.service.store.game(1422450)
-        #expect(game.fpsGraph == true)
         #expect(game.renderer == .dxmt)
         #expect(game.avx == true)
         #expect(game.retina == true)
         #expect(game.filter == .nearest, "a bottle.env value the player changed is the game's")
         #expect(game.fps == nil, "the old profile's own values are not the player's")
         #expect(game.msync == false)
-        #expect(game.environment == ["DXVK_HUD=fps"])
         #expect(game.exes == ["deadlock.exe"])
 
         let file = try #require(fixture.read(".sevo/apps/deadlock.exe.env", in: 1422450))
         #expect(file.hasPrefix(ConfigMaterializer.header))
         #expect(file.contains("SEVO_LOADER=/b/Deadlock.app/Contents/MacOS/wine"))
-        #expect(file.contains("SEVO_FPS_GRAPH=1"))
-        #expect(file.contains("DXVK_HUD=fps"))
+        #expect(file.contains("ROSETTA_ADVERTISE_AVX=1"))
+        #expect(!file.contains("DXVK_HUD"), "a key no setting owns stays only in the backup")
         #expect(fixture.read(".sevo/apps/steam.exe.env", in: 1422450) == "SEVO_LOADER=/b/Deadlock.app/Contents/MacOS/wine\n",
                 "the Steam shim's file is the run script's")
         #expect(fixture.read(".sevo/pre-catalog-backup/apps/deadlock.exe.env", in: 1422450)?.contains("NOTPROTON_RETINA=1") == true)
@@ -238,5 +270,75 @@ struct ConfigMigrationTests {
         #expect(game.fps == false)
         #expect(game.retina == true)
         #expect(try fixture.service.migrateAll().isEmpty, "a migrated prefix is not migrated again")
+    }
+
+    @Test("Dormison's counter or the Metal HUD in old files is the counter now")
+    func countersFold() {
+        var values = ConfigValues()
+        ConfigMigration.apply([("SEVO_FPS", "0"), ("MTL_HUD_ENABLED", "1")], to: &values)
+        #expect(values.fps == true)
+        values = ConfigValues()
+        ConfigMigration.apply([("SEVO_FPS", "0")], to: &values)
+        #expect(values.fps == false)
+    }
+}
+
+@Suite("Store before Amendment 09.10")
+struct StoreUpgradeTests {
+
+    @Test("schema 1 becomes 2 once: the counters fold, retired keys go, a copy stays")
+    func upgrade() throws {
+        let fixture = try SettingsFixture()
+        defer { fixture.cleanUp() }
+        let store = fixture.service.store
+        let games = store.root.appending(path: "games")
+        try FileManager.default.createDirectory(at: games, withIntermediateDirectories: true)
+        try #"{"retina":true,"fpsLimit":60,"gpu":"nvidia","environment":["A=1"],"hud":false}"#
+            .write(to: store.root.appending(path: "global.json"), atomically: true, encoding: .utf8)
+        try #"{"fps":false,"hud":true,"fpsGraph":true,"cursorConfine":true,"processors":4,"retina":true,"#
+            .appending(#""dllOverrides":{"x":"n"},"avx":true,"exes":["peak.exe"],"name":"PEAK"}"#)
+            .write(to: games.appending(path: "3527290.json"), atomically: true, encoding: .utf8)
+        try #"{"fps":true,"exes":["etx.exe"]}"#
+            .write(to: games.appending(path: "227300.json"), atomically: true, encoding: .utf8)
+        try fixture.write("# written by NotProton; edits are overwritten\nSEVO_CPU_COUNT=4\n", ".sevo/bottle.env", in: 3527290)
+        #expect(store.schema == 1)
+
+        let cli = SettingsCLI(service: fixture.service)
+        #expect(cli.run(["state", "--app", "3527290"]).status == 0)
+        #expect(store.schema == 2)
+        let global = store.global()
+        #expect(global.retina == true)
+        #expect(global.fps == nil, "off for all games is NotProton's default")
+        let peak = store.game(3527290)
+        #expect(peak.fps == true, "the HUD was on")
+        #expect(peak.retina == nil, "equal to the shared value")
+        #expect(peak.avx == true)
+        #expect(peak.exes == ["peak.exe"])
+        #expect(peak.name == "PEAK")
+        #expect(store.game(227300).fps == true, "Dormison's counter on is the counter on")
+        let raw = try String(contentsOf: games.appending(path: "3527290.json"), encoding: .utf8)
+        for key in ConfigMigration.retiredKeys { #expect(!raw.contains("\"\(key)\""), "\(key)") }
+
+        let backup = store.root.appending(path: ConfigMigration.storeBackupName)
+        #expect(try String(contentsOf: backup.appending(path: "games/3527290.json"), encoding: .utf8).contains("cursorConfine"))
+        #expect(try String(contentsOf: backup.appending(path: "global.json"), encoding: .utf8).contains("fpsLimit"))
+        let bottle = try #require(fixture.read(".sevo/bottle.env", in: 3527290))
+        #expect(bottle.contains("SEVO_GPU_DEVICE_ID=0x7590"), "every prefix rewritten")
+        #expect(!bottle.contains("SEVO_CPU_COUNT"))
+
+        // Once: a later change of the old shape is not upgraded again.
+        try #"{"hud":true}"#.write(to: games.appending(path: "1.json"), atomically: true, encoding: .utf8)
+        #expect(try ConfigMigration.upgradeStore(store) == false)
+        #expect(store.game(1).fps == nil)
+    }
+
+    @Test("an empty store only records its schema")
+    func emptyStore() throws {
+        let fixture = try SettingsFixture()
+        defer { fixture.cleanUp() }
+        #expect(try ConfigMigration.upgradeStore(fixture.service.store) == false)
+        #expect(fixture.service.store.schema == 2)
+        #expect(!FileManager.default.fileExists(atPath: fixture.service.store.root
+            .appending(path: ConfigMigration.storeBackupName).path(percentEncoded: false)))
     }
 }

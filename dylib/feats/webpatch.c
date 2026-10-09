@@ -189,6 +189,9 @@ static const np_gate_t g_gates_forcetool[] = {
     // Settings page Compatibility entry, keeping the SteamOS exclusion (!rf())
     { "Compatibility:{visible:t&&(0,f.CI)()&&!(0,f.rf)()",
       "Compatibility:{visible:t&&true&&!(0,f.rf)()", 1 },
+    // The forced tool's list, only when there is a choice to make: with NotProton the one
+    // tool, the box alone forces it (Steam's handler takes the first tool, a[0]), and the
+    // game's choice stays in Steam's config as before (Amendment 09.10, §13.3 a).
     { "return(0,i.jsxs)(i.Fragment,{children:[0!=a.length&&(0,i.jsx)(_r,{label:(0,A.we)"
       "(\"#AppProperties_CompatilibityForceTool\"),checked:g,onChange:C,disabled:!r||0===a.length}),"
       "g&&a.length>0&&(0,i.jsx)(c.m,{strClassName:K().TopGap,rgOptions:d,"
@@ -196,7 +199,7 @@ static const np_gate_t g_gates_forcetool[] = {
       "(t.unAppID,e.data)})]})",
       "return(0,i.jsxs)(i.Fragment,{children:[0!=a.length&&(0,i.jsx)(_r,{label:(0,A.we)"
       "(\"#AppProperties_CompatilibityForceTool\"),checked:g,onChange:C,disabled:!r||0===a.length}),"
-      "g&&a.length>0&&(0,i.jsx)(c.m,{strClassName:K().TopGap+\" MSCXNoBottomGap\",rgOptions:d,"
+      "g&&a.length>1&&(0,i.jsx)(c.m,{strClassName:K().TopGap+\" MSCXNoBottomGap\",rgOptions:d,"
       "selectedOption:t.strCompatToolName,onChange:e=>SteamClient.Apps.SpecifyCompatTool"
       "(t.unAppID,e.data)})]})", 1 },
     // Compatibility page container

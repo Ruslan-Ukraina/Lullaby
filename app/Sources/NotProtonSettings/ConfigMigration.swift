@@ -10,6 +10,9 @@
 // A prefix whose bottle.env lacks the catalog's header has not been migrated. Each
 // one is per game, so everything it holds that differs from the old profile is that
 // game's own choice. Values already in the store win: they are newer.
+//
+// The store itself changed shape with Amendment 09.10 (docs/ROADMAP.md §13): see
+// upgradeStore at the end.
 
 import Foundation
 
@@ -19,9 +22,6 @@ public enum ConfigMigration {
         "SEVO_RESIZABLE_WINDOWS": "1", "SEVO_UPSCALER": "off", "SEVO_FINAL_FILTER": "lanczos",
         "SEVO_FPS": "0", "SEVO_FPS_GRAPH": "0", "SEVO_LINEAR_MOUSE": "0", "SEVO_CURSOR_CONFINE": "0",
     ]
-
-    /// Keys the run script owned, never the player's.
-    static let scriptKeys: Set<String> = ["WINEMSYNC", "SEVO_CLI", "SEVO_LOADER"]
 
     public static func needsMigration(prefix: URL) -> Bool {
         let bottle = prefix.appending(path: ".sevo/bottle.env")
@@ -54,18 +54,18 @@ public enum ConfigMigration {
         try? manager.copyItem(at: marker, to: backup.appending(path: "notproton-msync"))
     }
 
-    /// The values a prefix's old files hold, as one game level.
+    /// The values a prefix's old files hold, as one game level. Keys no setting owns any
+    /// more stay only in the backup.
     public static func values(fromPrefix prefix: URL) -> ConfigValues {
         let sevo = prefix.appending(path: ".sevo")
         var values = ConfigValues()
-        var extra: [String] = []
 
         // The prefix's bottle.env: only what differs from the old profile was chosen.
         if let text = try? String(contentsOf: sevo.appending(path: "bottle.env"), encoding: .utf8),
             !text.hasPrefix(ConfigMaterializer.header)
         {
             let pairs = ConfigMaterializer.parse(text).filter { oldProfile[$0.key] != $0.value }
-            extra += apply(pairs, to: &values)
+            apply(pairs, to: &values)
         }
 
         // Program files, the game's own executables only.
@@ -79,7 +79,7 @@ public enum ConfigMigration {
             guard let text = try? String(contentsOf: apps.appending(path: file), encoding: .utf8),
                 !text.hasPrefix(ConfigMaterializer.header)
             else { continue }
-            extra += apply(ConfigMaterializer.parse(text), to: &values)
+            apply(ConfigMaterializer.parse(text), to: &values)
         }
         if let text = try? String(contentsOf: sevo.appending(path: "game-exe"), encoding: .utf8),
             let exe = GameExecutables.recordable(text.trimmingCharacters(in: .whitespacesAndNewlines))
@@ -95,19 +95,12 @@ public enum ConfigMigration {
         {
             values.msync = false
         }
-
-        // Keys no setting owns stay the player's, as environment lines.
-        let kept = extra.filter { line in
-            guard let key = line.split(separator: "=").first.map(String.init) else { return false }
-            return !SettingCatalog.variableIsReserved(key)
-        }
-        if !kept.isEmpty { values.environment = kept }
         return values
     }
 
-    /// Sets each known key on `values`, a later pair winning; answers the lines no
-    /// setting owns.
-    static func apply(_ pairs: [(key: String, value: String)], to values: inout ConfigValues) -> [String] {
+    /// Sets each known key on `values`, a later pair winning. Dormison's counter and the
+    /// Metal HUD are one counter now: either one on turns it on.
+    static func apply(_ pairs: [(key: String, value: String)], to values: inout ConfigValues) {
         func flag(_ v: String) -> Bool? {
             switch v.lowercased() {
             case "1", "true", "yes", "on", "y": true
@@ -115,30 +108,22 @@ public enum ConfigMigration {
             default: nil
             }
         }
-        var extra: [String] = []
         for (key, value) in pairs {
             switch key {
             case "SEVO_RESIZABLE_WINDOWS": values.windows = WindowTreatment(option: value)
             case "SEVO_UPSCALER": values.upscaler = UpscalerChoice(rawValue: value.lowercased()) ?? values.upscaler
             case "SEVO_FINAL_FILTER": values.filter = FinalFilter(rawValue: value.lowercased()) ?? values.filter
-            case "SEVO_FPS": values.fps = flag(value)
-            case "SEVO_FPS_GRAPH": values.fpsGraph = flag(value)
+            case "SEVO_FPS", "MTL_HUD_ENABLED":
+                if let on = flag(value) { values.fps = (values.fps ?? false) || on }
             case "SEVO_LINEAR_MOUSE": values.mouse = flag(value) == true ? .linear : .system
-            case "SEVO_CURSOR_CONFINE": values.cursorConfine = flag(value)
-            case "SEVO_CPU_COUNT": values.processors = Int(value).map { max(0, $0) }
             case "SEVO_FORCE_UMA": values.unifiedMemory = flag(value)
             case "SEVO_LARGE_ADDRESS_AWARE": values.largeAddressAware = flag(value)
-            case "MTL_HUD_ENABLED": values.hud = flag(value)
             case "ROSETTA_ADVERTISE_AVX": values.avx = flag(value)
             case "NOTPROTON_RETINA": values.retina = flag(value)
             case "NOTPROTON_RENDERER": values.renderer = RendererChoice(rawValue: value.lowercased()) ?? values.renderer
-            case "DXVK_FRAME_RATE":
-                if let n = Int(value), n == 0 || SettingCatalog.fpsLimitRange.contains(n) { values.fpsLimit = n }
-            default:
-                if !scriptKeys.contains(key) { extra.append("\(key)=\(value)") }
+            default: break
             }
         }
-        return extra
     }
 
     /// `own` with every field `old` sets and `own` does not.
@@ -156,5 +141,65 @@ public enum ConfigMigration {
             let values = try? JSONDecoder().decode(ConfigValues.self, from: data)
         else { return own }
         return values
+    }
+
+    // MARK: - The store before Amendment 09.10
+
+    /// Settings the amendment took out of the catalog (docs/ROADMAP.md §13.3 б, в, г): the
+    /// frame-rate limit, Dormison's graph, the pointer confinement, the processor count, the
+    /// graphics card (now automatic), DLL overrides and environment lines (Steam's launch
+    /// options do that). `hud` is folded into `fps` first.
+    static let retiredKeys = [
+        "fpsLimit", "fpsGraph", "hud", "cursorConfine", "processors", "gpu", "gpuCustom",
+        "dllOverrides", "environment",
+    ]
+
+    static let storeBackupName = "backup-before-schema-2"
+
+    /// One level's file brought to schema 2: the counter is the Metal HUD, so it is on
+    /// where Dormison's counter or the HUD was; the retired keys go.
+    static func upgradeLevel(_ old: [String: JSONValue]) -> ConfigValues {
+        var object = old
+        let counters = [old["fps"], old["hud"]].compactMap { $0?.bool }
+        if !counters.isEmpty { object["fps"] = .bool(counters.contains(true)) }
+        for key in retiredKeys { object.removeValue(forKey: key) }
+        guard let data = try? JSONEncoder().encode(JSONValue.object(object)),
+            let values = try? JSONDecoder().decode(ConfigValues.self, from: data)
+        else { return .empty }
+        return values
+    }
+
+    /// Brings a store written before the amendment to schema 2, once, with a copy of its
+    /// files kept in `settings/backup-before-schema-2`. A value equal to what its level
+    /// inherits stops being the level's own (§13.3 и). Answers whether a level changed;
+    /// the caller then rewrites every prefix.
+    public static func upgradeStore(_ store: SettingsStore) throws -> Bool {
+        guard store.schema < SettingsStore.schema else { return false }
+        return try store.locked {
+            guard store.schema < SettingsStore.schema else { return false }
+            var changed = false
+            let gameFiles = ((try? FileManager.default.contentsOfDirectory(
+                at: store.gamesRoot, includingPropertiesForKeys: nil)) ?? [])
+                .filter { $0.pathExtension == "json" }
+            if store.rawObject(store.globalURL) != nil || !gameFiles.isEmpty {
+                try store.backUp(into: storeBackupName)
+            }
+            var global = ConfigValues.empty
+            if let old = store.rawObject(store.globalURL) {
+                global = SettingCatalog.withoutInherited(upgradeLevel(old), level: .global, global: .empty)
+                if JSONValue.encode(global).object != old { changed = true }
+                try store.setGlobal(global)
+            }
+            for url in gameFiles {
+                guard let id = Int(url.deletingPathExtension().lastPathComponent), id > 0,
+                    let old = store.rawObject(url)
+                else { continue }
+                let game = SettingCatalog.withoutInherited(upgradeLevel(old), level: .game, global: global)
+                if JSONValue.encode(game).object != old { changed = true }
+                try store.setGame(id, game)
+            }
+            try store.setSchema(SettingsStore.schema)
+            return changed
+        }
     }
 }

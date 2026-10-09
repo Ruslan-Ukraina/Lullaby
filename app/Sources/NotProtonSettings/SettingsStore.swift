@@ -87,6 +87,46 @@ public struct SettingsStore: Sendable {
         }
     }
 
+    // MARK: - Schema
+
+    /// The store's shape: 1 before Amendment 09.10, 2 since (ConfigMigration.upgradeStore).
+    public static let schema = 2
+
+    var schemaURL: URL { root.appending(path: "schema") }
+
+    /// A store with no schema file is the first one.
+    public var schema: Int {
+        guard let text = try? String(contentsOf: schemaURL, encoding: .utf8) else { return 1 }
+        return Int(text.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 1
+    }
+
+    func setSchema(_ version: Int) throws {
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try "\(version)\n".write(to: schemaURL, atomically: true, encoding: .utf8)
+    }
+
+    /// A level's file as it stands, keys no setting knows any more included.
+    func rawObject(_ url: URL) -> [String: JSONValue]? {
+        guard let data = try? Data(contentsOf: url),
+            let value = try? JSONDecoder().decode(JSONValue.self, from: data)
+        else { return nil }
+        return value.object
+    }
+
+    /// Copies global.json and games/ into `name`, once.
+    func backUp(into name: String) throws {
+        let manager = FileManager.default
+        let backup = root.appending(path: name)
+        guard !manager.fileExists(atPath: backup.path(percentEncoded: false)) else { return }
+        try manager.createDirectory(at: backup, withIntermediateDirectories: true)
+        if manager.fileExists(atPath: globalURL.path(percentEncoded: false)) {
+            try manager.copyItem(at: globalURL, to: backup.appending(path: "global.json"))
+        }
+        if manager.fileExists(atPath: gamesRoot.path(percentEncoded: false)) {
+            try manager.copyItem(at: gamesRoot, to: backup.appending(path: "games"))
+        }
+    }
+
     private func read(_ url: URL) -> ConfigValues {
         guard let data = try? Data(contentsOf: url),
             let values = try? JSONDecoder().decode(ConfigValues.self, from: data)

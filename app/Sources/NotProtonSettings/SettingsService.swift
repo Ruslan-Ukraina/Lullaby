@@ -40,20 +40,12 @@ public struct SettingsService: Sendable {
             switch setting.control {
             case .toggle: return .object(["kind": .string("toggle")])
             case let .choice(list): return .object(["kind": .string("choice"), "choices": choices(list)])
-            case let .limit(list, range):
-                return .object([
-                    "kind": .string("limit"), "choices": choices(list),
-                    "min": .number(range.lowerBound), "max": .number(range.upperBound),
-                ])
             case let .tuning(list):
                 return .object([
                     "kind": .string("tuning"), "choices": choices(list),
                     "min": .number(TuningParameters.spinRange.lowerBound),
                     "max": .number(TuningParameters.spinRange.upperBound),
                 ])
-            case let .gpu(list): return .object(["kind": .string("gpu"), "choices": choices(list)])
-            case let .dllOverrides(list): return .object(["kind": .string("dllOverrides"), "choices": choices(list)])
-            case .environment: return .object(["kind": .string("environment")])
             }
         }
         let settings: [JSONValue] = SettingCatalog.all.map { setting in
@@ -146,14 +138,20 @@ public struct SettingsService: Sendable {
     public func set(_ id: String, _ value: JSONValue?, appID: Int?) throws {
         guard let setting = SettingCatalog.setting(named: id) else { throw SettingsError.unknownSetting(id) }
         guard setting.levels.contains(appID == nil ? .global : .game) else { throw SettingsError.wrongLevel(id) }
+        // A value equal to what the level inherits is stored as inherit (§13.3 и).
         if let appID {
+            let global = store.global()
             try store.updateGame(appID) { values in
                 try setting.write(&values, value)
+                values = SettingCatalog.withoutInherited(values, level: .game, global: global)
                 if values.name == nil, let name = library.installed(appID)?.name { values.name = name }
             }
             log("set app \(appID) \(setting.id.rawValue)=\(value?.text ?? "inherit")")
         } else {
-            try store.updateGlobal { try setting.write(&$0, value) }
+            try store.updateGlobal { values in
+                try setting.write(&values, value)
+                values = SettingCatalog.withoutInherited(values, level: .global, global: .empty)
+            }
             log("set global \(setting.id.rawValue)=\(value?.text ?? "inherit")")
         }
         try materialize(appID: appID)
@@ -198,6 +196,16 @@ public struct SettingsService: Sendable {
     }
 
     // MARK: - Files
+
+    /// A store from before Amendment 09.10 brought to today's catalog, and every prefix
+    /// rewritten: their files still carry the retired keys and no graphics card yet
+    /// (ConfigMigration.upgradeStore).
+    public func upgradeIfNeeded() throws {
+        guard store.schema < SettingsStore.schema else { return }
+        let changed = try ConfigMigration.upgradeStore(store)
+        log("settings: store upgraded to schema \(SettingsStore.schema)\(changed ? ", levels changed" : "")")
+        try materialize(appID: nil)
+    }
 
     /// Writes the prefixes a change at this level reaches: the game's, or every
     /// NotProton prefix for the shared level.

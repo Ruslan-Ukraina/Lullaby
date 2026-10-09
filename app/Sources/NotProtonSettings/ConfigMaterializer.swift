@@ -7,8 +7,10 @@
 // MIT, Copyright (c) 2026 kageroumado):
 // - bottle.env carries every resolved value of the "for all games" level;
 // - a game's file carries only what the game sets itself, and a switch it sets is
-//   written as =0 or =1 even where it equals the shared value;
-// - SEVO_CPU_COUNT=0 is "every processor", written by a game that sets it.
+//   written as =0 or =1 even where it equals the shared value.
+//
+// The graphics card is not a setting: it follows DLSS → MetalFX (GPUIdentity.forGame), and
+// DXVK's part of it is a dxvk.conf in the game's prefix.
 //
 // NotProton keeps one prefix per game, so a prefix's bottle.env also holds the two
 // lines only that file may carry: WINEMSYNC, which the run script sets at every launch
@@ -37,18 +39,12 @@ public enum ConfigMaterializer {
             "SEVO_FINAL_FILTER=\(stack[\.filter].rawValue)",
             "SEVO_LINEAR_MOUSE=\(stack[\.mouse] == .linear ? "1" : "0")",
         ]
-        if stack[\.processors] > 0 { lines.append("SEVO_CPU_COUNT=\(stack[\.processors])") }
         lines += switches.map { "\($0.key)=\(stack[$0.path] ? "1" : "0")" }
+        lines += engineCounterOff
         lines += tuningLines(stack)
-        lines += gpuLines(stack, explicitAsIs: false)
-        if stack[\.fpsLimit] > 0 { lines.append("DXVK_FRAME_RATE=\(stack[\.fpsLimit])") }
-        let dxmt = dxmtConfig(stack)
-        if !dxmt.isEmpty { lines.append("DXMT_CONFIG=\(dxmt)") }
+        lines += gpuLines(stack)
         if stack[\.dlss] { lines.append("DXMT_ENABLE_NVEXT=1") }
         lines += markers.map { "\($0.key)=\(stack[$0.path] ? "1" : "0")" }
-        let dlls = dllOverrides(stack)
-        if !dlls.isEmpty { lines.append("NOTPROTON_DLL_OVERRIDES=\(dlls)") }
-        lines += global.environment ?? []
         lines.append("NOTPROTON_MSYNC=\(msync ? "1" : "0")")
         if let cli { lines.append("SEVO_CLI=\(cli)") }
         return lines
@@ -65,31 +61,28 @@ public enum ConfigMaterializer {
         // The system curve over a linear shared value needs the key written: bottle.env
         // is read first and an absent key leaves its value standing.
         if let mouse = game.mouse { lines.append("SEVO_LINEAR_MOUSE=\(mouse == .linear ? "1" : "0")") }
-        if let processors = game.processors { lines.append("SEVO_CPU_COUNT=\(processors)") }
         lines += switches.compactMap { key, path in game[keyPath: path].map { "\(key)=\($0 ? "1" : "0")" } }
         if game.tuning != nil { lines += tuningLines(stack) }
-        if game.gpu != nil { lines += gpuLines(stack, explicitAsIs: true) }
-        if let limit = game.fpsLimit { lines.append(limit > 0 ? "DXVK_FRAME_RATE=\(limit)" : "DXVK_FRAME_RATE=") }
-        // One variable carries several settings: a game that sets any of them writes
-        // the whole value, resolved, and an empty one removes the shared value.
-        if game.fpsLimit != nil || game.gpu != nil { lines.append("DXMT_CONFIG=\(dxmtConfig(stack))") }
-        if let dlss = game.dlss { lines.append(dlss ? "DXMT_ENABLE_NVEXT=1" : "DXMT_ENABLE_NVEXT=") }
+        if let dlss = game.dlss {
+            // The card follows DLSS, so a game that sets it names its card over the shared one.
+            lines += gpuLines(stack)
+            lines.append(dlss ? "DXMT_ENABLE_NVEXT=1" : "DXMT_ENABLE_NVEXT=")
+        }
         lines += markers.compactMap { key, path in game[keyPath: path].map { "\(key)=\($0 ? "1" : "0")" } }
-        if game.dllOverrides != nil { lines.append("NOTPROTON_DLL_OVERRIDES=\(dllOverrides(stack))") }
-        lines += game.environment ?? []
         return lines
     }
 
     /// Switches that reach a game as one variable each.
     static let switches: [(key: String, path: KeyPath<ConfigValues, Bool?> & Sendable)] = [
-        ("MTL_HUD_ENABLED", \.hud),
-        ("SEVO_FPS", \.fps),
-        ("SEVO_FPS_GRAPH", \.fpsGraph),
+        ("MTL_HUD_ENABLED", \.fps),
         ("SEVO_LARGE_ADDRESS_AWARE", \.largeAddressAware),
         ("ROSETTA_ADVERTISE_AVX", \.avx),
-        ("SEVO_CURSOR_CONFINE", \.cursorConfine),
         ("SEVO_FORCE_UMA", \.unifiedMemory),
     ]
+
+    /// Dormison's own counter and graph stay off: the panel's counter is the Metal HUD
+    /// (Amendment 09.10). The game's View menu can still show them for a session.
+    static let engineCounterOff = ["SEVO_FPS=0", "SEVO_FPS_GRAPH=0"]
 
     /// Switches compat_run.sh reads and acts on at launch: Wine registry values, and
     /// the DLL overrides DLSS needs next to the renderer's.
@@ -105,47 +98,63 @@ public enum ConfigMaterializer {
         return preset.parameters(custom: custom).environment.map { "\($0.key)=\($0.value)" }
     }
 
-    static func gpuIdentity(_ stack: ConfigStack) -> GPUIdentity? {
-        let preset = stack[\.gpu]
-        if preset == .custom {
-            return stack.game.gpu != nil ? stack.game.gpuCustom : stack.global.gpuCustom
-        }
-        return preset.identity
-    }
+    /// Every variable the card is named by: the engine's (win32u and wined3d, with the
+    /// driver Windows keeps in its registry), DXMT's and DXVK's DXGI, and D3DMetal's.
+    public static let gpuKeys = [
+        "SEVO_GPU_VENDOR_ID", "SEVO_GPU_DEVICE_ID", "SEVO_GPU_NAME", "SEVO_GPU_MEMORY_MB",
+        "SEVO_GPU_DRIVER_VERSION", "SEVO_GPU_DRIVER_DATE", "SEVO_GPU_DRIVER_PROVIDER",
+        "DXMT_CONFIG", "DXVK_CONFIG_FILE", "D3DM_VENDOR_ID", "D3DM_DEVICE_ID", "D3DM_DEVICE_DESCRIPTION",
+    ]
 
-    static let gpuKeys = ["SEVO_GPU_VENDOR_ID", "SEVO_GPU_DEVICE_ID", "SEVO_GPU_NAME", "SEVO_GPU_MEMORY_MB"]
+    /// Where DXVK reads its options, as Windows names it: DXVK-macOS reads DXVK_CONFIG_FILE
+    /// through Win32 (Sevoflurane's Core/GPUIdentity.swift, MIT).
+    static let dxvkConfigWindowsPath = #"C:\windows\dxvk.conf"#
+    static let dxvkConfigPrefixPath = "drive_c/windows/dxvk.conf"
 
-    /// The card a game is told of. A game going back to the engine's own answer over a
-    /// shared preset removes the variables (`KEY=`).
-    static func gpuLines(_ stack: ConfigStack, explicitAsIs: Bool) -> [String] {
-        guard let identity = gpuIdentity(stack) else {
-            return explicitAsIs ? gpuKeys.map { "\($0)=" } : []
-        }
-        var lines = [
-            String(format: "SEVO_GPU_VENDOR_ID=0x%04x", identity.vendorID),
-            String(format: "SEVO_GPU_DEVICE_ID=0x%04x", identity.deviceID),
+    public static func gpu(_ stack: ConfigStack) -> GPUIdentity { .forGame(dlss: stack[\.dlss]) }
+
+    /// The card a game is told of, in every layer's own spelling.
+    static func gpuLines(_ stack: ConfigStack) -> [String] {
+        let card = gpu(stack)
+        let vendor = String(format: "0x%04X", card.vendorID)
+        let device = String(format: "0x%04X", card.deviceID)
+        return [
+            "SEVO_GPU_VENDOR_ID=\(vendor)",
+            "SEVO_GPU_DEVICE_ID=\(device)",
+            "SEVO_GPU_NAME=\(card.name)",
+            "SEVO_GPU_MEMORY_MB=\(card.memoryMB)",
+            "SEVO_GPU_DRIVER_VERSION=\(card.driverVersion)",
+            "SEVO_GPU_DRIVER_DATE=\(card.driverDate)",
+            "SEVO_GPU_DRIVER_PROVIDER=\(card.driverProvider)",
+            "DXMT_CONFIG=\(dxgiConfig(card))",
+            "DXVK_CONFIG_FILE=\(dxvkConfigWindowsPath)",
+            "D3DM_VENDOR_ID=\(vendor)",
+            "D3DM_DEVICE_ID=\(device)",
+            "D3DM_DEVICE_DESCRIPTION=\(card.name)",
         ]
-        lines.append(identity.name.isEmpty ? "SEVO_GPU_NAME=" : "SEVO_GPU_NAME=\(identity.name)")
-        lines.append(identity.memoryMB.map { "SEVO_GPU_MEMORY_MB=\($0)" } ?? "SEVO_GPU_MEMORY_MB=")
-        return lines
     }
 
-    /// DXMT's own options (dxmt.conf syntax, `;`-separated): the frame-rate limit and
-    /// the card DXMT's DXGI reports.
-    public static func dxmtConfig(_ stack: ConfigStack) -> String {
-        var parts: [String] = []
-        if stack[\.fpsLimit] > 0 { parts.append("d3d11.preferredMaxFrameRate=\(stack[\.fpsLimit])") }
-        if let identity = gpuIdentity(stack) {
-            parts.append(String(format: "dxgi.customVendorId=%04x", identity.vendorID))
-            parts.append(String(format: "dxgi.customDeviceId=%04x", identity.deviceID))
-        }
-        return parts.map { $0 + ";" }.joined()
+    /// DXGI's options in the shape DXMT and DXVK both parse (`dxgi_options.cpp`): an id as
+    /// four bare hex digits, a value with a space quoted. DXMT passes over the memory key.
+    public static func dxgiConfig(_ card: GPUIdentity) -> String {
+        [
+            String(format: "dxgi.customVendorId = %04x", card.vendorID),
+            String(format: "dxgi.customDeviceId = %04x", card.deviceID),
+            "dxgi.customDeviceDesc = \"\(card.name)\"",
+            "dxgi.maxDeviceMemory = \(card.memoryMB)",
+        ].joined(separator: "; ")
     }
 
-    /// `dll=mode;dll=mode`, the shared overrides with the game's on top, sorted.
-    static func dllOverrides(_ stack: ConfigStack) -> String {
-        let merged = (stack.global.dllOverrides ?? [:]).merging(stack.game.dllOverrides ?? [:]) { $1 }
-        return merged.keys.sorted().map { "\($0)=\(merged[$0]!)" }.joined(separator: ";")
+    /// The same options as dxvk.conf, one per line; the first line is a comment to DXVK.
+    static func dxvkConfigFile(_ card: GPUIdentity) -> String {
+        """
+        # written by NotProton; edits are overwritten
+        dxgi.customVendorId = \(String(format: "%04x", card.vendorID))
+        dxgi.customDeviceId = \(String(format: "%04x", card.deviceID))
+        dxgi.customDeviceDesc = "\(card.name)"
+        dxgi.maxDeviceMemory = \(card.memoryMB)
+
+        """
     }
 
     // MARK: - Files
@@ -173,6 +182,18 @@ public enum ConfigMaterializer {
         let msyncLine = existingLines(bottle, keys: ["WINEMSYNC"])
         bottleText += msyncLine.isEmpty ? ["WINEMSYNC=\(stack[\.msync] ? "1" : "0")"] : msyncLine
         if try writeIfChanged(bottleText, to: bottle) { outcome.written.append("bottle.env") }
+
+        // DXVK's file in the game's own prefix, so the card is the game's (DLSS included).
+        // A dxvk.conf someone else wrote is left alone.
+        let dxvk = prefix.appending(path: dxvkConfigPrefixPath)
+        let existing = try? String(contentsOf: dxvk, encoding: .utf8)
+        let dxvkText = dxvkConfigFile(gpu(stack))
+        if existing.map({ $0.hasPrefix(header) && $0 != dxvkText }) ?? true,
+            FileManager.default.fileExists(atPath: dxvk.deletingLastPathComponent().path(percentEncoded: false))
+        {
+            try dxvkText.write(to: dxvk, atomically: true, encoding: .utf8)
+            outcome.written.append(dxvkConfigPrefixPath)
+        }
 
         let exes = stack.game.exes ?? []
         let lines = gameLines(appID: appID, stack: stack)

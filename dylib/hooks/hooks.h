@@ -44,6 +44,9 @@ np_patch_entry_t *np_hooks_webui_defs(void);
 void np_hooks_webui_bind(const struct mach_header_64 *mh, intptr_t slide,
                          uintptr_t register_fn, uintptr_t dispatch_fn);
 
+int               np_hooks_launch_count(void);
+np_patch_entry_t *np_hooks_launch_defs(void);
+
 int               np_hooks_shortcut_count(void);
 np_patch_entry_t *np_hooks_shortcut_defs(void);
 
@@ -63,5 +66,9 @@ int np_hooks_env_lists_label(const char *var, const char *label);
 // Resolved from libc rather than the signature database, and installed before the client
 // can spawn anything, so this one does not wait for steamclient the way the rest do.
 void np_hooks_spawn_install(void);
+
+// Launch options through a shell, as on Linux (hook_launch.c). Rebinds an import rather
+// than an address, so it does not wait on the signature database.
+void np_hooks_launch_install(const struct mach_header_64 *mh, intptr_t slide);
 
 #endif // NOTPROTON_HOOKS_HOOKS_H

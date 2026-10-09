@@ -403,6 +403,38 @@ void *np_compat_tool_for_app(void *compat_mgr, uint32_t appid) {
     return g_find_tool_for_app(compat_mgr, appid);
 }
 
+// Launch options through a shell (hooks/hook_launch.c, from upstream NotProton 1.1.0):
+// whether a command line, or an app, runs this tool. Steam prefixes the command with
+// '<install path>'/run, the install path being the tool directory and "." (TOOL_DECLARATION).
+static int is_name_char(char c, const char *extra) {
+    if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9'))
+        return 1;
+    return c && strchr(extra, c);
+}
+
+int np_compat_runs_tool(const char *cmd) {
+    static const char lead[]    = "/compatibilitytools.d/" TOOL_DIR_NAME;
+    static const char run[]     = "'/run ";
+    static const char run_dot[] = "/.'/run ";
+    if (!cmd) return 0;
+
+    for (const char *at = strstr(cmd, lead); at; at = strstr(at + 1, lead)) {
+        const char *p = at + sizeof(lead) - 1;
+        while (is_name_char(*p, "._-"))
+            p++;
+        if (strncmp(p, run, sizeof(run) - 1) == 0 || strncmp(p, run_dot, sizeof(run_dot) - 1) == 0)
+            return 1;
+    }
+    return 0;
+}
+
+int np_compat_app_runs_tool(uint32_t appid) {
+    const uint8_t *tool = np_compat_tool_for_app(np_compat_manager(), appid);
+    const char *name = tool ? *(const char *const *)(tool + COMPAT_TOOL_NAME_OFF) : NULL;
+
+    return name && strcmp(name, TOOL_DIR_NAME) == 0;
+}
+
 // The config argument is a tool-specific string the dropdown has no way to set, and
 // the client passes it empty from its own handler.
 static fn_FindToolForTargetApp g_chosen_tool;

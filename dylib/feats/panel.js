@@ -22,7 +22,7 @@
   // Steam's controls the panel draws with. Their names are the page's own and not part of
   // the webpatch anchors, so a Steam update can rename one; the panel then says so rather
   // than take the Properties page down with it.
-  var MISSING = ["y4", "Vb", "FO", "$n", "m", "D0"].filter(function (k) {
+  var MISSING = ["y4", "Vb", "FO", "$n"].filter(function (k) {
     var t = B && B[k] ? typeof B[k] : "";
     return t !== "function" && t !== "object" && t !== "string";
   });
@@ -97,30 +97,6 @@
   }
   function key(v) { return JSON.stringify(v); }
 
-  // ---- launch options from before the catalog (BACKLOG 21, P7A-6) ---------------
-
-  // A renderer named in Steam's launch options (NOTPROTON_RENDERER, or CrossOver's
-  // CX_GRAPHICS_BACKEND) moves into the catalog, and WINEMSYNC=1 (msync+ is on anyway)
-  // goes. WINEMSYNC=0 and every other option stay; %command% stays where it was.
-  function legacyOptions(options) {
-    var parts = String(options || "").split(" ");
-    var renderer = null, changed = false, kept = [];
-    for (var i = 0; i < parts.length; i++) {
-      var p = parts[i];
-      var m = /^(NOTPROTON_RENDERER|CX_GRAPHICS_BACKEND)=(.*)$/.exec(p);
-      if (m) {
-        changed = true;
-        var v = m[2].toLowerCase();
-        if ((v === "dxmt" || v === "dxvk" || v === "wined3d") && (m[1] === "NOTPROTON_RENDERER" || !renderer)) renderer = v;
-        continue;
-      }
-      if (p === "WINEMSYNC=1") { changed = true; continue; }
-      kept.push(p);
-    }
-    if (!changed) return null;
-    return { renderer: renderer, options: kept.filter(function (p, i) { return p || i > 0; }).join(" ").trim() };
-  }
-
   // ---- one row --------------------------------------------------------------------
 
   function choiceOptions(ctx, choices) {
@@ -137,20 +113,19 @@
       h.footnote ? el("div", { className: "NPFoot" }, L(ctx, h.footnote)) : null);
   }
 
-  // The line under a row: what it inherits, or that the value is this level's own. One
-  // button under the block resets them all (no Reset per row).
+  // The line under a row names what the level above holds, and only where this level's
+  // value differs from it (a value equal to it is stored as inherit): "For all games" on a
+  // game's page, NotProton's default for all games and for a game's own rows (the
+  // renderer, msync+). One button under the block resets them all.
   function describe(ctx, s, v, info) {
-    var line;
-    if (v.own === null) {
-      // A setting no level above sets (the renderer, msync+) names NotProton's default.
+    var line = null;
+    if (v.own !== null) {
       var shared = !ctx.global && s.levels.indexOf("global") >= 0;
       line = T(ctx, shared ? "inherited" : "defaultValue", L(ctx, v.inheritedLabel));
-    } else {
-      line = T(ctx, ctx.global ? "ownGlobal" : "own");
     }
     return el("span", { className: "NPDesc" },
       s.caption ? el("span", { className: "NPCaption" }, L(ctx, s.caption)) : null,
-      el("span", { className: "NPInherit" }, line),
+      line ? el("span", { className: "NPInherit" }, line) : null,
       info ? help(ctx, s) : null);
   }
 
@@ -168,28 +143,6 @@
         onClick: function (e) { stop(e); setInfo(!info); }
       }, "i"));
   }
-
-  // Applies a typed number, or says it is not accepted.
-  function NumberEditor(props) {
-    var ctx = props.ctx, s = props.setting;
-    var st = R.useState(String(props.value)), text = st[0], setText = st[1];
-    var bad = R.useState(false), invalid = bad[0], setInvalid = bad[1];
-    function apply() {
-      var n = parseInt(text, 10), c = s.control;
-      if (String(n) !== text.trim() || n < c.min || n > c.max) { setInvalid(true); return; }
-      setInvalid(false);
-      ctx.change(s.id, n);
-    }
-    return el("div", { className: "NPSub" },
-      el(B.FO, {
-        label: T(ctx, "fpsPlaceholder"), value: text,
-        description: invalid ? T(ctx, "invalid") + " " + c2s(s.control) : c2s(s.control),
-        onChange: function (e) { setText(e.target.value); },
-        onBlur: apply,
-        onKeyDown: function (e) { if (e.key === "Enter") apply(); }
-      }));
-  }
-  function c2s(c) { return c.min + "\u2013" + c.max; }
 
   function TuningEditor(props) {
     var ctx = props.ctx, s = props.setting, v = props.value;
@@ -210,63 +163,11 @@
       }));
   }
 
-  function GPUEditor(props) {
-    var ctx = props.ctx, s = props.setting, v = props.value;
-    function hex(n) { return n === undefined ? "" : ("0000" + Number(n).toString(16)).slice(-4); }
-    var vendor = R.useState(hex(v.vendorID)), device = R.useState(hex(v.deviceID));
-    var name = R.useState(v.name || ""), memory = R.useState(v.memoryMB === undefined ? "" : String(v.memoryMB));
-    function apply() {
-      var next = { preset: "custom", vendorID: vendor[0], deviceID: device[0], name: name[0] };
-      var m = parseInt(memory[0], 10);
-      if (String(m) === memory[0].trim()) next.memoryMB = m;
-      ctx.change(s.id, next);
-    }
-    return el("div", { className: "NPSub" },
-      el(B.FO, { label: T(ctx, "vendorID"), value: vendor[0], onChange: function (e) { vendor[1](e.target.value); } }),
-      el(B.FO, { label: T(ctx, "deviceID"), value: device[0], onChange: function (e) { device[1](e.target.value); } }),
-      el(B.FO, { label: T(ctx, "gpuName"), value: name[0], onChange: function (e) { name[1](e.target.value); } }),
-      el(B.FO, { label: T(ctx, "memory"), value: memory[0], onChange: function (e) { memory[1](e.target.value); } }),
-      el(B.$n, { onClick: apply }, T(ctx, "apply")));
-  }
-
-  function DLLEditor(props) {
-    var ctx = props.ctx, s = props.setting, own = props.own || {};
-    var modes = choiceOptions(ctx, s.control.choices);
-    var n = R.useState(""), m = R.useState(modes[0].data);
-    function put(next) { ctx.change(s.id, Object.keys(next).length ? next : null); }
-    function with_(dll, mode) { var next = {}; for (var k in own) next[k] = own[k]; next[dll] = mode; return next; }
-    return el("div", { className: "NPSub" },
-      Object.keys(own).sort().map(function (dll) {
-        return el("div", { key: dll, className: "NPListRow" },
-          el("span", null, dll),
-          el(B.m, { rgOptions: modes, selectedOption: key(own[dll]), onChange: function (o) { put(with_(dll, JSON.parse(o.data))); } }),
-          el(B.$n, { onClick: function () { var next = with_(dll, ""); delete next[dll]; put(next); } }, T(ctx, "remove")));
-      }),
-      el("div", { className: "NPListRow" },
-        el("input", { className: "NPInput", placeholder: T(ctx, "dllPlaceholder"), value: n[0], onChange: function (e) { n[1](e.target.value); } }),
-        el(B.m, { rgOptions: modes, selectedOption: m[0], onChange: function (o) { m[1](o.data); } }),
-        el(B.$n, { onClick: function () { if (n[0].trim()) { put(with_(n[0].trim(), JSON.parse(m[0]))); n[1](""); } } }, T(ctx, "add"))));
-  }
-
-  function EnvironmentEditor(props) {
-    var ctx = props.ctx, s = props.setting;
-    var t = R.useState((props.own || []).join("\n"));
-    return el("div", { className: "NPSub" },
-      el("textarea", {
-        className: "NPArea", spellCheck: false, placeholder: T(ctx, "envPlaceholder"), value: t[0],
-        onChange: function (e) { t[1](e.target.value); },
-        onBlur: function () {
-          var lines = t[0].split("\n").map(function (l) { return l.trim(); }).filter(function (l) { return l; });
-          ctx.change(s.id, lines.length ? lines : null);
-        }
-      }));
-  }
-
-  // One setting as Steam draws a row of its kind.
+  // One setting as Steam draws a row of its kind. A list is as wide as its choices
+  // (Steam's own "min" width), not a fixed share of the row.
   function Row(props) {
     var ctx = props.ctx, s = props.setting, v = ctx.state.values[s.id];
     var i = R.useState(false), info = i[0], setInfo = i[1];
-    var c = R.useState(false), customOpen = c[0], setCustom = c[1];
     if (!v) return null;
     var lbl = label(ctx, s, info, setInfo), desc = describe(ctx, s, v, info);
     var ctl = s.control, eff = v.effective;
@@ -276,43 +177,19 @@
       case "choice":
         return el(B.Vb, {
           label: lbl, description: desc, rgOptions: choiceOptions(ctx, ctl.choices), selectedOption: key(eff),
+          childrenContainerWidth: "min",
           onChange: function (o) { ctx.change(s.id, JSON.parse(o.data)); }
         });
-      case "limit": {
-        var known = ctl.choices.some(function (ch) { return key(ch.value) === key(eff); });
-        var opts = choiceOptions(ctx, ctl.choices).concat([{ data: key("__custom"), label: T(ctx, "customValue") }]);
-        var custom = customOpen || !known;
-        return el("div", null,
-          el(B.Vb, {
-            label: lbl, description: desc, rgOptions: opts, selectedOption: custom ? key("__custom") : key(eff),
-            onChange: function (o) {
-              var value = JSON.parse(o.data);
-              if (value === "__custom") { setCustom(true); return; }
-              setCustom(false);
-              ctx.change(s.id, value);
-            }
-          }),
-          custom ? el(NumberEditor, { ctx: ctx, setting: s, value: eff > 0 ? eff : 60, key: "n" + key(eff) }) : null);
-      }
-      case "tuning":
-      case "gpu": {
+      case "tuning": {
         var preset = eff && eff.preset;
         return el("div", null,
           el(B.Vb, {
             label: lbl, description: desc, rgOptions: choiceOptions(ctx, ctl.choices), selectedOption: key(preset),
+            childrenContainerWidth: "min",
             onChange: function (o) { ctx.change(s.id, { preset: JSON.parse(o.data) }); }
           }),
-          preset === "custom" ? el(ctl.kind === "tuning" ? TuningEditor : GPUEditor,
-            { ctx: ctx, setting: s, value: eff, key: key(eff) }) : null);
+          preset === "custom" ? el(TuningEditor, { ctx: ctx, setting: s, value: eff, key: key(eff) }) : null);
       }
-      case "dllOverrides":
-        return el("div", { className: "NPBlock" },
-          el(B.D0, { label: lbl, description: desc, bottomSeparator: "none" }),
-          el(DLLEditor, { ctx: ctx, setting: s, own: v.own, key: key(v.own) }));
-      case "environment":
-        return el("div", { className: "NPBlock" },
-          el(B.D0, { label: lbl, description: desc, bottomSeparator: "none" }),
-          el(EnvironmentEditor, { ctx: ctx, setting: s, own: v.own, key: key(v.own) }));
       default:
         return null;
     }
@@ -361,10 +238,9 @@
     }
     if (!ctx.catalog || !ctx.state) return el("div", { className: "NPPanel" }, style());
     var title = ctx.global ? T(ctx, "globalSection") : T(ctx, "section");
-    var engine = ctx.state.engine ? ctx.state.engine.replace(/^dormison-/, "Dormison ") : "";
     return el("div", { className: "NPPanel", ref: ctx.hostRef },
       style(),
-      el("div", { className: "NPHeader" }, el("b", null, title), engine ? el("span", null, engine) : null),
+      el("div", { className: "NPHeader" }, el("b", null, title)),
       ctx.global ? el("div", { className: "NPCaption NPTop" }, T(ctx, "globalCaption")) : null,
       rows(ctx, settingsAt(ctx, true)),
       el("div", { className: "NPActions" },
@@ -409,7 +285,6 @@
     ".NPPanel{margin-top:16px}" +
     ".NPHeader{display:flex;justify-content:space-between;align-items:baseline;margin:8px 0 2px;color:#fff}" +
     ".NPHeader b{font-size:13px;letter-spacing:.06em;text-transform:uppercase}" +
-    ".NPHeader span{color:#8b929a;font-size:12px}" +
     ".NPTop{display:block;margin-bottom:6px;font-size:13px}" +
     ".NPLabel{display:inline-flex;align-items:center;gap:6px}" +
     ".NPInfo{display:inline-block;width:14px;height:14px;border-radius:50%;border:1px solid #8b929a;color:#8b929a;" +
@@ -435,20 +310,12 @@
     ".NPDialogFoot{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 24px 18px;" +
     "border-top:1px solid rgba(255,255,255,.1)}" +
     ".NPGroup{margin:18px 0 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#fff}" +
-    ".NPInput,.NPArea{background:#32363f;color:#fff;border:1px solid #3d4450;border-radius:3px;padding:6px 8px;" +
-    "font-size:13px;box-sizing:border-box}" +
-    ".NPInput{flex:1;min-width:0;height:34px}" +
-    ".NPArea{display:block;width:100%;min-height:84px;font-family:Menlo,monospace;resize:vertical}" +
-    ".NPBlock .NPSub{padding:0 0 12px}" +
-    ".NPListRow{display:flex;gap:8px;align-items:center;margin:4px 0}.NPListRow>span{flex:1;color:#dcdedf}" +
-    ".NPListRow>*:not(span):not(input){flex:none;margin-top:0!important;margin-bottom:0!important}" +
-    ".NPListRow button{width:auto!important;min-width:96px;padding:0 16px!important;height:34px}" +
     ".NPPrimary{background:linear-gradient(90deg,#1a9fff,#1474e0)!important;color:#fff!important}";
   function style() { return el("style", null, CSS); }
 
   // ---- the components the page renders --------------------------------------------
 
-  function usePanel(appID, details, enabled) {
+  function usePanel(appID, enabled) {
     var l = R.useState("en"), c = R.useState(null), s = R.useState(null), e = R.useState(null), a = R.useState(false);
     var h = R.useState(null);
     R.useEffect(function () {
@@ -461,8 +328,6 @@
         c[1](r[1].catalog);
         if (!r[2].ok) { e[1](r[2].error); return; }
         s[1](r[2].state);
-        var legacy = details ? legacyOptions(details.strLaunchOptions) : null;
-        if (legacy) migrateOptions(appID, legacy, r[2].state, s[1]);
       });
       return function () { live = false; };
     }, [appID, enabled]);
@@ -482,19 +347,6 @@
     };
   }
 
-  // The launch options' renderer becomes the game's own (it was the one in force),
-  // then the options lose it.
-  function migrateOptions(appID, legacy, state, setState) {
-    var write = legacy.renderer
-      ? ask({ op: "set", app: appID, id: "renderer", value: legacy.renderer })
-      : Promise.resolve({ ok: true, state: state });
-    write.then(function (r) {
-      if (!r.ok) return;
-      setState(r.state);
-      SteamClient.Apps.SetAppLaunchOptions(appID, legacy.options);
-    });
-  }
-
   // Steam's own apps, non-Steam shortcuts included, that run through NotProton: a forced
   // NotProton, or no forced tool on a game without a macOS build.
   function runsThroughNotProton(d) {
@@ -507,19 +359,19 @@
   function GamePanel(props) {
     var d = props.details, on = runsThroughNotProton(d);
     if (MISSING.indexOf("React") >= 0) return on ? view({ lang: "en" }) : null;
-    var ctx = usePanel(d ? d.unAppID : 0, d, on);
+    var ctx = usePanel(d ? d.unAppID : 0, on);
     return on ? view(ctx) : null;
   }
 
   function GlobalPanel() {
     if (MISSING.indexOf("React") >= 0) return view({ lang: "en" });
-    return view(usePanel(undefined, null, true));
+    return view(usePanel(undefined, true));
   }
 
   return {
     Game: GamePanel, Global: GlobalPanel,
     // For the fixture tests.
-    view: view, legacyOptions: legacyOptions, requestPath: requestPath, langOf: langOf,
+    view: view, requestPath: requestPath, langOf: langOf,
     runsThroughNotProton: runsThroughNotProton, FALLBACK: FALLBACK
   };
 })

@@ -66,6 +66,12 @@ uint32_t np_compat_valid_platforms(void *compat_mgr, uint32_t appid);
 void  np_compat_set_find_tool_fn(uintptr_t find_tool_for_target_app);
 void *np_compat_tool_for_app(void *compat_mgr, uint32_t appid);
 
+// True when the launch command runs NotProton's compatibility tool.
+int np_compat_runs_tool(const char *cmd);
+
+// True when the app is set to run with NotProton's compatibility tool.
+int np_compat_app_runs_tool(uint32_t appid);
+
 // The tool from the client's own mapping alone, without the CrossOver default.
 // The properties page needs the two apart to show absence vs. choice.
 void  np_compat_set_chosen_tool_fn(uintptr_t find_tool_for_target_app);

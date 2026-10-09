@@ -92,45 +92,33 @@ public struct TuningParameters: Codable, Equatable, Sendable {
     }
 }
 
-/// The graphics card a game is told it runs on. Dormison names it to the game through
-/// `SEVO_GPU_*` (win32u, wined3d); DXMT reports its own adapter, so the same ids go to
-/// its `dxgi.customVendorId`/`customDeviceId`. Presets match cards in Dormison's
-/// wined3d table (`dlls/wined3d/directx.c`).
-public enum GPUPreset: String, Codable, CaseIterable, Sendable {
-    case asIs = "as-is"
-    case amd
-    case nvidia
-    case intelArc = "intel-arc-a750"
-    case custom
-
-    public var identity: GPUIdentity? {
-        switch self {
-        case .asIs, .custom: nil
-        case .amd: GPUIdentity(vendorID: 0x1002, deviceID: 0x744c, name: "AMD Radeon RX 7900 XT", memoryMB: 20480)
-        case .nvidia: GPUIdentity(vendorID: 0x10de, deviceID: 0x2c02, name: "NVIDIA GeForce RTX 5080", memoryMB: 16384)
-        case .intelArc: GPUIdentity(vendorID: 0x8086, deviceID: 0x56a1, name: "Intel(R) Arc(TM) A750 Graphics", memoryMB: 8192)
-        }
-    }
-}
-
+/// The graphics card a game is told it runs on, chosen by NotProton rather than by the
+/// player: an AMD card, and an NVIDIA one while DLSS → MetalFX is on, since games offer
+/// DLSS only on NVIDIA. Both match an M4 Pro the way Sevoflurane's Core/GPUEquivalence.swift
+/// does (MIT, Copyright (c) 2026 kageroumado), and both are in Dormison's tables
+/// (`dlls/win32u/sysparams.c`, `dlls/wined3d/directx.c`). The driver strings are
+/// Sevoflurane's too: a game that checks the driver reads the vendor's own shape.
 public struct GPUIdentity: Codable, Equatable, Sendable {
     public var vendorID: Int
     public var deviceID: Int
     public var name: String
-    public var memoryMB: Int?
+    public var memoryMB: Int
+    public var driverVersion: String
+    public var driverDate: String
+    public var driverProvider: String
 
-    public init(vendorID: Int, deviceID: Int, name: String, memoryMB: Int? = nil) {
-        self.vendorID = vendorID
-        self.deviceID = deviceID
-        self.name = name
-        self.memoryMB = memoryMB
-    }
+    /// AMD Radeon RX 9060 XT, AMD Software: Adrenalin Edition 26.8.1.
+    public static let amd = GPUIdentity(
+        vendorID: 0x1002, deviceID: 0x7590, name: "AMD Radeon RX 9060 XT", memoryMB: 16384,
+        driverVersion: "32.0.26081.1001", driverDate: "8-12-2026", driverProvider: "Advanced Micro Devices, Inc.")
 
-    var isValid: Bool {
-        (0...0xffff).contains(vendorID) && (0...0xffff).contains(deviceID)
-            && !name.contains("\n") && !name.contains(";") && name.count <= 128
-            && (memoryMB.map { (0...262_144).contains($0) } ?? true)
-    }
+    /// NVIDIA GeForce RTX 5060 Ti, GeForce Game Ready 610.88.
+    public static let nvidia = GPUIdentity(
+        vendorID: 0x10de, deviceID: 0x2d04, name: "NVIDIA GeForce RTX 5060 Ti", memoryMB: 16384,
+        driverVersion: "32.0.16.1088", driverDate: "8-3-2026", driverProvider: "NVIDIA")
+
+    /// The card for a game with DLSS → MetalFX on or off.
+    public static func forGame(dlss: Bool) -> GPUIdentity { dlss ? .nvidia : .amd }
 }
 
 /// One level of the hierarchy. A nil field inherits from the level above.
@@ -138,30 +126,18 @@ public struct ConfigValues: Codable, Equatable, Sendable {
     public var renderer: RendererChoice?
     public var retina: Bool?
     public var upscaler: UpscalerChoice?
+    /// Apple's Metal HUD (MTL_HUD_ENABLED), the panel's frame rate counter.
     public var fps: Bool?
-    /// Frames per second the renderer holds the game to; 0 is no limit.
-    public var fpsLimit: Int?
     public var windows: WindowTreatment?
     public var filter: FinalFilter?
     public var emulateModeset: Bool?
-    public var fpsGraph: Bool?
-    public var hud: Bool?
     public var dlss: Bool?
     public var mouse: MouseCurve?
-    public var cursorConfine: Bool?
     public var tuning: PerformanceTuning?
     public var tuningParameters: TuningParameters?
-    /// 0 is every processor.
-    public var processors: Int?
     public var unifiedMemory: Bool?
     public var largeAddressAware: Bool?
     public var avx: Bool?
-    public var gpu: GPUPreset?
-    public var gpuCustom: GPUIdentity?
-    /// Per DLL, Wine's load order: `n,b`, `b,n`, `n`, `b`, or "" for disabled.
-    public var dllOverrides: [String: String]?
-    /// Extra `KEY=VALUE` lines, in order.
-    public var environment: [String]?
     /// Game level only, a debugging switch: msync+ stays on otherwise.
     public var msync: Bool?
 
@@ -192,23 +168,15 @@ public enum ConfigDefaults {
         v.retina = false
         v.upscaler = .off
         v.fps = false
-        v.fpsLimit = 0
         v.windows = .fixed
         v.filter = .lanczos
         v.emulateModeset = false
-        v.fpsGraph = false
-        v.hud = false
         v.dlss = false
         v.mouse = .system
-        v.cursorConfine = false
         v.tuning = .standard
-        v.processors = 0
         v.unifiedMemory = false
         v.largeAddressAware = false
         v.avx = false
-        v.gpu = .asIs
-        v.dllOverrides = [:]
-        v.environment = []
         v.msync = true
         return v
     }()

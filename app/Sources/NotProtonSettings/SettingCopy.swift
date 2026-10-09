@@ -60,9 +60,8 @@ public enum GroupTitles {
         switch group {
         case .picture: L10n("Picture", uk: "Зображення", ru: "Картинка")
         case .mouse: L10n("Mouse", uk: "Миша", ru: "Мышь")
-        case .performance:
-            L10n("Performance and compatibility", uk: "Продуктивність і сумісність",
-                 ru: "Производительность и совместимость")
+        case .performance: L10n("Performance", uk: "Продуктивність", ru: "Производительность")
+        case .oldGames: L10n("Old games", uk: "Старі ігри", ru: "Старые игры")
         case .diagnostics: L10n("Diagnostics", uk: "Діагностика", ru: "Диагностика")
         }
     }
@@ -81,8 +80,6 @@ public enum PanelText {
         "inherited": L10n("For all games: %@", uk: "Для всіх ігор: %@", ru: "Для всех игр: %@"),
         "defaultValue": L10n("NotProton default: %@", uk: "Типово в NotProton: %@",
                              ru: "По умолчанию в NotProton: %@"),
-        "own": L10n("Custom", uk: "Своє", ru: "Своё"),
-        "ownGlobal": L10n("Changed", uk: "Змінено", ru: "Изменено"),
         "advanced": L10n("Advanced settings…", uk: "Додаткові налаштування…", ru: "Дополнительные настройки…"),
         "advancedTitle": L10n("Advanced settings — %@", uk: "Додаткові налаштування — %@",
                               ru: "Дополнительные настройки — %@"),
@@ -109,23 +106,9 @@ public enum PanelText {
                             ru: "Настройки NotProton недоступны: %@"),
         "saveFailed": L10n("Could not save: %@", uk: "Не вдалося зберегти: %@", ru: "Не удалось сохранить: %@"),
         "experimental": L10n("experimental", uk: "експеримент", ru: "эксперимент"),
-        "add": L10n("Add", uk: "Додати", ru: "Добавить"),
-        "remove": L10n("Remove", uk: "Видалити", ru: "Удалить"),
-        "customValue": L10n("Custom…", uk: "Своє…", ru: "Своё…"),
-        "dllPlaceholder": L10n("library, e.g. d3dcompiler_47", uk: "бібліотека, напр. d3dcompiler_47",
-                               ru: "библиотека, напр. d3dcompiler_47"),
-        "envPlaceholder": L10n("VARIABLE=value or Steam launch options", uk: "ЗМІННА=значення або параметри запуску Steam",
-                               ru: "ПЕРЕМЕННАЯ=значение или параметры запуска Steam"),
-        "fpsPlaceholder": L10n("frames per second", uk: "кадрів за секунду", ru: "кадров в секунду"),
         "waitSpin": L10n("Wait spin", uk: "Очікування (spin)", ru: "Ожидание (spin)"),
         "objectSpin": L10n("Object spin", uk: "Об’єкти (spin)", ru: "Объекты (spin)"),
         "backOff": L10n("Back off", uk: "Відступати", ru: "Отступать"),
-        "vendorID": L10n("Vendor ID (hex)", uk: "ID виробника (hex)", ru: "ID производителя (hex)"),
-        "deviceID": L10n("Device ID (hex)", uk: "ID пристрою (hex)", ru: "ID устройства (hex)"),
-        "gpuName": L10n("Name", uk: "Назва", ru: "Название"),
-        "memory": L10n("Memory, MB", uk: "Пам’ять, МБ", ru: "Память, МБ"),
-        "apply": L10n("Apply", uk: "Застосувати", ru: "Применить"),
-        "invalid": L10n("This value is not accepted.", uk: "Це значення не підходить.", ru: "Это значение не подходит."),
         "close": L10n("Close", uk: "Закрити", ru: "Закрыть"),
     ]
 }
@@ -207,36 +190,12 @@ extension SettingCopy {
 
     static let fps = SettingCopy(
         L10n("Frame rate counter", uk: "Лічильник FPS", ru: "Счётчик FPS"),
-        caption: L10n("One number at the top right of the game's window.", uk: "Одне число у правому верхньому куті вікна гри.",
-                      ru: "Одно число в правом верхнем углу окна игры."),
+        caption: L10n("Apple's Metal HUD over the game's window.", uk: "Metal HUD від Apple поверх вікна гри.",
+                      ru: "Metal HUD от Apple поверх окна игры."),
         help: SettingHelp(
-            L10n("Counts the frames the engine put on screen, whichever renderer drew them.",
-                 uk: "Рахує кадри, які рушій вивів на екран, хоч би який рендерер їх намалював.",
-                 ru: "Считает кадры, которые движок вывел на экран, каким бы рендерером они ни были нарисованы."),
-            footnote: L10n("⌥⌘F in the game switches it; NotProton keeps the choice.",
-                           uk: "⌥⌘F у грі перемикає його; NotProton запам’ятовує вибір.",
-                           ru: "⌥⌘F в игре переключает его; NotProton запоминает выбор.")))
-
-    static let fpsLimit = SettingCopy(
-        L10n("Frame rate limit", uk: "Обмеження FPS", ru: "Ограничение FPS"),
-        caption: L10n("DXMT: in steps of the display's rate. DXVK: exact.",
-                      uk: "DXMT: кроками частоти екрана. DXVK: точно.",
-                      ru: "DXMT: шагами частоты экрана. DXVK: точно."),
-        help: SettingHelp(
-            L10n("The renderer holds the game to about this many frames per second: a cooler, quieter Mac and steadier frame times.",
-                 uk: "Рендерер тримає гру приблизно на цій кількості кадрів за секунду: Mac холодніший і тихіший, кадри рівніші.",
-                 ru: "Рендерер держит игру примерно на этом числе кадров в секунду: Mac холоднее и тише, кадры ровнее."),
-            entries: [
-                HelpEntry(.same("DXMT"), L10n(
-                    "Paces frames to the display: on a 120 Hz screen 120, 60, 40 or 30, a few frames above the limit. A value in between takes the step above it.",
-                    uk: "Підлаштовує кадри під екран: на екрані 120 Гц — 120, 60, 40 або 30, на кілька кадрів більше за обмеження. Проміжне значення бере крок вище.",
-                    ru: "Подстраивает кадры под экран: на экране 120 Гц — 120, 60, 40 или 30, на несколько кадров больше ограничения. Промежуточное значение берёт шаг выше.")),
-                HelpEntry(.same("DXVK"), L10n("Holds the exact number.", uk: "Тримає точне число.", ru: "Держит точное число.")),
-                HelpEntry(.same("WineD3D"), L10n(
-                    "Has no limit of its own; use the game's setting.",
-                    uk: "Власного обмеження не має; скористайтеся налаштуванням гри.",
-                    ru: "Собственного ограничения нет; используйте настройку игры.")),
-            ]))
+            L10n("Metal's own performance overlay: frames per second, frame time and GPU memory, from the driver rather than from the game. It shows over games drawn through Metal: DXMT, DXVK and D3DMetal.",
+                 uk: "Власна накладка продуктивності Metal: кадри за секунду, час кадру й пам’ять GPU — дані драйвера, а не гри. Видно в іграх, що малюють через Metal: DXMT, DXVK і D3DMetal.",
+                 ru: "Собственная накладка производительности Metal: кадры в секунду, время кадра и память GPU — данные драйвера, а не игры. Видна в играх, которые рисуют через Metal: DXMT, DXVK и D3DMetal.")))
 
     static let windows = SettingCopy(
         L10n("Resizable windows", uk: "Вікна змінного розміру", ru: "Изменяемые окна"),
@@ -301,37 +260,20 @@ extension SettingCopy {
                            uk: "Записується в реєстр Wine гри під час запуску.",
                            ru: "Записывается в реестр Wine игры при запуске.")))
 
-    static let fpsGraph = SettingCopy(
-        L10n("Frame time graph", uk: "Графік кадрів", ru: "График кадров"),
-        caption: L10n("The counter with the last seconds of frames and the 1 % low.",
-                      uk: "Лічильник з останніми секундами кадрів і 1 % low.",
-                      ru: "Счётчик с последними секундами кадров и 1 % low."),
-        help: SettingHelp(
-            L10n("Draws every recent frame at the time it took, so a hitch shows as a spike the average hides. The 1 % low is the frame rate of the slowest frame in a hundred.",
-                 uk: "Малює кожен недавній кадр за часом, який він зайняв, тож ривок видно як пік, що його приховує середнє. 1 % low — частота найповільнішого кадру зі ста.",
-                 ru: "Рисует каждый недавний кадр по времени, которое он занял, поэтому рывок виден как пик, скрытый средним. 1 % low — частота самого медленного кадра из ста."),
-            footnote: L10n("⌥⌘G in the game switches it; NotProton keeps the choice.",
-                           uk: "⌥⌘G у грі перемикає його; NotProton запам’ятовує вибір.",
-                           ru: "⌥⌘G в игре переключает его; NotProton запоминает выбор.")))
-
-    static let hud = SettingCopy(
-        .same("Metal HUD"),
-        caption: L10n("Apple's overlay: frame time, GPU time and memory.", uk: "Накладка Apple: час кадру, час GPU і пам’ять.",
-                      ru: "Накладка Apple: время кадра, время GPU и память."),
-        help: SettingHelp(
-            L10n("Metal's own performance overlay, from the driver rather than from the game.",
-                 uk: "Власна накладка продуктивності Metal — дані драйвера, а не гри.",
-                 ru: "Собственная накладка производительности Metal — данные драйвера, а не игры.")))
-
     static let dlss = SettingCopy(
-        L10n("DLSS → MetalFX", uk: "DLSS → MetalFX", ru: "DLSS → MetalFX"),
-        caption: L10n("Games that offer DLSS get MetalFX behind it.", uk: "Ігри з DLSS отримують MetalFX замість нього.",
-                      ru: "Игры с DLSS получают MetalFX вместо него."),
+        L10n("DLSS MetalFX", uk: "DLSS MetalFX", ru: "DLSS MetalFX"),
+        caption: L10n("Games with DLSS get MetalFX behind it and see an NVIDIA GeForce RTX 5060 Ti.",
+                      uk: "Ігри з DLSS отримують MetalFX замість нього й бачать NVIDIA GeForce RTX 5060 Ti.",
+                      ru: "Игры с DLSS получают MetalFX вместо него и видят NVIDIA GeForce RTX 5060 Ti."),
         help: SettingHelp(
             L10n("DXMT answers the game's NVIDIA extension (NVAPI) and DLSS calls and upscales with MetalFX. DXMT only.",
                  uk: "DXMT відповідає на виклики розширень NVIDIA (NVAPI) і DLSS гри та масштабує через MetalFX. Лише з DXMT.",
                  ru: "DXMT отвечает на вызовы расширений NVIDIA (NVAPI) и DLSS игры и масштабирует через MetalFX. Только с DXMT."),
             entries: [
+                HelpEntry(L10n("Graphics card", uk: "Відеокарта", ru: "Видеокарта"), L10n(
+                    "NotProton picks the card a game sees: an AMD Radeon RX 9060 XT, and with this on an NVIDIA GeForce RTX 5060 Ti, since games offer DLSS only on NVIDIA.",
+                    uk: "NotProton сам обирає карту, яку бачить гра: AMD Radeon RX 9060 XT, а з цим налаштуванням — NVIDIA GeForce RTX 5060 Ti, бо DLSS ігри пропонують лише на NVIDIA.",
+                    ru: "NotProton сам выбирает карту, которую видит игра: AMD Radeon RX 9060 XT, а с этой настройкой — NVIDIA GeForce RTX 5060 Ti, потому что DLSS игры предлагают только на NVIDIA.")),
                 HelpEntry(L10n("If a game misbehaves", uk: "Якщо гра поводиться дивно", ru: "Если игра ведёт себя странно"), L10n(
                     "Turn it off for that game. Few games are tested on this path.",
                     uk: "Вимкніть для цієї гри. На цьому шляху перевірено мало ігор.",
@@ -358,16 +300,6 @@ extension SettingCopy {
                     ru: "Одинаковое движение руки поворачивает камеру одинаково при любой скорости. То, чего ждут шутеры.")),
             ]))
 
-    static let cursorConfine = SettingCopy(
-        L10n("Keep the pointer in the window", uk: "Вказівник не виходить з вікна", ru: "Курсор не уходит из окна"),
-        caption: L10n("During mouse-look the pointer stays off your other displays.",
-                      uk: "Під час огляду мишею вказівник не переходить на інші дисплеї.",
-                      ru: "Во время обзора мышью указатель не уходит на другие дисплеи."),
-        help: SettingHelp(
-            L10n("While the game holds the pointer, macOS keeps it inside the game's window.",
-                 uk: "Поки гра тримає вказівник, macOS утримує його всередині вікна гри.",
-                 ru: "Пока игра держит указатель, macOS удерживает его внутри окна игры.")))
-
     static let tuning = SettingCopy(
         L10n("Thread waiting", uk: "Очікування потоків", ru: "Ожидание потоков"),
         caption: L10n("How long a game's threads look for work before they sleep.",
@@ -393,25 +325,6 @@ extension SettingCopy {
             footnote: L10n("Measure with the frame rate counter. Most games show no difference.",
                            uk: "Вимірюйте лічильником FPS. Більшість ігор різниці не показує.",
                            ru: "Измеряйте счётчиком FPS. Большинство игр разницы не показывает.")))
-
-    static let processors = SettingCopy(
-        L10n("Processors", uk: "Процесори", ru: "Процессоры"),
-        caption: L10n("Fewer processors calm older games that keep every one busy.",
-                      uk: "Менше процесорів заспокоює старі ігри, що завантажують кожен.",
-                      ru: "Меньше процессоров успокаивает старые игры, которые загружают каждый."),
-        help: SettingHelp(
-            L10n("How many processors a game is told the Mac has. Games on Unity 5 start a worker per processor, and under Rosetta every worker keeps looking for work.",
-                 uk: "Скільки процесорів, на думку гри, має Mac. Ігри на Unity 5 запускають робочий потік на кожен процесор, і під Rosetta кожен постійно шукає роботу.",
-                 ru: "Сколько процессоров, по мнению игры, у Mac. Игры на Unity 5 запускают рабочий поток на каждый процессор, и под Rosetta каждый постоянно ищет работу."),
-            entries: [
-                HelpEntry(L10n("All", uk: "Усі", ru: "Все"), L10n(
-                    "The game sees every processor, as on Windows.", uk: "Гра бачить усі процесори, як у Windows.",
-                    ru: "Игра видит все процессоры, как в Windows.")),
-                HelpEntry(.same("8 · 6 · 4"), L10n(
-                    "The game sees that many and starts that many workers.",
-                    uk: "Гра бачить стільки й запускає стільки робочих потоків.",
-                    ru: "Игра видит столько и запускает столько рабочих потоков.")),
-            ]))
 
     static let unifiedMemory = SettingCopy(
         L10n("Unified memory", uk: "Єдина пам’ять", ru: "Единая память"),
@@ -458,59 +371,6 @@ extension SettingCopy {
                     uk: "Гра, що обирає повільніший шлях з AVX, може працювати краще без цього.",
                     ru: "Игра, которая выбирает более медленный путь с AVX, может работать лучше без этого.")),
             ]))
-
-    static let gpu = SettingCopy(
-        L10n("Graphics card for the game", uk: "Відеокарта для гри", ru: "Видеокарта для игры"),
-        caption: L10n("Which card the game is told it runs on.", uk: "Яку відеокарту бачить гра.",
-                      ru: "Какую видеокарту видит игра."),
-        help: SettingHelp(
-            L10n("Some games refuse an unknown card or pick their settings by vendor. The engine and DXMT then name the card chosen here.",
-                 uk: "Деякі ігри відмовляються працювати з невідомою картою або обирають налаштування за виробником. Тоді рушій і DXMT називають обрану тут карту.",
-                 ru: "Некоторые игры отказываются работать с неизвестной картой или выбирают настройки по производителю. Тогда движок и DXMT называют выбранную здесь карту."),
-            entries: [
-                HelpEntry(L10n("As is", uk: "Як є", ru: "Как есть"), L10n(
-                    "The engine's own answer.", uk: "Власна відповідь рушія.", ru: "Собственный ответ движка.")),
-                HelpEntry(.same("AMD · NVIDIA · Intel Arc A750"), L10n(
-                    "A Radeon RX 7900 XT, a GeForce RTX 5080 or an Arc A750 with a current driver version.",
-                    uk: "Radeon RX 7900 XT, GeForce RTX 5080 чи Arc A750 з актуальною версією драйвера.",
-                    ru: "Radeon RX 7900 XT, GeForce RTX 5080 или Arc A750 с актуальной версией драйвера.")),
-            ]))
-
-    static let dllOverrides = SettingCopy(
-        L10n("DLL overrides", uk: "Заміни DLL", ru: "Замены DLL"),
-        caption: L10n("Which copy of a Windows library Wine loads.", uk: "Яку копію бібліотеки Windows завантажує Wine.",
-                      ru: "Какую копию библиотеки Windows загружает Wine."),
-        help: SettingHelp(
-            L10n("Wine ships its own version of most Windows libraries and prefers it. An override changes that for one library.",
-                 uk: "Wine має власні версії більшості бібліотек Windows і віддає їм перевагу. Заміна змінює це для однієї бібліотеки.",
-                 ru: "У Wine есть собственные версии большинства библиотек Windows, и он предпочитает их. Замена меняет это для одной библиотеки."),
-            entries: [
-                HelpEntry(L10n("Native, then built-in", uk: "Рідна, потім вбудована", ru: "Родная, затем встроенная"), L10n(
-                    "The copy the game brought, Wine's where there is none. What mod loaders and ReShade need.",
-                    uk: "Копія, яку принесла гра, а якщо її немає — від Wine. Потрібно для завантажувачів модів і ReShade.",
-                    ru: "Копия, которую принесла игра, а если её нет — от Wine. Нужно для загрузчиков модов и ReShade.")),
-                HelpEntry(L10n("Built-in, then native", uk: "Вбудована, потім рідна", ru: "Встроенная, затем родная"), L10n(
-                    "Wine's copy first: Wine's usual order.", uk: "Спершу копія Wine: звичний порядок Wine.",
-                    ru: "Сначала копия Wine: обычный порядок Wine.")),
-                HelpEntry(L10n("Disabled", uk: "Вимкнено", ru: "Отключено"), L10n(
-                    "The library is not loaded at all.", uk: "Бібліотека не завантажується зовсім.",
-                    ru: "Библиотека не загружается вовсе.")),
-            ],
-            footnote: L10n("The renderer's and Steam's own libraries follow NotProton and cannot be overridden here.",
-                           uk: "Бібліотеки рендерера та Steam керуються NotProton, тут їх не замінити.",
-                           ru: "Библиотеки рендерера и Steam управляются NotProton, здесь их не заменить.")))
-
-    static let environment = SettingCopy(
-        L10n("Environment variables", uk: "Змінні середовища", ru: "Переменные окружения"),
-        caption: L10n("For advice that names a variable.", uk: "Для порад, що називають змінну.",
-                      ru: "Для советов, которые называют переменную."),
-        help: SettingHelp(
-            L10n("One VARIABLE=value per line, given to every program of the game. Steam launch options such as VAR=1 %command% are accepted too.",
-                 uk: "Одна ЗМІННА=значення в рядку, для кожної програми гри. Приймаються й параметри запуску Steam на кшталт VAR=1 %command%.",
-                 ru: "Одна ПЕРЕМЕННАЯ=значение в строке, для каждой программы игры. Принимаются и параметры запуска Steam вроде VAR=1 %command%."),
-            footnote: L10n("Variables NotProton sets itself (WINEDLLOVERRIDES, WINEPREFIX, WINEMSYNC and the ones settings above own) are refused.",
-                           uk: "Змінні, які NotProton задає сам (WINEDLLOVERRIDES, WINEPREFIX, WINEMSYNC і ті, що належать налаштуванням вище), не приймаються.",
-                           ru: "Переменные, которые NotProton задаёт сам (WINEDLLOVERRIDES, WINEPREFIX, WINEMSYNC и те, что принадлежат настройкам выше), не принимаются.")))
 
     static let msync = SettingCopy(
         .same("msync+"),
