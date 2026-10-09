@@ -102,7 +102,8 @@ struct BridgeStore: Sendable {
         let step = Self.step
         let fm = FileManager.default
         if let installed = Self.installedReleases(in: store).first(where: { $0.id == release.id }),
-           installed.files == release.files, installed.ntdll == release.ntdll
+           installed.files == release.files, installed.ntdll == release.ntdll,
+           installed.engineFiles == release.engineFiles
         {
             return installed
         }
@@ -209,6 +210,12 @@ struct BridgeStore: Sendable {
                 problems.append("\(item.file): sha256 differs or missing")
             }
         }
+        for item in release.engineFiles {
+            listed.insert(item.file)
+            if Digest.sha256IfPresent(root.appending(path: item.file)) != item.patched {
+                problems.append("\(item.file): sha256 differs or missing")
+            }
+        }
         if let walker = FileManager.default.enumerator(atPath: root.path(percentEncoded: false)) {
             while let relative = walker.nextObject() as? String {
                 let type = walker.fileAttributes?[.type] as? FileAttributeType
@@ -306,6 +313,57 @@ struct BridgeStore: Sendable {
                 throw StepFailure(step: step, detail: "The patched \(item.path) did not check out.")
             }
             AppLog.note("bridge: \(item.arch) ntdll.dll is B1 \(item.b1.prefix(12)) from \(release.id)")
+        }
+        try applyEngineFiles(release, root: root, to: engine)
+    }
+
+    static let originalSuffix = ".notproton-orig"
+
+    /// The bridge's engine fixes into the engine, each release file kept beside it as
+    /// <name>.notproton-orig; a fix an earlier bridge put in and this one does not carry
+    /// gets the release's file back, so a roll-back undoes it.
+    static func applyEngineFiles(_ release: BridgeRelease, root: URL, to engine: URL) throws {
+        let fm = FileManager.default
+        for item in release.engineFiles {
+            let live = engine.appending(path: item.path)
+            if Digest.sha256IfPresent(live) == item.patched { continue }
+            let name = live.lastPathComponent
+            let original = live.deletingLastPathComponent().appending(path: name + originalSuffix)
+            if Digest.sha256IfPresent(live) == item.clean {
+                let staging = live.deletingLastPathComponent().appending(path: ".\(name).orig.new")
+                try? fm.removeItem(at: staging)
+                try fm.copyItem(at: live, to: staging)
+                try rename(staging, to: original)
+            } else if Digest.sha256IfPresent(original) != item.clean {
+                throw StepFailure(
+                    step: step,
+                    detail: "\(item.path) in \(EngineStore.displayName(release.engine)) is not the file NotProton's fix was built for.")
+            }
+            let staging = live.deletingLastPathComponent().appending(path: ".\(name).new")
+            try? fm.removeItem(at: staging)
+            try fm.copyItem(at: root.appending(path: item.file), to: staging)
+            try rename(staging, to: live)
+            guard Digest.sha256IfPresent(live) == item.patched else {
+                throw StepFailure(step: step, detail: "The fixed \(item.path) did not check out.")
+            }
+            AppLog.note("bridge: \(item.path) is the fixed \(item.patched.prefix(12)) from \(release.id)")
+        }
+        // Fixes of an earlier bridge: the release's file back in place.
+        let carried = Set(release.engineFiles.map(\.path) + release.ntdll.map(\.path))
+        let wine = engine.appending(path: "wine/lib/wine")
+        guard let walker = fm.enumerator(atPath: wine.path(percentEncoded: false)) else { return }
+        while let relative = walker.nextObject() as? String {
+            guard relative.hasSuffix(originalSuffix) else { continue }
+            let livePath = "wine/lib/wine/" + String(relative.dropLast(originalSuffix.count))
+            guard !carried.contains(livePath) else { continue }
+            let original = wine.appending(path: relative)
+            let live = engine.appending(path: livePath)
+            let staging = live.deletingLastPathComponent().appending(path: ".\(live.lastPathComponent).new")
+            try? fm.removeItem(at: staging)
+            try fm.copyItem(at: original, to: staging)
+            try rename(staging, to: live)
+            try fm.removeItem(at: original)
+            AppLog.note("bridge: \(livePath) is the release's again (\(release.id) carries no fix for it)")
         }
     }
 

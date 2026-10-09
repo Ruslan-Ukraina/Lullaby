@@ -153,6 +153,63 @@ struct BridgeUpdaterTests {
         #expect(rig.engineNtdll("x86_64") == BridgeRig.b1("x86_64", "dormison-b1", rev: 2))
     }
 
+    @Test("An engine fix rides with the bridge: in place with the release's file kept, undone by a roll-back")
+    func engineFixFollowsTheBridge() async throws {
+        let rig = BridgeRig()
+        defer { rig.remove() }
+        try rig.engine()
+        try rig.bundled()
+        let updater = rig.updater
+        updater.store.follow(engine: rig.runners.appending(path: "dormison-b1"), catalog: updater.catalog())
+        let fix = BridgeRig.fixPath
+        #expect(rig.engineFile(fix) == BridgeRig.cleanFix("dormison-b1"))
+
+        try rig.publishManifest(serial: 1, [try rig.artifact(rev: 2, engineFix: true)])
+        guard case .available(let offered, _) = try await updater.check() else {
+            Issue.record("expected revision 2 on offer")
+            return
+        }
+        #expect(offered.engineFiles.map(\.path) == [fix])
+        _ = try await updater.install(offered)
+        #expect(rig.engineFile(fix) == BridgeRig.fixed("dormison-b1", rev: 2))
+        #expect(rig.engineFile(fix + ".notproton-orig") == BridgeRig.cleanFix("dormison-b1"))
+        #expect(rig.engineNtdll("x86_64") == BridgeRig.b1("x86_64", "dormison-b1", rev: 2))
+        // The entry as installed keeps the fix, so the bridge on disk is complete.
+        let installed = try #require(BridgeStore.installedReleases(in: rig.store).first)
+        #expect(installed.engineFiles == offered.engineFiles)
+
+        // Revision 1 carries no fix: the release's file comes back and the copy goes.
+        _ = try updater.rollback()
+        #expect(rig.engineFile(fix) == BridgeRig.cleanFix("dormison-b1"))
+        #expect(rig.engineFile(fix + ".notproton-orig") == nil)
+        #expect(rig.engineNtdll("x86_64") == BridgeRig.b1("x86_64", "dormison-b1", rev: 1))
+
+        // Forth again: the fix is back.
+        _ = try updater.rollback()
+        #expect(rig.engineFile(fix) == BridgeRig.fixed("dormison-b1", rev: 2))
+    }
+
+    @Test("An engine fix for a file that is not the release's is refused, the engine untouched")
+    func engineFixRefusesForeignFile() async throws {
+        let rig = BridgeRig()
+        defer { rig.remove() }
+        try rig.engine()
+        try rig.bundled()
+        let updater = rig.updater
+        updater.store.follow(engine: rig.runners.appending(path: "dormison-b1"), catalog: updater.catalog())
+        let foreign = Data("someone else's winemac.so".utf8)
+        try foreign.write(to: rig.runners.appending(path: "dormison-b1/\(BridgeRig.fixPath)"))
+
+        try rig.publishManifest(serial: 1, [try rig.artifact(rev: 2, engineFix: true)])
+        guard case .available(let offered, _) = try await updater.check() else {
+            Issue.record("expected revision 2 on offer")
+            return
+        }
+        let message = await failureMessage { _ = try await updater.install(offered) }
+        #expect(message.contains("not the file NotProton's fix was built for"))
+        #expect(rig.engineFile(BridgeRig.fixPath) == foreign)
+    }
+
     @Test("Fake signatures: a manifest or an artifact signed by another key is refused")
     func fakeSignatures() async throws {
         let rig = BridgeRig()

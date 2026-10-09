@@ -11,6 +11,8 @@
 //       "files": [ { "name": "steam.exe", "path": "steam.exe", "sha256": "…" }, … ],
 //       "ntdll": [ { "arch": "x86_64", "path": "wine/lib/wine/x86_64-windows/ntdll.dll",
 //                    "file": "ntdll/x86_64-ntdll.dll", "clean": "…", "b1": "…" }, … ],
+//       "engineFiles": [ { "path": "wine/lib/wine/x86_64-unix/winemac.so",
+//                          "file": "engine/winemac.so", "clean": "…", "patched": "…" } ],
 //       "url": "<feed>/bridge-dormison-b1-2/bridge-dormison-b1-2.tar.xz",
 //       "sha256": "…", "sizeBytes": 123 } ] }
 //
@@ -46,6 +48,19 @@ struct BridgeRelease: Sendable, Equatable {
         let b1: String
     }
 
+    /// An engine file rebuilt from the same commit with NotProton's fixes
+    /// (engine-fixes/build-fixes.sh), put in place like the B1 pair. Optional: older
+    /// bridges carry none.
+    struct EngineFile: Sendable, Equatable {
+        /// Inside the engine, e.g. wine/lib/wine/x86_64-unix/winemac.so.
+        let path: String
+        /// The patched file inside the artifact root.
+        let file: String
+        /// The release's own file.
+        let clean: String
+        let patched: String
+    }
+
     enum Origin: Sendable, Equatable {
         case bundled(URL)
         case installed(URL)
@@ -58,6 +73,7 @@ struct BridgeRelease: Sendable, Equatable {
     let rev: Int
     let files: [File]
     let ntdll: [Ntdll]
+    var engineFiles: [EngineFile] = []
     var origin: Origin
 
     var root: URL? {
@@ -95,6 +111,11 @@ struct BridgeRelease: Sendable, Equatable {
                 ["arch": $0.arch, "path": $0.path, "file": $0.file, "clean": $0.clean, "b1": $0.b1]
             },
         ]
+        if !engineFiles.isEmpty {
+            out["engineFiles"] = engineFiles.map {
+                ["path": $0.path, "file": $0.file, "clean": $0.clean, "patched": $0.patched]
+            }
+        }
         if case .remote(let url, let sha, let size) = origin {
             out["url"] = url.absoluteString
             out["sha256"] = sha
@@ -147,6 +168,20 @@ struct BridgeRelease: Sendable, Equatable {
         guard Set(ntdll.map(\.arch)) == ["x86_64", "i386"], ntdll.count == 2 else {
             throw bad("the Steam loader patch is not there for both x86_64 and i386")
         }
+        var engineFiles: [EngineFile] = []
+        for raw in item["engineFiles"] as? [[String: Any]] ?? [] {
+            guard let path = raw["path"] as? String, let file = raw["file"] as? String,
+                  let clean = (raw["clean"] as? String)?.lowercased(),
+                  let patched = (raw["patched"] as? String)?.lowercased(),
+                  EngineSupport.isSafeRelative(path), EngineSupport.isSafeRelative(file),
+                  path.hasPrefix("wine/lib/wine/"), !ntdll.contains(where: { $0.path == path }),
+                  EngineManifest.isSHA256(clean), EngineManifest.isSHA256(patched)
+            else { throw bad("an engine file entry is unusable") }
+            engineFiles.append(EngineFile(path: path, file: file, clean: clean, patched: patched))
+        }
+        guard Set(engineFiles.map(\.path)).count == engineFiles.count else {
+            throw bad("an engine file is listed twice")
+        }
 
         let origin: Origin
         if let feed {
@@ -165,7 +200,7 @@ struct BridgeRelease: Sendable, Equatable {
         }
         return BridgeRelease(
             id: id, engine: engine, engineCommit: commit.lowercased(), rev: rev, files: files, ntdll: ntdll,
-            origin: origin)
+            engineFiles: engineFiles, origin: origin)
     }
 
     /// The bridge list of a manifest. Unusable entries are left out and logged, so
@@ -255,6 +290,7 @@ struct BridgeCatalog: Sendable {
         for release in all {
             guard let root = release.root else { return .supported(release) }
             let complete = release.ntdll.allSatisfy { Digest.sha256IfPresent(root.appending(path: $0.file)) == $0.b1 }
+                && release.engineFiles.allSatisfy { Digest.sha256IfPresent(root.appending(path: $0.file)) == $0.patched }
                 && release.files.allSatisfy {
                     FileManager.default.fileExists(atPath: root.appending(path: $0.path).path(percentEncoded: false))
                 }

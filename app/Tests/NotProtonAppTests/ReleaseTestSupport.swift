@@ -78,6 +78,9 @@ struct BridgeRig {
         Data("B1 rev \(rev) \(arch) ntdll of \(version): exports lead to lsteamclient".utf8)
     }
     static func file(_ name: String, rev: Int) -> Data { Data("\(name) of bridge revision \(rev)".utf8) }
+    static let fixPath = "wine/lib/wine/x86_64-unix/winemac.so"
+    static func cleanFix(_ version: String) -> Data { Data("release winemac.so of \(version)".utf8) }
+    static func fixed(_ version: String, rev: Int) -> Data { Data("fixed winemac.so rev \(rev) of \(version)".utf8) }
 
     func remove() { try? FileManager.default.removeItem(at: root) }
 
@@ -90,6 +93,9 @@ struct BridgeRig {
             try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             try Self.clean(arch, version).write(to: url)
         }
+        let fix = dir.appending(path: Self.fixPath)
+        try fm.createDirectory(at: fix.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Self.cleanFix(version).write(to: fix)
         try JSONSerialization.data(withJSONObject: ["version": version, "commit": commit])
             .write(to: dir.appending(path: "engine-info.json"))
         try EngineStore.pointLink(EngineStore.currentLink, at: version, in: runners)
@@ -133,7 +139,8 @@ struct BridgeRig {
     /// A downloadable revision on the test feed. Returns its manifest entry.
     func artifact(
         _ version: String = "dormison-b1", rev: Int, commit: String = commit,
-        signer: Curve25519.Signing.PrivateKey? = nil, wrongSha: Bool = false, extraFile: Bool = false
+        signer: Curve25519.Signing.PrivateKey? = nil, wrongSha: Bool = false, extraFile: Bool = false,
+        engineFix: Bool = false
     ) throws -> [String: Any] {
         let fm = FileManager.default
         let id = "bridge-\(version)-\(rev)"
@@ -150,6 +157,10 @@ struct BridgeRig {
             try Self.b1(arch, version, rev: rev).write(to: top.appending(path: "ntdll/\(arch)-ntdll.dll"))
         }
         if extraFile { try Data("surprise".utf8).write(to: top.appending(path: "extra.dylib")) }
+        if engineFix {
+            try fm.createDirectory(at: top.appending(path: "engine"), withIntermediateDirectories: true)
+            try Self.fixed(version, rev: rev).write(to: top.appending(path: "engine/winemac.so"))
+        }
         let tarball = work.appending(path: "\(id).tar.xz")
         try Shell.check("/usr/bin/tar", [
             "-cJf", tarball.path(percentEncoded: false), "-C", work.path(percentEncoded: false), id,
@@ -157,13 +168,20 @@ struct BridgeRig {
         let bytes = try Data(contentsOf: tarball)
         let url = feed.feed.asset(id, "\(id).tar.xz")
         try feed.publish(url, bytes, signer: signer)
-        return [
+        var entry: [String: Any] = [
             "id": id, "engine": version, "engineCommit": commit, "rev": rev, "files": files,
             "ntdll": ntdllEntries(version, rev: rev) { "ntdll/\($0)-ntdll.dll" },
             "url": url.absoluteString,
             "sha256": wrongSha ? Digest.sha256(of: Data("other".utf8)) : Digest.sha256(of: bytes),
             "sizeBytes": bytes.count,
         ]
+        if engineFix {
+            entry["engineFiles"] = [[
+                "path": Self.fixPath, "file": "engine/winemac.so",
+                "clean": Digest.sha256(of: Self.cleanFix(version)), "patched": Digest.sha256(of: Self.fixed(version, rev: rev)),
+            ]]
+        }
+        return entry
     }
 
     func publishManifest(serial: Int, _ entries: [[String: Any]], signer: Curve25519.Signing.PrivateKey? = nil) throws {
@@ -180,6 +198,10 @@ struct BridgeRig {
 
     func liveFile(_ name: String) -> Data? {
         try? Data(contentsOf: live.appending(path: name))
+    }
+
+    func engineFile(_ path: String, _ version: String = "dormison-b1") -> Data? {
+        try? Data(contentsOf: runners.appending(path: "\(version)/\(path)"))
     }
 
     func engineNtdll(_ arch: String, _ version: String = "dormison-b1") -> Data? {
