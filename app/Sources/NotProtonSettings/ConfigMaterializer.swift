@@ -30,7 +30,9 @@ public enum ConfigMaterializer {
     // MARK: - Lines
 
     /// bottle.env: the "for all games" level, resolved.
-    public static func bottleLines(global: ConfigValues, msync: Bool, cli: String?) -> [String] {
+    /// `d3dmetal` is the directory of the D3DMetal version games get (D3DMetalStore.active),
+    /// which compat_run.sh delivers into the engine for a game on the D3DMetal renderer.
+    public static func bottleLines(global: ConfigValues, msync: Bool, cli: String?, d3dmetal: String? = nil) -> [String] {
         let stack = ConfigStack(global: global)
         var lines = [
             "# NotProton settings for every game. A game's own values: .sevo/apps/<program>.env",
@@ -43,7 +45,17 @@ public enum ConfigMaterializer {
         lines += engineCounterOff
         lines += tuningLines(stack)
         lines += gpuLines(stack)
-        if stack[\.dlss] { lines.append("DXMT_ENABLE_NVEXT=1") }
+        // DLSS through MetalFX: DXMT's own switch, and D3DMetal's (Sevoflurane's
+        // Core/BottleGraphics.swift names it; it does nothing under the other renderers).
+        if stack[\.dlss] {
+            lines.append("DXMT_ENABLE_NVEXT=1")
+            lines.append("D3DM_ENABLE_METALFX=1")
+        }
+        // A directory's URL path ends in "/"; the run script joins its own parts to it.
+        if let d3dmetal {
+            let path = d3dmetal.hasSuffix("/") ? String(d3dmetal.dropLast()) : d3dmetal
+            lines.append("NOTPROTON_D3DMETAL=\(path)")
+        }
         lines += markers.map { "\($0.key)=\(stack[$0.path] ? "1" : "0")" }
         lines.append("NOTPROTON_MSYNC=\(msync ? "1" : "0")")
         if let cli { lines.append("SEVO_CLI=\(cli)") }
@@ -67,6 +79,7 @@ public enum ConfigMaterializer {
             // The card follows DLSS, so a game that sets it names its card over the shared one.
             lines += gpuLines(stack)
             lines.append(dlss ? "DXMT_ENABLE_NVEXT=1" : "DXMT_ENABLE_NVEXT=")
+            lines.append(dlss ? "D3DM_ENABLE_METALFX=1" : "D3DM_ENABLE_METALFX=")
         }
         lines += markers.compactMap { key, path in game[keyPath: path].map { "\(key)=\($0 ? "1" : "0")" } }
         return lines
@@ -168,7 +181,7 @@ public enum ConfigMaterializer {
     /// on record. `cli` is what SEVO_CLI names.
     @discardableResult
     public static func write(
-        prefix: URL, appID: Int, stack: ConfigStack, cli: String?
+        prefix: URL, appID: Int, stack: ConfigStack, cli: String?, d3dmetal: String? = nil
     ) throws -> Outcome {
         var outcome = Outcome()
         let sevo = prefix.appending(path: ".sevo")
@@ -176,7 +189,7 @@ public enum ConfigMaterializer {
         try FileManager.default.createDirectory(at: apps, withIntermediateDirectories: true)
 
         let bottle = sevo.appending(path: "bottle.env")
-        var bottleText = bottleLines(global: stack.global, msync: stack[\.msync], cli: cli)
+        var bottleText = bottleLines(global: stack.global, msync: stack[\.msync], cli: cli, d3dmetal: d3dmetal)
         // The server and every process of a running game agree on WINEMSYNC; only the
         // run script, before the server starts, changes it.
         let msyncLine = existingLines(bottle, keys: ["WINEMSYNC"])

@@ -22,7 +22,7 @@
   // Steam's controls the panel draws with. Their names are the page's own and not part of
   // the webpatch anchors, so a Steam update can rename one; the panel then says so rather
   // than take the Properties page down with it.
-  var MISSING = ["y4", "Vb", "FO", "$n"].filter(function (k) {
+  var MISSING = ["y4", "Vb", "FO", "$n", "D0"].filter(function (k) {
     var t = B && B[k] ? typeof B[k] : "";
     return t !== "function" && t !== "object" && t !== "string";
   });
@@ -99,8 +99,14 @@
 
   // ---- one row --------------------------------------------------------------------
 
+  // A choice that needs a component the player has not added (D3DMetal) is not offered.
+  function available(ctx, c) {
+    return !c.requires || (c.requires === "d3dmetal" && !!toolkit(ctx).active);
+  }
+  function toolkit(ctx) { return (ctx.state && ctx.state.d3dmetal) || {}; }
   function choiceOptions(ctx, choices) {
-    return choices.map(function (c) { return { data: key(c.value), label: L(ctx, c.label) }; });
+    return choices.filter(function (c) { return available(ctx, c); })
+      .map(function (c) { return { data: key(c.value), label: L(ctx, c.label) }; });
   }
 
   function help(ctx, s) {
@@ -174,12 +180,18 @@
     switch (ctl.kind) {
       case "toggle":
         return el(B.y4, { label: lbl, description: desc, checked: eff === true, onChange: function (on) { ctx.change(s.id, !!on); } });
-      case "choice":
-        return el(B.Vb, {
+      case "choice": {
+        var list = el(B.Vb, {
           label: lbl, description: desc, rgOptions: choiceOptions(ctx, ctl.choices), selectedOption: key(eff),
           childrenContainerWidth: "min",
           onChange: function (o) { ctx.change(s.id, JSON.parse(o.data)); }
         });
+        var missing = ctl.choices.some(function (c) { return !available(ctx, c); });
+        return missing ? el("div", null, list,
+          el("div", { className: "NPSub" },
+            el(B.$n, { onClick: function () { ctx.addToolkit(); } }, T(ctx, "toolkitMissing")),
+            toolkitStatus(ctx))) : list;
+      }
       case "tuning": {
         var preset = eff && eff.preset;
         return el("div", null,
@@ -252,6 +264,31 @@
       ctx.advanced ? overlay(ctx) : null);
   }
 
+  // What is installed of D3DMetal, and how an install the player started is going.
+  function toolkitStatus(ctx) {
+    var tk = toolkit(ctx), st = tk.status || {}, lines = [];
+    if (st.state === "choosing") lines.push(T(ctx, "toolkitChoosing"));
+    else if (st.state === "installing") lines.push(T(ctx, "toolkitInstalling"));
+    else if (st.state === "failed") lines.push(T(ctx, "toolkitFailed", st.error || ""));
+    (tk.unusable || []).forEach(function (u) { lines.push(T(ctx, "toolkitNeedsMacOS", u.version)); });
+    if (!lines.length) return null;
+    return el("div", { className: "NPStatus" + (st.state === "failed" || (tk.unusable || []).length ? " NPWarn" : "") },
+      lines.map(function (l, i) { return el("div", { key: i }, l); }));
+  }
+
+  function toolkitBlock(ctx) {
+    var tk = toolkit(ctx), installed = tk.installed || [];
+    return el("div", { className: "NPGroupBox" },
+      el("div", { className: "NPGroup" }, T(ctx, "toolkitTitle")),
+      el(B.D0, {
+        label: installed.length ? T(ctx, "toolkitInstalled", installed.join(", ")) : T(ctx, "toolkitMissing"),
+        description: T(ctx, "toolkitNote"), bottomSeparator: "none"
+      }),
+      el("div", { className: "NPSub" },
+        el(B.$n, { onClick: function () { ctx.addToolkit(); } }, T(ctx, "toolkitAdd")),
+        toolkitStatus(ctx)));
+  }
+
   // The Advanced dialog: every other row of the level, by group, over the window.
   function dialog(ctx) {
     var level = ctx.global ? "global" : "game";
@@ -268,6 +305,7 @@
       el("div", { className: "NPDialog DialogContent", role: "dialog", "aria-label": title },
         el("div", { className: "NPDialogHead" }, title),
         el("div", { className: "NPDialogBody" },
+          toolkitBlock(ctx),
           ctx.catalog.groups.map(function (g) {
             var list = others.filter(function (s) { return s.group === g.id; });
             if (!list.length) return null;
@@ -337,6 +375,15 @@
     function answered(r) {
       if (r.ok) { s[1](r.state); e[1](null); } else { e[1](r.error); }
     }
+    // While the player picks the toolkit's image and it installs, the state is read again
+    // every two seconds, so the list gains D3DMetal without reopening the page.
+    var busy = s[0] && s[0].d3dmetal && s[0].d3dmetal.status &&
+      (s[0].d3dmetal.status.state === "choosing" || s[0].d3dmetal.status.state === "installing");
+    R.useEffect(function () {
+      if (!busy) return undefined;
+      var t = setTimeout(function () { ask({ op: "state", app: appID }).then(answered); }, 2000);
+      return function () { clearTimeout(t); };
+    }, [busy, s[0]]);
     return {
       lang: l[0], catalog: c[0], state: s[0], error: e[0], advanced: a[0], setAdvanced: a[1],
       host: h[0],
@@ -346,7 +393,8 @@
       },
       global: appID === undefined,
       change: function (id, value) { return ask({ op: "set", app: appID, id: id, value: value }).then(answered); },
-      reset: function () { return ask({ op: "reset", app: appID }).then(answered); }
+      reset: function () { return ask({ op: "reset", app: appID }).then(answered); },
+      addToolkit: function () { return ask({ op: "addToolkit", app: appID }).then(answered); }
     };
   }
 

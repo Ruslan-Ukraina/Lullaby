@@ -138,7 +138,7 @@ struct SettingCatalogTests {
     func invalidValues() {
         var values = ConfigValues()
         let bad: [(SettingID, JSONValue)] = [
-            (.fps, .string("yes")), (.renderer, .string("d3dmetal")), (.windows, .number(1)),
+            (.fps, .string("yes")), (.renderer, .string("vulkan")), (.windows, .number(1)),
             (.tuning, .object(["preset": .string("custom"), "waitSpin": .number(2_000_000)])),
         ]
         for (id, value) in bad {

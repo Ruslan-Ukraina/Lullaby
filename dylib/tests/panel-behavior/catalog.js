@@ -22,7 +22,7 @@ const clone = x => JSON.parse(JSON.stringify(x));
 // React and Steam's controls, stubbed: elements are plain objects, hooks keep their first value.
 const mk = (type, props, key) => ({ type, props, key });
 const J = { jsx: mk, jsxs: mk, Fragment: 'Fragment' };
-const B = { y4: 'ToggleField', Vb: 'DropdownField', FO: 'TextField', $n: 'Button' };
+const B = { y4: 'ToggleField', Vb: 'DropdownField', FO: 'TextField', $n: 'Button', D0: 'Field' };
 const R = {
   useState: init => [init, () => {}],
   useEffect: () => {}, useCallback: f => f, useRef: v => ({ current: v }), useMemo: f => f(),
@@ -170,7 +170,8 @@ for (const lang of ['en', 'uk', 'ru']) {
   t.ok(others.every(s => inDialog.some(l => l.startsWith(s.title.uk))) && inDialog.length >= others.length,
     `every other row is in the dialog (${inDialog.length} of ${others.length})`);
   const groups = walk(overlay).filter(n => n.props && n.props.className === 'NPGroup').map(n => text(n));
-  t.ok(JSON.stringify(groups) === JSON.stringify(catalog.groups.map(g => g.title.uk)), `by group, in order (${groups})`);
+  t.ok(JSON.stringify(groups) === JSON.stringify([catalog.text.toolkitTitle.uk].concat(catalog.groups.map(g => g.title.uk))),
+    `Game Porting Toolkit first, then by group, in order (${groups})`);
   const buttons = walk(overlay).filter(n => n.type === 'Button');
   buttons.find(b => text(b) === catalog.text.resetGame.uk).props.onClick();
   buttons.find(b => text(b) === catalog.text.done.uk).props.onClick();

@@ -10,6 +10,10 @@
 //   materialize [--app ID]               rewrite the env files of one game or of all
 //   migrate                              bring every pre-catalog prefix into the store
 //   panel JSON                           one request of the Steam panel, answered as JSON
+//   toolkit add PATH                     install D3DMetal from a Game Porting Toolkit image
+//   toolkit choose                       ask for the image (a macOS file dialog), then install;
+//                                        progress in d3dmetal/.install-status.json
+//   toolkit list                         installed D3DMetal versions as JSON
 //   app config APPID KEY VALUE           what Dormison's View menu runs through SEVO_CLI
 //                                        (the `sevo app config` call; docs/ROADMAP.md §5.3)
 
@@ -42,6 +46,7 @@ public struct SettingsCLI {
         if let support = try? probe.option("--support", &rest) {
             let root = URL(filePath: support)
             service.store = SettingsStore(root: root.appending(path: "settings"))
+            service.d3dmetal = D3DMetalStore(root: root.appending(path: "d3dmetal"))
             service.cli = root.appending(path: "notproton-sevo").path(percentEncoded: false)
             service.log = { _ in }
             service.engineVersion = { nil }
@@ -109,6 +114,8 @@ public struct SettingsCLI {
             return .ok(panel(rest[0]).text)
         case "app":
             return try sevoAppConfig(rest)
+        case "toolkit":
+            return try toolkit(rest)
         default:
             throw SettingsError.usage(Self.usage)
         }
@@ -142,6 +149,8 @@ public struct SettingsCLI {
                 try service.set(id, value, appID: app)
             case "reset":
                 try service.reset(appID: app)
+            case "addToolkit":
+                try startToolkitChooser()
             default:
                 throw SettingsError.usage("unknown op \(op)")
             }
@@ -149,6 +158,74 @@ public struct SettingsCLI {
         } catch {
             return .object(["ok": .bool(false), "error": .string("\(error)")])
         }
+    }
+
+    // MARK: - D3DMetal
+
+    func toolkit(_ arguments: [String]) throws -> Result {
+        let store = service.d3dmetal
+        switch arguments.first {
+        case "add":
+            guard arguments.count == 2 else { throw SettingsError.usage("toolkit add PATH") }
+            return .ok(try install(URL(filePath: arguments[1])).text)
+        case "choose":
+            store.setStatus(.object(["state": .string("choosing")]))
+            guard let path = Self.chooseImage() else {
+                store.setStatus(.object(["state": .string("cancelled")]))
+                return .ok()
+            }
+            return .ok(try install(URL(filePath: path)).text)
+        case "list":
+            return .ok(store.stateJSON().text)
+        default:
+            throw SettingsError.usage("toolkit add PATH | choose | list")
+        }
+    }
+
+    /// Installs, records the outcome for the panel, and rewrites every prefix so bottle.env
+    /// names the version games get.
+    func install(_ source: URL) throws -> JSONValue {
+        let store = service.d3dmetal
+        store.setStatus(.object(["state": .string("installing"), "source": .string(source.lastPathComponent)]))
+        do {
+            let toolkit = try store.install(from: source)
+            service.log("d3dmetal: installed \(toolkit.version) from \(source.path(percentEncoded: false))")
+            var status: [String: JSONValue] = ["state": .string("installed"), "version": .string(toolkit.version)]
+            if toolkit.requiredMacOS > store.macOS { status["requires"] = .number(toolkit.requiredMacOS) }
+            store.setStatus(.object(status))
+            try service.materialize(appID: nil)
+            return store.stateJSON()
+        } catch {
+            store.setStatus(.object(["state": .string("failed"), "error": .string("\(error)")]))
+            service.log("d3dmetal: install from \(source.path(percentEncoded: false)) failed: \(error)")
+            throw error
+        }
+    }
+
+    /// The Steam panel cannot show a macOS file dialog itself, and its request has to come
+    /// back within seconds: a second CLI process asks for the image and installs it, and the
+    /// panel follows `d3dmetal/.install-status.json` in the game's state.
+    func startToolkitChooser() throws {
+        let process = Process()
+        process.executableURL = URL(filePath: CommandLine.arguments[0]).standardizedFileURL
+        process.arguments = ["toolkit", "choose"]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        service.d3dmetal.setStatus(.object(["state": .string("choosing")]))
+        try process.run()
+    }
+
+    /// A macOS file dialog for the toolkit's disk image, through osascript so this CLI needs
+    /// no window of its own. nil when the player cancels.
+    static func chooseImage() -> String? {
+        let script = """
+            set f to choose file with prompt "Game Porting Toolkit (.dmg)" of type {"com.apple.disk-image-udif", "dmg"} \
+            default location (path to downloads folder)
+            POSIX path of f
+            """
+        guard let output = try? D3DMetalStore.run("/usr/bin/osascript", ["-e", script]) else { return nil }
+        let path = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        return path.isEmpty ? nil : path
     }
 
     // MARK: - Dormison's View menu

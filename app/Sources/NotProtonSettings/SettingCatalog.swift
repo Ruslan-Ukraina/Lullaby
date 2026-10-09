@@ -32,10 +32,13 @@ public enum SettingLevel: String, CaseIterable, Sendable, Codable {
 public struct SettingChoice: Sendable, Equatable {
     public let value: JSONValue
     public let label: L10n
+    /// A component the player adds before this choice is offered ("d3dmetal").
+    public var requires: String?
 
-    public init(_ value: JSONValue, _ label: L10n) {
+    public init(_ value: JSONValue, _ label: L10n, requires: String? = nil) {
         self.value = value
         self.label = label
+        self.requires = requires
     }
 }
 
@@ -132,7 +135,9 @@ extension Setting {
     ) -> Setting where C.RawValue == String {
         Setting(
             id: id, group: group, levels: levels, quick: quick, experimental: false, copy: copy,
-            control: .choice(labels.map { SettingChoice(.string($0.0.rawValue), $0.1) }), carrier: carrier,
+            control: .choice(labels.map {
+                SettingChoice(.string($0.0.rawValue), $0.1, requires: $0.0.rawValue == "d3dmetal" ? "d3dmetal" : nil)
+            }), carrier: carrier,
             read: { $0[keyPath: key].map { .string($0.rawValue) } },
             write: { values, value in
                 guard let value, value != .null else { values[keyPath: key] = nil; return }
@@ -152,7 +157,8 @@ public enum SettingCatalog {
     public static let all: [Setting] = [
         .choice(
             .renderer, in: .picture, levels: [.game], quick: 1, key: \.renderer,
-            labels: [(.dxmt, .same("DXMT")), (.dxvk, .same("DXVK")), (.wined3d, .same("WineD3D"))],
+            labels: [(.dxmt, .same("DXMT")), (.dxvk, .same("DXVK")), (.wined3d, .same("WineD3D")),
+                     (.d3dmetal, .same("D3DMetal"))],
             copy: .renderer, carrier: .runScript("NOTPROTON_RENDERER")),
         .flag(.retina, in: .picture, quick: 2, key: \.retina, copy: .retina,
               carrier: .registry(values: ["RetinaMode"], marker: "NOTPROTON_RETINA")),
@@ -185,7 +191,7 @@ public enum SettingCatalog {
             copy: .filter, carrier: .environment(["SEVO_FINAL_FILTER"])),
         // The card a game is told of follows this switch (GPUIdentity.forGame).
         .flag(.dlss, in: .picture, experimental: true, key: \.dlss, copy: .dlss,
-              carrier: .environment(["DXMT_ENABLE_NVEXT", "NOTPROTON_DLSS"] + ConfigMaterializer.gpuKeys)),
+              carrier: .environment(["DXMT_ENABLE_NVEXT", "D3DM_ENABLE_METALFX", "NOTPROTON_DLSS"] + ConfigMaterializer.gpuKeys)),
         .choice(
             .mouse, in: .mouse, key: \.mouse,
             labels: [

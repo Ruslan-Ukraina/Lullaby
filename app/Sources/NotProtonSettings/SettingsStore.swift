@@ -148,6 +148,7 @@ public enum SettingsError: Error, Equatable, CustomStringConvertible {
     case wrongLevel(String)
     case invalidValue(String, String)
     case reservedVariable(String)
+    case d3dmetalMissing
     case storage(String)
     case usage(String)
 
@@ -157,6 +158,7 @@ public enum SettingsError: Error, Equatable, CustomStringConvertible {
         case let .wrongLevel(id): "\(id) cannot be set at this level"
         case let .invalidValue(id, value): "\(value) is not a value of \(id)"
         case let .reservedVariable(key): "\(key) is set by NotProton and cannot be set here"
+        case .d3dmetalMissing: "D3DMetal is not installed: add Apple's Game Porting Toolkit first"
         case let .storage(what): what
         case let .usage(what): what
         }

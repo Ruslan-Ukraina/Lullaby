@@ -646,6 +646,37 @@ stage_renderer() {
       done
       renderer_overrides="d3d11,d3d10core=b"
       ;;
+    d3dmetal)
+      # Apple's D3DMetal from the player's Game Porting Toolkit (notproton/d3dmetal/<version>,
+      # named by NOTPROTON_D3DMETAL in bottle.env). Its macOS half goes into the running
+      # engine's wine/lib/external, where the engine's x86_64-unix/{d3d11,d3d12,dxgi,...}.so
+      # links lead (Apple's layout); doing it at every D3DMetal launch is what carries it into
+      # a new engine after an update or a roll-back. The Windows DLLs reach this game alone
+      # from the renderer directory, their unix halves beside them.
+      tk="$NOTPROTON_D3DMETAL"
+      [ -n "$tk" ] && [ -f "$tk/lib/external/libd3dshared.dylib" ] || {
+        echo "=== D3DMetal is not installed: add Apple's Game Porting Toolkit in Steam ===" >> "$log" 2>&1 || true
+        return 1; }
+      ext="$engine_root/wine/lib/external"
+      if ! cmp -s "$tk/lib/external/libd3dshared.dylib" "$ext/libd3dshared.dylib" \
+        || ! cmp -s "$tk/lib/external/D3DMetal.framework/Versions/A/D3DMetal" \
+          "$ext/D3DMetal.framework/Versions/A/D3DMetal"; then
+        mkdir -p "$ext" && ditto "$tk/lib/external" "$ext" || return 1
+        echo "d3dmetal: $(basename "$tk") delivered into $(readlink "$engine_root" 2>/dev/null || echo "$engine_root")" >> "$log" 2>&1 || true
+      fi
+      rm -rf "${dir:?}" && mkdir -p "$dir/x86_64-windows" "$dir/x86_64-unix" || return 1
+      names=""
+      for f in "$tk/lib/wine/x86_64-windows"/*.dll; do
+        [ -f "$f" ] || continue
+        b=$(basename "$f" .dll)
+        ln -sfn "$f" "$dir/x86_64-windows/$b.dll"
+        ln -sfn "$wine_unix/$b.so" "$dir/x86_64-unix/$b.so"
+        names="${names:+$names,}$b"
+      done
+      [ -n "$names" ] || return 1
+      renderer_overrides="$names=b"
+      export SEVO_LIBD3DSHARED_PATH="$ext/libd3dshared.dylib" D3DM_WINE_UNIX_CALL=1
+      ;;
     *) return 1 ;;
   esac
   for f in "$dir"/*/*; do
@@ -658,11 +689,9 @@ stage_renderer() {
 # some games still carry), then the game's Game Settings.
 renderer="${NOTPROTON_RENDERER:-${CX_GRAPHICS_BACKEND:-$(env_value NOTPROTON_RENDERER)}}"
 renderer="${renderer:-dxmt}"
+[ -n "$NOTPROTON_D3DMETAL" ] || NOTPROTON_D3DMETAL=$(env_value NOTPROTON_D3DMETAL)
 case "$renderer" in
-  dxmt|dxvk|wined3d) ;;
-  d3dmetal)
-    echo "=== D3DMetal is not installed in this engine, using DXMT ===" >> "$log" 2>&1 || true
-    renderer=dxmt ;;
+  dxmt|dxvk|wined3d|d3dmetal) ;;
   *)
     echo "=== unknown renderer $renderer, using DXMT ===" >> "$log" 2>&1 || true
     renderer=dxmt ;;
@@ -676,6 +705,11 @@ fi
 if [ "$renderer" != wined3d ]; then
   if stage_renderer "$renderer_dir"; then
     export WINEDLLPATH_PREPEND="$renderers/$renderer_dir"
+    export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:+$WINEDLLOVERRIDES;}$renderer_overrides"
+  elif [ "$renderer" = d3dmetal ] && stage_renderer dxmt; then
+    echo "=== D3DMetal unavailable, using DXMT ===" >> "$log" 2>&1 || true
+    renderer=dxmt
+    export WINEDLLPATH_PREPEND="$renderers/dxmt"
     export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:+$WINEDLLOVERRIDES;}$renderer_overrides"
   else
     renderer=wined3d

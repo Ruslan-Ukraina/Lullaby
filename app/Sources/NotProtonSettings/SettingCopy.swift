@@ -110,6 +110,22 @@ public enum PanelText {
         "objectSpin": L10n("Object spin", uk: "Об’єкти (spin)", ru: "Объекты (spin)"),
         "backOff": L10n("Back off", uk: "Відступати", ru: "Отступать"),
         "close": L10n("Close", uk: "Закрити", ru: "Закрыть"),
+        "toolkitTitle": .same("D3DMetal · Apple Game Porting Toolkit"),
+        "toolkitAdd": L10n("Add Game Porting Toolkit…", uk: "Додати Game Porting Toolkit…",
+                           ru: "Добавить Game Porting Toolkit…"),
+        "toolkitMissing": L10n("D3DMetal is not installed — add it", uk: "D3DMetal не встановлено — додати",
+                               ru: "D3DMetal не установлен — добавить"),
+        "toolkitNote": L10n("Direct3D 12 needs Apple's D3DMetal. Download the Game Porting Toolkit from Apple (free Apple Account) and choose its .dmg here. NotProton does not distribute it.",
+                            uk: "Для Direct3D 12 потрібен D3DMetal від Apple. Завантажте Game Porting Toolkit з сайту Apple (безкоштовний Apple Account) і виберіть тут його .dmg. NotProton його не поширює.",
+                            ru: "Для Direct3D 12 нужен D3DMetal от Apple. Скачайте Game Porting Toolkit с сайта Apple (бесплатный Apple Account) и выберите здесь его .dmg. NotProton его не распространяет."),
+        "toolkitInstalled": L10n("Installed: %@", uk: "Встановлено: %@", ru: "Установлено: %@"),
+        "toolkitChoosing": L10n("Choose the .dmg in the window that opened.", uk: "Виберіть .dmg у вікні, що відкрилося.",
+                                ru: "Выберите .dmg в открывшемся окне."),
+        "toolkitInstalling": L10n("Installing D3DMetal…", uk: "Встановлення D3DMetal…", ru: "Установка D3DMetal…"),
+        "toolkitFailed": L10n("Could not add D3DMetal: %@", uk: "Не вдалося додати D3DMetal: %@",
+                              ru: "Не удалось добавить D3DMetal: %@"),
+        "toolkitNeedsMacOS": L10n("D3DMetal %@ needs macOS 27 or later.", uk: "D3DMetal %@ потребує macOS 27 або новішої.",
+                                  ru: "D3DMetal %@ требует macOS 27 или новее."),
     ]
 }
 
@@ -131,6 +147,10 @@ extension SettingCopy {
                     "Direct3D 10 and 11 through Vulkan (MoltenVK). Try it if DXMT draws a game wrong.",
                     uk: "Direct3D 10 і 11 через Vulkan (MoltenVK). Спробуйте, якщо DXMT неправильно малює гру.",
                     ru: "Direct3D 10 и 11 через Vulkan (MoltenVK). Попробуйте, если DXMT неправильно рисует игру.")),
+                HelpEntry(.same("D3DMetal"), L10n(
+                    "Apple's Direct3D 11 and 12 from the Game Porting Toolkit you add. Needed for Direct3D 12 games.",
+                    uk: "Direct3D 11 і 12 від Apple з Game Porting Toolkit, який ви додаєте. Потрібен для ігор на Direct3D 12.",
+                    ru: "Direct3D 11 и 12 от Apple из Game Porting Toolkit, который вы добавляете. Нужен для игр на Direct3D 12.")),
                 HelpEntry(.same("WineD3D"), L10n(
                     "Wine's built-in renderer (OpenGL). Direct3D 9 games always use it; Direct3D 11 games only at feature level 9_3.",
                     uk: "Вбудований рендерер Wine (OpenGL). Ігри на Direct3D 9 завжди йдуть через нього, а Direct3D 11 — лише на рівні 9_3.",

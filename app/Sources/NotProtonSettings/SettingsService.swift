@@ -7,6 +7,8 @@ import Foundation
 public struct SettingsService: Sendable {
     public var store: SettingsStore
     public var library: GameLibrary
+    /// Apple's D3DMetal, added by the player (D3DMetalStore).
+    public var d3dmetal: D3DMetalStore = .standard
     /// What SEVO_CLI names in bottle.env.
     public var cli: String?
     /// Whether the game runs now (its bundle's wine is a process).
@@ -35,7 +37,11 @@ public struct SettingsService: Sendable {
     public func catalogJSON() -> JSONValue {
         func control(_ setting: Setting) -> JSONValue {
             func choices(_ list: [SettingChoice]) -> JSONValue {
-                .array(list.map { .object(["value": $0.value, "label": $0.label.json]) })
+                .array(list.map { choice in
+                    var object: [String: JSONValue] = ["value": choice.value, "label": choice.label.json]
+                    if let requires = choice.requires { object["requires"] = .string(requires) }
+                    return .object(object)
+                })
             }
             switch setting.control {
             case .toggle: return .object(["kind": .string("toggle")])
@@ -116,6 +122,7 @@ public struct SettingsService: Sendable {
         var object: [String: JSONValue] = [
             "level": .string(appID == nil ? "global" : "game"),
             "values": .object(values),
+            "d3dmetal": d3dmetal.stateJSON(),
         ]
         if let engine = engineVersion() { object["engine"] = .string(engine) }
         if let appID {
@@ -138,6 +145,9 @@ public struct SettingsService: Sendable {
     public func set(_ id: String, _ value: JSONValue?, appID: Int?) throws {
         guard let setting = SettingCatalog.setting(named: id) else { throw SettingsError.unknownSetting(id) }
         guard setting.levels.contains(appID == nil ? .global : .game) else { throw SettingsError.wrongLevel(id) }
+        if setting.id == .renderer, value?.string == RendererChoice.d3dmetal.rawValue, d3dmetal.active() == nil {
+            throw SettingsError.d3dmetalMissing
+        }
         // A value equal to what the level inherits is stored as inherit (§13.3 и).
         if let appID {
             let global = store.global()
@@ -229,7 +239,9 @@ public struct SettingsService: Sendable {
             log("app \(appID): migrated \(prefix.path(percentEncoded: false)) \(JSONValue.encode(old).text)")
         }
         let outcome = try store.locked {
-            try ConfigMaterializer.write(prefix: prefix, appID: appID, stack: store.stack(for: appID), cli: cli)
+            try ConfigMaterializer.write(
+                prefix: prefix, appID: appID, stack: store.stack(for: appID), cli: cli,
+                d3dmetal: d3dmetal.active()?.root.path(percentEncoded: false))
         }
         if !outcome.written.isEmpty || !outcome.removed.isEmpty {
             log("app \(appID): wrote \((outcome.written + outcome.removed.map { "-" + $0 }).joined(separator: " "))")
