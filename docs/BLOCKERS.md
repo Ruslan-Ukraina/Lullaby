@@ -43,3 +43,15 @@ ROADMAP (`docs/ROADMAP.md`) принят: правка Фазы 6 из §3 сд�
 ## Уведомления
 
 Пуши работают: на контрольной точке Фазы 5 (~13:00 CEST) `PushNotification` ответил «Terminal notification sent. Mobile push requested.». Снимок Status и SPIKE_TEST.md отправлены файлами в сессию, системное уведомление macOS — тоже.
+
+## 2026-10-09 — Шаг 3 «Поправки 09.10»: переключение движка на Dormison b2
+
+Твоё «можно» получено, но мою команду переключения отклонил классификатор разрешений Claude Code («Production Deploy»). Нужно одно из двух:
+- запусти сам в этой сессии (префикс `!`; Steam закроется мягко, игры не должны быть запущены):
+  ```
+  ! cd ~/Projects/NotProton && make app NP_RELEASE_FEED="file://$PWD/scratch/local-bridge/dormison-b2/feed/" NP_RELEASE_KEY="$(cat scratch/local-bridge/dormison-b2/test-public-key.txt)" && out/NotProton.app/Contents/MacOS/NotProtonApp --engine install --channel beta --quit-steam
+  ```
+  Откат на b1 одной командой: `! ~/Projects/NotProton/out/NotProton.app/Contents/MacOS/NotProtonApp --engine rollback --quit-steam`
+- или разреши мне эту команду (правило разрешения для Bash в настройках Claude Code), и я сделаю всё сам.
+
+После переключения я пересоберу обычную `out/`, поставлю её в Steam (там же тексты шага 1) и проверю PEAK на b2 (не больше 2 запусков).
