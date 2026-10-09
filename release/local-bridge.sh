@@ -41,6 +41,9 @@ WINE_COMMIT="$commit" "$repo/bridge/setup-wine-tree.sh"
 say "B1 ntdll.dll pair"
 ENGINE="$eng" OUT="$W/ntdll-b1" "$repo/ntdll-patch/b1/build-b1.sh" --check-base
 
+say "engine fixes (engine-fixes/build-fixes.sh)"
+ENGINE="$eng" OUT="$W/engine-fixes" "$repo/engine-fixes/build-fixes.sh"
+
 say "lsteamclient and steam.exe"
 "$repo/lsteamclient/build.sh"
 "$repo/steam-shim/build.sh"
@@ -73,7 +76,7 @@ pub=$("$here/ci-keys.sh" dry-run "$keys" | sed -n 's/^NP_RELEASE_KEY=//p')
 feed="$W/feed"
 id="bridge-$version-$REV"
 rm -rf "${feed:?}"
-python3 -I "$here/feed.py" bridge-artifact --files-dir "$files" --b1-dir "$W/ntdll-b1" \
+python3 -I "$here/feed.py" bridge-artifact --files-dir "$files" --b1-dir "$W/ntdll-b1" --fixes-dir "$W/engine-fixes" \
 	--engine "$version" --commit "$commit" --rev "$REV" --feed "file://$feed/" --out "$feed"
 python3 -I "$here/feed.py" publish-bridges --repo "$repo/bridge/bridge-manifest.json" \
 	--out "$feed/manifest/bridge-manifest.json" "$feed/$id.entry.json"

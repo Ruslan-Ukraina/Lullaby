@@ -100,7 +100,8 @@ def unpack_bridge(tarball, entry, into):
     top = os.path.join(into, entry["id"])
     present = sorted(os.path.relpath(os.path.join(d, n), top)
                      for d, _, names in os.walk(top) for n in names)
-    listed = sorted([f["path"] for f in entry["files"]] + [n["file"] for n in entry["ntdll"]])
+    listed = sorted([f["path"] for f in entry["files"]] + [n["file"] for n in entry["ntdll"]]
+                    + [e["file"] for e in entry.get("engineFiles", [])])
     if present != listed:
         raise SystemExit(f"{tarball}: holds {present}, the manifest lists {listed}")
     for f in entry["files"]:
@@ -109,6 +110,9 @@ def unpack_bridge(tarball, entry, into):
     for n in entry["ntdll"]:
         if sha256(os.path.join(top, safe(n["file"]))) != n["b1"]:
             raise SystemExit(f"{entry['id']}: {n['file']} does not match the manifest")
+    for e in entry.get("engineFiles", []):
+        if sha256(os.path.join(top, safe(e["file"]))) != e["patched"]:
+            raise SystemExit(f"{entry['id']}: {e['file']} does not match the manifest")
     return top
 
 
@@ -129,13 +133,18 @@ def stage_bridge(args):
             for n in entry["ntdll"]:
                 copy_checked(os.path.join(top, n["file"]), os.path.join(
                     args.payload, "engine-support", entry["engine"], f"{n['arch']}-ntdll.dll"), n["b1"])
+            for e in entry.get("engineFiles", []):
+                copy_checked(os.path.join(top, e["file"]), os.path.join(
+                    args.payload, "engine-support", entry["engine"], "fixes", os.path.basename(e["file"])), e["patched"])
         # The bundled form (DECISIONS P5-1): no download, and no sha256 per file,
         # since SwiftPM strips Mach-O resources in a release build (RISKS R27). The
         # bytes were checked above; the app's code signature covers them from here.
         bundled = {**manifest, "bridges": [
             {**{k: v for k, v in e.items() if k not in ("url", "sha256", "sizeBytes")},
              "files": [{"name": f["name"], "path": f"bridge/{f['name']}"} for f in e["files"]],
-             "ntdll": [{**n, "file": f"engine-support/{e['engine']}/{n['arch']}-ntdll.dll"} for n in e["ntdll"]]}
+             "ntdll": [{**n, "file": f"engine-support/{e['engine']}/{n['arch']}-ntdll.dll"} for n in e["ntdll"]],
+             **({"engineFiles": [{**f, "file": f"engine-support/{e['engine']}/fixes/{os.path.basename(f['file'])}"}
+                                 for f in e["engineFiles"]]} if e.get("engineFiles") else {})}
             for e in manifest["bridges"]]}
         write_json(os.path.join(args.payload, "engine-support", "bridge-manifest.json"), bundled)
         print(f"==> staged published bridge {', '.join(e['id'] for e in manifest['bridges'])}")
@@ -205,6 +214,16 @@ def bridge_from_build(args):
             rel = f"ntdll/{arch}-ntdll.dll"
             copy_checked(os.path.join(args.b1_dir, f"{arch}-ntdll.dll"), os.path.join(top, rel), pins["b1"])
             ntdll.append({"arch": arch, "path": rel_engine, "file": rel, "clean": pins["clean"], "b1": pins["b1"]})
+        engine_files = []
+        if args.fixes_dir:
+            fixes = json.load(open(os.path.join(args.fixes_dir, "fixes.json")))
+            if fixes["engine"] != args.engine or fixes["commit"] != args.commit:
+                raise SystemExit(f"fixes.json is for {fixes['engine']} {fixes['commit']}, not {args.engine} {args.commit}")
+            for rel_engine, pins in sorted(fixes["files"].items()):
+                rel = f"engine/{os.path.basename(rel_engine)}"
+                copy_checked(os.path.join(args.fixes_dir, pins["file"]), os.path.join(top, rel), pins["patched"])
+                engine_files.append({"path": rel_engine, "file": rel, "clean": pins["clean"],
+                                     "patched": pins["patched"], "patches": pins["patches"]})
         out_dir = os.path.join(args.out, new_id)
         os.makedirs(out_dir, exist_ok=True)
         tarball = os.path.join(out_dir, f"{new_id}.tar.xz")
@@ -214,6 +233,7 @@ def bridge_from_build(args):
         "id": new_id, "engine": args.engine, "engineCommit": args.commit, "rev": args.rev,
         "patch": b1["patch"], "patchSha256": b1["patchSha256"],
         "files": files, "ntdll": ntdll,
+        **({"engineFiles": engine_files} if engine_files else {}),
         "url": f"{feed}{new_id}/{new_id}.tar.xz",
         "sha256": sha256(tarball), "sizeBytes": os.path.getsize(tarball),
     }
@@ -437,7 +457,7 @@ def main():
     s = sub.add_parser("bridge-artifact")
     for name in ("--feed", "--out"):
         s.add_argument(name, required=True)
-    for name in ("--manifest", "--like", "--root", "--files-dir", "--b1-dir"):
+    for name in ("--manifest", "--like", "--root", "--files-dir", "--b1-dir", "--fixes-dir"):
         s.add_argument(name)
     s.add_argument("--rev", type=int, required=True)
     s.add_argument("--engine"); s.add_argument("--commit")

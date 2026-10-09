@@ -190,6 +190,12 @@ jobs:
         run: |
           OUT="$PWD/scratch/ntdll-b1/${{ steps.detect.outputs.engine }}" ntdll-patch/b1/build-b1.sh --check-base
 
+      - name: Build the engine fixes (engine-fixes/, each first proven equal to the release)
+        if: steps.detect.outputs.engine
+        run: |
+          OUT="$PWD/scratch/engine-fixes/${{ steps.detect.outputs.engine }}" engine-fixes/build-fixes.sh
+          { echo '```'; cat "scratch/engine-fixes/${{ steps.detect.outputs.engine }}/fixes.json"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Build lsteamclient and steam.exe
         if: steps.detect.outputs.engine
         run: |
@@ -228,6 +234,7 @@ jobs:
           feed="$RUNNER_TEMP/feed"
           python3 -I release/feed.py bridge-artifact --files-dir "$RUNNER_TEMP/bridge-files" \
             --b1-dir "scratch/ntdll-b1/${{ steps.detect.outputs.engine }}" \
+            --fixes-dir "scratch/engine-fixes/${{ steps.detect.outputs.engine }}" \
             --engine "${{ steps.detect.outputs.engine }}" --commit "${{ steps.engine.outputs.commit }}" \
             --rev "${{ steps.detect.outputs.rev }}" --feed "$FEED" --out "$feed"
           id="bridge-${{ steps.detect.outputs.engine }}-${{ steps.detect.outputs.rev }}"
