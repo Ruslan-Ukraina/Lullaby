@@ -87,6 +87,8 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
             }
         }
         if case .off(let reason) = setup {
+            // A token removed in ⚙︎ must not stay in Sparkle's headers.
+            controller?.updater.httpHeaders = nil
             AppLog.note("app updates: off, \(reason)")
             return
         }

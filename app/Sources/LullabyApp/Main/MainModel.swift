@@ -86,6 +86,83 @@ final class MainModel {
         return (store.installed().map(\.version), store.unusable().map(\.version))
     }
 
+    // MARK: Private releases (Phase 6)
+
+    /// The Keychain side of the token, a stand-in in tests.
+    struct TokenKeychain {
+        var read: (String) -> String?
+        var save: (String, String) -> Bool
+        var remove: (String) -> Void
+
+        static var live: TokenKeychain { TokenKeychain(
+            read: { ReleaseToken.read(repository: $0) },
+            save: { ReleaseToken.save($0, repository: $1) },
+            remove: { ReleaseToken.remove(repository: $0) }) }
+    }
+
+    /// LBReleaseAccess and LBReleaseRepository of this build (`make app` from release/feed.json).
+    @ObservationIgnored var releaseInfo: () -> (access: String, repository: String) = {
+        (Bundle.main.object(forInfoDictionaryKey: ReleaseAccess.infoKey) as? String ?? "public",
+         Bundle.main.object(forInfoDictionaryKey: ReleaseAccess.repositoryKey) as? String ?? "")
+    }
+    @ObservationIgnored var tokenKeychain = TokenKeychain.live
+    @ObservationIgnored var checkToken: (String, String) async -> ReleaseToken.Check = {
+        await ReleaseToken.check($0, repository: $1)
+    }
+    /// The updater and the feeds read the Keychain again (AppUpdater.start).
+    @ObservationIgnored var restartUpdates: @MainActor () -> Void = { AppUpdater.shared.start() }
+
+    /// The token sheet is open; what came of the last save.
+    var tokenPromptShown = false
+    var tokenResult: String?
+    private(set) var hasReleaseToken = false
+
+    /// The repository of a private release feed; nil when releases are public, and then
+    /// ⚙︎ has no token row at all.
+    var privateReleaseRepository: String? {
+        let info = releaseInfo()
+        return info.access == "private" && !info.repository.isEmpty ? info.repository : nil
+    }
+
+    func readTokenState() {
+        hasReleaseToken = privateReleaseRepository.map { tokenKeychain.read($0) != nil } ?? false
+    }
+
+    /// Checks the token with GitHub, keeps it in the Keychain, and looks for updates with it.
+    /// The token is never logged; only what GitHub said is.
+    func saveReleaseToken(_ text: String) async {
+        guard let repository = privateReleaseRepository else { return }
+        let token = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !token.isEmpty else { return }
+        let check = await checkToken(token, repository)
+        AppLog.note("release access: GitHub says the new token \(check.rawValue)")
+        switch check {
+        case .works:
+            _ = tokenKeychain.save(token, repository)
+            tokenResult = tr("The token works. Lullaby checks for updates now.")
+        case .unreachable:
+            _ = tokenKeychain.save(token, repository)
+            tokenResult = tr("GitHub can't be reached. The token is saved; Lullaby tries it next time.")
+        case .rejected:
+            tokenResult = tr("GitHub didn't accept this token.")
+        case .noAccess:
+            tokenResult = tr("This token has no access to Lullaby's releases.")
+        }
+        readTokenState()
+        guard check == .works || check == .unreachable else { return }
+        restartUpdates()
+        await checkForUpdates()
+    }
+
+    func removeReleaseToken() {
+        guard let repository = privateReleaseRepository else { return }
+        tokenKeychain.remove(repository)
+        AppLog.note("release access: token removed from the Keychain")
+        readTokenState()
+        restartUpdates()
+        plan = nil
+    }
+
     // MARK: Opening
 
     /// When the window opens: read the state, then look for updates once (ROADMAP §9.5).
@@ -175,6 +252,7 @@ final class MainModel {
 
     /// ⚙︎ opened: the badge goes for good, and the first time the Steam updates row lights up.
     func gearOpened() {
+        readTokenState()
         highlightSteamUpdates = badge.gearOpened()
         showsBadge = badge.isShowing
     }

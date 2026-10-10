@@ -11,6 +11,7 @@ struct MainView: View {
     @State private var showsGear = false
     @Environment(\.openWindow) private var openWindow
     @State private var hoveringCredits = false
+    @State private var tokenText = ""
 
     static let size = CGSize(width: 360, height: 220)
 
@@ -136,6 +137,7 @@ struct MainView: View {
                 GearPanel(close: { showsGear = false })
                     .environment(model)
             }
+            .modifier(TokenAlerts(text: $tokenText))
         }
     }
 
@@ -195,4 +197,35 @@ struct AnyPrimitiveButtonStyle: PrimitiveButtonStyle {
     }
 
     func makeBody(configuration: Configuration) -> some View { body(configuration) }
+}
+
+/// ⚙︎ → Access Token… (Phase 6, private releases): a system sheet with a secure field,
+/// then a second one with what GitHub said. The text is dropped as soon as it is used.
+private struct TokenAlerts: ViewModifier {
+    @Environment(MainModel.self) private var model
+    @Binding var text: String
+
+    func body(content: Content) -> some View {
+        @Bindable var model = model
+        content
+            .alert(tr("Access Token"), isPresented: $model.tokenPromptShown) {
+                SecureField(text: $text) { Text(verbatim: "github_pat_…") }
+                Button(tr("Save")) {
+                    let token = text
+                    text = ""
+                    Task { await model.saveReleaseToken(token) }
+                }
+                if model.hasReleaseToken {
+                    Button(tr("Remove Token"), role: .destructive) { text = ""; model.removeReleaseToken() }
+                }
+                Button(tr("Cancel"), role: .cancel) { text = "" }
+            } message: {
+                Text(tr("Paste the read-only GitHub token (github_pat_…). Lullaby keeps it in the Keychain and sends it only to GitHub."))
+            }
+            .alert(model.tokenResult ?? "", isPresented: Binding(
+                get: { model.tokenResult != nil }, set: { if !$0 { model.tokenResult = nil } })
+            ) {
+                Button(tr("OK"), role: .cancel) {}
+            }
+    }
 }

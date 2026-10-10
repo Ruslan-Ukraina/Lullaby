@@ -2736,6 +2736,270 @@
           }
         }
       }
+    },
+    "Access Token": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Access Token"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Токен доступа"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Токен доступу"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Access Token…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Access Token…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Токен доступа…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Токен доступу…"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Save": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зберегти"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Remove Token": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove Token"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить токен"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Видалити токен"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Paste the read-only GitHub token (github_pat_…). Lullaby keeps it in the Keychain and sends it only to GitHub.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paste the read-only GitHub token (github_pat_…). Lullaby keeps it in the Keychain and sends it only to GitHub."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вставьте токен GitHub только для чтения (github_pat_…). Lullaby хранит его в Keychain и отправляет только на GitHub."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вставте токен GitHub лише для читання (github_pat_…). Lullaby зберігає його в Keychain і надсилає тільки на GitHub."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Saved in the Keychain.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved in the Keychain."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранён в Keychain."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Збережено в Keychain."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Needed for updates while Lullaby's releases are private.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Needed for updates while Lullaby's releases are private."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нужен для обновлений, пока релизы Lullaby приватные."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Потрібен для оновлень, поки релізи Lullaby приватні."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "The token works. Lullaby checks for updates now.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The token works. Lullaby checks for updates now."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Токен работает. Lullaby проверяет обновления."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Токен працює. Lullaby перевіряє оновлення."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "GitHub can't be reached. The token is saved; Lullaby tries it next time.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub can't be reached. The token is saved; Lullaby tries it next time."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub недоступен. Токен сохранён; Lullaby попробует его в следующий раз."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub недоступний. Токен збережено; Lullaby спробує його наступного разу."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "GitHub didn't accept this token.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub didn't accept this token."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub не принял этот токен."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub не прийняв цей токен."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "This token has no access to Lullaby's releases.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This token has no access to Lullaby's releases."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У этого токена нет доступа к релизам Lullaby."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цей токен не має доступу до релізів Lullaby."
+          }
+        }
+      },
+      "generatesSymbol": false
     }
   },
   "version": "1.0"

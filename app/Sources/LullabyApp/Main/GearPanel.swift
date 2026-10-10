@@ -1,5 +1,5 @@
 // ⚙︎ (Phase 8, owner's edits of 10.10), top to bottom: Reinstall; Install GPTK; Turn Off
-// Steam Updates; Steam's and Dormison's versions at the very bottom (read only; a Steam
+// Steam Updates; Access Token… only while releases are private (Phase 6); Steam's and Dormison's versions at the very bottom (read only; a Steam
 // build Lullaby has no signatures for is orange, "not checked"). The first time it opens after Install, the Steam
 // updates row is highlighted and a short tip explains it (§9.4).
 
@@ -26,6 +26,16 @@ struct GearPanel: View {
             }
             Divider()
             steamUpdatesRow
+            if model.privateReleaseRepository != nil {
+                Divider()
+                action(tr("Access Token…"), systemImage: "key",
+                       detail: model.hasReleaseToken
+                           ? tr("Saved in the Keychain.")
+                           : tr("Needed for updates while Lullaby's releases are private."),
+                       enabled: true) {
+                    model.tokenPromptShown = true
+                }
+            }
             Divider()
             versions
         }

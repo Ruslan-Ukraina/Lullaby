@@ -24,7 +24,7 @@ enum ReleaseAccess: Equatable, Sendable {
     var isPrivate: Bool { if case .private = self { true } else { false } }
 
     static let needsToken =
-        "Lullaby's releases are private and this Mac has no access token for them. Add it in Status → Lullaby → Access Token."
+        "Lullaby's releases are private and this Mac has no access token for them. Add it in ⚙︎ → Access Token…"
 }
 
 /// The read-only token for a private release repository, in the login Keychain.
@@ -63,6 +63,41 @@ enum ReleaseToken {
         let saved = SecItemAdd(item as CFDictionary, nil) == errSecSuccess
         AppLog.note("release access: token for \(repository) \(saved ? "saved" : "not saved") in the Keychain")
         return saved
+    }
+
+    /// What GitHub says about a token before it is kept: it must list the releases of
+    /// `repository`, which takes Contents: Read (a fine-grained token's Metadata alone
+    /// would pass a plain repository query). The token goes to api.github.com only.
+    enum Check: String, Equatable, Sendable {
+        case works, rejected, noAccess, unreachable
+    }
+
+    typealias StatusOf = @Sendable (URLRequest) async throws -> Int
+
+    static func check(_ token: String, repository: String, status: StatusOf = liveStatus) async -> Check {
+        let path = "repos/\(repository)/releases"
+        var request = URLRequest(url: GitHubAssetTransport.api.appending(path: path)
+            .appending(queryItems: [URLQueryItem(name: "per_page", value: "1")]))
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = 20
+        do {
+            switch try await status(request) {
+            case 200: return .works
+            case 401: return .rejected
+            case 403, 404: return .noAccess
+            default: return .unreachable
+            }
+        } catch {
+            return .unreachable
+        }
+    }
+
+    static let liveStatus: StatusOf = { request in
+        let (_, response) = try await URLSession.shared.data(for: request)
+        return (response as? HTTPURLResponse)?.statusCode ?? 0
     }
 
     static func remove(repository: String) {
