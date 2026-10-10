@@ -14,9 +14,12 @@ a free Wine engine for macOS, and keeps itself up to date.
 - **Game settings inside Steam.** Properties → Compatibility shows the renderer, Retina,
   upscaler and FPS counter, with more under "Advanced settings…". Steam Settings →
   Compatibility holds the defaults for all games. English, Ukrainian and Russian.
-- **Renderers.** DXMT (Direct3D 10/11 on Metal, the default), DXVK, WineD3D, and:
-  - **D3DMetal** for Direct3D 12 — from Apple's Game Porting Toolkit, which you download
-    from Apple yourself and add in "Advanced settings". NotProton never ships it.
+- **Renderers.** D3DMetal, DXMT (Direct3D 10/11 on Metal, the default), DXVK, WineD3D.
+  D3DMetal (needed for Direct3D 12) comes from Apple's Game Porting Toolkit, which you
+  download from Apple yourself and add in NotProton. NotProton never ships it.
+- **Game windows from Dormison.** Native macOS windows that resize, native full screen,
+  upscaling (Lanczos, MetalFX), an FPS counter, raw mouse input and a held cursor; msync
+  is always on.
 - **Recipes.** Games NotProton knows get the setup that worked best (marked "NotProton
   recipe"); your own choice always wins, and "Restore recipe" goes back.
 - **Updates.** The engine (signed by Dormison), the Steam bridge, the Steam signatures and
@@ -55,6 +58,9 @@ Security → "Open Anyway".
 | Two engine fixes (memory accounting, Retina screen size) | [Highball](https://github.com/gauthierpiarrette/highball-engine) by gauthierpiarrette | LGPL-2.1-or-later |
 | `lsteamclient` | Valve's [Proton](https://github.com/ValveSoftware/Proton) | Steamworks SDK License |
 | `steam-shim` | Valve's Proton `steam_helper` | BSD-3-Clause |
+| DXMT, DXVK, MoltenVK | inside Dormison's release, unchanged | LGPL-2.1-or-later, zlib, Apache-2.0 |
+| Function hooks inside Steam | [Dobby](https://github.com/jmpews/Dobby) by Jmpews | Apache-2.0 |
+| App updates | [Sparkle](https://sparkle-project.org) | MIT |
 | D3DMetal (yours) | Apple Game Porting Toolkit | Apple's license, not distributed |
 
 The details, and which files each part covers, are in [NOTICE](NOTICE).

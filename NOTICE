@@ -31,6 +31,12 @@ These third party files carry their original notices from the project authors:
   vendor/cJSON.c                     cJSON, MIT (header)
   vendor/cJSON.h                     cJSON, MIT (header)
 
+notproton.dylib, the part NotProton puts inside Steam, links Dobby (Jmpews,
+https://github.com/jmpews/Dobby, commit 5dfc8546954ce3b3198132ab13fddb89ee92cdd7)
+statically: it hooks Steam's functions. Dobby is licensed under the Apache License 2.0,
+https://github.com/jmpews/Dobby/blob/5dfc8546954ce3b3198132ab13fddb89ee92cdd7/LICENSE
+NotProton uses it unchanged; see vendor/README.md for how it is fetched and built.
+
 Parts of the game settings catalog (app/Sources/NotProtonSettings: SettingCatalog,
 SettingCopy, GameConfig, ConfigMaterializer, GameLibrary's executable filter) follow
 Sevoflurane by kageroumado: the shape of the catalog, the env file format and its

@@ -74,7 +74,7 @@ struct ShimAgreementTests {
         let script = try Self.runScript()
         for line in script.split(separator: "\n") {
             let writes = line.contains("cp -f") || line.contains("codesign ")
-            let runner = ["$CX_ROOT", "$engine_root", "$wine_unix"].contains { line.contains($0) }
+            let runner = ["$engine_root", "$wine_unix"].contains { line.contains($0) }
             guard writes, runner else { continue }
             Issue.record("RUN_SCRIPT writes into the runner: \(line.trimmingCharacters(in: .whitespaces))")
         }

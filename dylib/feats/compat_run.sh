@@ -1181,7 +1181,7 @@ else
   echo "=== client staged no overlay renderer, overlay disabled ===" >> "$log" 2>&1 || true
 fi
 set -- --args "$shim_exe" "$@"
-for name in $(env | sed -nE 's/^(Steam[A-Za-z0-9]*|(CX_GRAPHICS|D3DM_|DXMT_|DXVK_|MTL_|ROSETTA_|SEVO_)[A-Z0-9_]*)=.*/\1/p'); do
+for name in $(env | sed -nE 's/^(Steam[A-Za-z0-9]*|(D3DM_|DXMT_|DXVK_|MTL_|ROSETTA_|SEVO_)[A-Z0-9_]*)=.*/\1/p'); do
   eval "value=\$$name"
   # shellcheck disable=SC2154 # eval assigns value on the line above
   set -- --env "$name=$value" "$@"
@@ -1193,6 +1193,7 @@ fi
 # itself (below) carry the player's part already.
 for name in $launch_env; do
   case "$name" in
+    # CX_GRAPHICS*: launch options left from CrossOver days; Dormison reads none of them.
     Steam*|CX_GRAPHICS*|D3DM_*|DXMT_*|DXVK_*|MTL_*|ROSETTA_*|SEVO_*) continue ;;
     WINESERVER|WINEDLLPATH|WINEDLLPATH_PREPEND|WINEDLLOVERRIDES|WINEMSYNC|WINEPREFIX|WINEDEBUG) continue ;;
     PATH|STEAM_COMPAT_*|STEAM_DYLD_INSERT_LIBRARIES|NOTPROTON_GAME_CWD) continue ;;
