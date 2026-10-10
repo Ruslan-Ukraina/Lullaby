@@ -1207,3 +1207,12 @@ PEAK, DXMT, меню; `perf/peak-ab.sh` чередует «исходно → и
 - **Dobby** — в NOTICE и credits (был пропущен), тест на `vendor/`.
 - `make app` — код 0; `make app-tests` — код 0, 418 тестов.
 
+
+## 2026-10-10 ~17:00–17:50 CEST — Задание владельца: пункты 0–4; Фаза 7 закрыта, `phase-7` влита в `phase-8`
+
+- **0) Mullion убран** (P7C-4): код, панель, CLI, `compat_run.sh`, подсказки, credits, NOTICE, README; BACKLOG 36 — «отменено пользователем». D3DMetal первый в списке рендереров (только порядок). `fde54c6`.
+- **2) Steam Helper** (A1010-6, upstream 1.1.4): ~70 строк C, тест `spawn-live` (8 случаев) зелёный. `7d8ad0a`. Живая проверка в Steam — владельца.
+- **3) 7D** (P7D-2): рабочих зависимостей от CrossOver нет; убрана пересылка `CX_GRAPHICS*`, README дополнен, Dobby в NOTICE. `a5336eb`.
+- **4) Фаза 7 закрыта** (P7-END-1..3: отложенное, Delete снимает блок Steam, порядок дальше). `c6642b8`.
+- Работа шла в `phase-7`; по слову владельца `phase-7` влита в `phase-8` (`14af38c`), дальше — только `phase-8`. Конфликты: DECISIONS (оставлены обе части), фикстура каталога (пересобрана). Строка Mullion в credits окна убрана. `make app` — 0; `make app-tests` — 0, 412 тестов; C-проверки и `spawn-live` — 0.
+- **1) Новый Dormison:** на канале уже **r5** (14:38 UTC: b4 + запуск нативных macOS-игр по пути внутри бандла; stable и beta = r5). Мост собирается для r5 (`release/local-bridge.sh`, ТЕСТОВЫЙ ключ). Тарбол r5 скачан частями за 213 с, sha256 = манифест. Переключение `runners/current` — только после «можно» владельца; откат — `NotProtonApp --engine rollback --quit-steam` (b2 станет previous).
