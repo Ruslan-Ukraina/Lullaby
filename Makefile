@@ -69,7 +69,7 @@ DEPS := $(OBJS:.o=.d)
         anchorcheck callscheck sigdb-fixtures webpatch-fixtures peicon-fixtures panel-behavior app-tests launch-shell \
         tests-list overlay-shim overlay-shim-install overlay-shim-tests \
         overlay-shim-bench iconmaker icon \
-        appinfo helpers-install ntdll-resolve bridge runcheck compatcheck \
+        appinfo helpers-install bridge runcheck compatcheck \
         compatsvc-check scriptcheck steamwin-check updategate-check settingsbridge-check webpatch-syntax sigslice
 
 APP_PAYLOAD := app/Sources/NotProtonApp/Resources/payload
@@ -371,18 +371,6 @@ panel-behavior:
 	node $(PANEL_TESTS)/switching.js $(OUT_DIR)/panel-emit && \
 	node $(PANEL_TESTS)/cleanup.js $(OUT_DIR)/panel-emit && \
 	echo "==> panel behavior: renders as expected, no stale arguments"
-
-# The engine whose ntdll.dll resolve.py reads (the B2 binary patch, DECISIONS P1-1).
-NTDLL_ENGINE ?= $(HOME)/Library/Application Support/notproton/runners/current/wine
-
-ntdll-resolve:
-	@if [ ! -f ntdll-patch/resolve.py ]; then \
-		$(call SKIP,ntdll-resolve,ntdll-patch/resolve.py); exit 0; fi; \
-	if ! python3 -c 'import capstone' >/dev/null 2>&1; then \
-		echo "==> ntdll-resolve: capstone not found, skipped (pip3 install capstone)"; exit 0; fi; \
-	if [ ! -d "$(NTDLL_ENGINE)" ]; then \
-		echo "==> ntdll-resolve: $(NTDLL_ENGINE) not present, skipped (set NTDLL_ENGINE)"; exit 0; fi; \
-	python3 ntdll-patch/resolve.py "$(NTDLL_ENGINE)"
 
 $(ARM64_DYLIB): $(OBJS)
 	@mkdir -p $(dir $@)
