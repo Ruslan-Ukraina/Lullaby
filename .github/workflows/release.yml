@@ -176,7 +176,7 @@ jobs:
           support="$RUNNER_TEMP/np-support"; mkdir -p "$support" "$RUNNER_TEMP/np-steam"
           private=""; [ "$ACCESS" = private ] && private="--repository $GITHUB_REPOSITORY"
           # shellcheck disable=SC2086
-          out/NotProton.app/Contents/MacOS/NotProtonApp --release check --support "$support" \
+          out/NotProton.app/Contents/MacOS/LullabyApp --release check --support "$support" \
             --steam "$RUNNER_TEMP/np-steam" --feed "$FEED" --key "$NP_RELEASE_KEY" \
             --manifest-tag "$MANIFEST_TAG" $private | tee "$RUNNER_TEMP/feed-check.log"
           grep -q "release: bridge" "$RUNNER_TEMP/feed-check.log"

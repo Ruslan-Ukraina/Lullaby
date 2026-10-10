@@ -1,0 +1,385 @@
+import Foundation
+import Testing
+
+@testable import LullabyApp
+
+// Progress reports reach the main actor as separate tasks, so one can arrive after the run
+// that issued it has finished. If it takes effect the app looks permanently busy.
+@MainActor
+@Suite("Run activity")
+struct RunActivityTests {
+
+    @Test("A run reports its progress")
+    func reportsProgress() {
+        let status = SystemStatus()
+        let run = status.beginRun("cloning")
+
+        status.report(run, "staging")
+
+        #expect(status.activity == "staging")
+        #expect(status.isBusy)
+    }
+
+    // isIdle is the single condition every button and every menu item consults, so a
+    // refresh that did not count as work would let a second action start on top of it.
+    @Test("Nothing may start while a refresh or a run is in flight")
+    func idleCoversBothKindsOfWork() {
+        let status = SystemStatus()
+        #expect(status.isIdle)
+
+        status.isRefreshing = true
+        #expect(!status.isIdle)
+
+        status.isRefreshing = false
+        let run = status.beginRun("cloning")
+        #expect(!status.isIdle)
+
+        status.report(run, "staging")
+        #expect(!status.isIdle)
+
+        status.endRun()
+        #expect(status.isIdle)
+    }
+
+    @Test("A finished run is not busy")
+    func finishedRunIsIdle() {
+        let status = SystemStatus()
+        _ = status.beginRun("cloning")
+
+        status.endRun()
+
+        #expect(status.activity == nil)
+        #expect(!status.isBusy)
+    }
+
+    // The bug this guards: a report queued before the run ended landed afterwards and set
+    // activity again, leaving isBusy true with nothing running and every button disabled.
+    @Test("A report that arrives after its run finished is ignored")
+    func lateReportCannotResurrectActivity() {
+        let status = SystemStatus()
+        let run = status.beginRun("cloning")
+
+        status.endRun()
+        status.report(run, "finished")
+
+        #expect(status.activity == nil)
+        #expect(!status.isBusy)
+    }
+
+    @Test("A report from an earlier run cannot disturb the run after it")
+    func staleReportDoesNotDisturbTheNextRun() {
+        let status = SystemStatus()
+        let first = status.beginRun("cloning")
+        status.endRun()
+
+        let second = status.beginRun("checking")
+        status.report(first, "staging")
+
+        #expect(status.activity == "checking")
+
+        status.report(second, "downloading")
+        #expect(status.activity == "downloading")
+    }
+
+    @Test("Every report of a run still counts, not just the first")
+    func acceptsRepeatedReports() {
+        let status = SystemStatus()
+        let run = status.beginRun("cloning")
+
+        for label in ["staging", "patching", "finished"] {
+            status.report(run, label)
+        }
+
+        #expect(status.activity == "finished")
+    }
+}
+
+@Suite("App version")
+struct AppVersionTests {
+
+    // Nothing sets CFBundleShortVersionString yet, so the fallback is what gets recorded as the
+    // deployed version. A release shipping without the real version would go unnoticed.
+    @Test("The version is never empty")
+    func versionIsNeverEmpty() {
+        #expect(!AppVersion.bundled.isEmpty)
+        #expect(!AppVersion.fallback.isEmpty)
+    }
+}
+
+// Fixture trees rather than the machine's own /Applications, so the answer does not turn
+// on whether the developer happens to have the client installed.
+@MainActor
+@Suite("Failure remedies")
+struct FailureRemedyTests {
+
+    // No .app on it, matching the client's inner bundle, which is the case that made
+    // testing the extension the wrong test.
+    private func bundle(named name: String = "Inner") throws -> URL {
+        let root = URL.temporaryDirectory.appending(path: "np-remedy-\(UUID().uuidString)")
+        let app = root.appending(path: name)
+        try FileManager.default.createDirectory(
+            at: app.appending(path: "Contents"), withIntermediateDirectories: true
+        )
+        try Data().write(to: app.appending(path: "Contents/Info.plist"))
+        return app
+    }
+
+    private func plainDirectory() throws -> URL {
+        let root = URL.temporaryDirectory.appending(path: "np-remedy-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(
+            at: root.appending(path: "compatdata/1649240"), withIntermediateDirectories: true
+        )
+        return root.appending(path: "compatdata/1649240")
+    }
+
+    @Test("A refusal inside a bundle offers the settings pane")
+    func insideABundleOffersThePane() throws {
+        let target = try bundle().appending(path: "Contents/MacOS/notproton.dylib")
+        let status = SystemStatus()
+
+        status.setFailure(WriteRefused(path: target.path(percentEncoded: false)))
+
+        #expect(status.failureRemedy == .appManagement)
+        #expect(status.failure?.contains("App Management") == true)
+    }
+
+    // The bundle root itself is refused by the repair step, so the walk has to consider the
+    // path it was given and not only the directories above it.
+    @Test("A refusal of a bundle itself offers the settings pane")
+    func theBundleItselfOffersThePane() throws {
+        let status = SystemStatus()
+
+        status.setFailure(WriteRefused(path: try bundle().path(percentEncoded: false)))
+
+        #expect(status.failureRemedy == .appManagement)
+    }
+
+    @Test("A refusal outside a bundle asks about ownership instead")
+    func outsideABundleAsksAboutOwnership() throws {
+        let target = try plainDirectory()
+        let status = SystemStatus()
+
+        status.setFailure(WriteRefused(path: target.path(percentEncoded: false)))
+
+        #expect(
+            status.failureRemedy == .ownership,
+            "a prefix the user owns was sent to a permission that cannot write it"
+        )
+        #expect(status.failureRemedy?.settingsPane == nil)
+        #expect(status.failure?.contains("App Management") == false)
+    }
+
+    @Test("A plain message does not offer the settings pane")
+    func plainFailureOffersNothing() throws {
+        let status = SystemStatus()
+        status.setFailure(WriteRefused(path: try bundle().path(percentEncoded: false)))
+
+        status.setFailure("No engine is installed.")
+
+        #expect(
+            status.failureRemedy == nil,
+            "the button outlived the permission failure it belonged to"
+        )
+    }
+
+    @Test("Clearing a failure clears its remedy")
+    func clearingDropsTheRemedy() throws {
+        let status = SystemStatus()
+        status.setFailure(WriteRefused(path: try bundle().path(percentEncoded: false)))
+
+        status.clearFailure()
+
+        #expect(status.failure == nil)
+        #expect(status.failureRemedy == nil)
+    }
+
+    // A typo makes URL(string:) return nil and the button do nothing at all, which looks
+    // like the app ignoring the click.
+    @Test("The settings pane is a URL that names the App Management list")
+    func settingsPaneParses() throws {
+        let pane = try #require(Remedy.appManagement.settingsPane)
+
+        #expect(pane.scheme == "x-apple.systempreferences")
+        #expect(pane.query == "Privacy_AppBundles")
+    }
+}
+
+// One row for a whole batch, so what it offers has to hold for everything in it.
+@Suite("Failure reports")
+struct FailureReportTests {
+
+    private func bundlePath() throws -> String {
+        let app = URL.temporaryDirectory.appending(path: "np-report-\(UUID().uuidString)/Steam.app")
+        try FileManager.default.createDirectory(
+            at: app.appending(path: "Contents"), withIntermediateDirectories: true
+        )
+        try Data().write(to: app.appending(path: "Contents/Info.plist"))
+        return app.path(percentEncoded: false)
+    }
+
+    @Test("Nothing refused is no report at all")
+    func emptyIsNil() {
+        #expect(FailureReport([]) == nil)
+    }
+
+    @Test("Refusals that agree offer the remedy they agree on")
+    func agreementOffersTheRemedy() throws {
+        let report = try #require(
+            FailureReport([
+                WriteRefused(path: try bundlePath()),
+                WriteRefused(path: try bundlePath()),
+            ])
+        )
+
+        #expect(report.remedy == .appManagement)
+    }
+
+    // Sending the user to App Management for a batch it fixes half of leaves the other half
+    // failing with the pane already open.
+    @Test("Refusals that disagree offer no remedy")
+    func disagreementOffersNothing() throws {
+        let report = try #require(
+            FailureReport([
+                WriteRefused(path: try bundlePath()),
+                WriteRefused(path: "/Users/nobody/compatdata/1649240"),
+            ])
+        )
+
+        #expect(report.remedy == nil)
+        #expect(report.settingsPane == nil)
+    }
+
+    @Test("One failure that is not a refusal withdraws the remedy")
+    func anUnrelatedFailureWithdrawsIt() throws {
+        let report = try #require(
+            FailureReport([
+                WriteRefused(path: try bundlePath()),
+                StepFailure(step: "Delete prefix", detail: "Portal is running. Quit the game first."),
+            ])
+        )
+
+        #expect(report.remedy == nil)
+    }
+
+    // Every refusal says the same sentence, since none of them names its path.
+    @Test("Repeated reasons are said once")
+    func repeatedReasonsCollapse() throws {
+        let report = try #require(
+            FailureReport((1...3).map { _ in WriteRefused(path: "/Users/nobody/prefix") })
+        )
+
+        #expect(
+            report.message == "Could not write files. Check permissions, make sure your user owns the folder."
+        )
+    }
+
+    @Test("A path owned by another account is not blamed on App Management")
+    func otherAccountBeatsAppManagement() throws {
+        #expect(Remedy(forPath: "/usr/bin") == .otherAccount)
+        #expect(Remedy(forPath: "/usr/bin").settingsPane == nil)
+    }
+
+    @Test("A bundle this account owns still asks for App Management")
+    func ownedBundleAsksForAppManagement() throws {
+        let root = URL.temporaryDirectory.appending(path: "np-remedy-\(UUID().uuidString)")
+        let app = root.appending(path: "Steam.app")
+        let inside = app.appending(path: "Contents/MacOS")
+        try FileManager.default.createDirectory(at: inside, withIntermediateDirectories: true)
+        try Data("{}".utf8).write(to: app.appending(path: "Contents/Info.plist"))
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        #expect(Remedy(forPath: inside.path(percentEncoded: false)) == .appManagement)
+    }
+
+    @Test("Distinct reasons are all kept")
+    func distinctReasonsSurvive() throws {
+        let report = try #require(
+            FailureReport([
+                StepFailure(step: "Delete prefix", detail: "Portal is running."),
+                StepFailure(step: "Delete prefix", detail: "Half-Life is running."),
+            ])
+        )
+
+        #expect(report.message.contains("Portal is running."))
+        #expect(report.message.contains("Half-Life is running."))
+    }
+}
+
+@MainActor
+@Suite("Run bookkeeping")
+struct PerformTests {
+
+    @Test("A run ends carrying what its body said")
+    func outcomeComesFromTheBody() async {
+        let status = SystemStatus()
+
+        await status.perform(from: "Working") { _ in "Done." }
+
+        #expect(status.outcome == "Done.")
+        #expect(status.failure == nil)
+    }
+
+    @Test("A run with nothing to say leaves no outcome behind")
+    func nothingToSayLeavesNoOutcome() async {
+        let status = SystemStatus()
+
+        await status.perform(from: "Working") { _ in "Done." }
+        await status.perform(from: "Working") { _ in nil }
+
+        #expect(status.outcome == nil)
+    }
+
+    @Test("A run drops the failure the one before it left")
+    func aRunClearsTheEarlierFailure() async {
+        let status = SystemStatus()
+        status.setFailure("Old news.")
+
+        await status.perform(from: "Working") { _ in "Done." }
+
+        #expect(status.failure == nil)
+        #expect(status.outcome == "Done.")
+    }
+
+    @Test("A body that throws ends the run as a failure and not as an outcome")
+    func aThrownErrorIsRecorded() async {
+        let status = SystemStatus()
+        // Left by an earlier run, so a failure has something to clear. Without it the
+        // outcome is already nil and the run never has to drop anything.
+        await status.perform(from: "Working") { _ in "Done." }
+
+        await status.perform(from: "Working") { _ in
+            throw StepFailure(step: "Staging", detail: "disk full")
+        }
+
+        #expect(status.failure?.contains("disk full") == true)
+        #expect(status.outcome == nil)
+    }
+
+    @Test("The opening label is on screen before the body starts")
+    func theOpeningLabelIsUpFirst() async {
+        let status = SystemStatus()
+        var seen: String?
+
+        await status.perform(from: "Cloning") { _ in
+            seen = status.activity
+            return "Done."
+        }
+
+        #expect(seen == "Cloning")
+    }
+
+    @Test("A run counts as busy until it is over")
+    func busyForTheWholeRun() async {
+        let status = SystemStatus()
+        var busyMidRun = false
+
+        await status.perform(from: "Working") { progress in
+            progress("Halfway")
+            busyMidRun = status.isBusy
+            return "Done."
+        }
+
+        #expect(busyMidRun)
+        #expect(!status.isBusy)
+    }
+}

@@ -72,7 +72,7 @@ DEPS := $(OBJS:.o=.d)
         appinfo helpers-install bridge runcheck compatcheck \
         compatsvc-check scriptcheck steamwin-check updategate-check settingsbridge-check webpatch-syntax sigslice
 
-APP_PAYLOAD := app/Sources/NotProtonApp/Resources/payload
+APP_PAYLOAD := app/Sources/LullabyApp/Resources/payload
 
 all: $(TARGET) $(APP_PAYLOAD)
 
@@ -574,9 +574,9 @@ app-payload: $(TARGET) $(OVERLAY_SHIM) $(ICONMAKER) $(APPINFO)
 	cp -f $(OVERLAY_SHIM) "$(APP_PAYLOAD)/overlay-shim.dylib"
 	cp -f $(ICONMAKER) "$(APP_PAYLOAD)/iconmaker"
 	cp -f $(APPINFO) "$(APP_PAYLOAD)/appinfo"
-	swift build --package-path app -c release --product notproton-settings
-	cp -f "$$(swift build --package-path app -c release --show-bin-path)/notproton-settings" \
-		"$(APP_PAYLOAD)/notproton-settings"
+	swift build --package-path app -c release --product lullaby-settings
+	cp -f "$$(swift build --package-path app -c release --show-bin-path)/lullaby-settings" \
+		"$(APP_PAYLOAD)/lullaby-settings"
 	cp -f dylib/feats/compat_run.sh "$(APP_PAYLOAD)/compat_run.sh"
 	cp -f signatures/macos.arm64/*.json "$(APP_PAYLOAD)/signatures/macos.arm64/"
 ifeq ($(BRIDGE_FEED_DIR),)
@@ -596,7 +596,7 @@ endif
 
 APP_BUNDLE  := $(OUT_DIR)/NotProton.app
 ROSETTA_CHECK := $(APP_BUNDLE)/Contents/Helpers/NotProton Rosetta Check.app
-APP_BUNDLE_PAYLOAD := $(APP_BUNDLE)/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload
+APP_BUNDLE_PAYLOAD := $(APP_BUNDLE)/Contents/Resources/LullabyApp_LullabyApp.bundle/Contents/Resources/payload
 APP_ZIP     := $(OUT_DIR)/NotProton.zip
 APP_VERSION ?= $(shell sed -n 's/^\#define NOTPROTON_VERSION "\(.*\)"/\1/p' dylib/version.h)
 # CFBundleVersion, what Sparkle compares. The release workflow passes a number that
@@ -669,14 +669,14 @@ app: app-config app-payload $(ICON_CAR)
 		"Set :SUPublicEDKey $(SPARKLE_KEY)" -c \
 		"Set :SUEnableAutomaticChecks false" \
 		"$(APP_BUNDLE)/Contents/Info.plist"
-	cp "$$(swift build --package-path app -c release --show-bin-path)/NotProtonApp" \
-		"$(APP_BUNDLE)/Contents/MacOS/NotProtonApp"
+	cp "$$(swift build --package-path app -c release --show-bin-path)/LullabyApp" \
+		"$(APP_BUNDLE)/Contents/MacOS/LullabyApp"
 	@mkdir -p "$(APP_BUNDLE)/Contents/Frameworks"
 	ditto "$$(swift build --package-path app -c release --show-bin-path)/Sparkle.framework" \
 		"$(APP_BUNDLE)/Contents/Frameworks/Sparkle.framework"
 	install_name_tool -add_rpath @executable_path/../Frameworks \
-		"$(APP_BUNDLE)/Contents/MacOS/NotProtonApp"
-	cp -R "$$(swift build --package-path app -c release --show-bin-path)/NotProtonApp_NotProtonApp.bundle" \
+		"$(APP_BUNDLE)/Contents/MacOS/LullabyApp"
+	cp -R "$$(swift build --package-path app -c release --show-bin-path)/LullabyApp_LullabyApp.bundle" \
 		"$(APP_BUNDLE)/Contents/Resources/"
 	cp "$(ICON_DIR)/Assets.car" "$(ICON_DIR)/NotProton.icns" \
 		"$(APP_BUNDLE)/Contents/Resources/"

@@ -20,7 +20,7 @@ here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/.." && pwd)"
 BRIDGE_DIR="${BRIDGE_DIR:-$HOME/Library/Application Support/notproton/bridge}"
 WORK="${WORK:-$repo/scratch/valve-fetch}"
-MANIFEST="${MANIFEST:-$repo/app/Sources/NotProtonApp/Resources/valve-packages.manifest}"
+MANIFEST="${MANIFEST:-$repo/app/Sources/LullabyApp/Resources/valve-packages.manifest}"
 [ -f "$MANIFEST" ] || { echo "==> no package manifest at $MANIFEST" >&2; exit 1; }
 
 # Akamai is listed first and the rest are fallbacks. All three serve identical bytes.

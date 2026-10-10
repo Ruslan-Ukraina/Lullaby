@@ -156,7 +156,7 @@ static int out_expand(np_out_t *o, const char *replace, const np_cap_t *caps) {
 // NotProton's settings panel (feats/panel.js, docs/ROADMAP.md section 5): one function
 // the page calls with its own JSX runtime, Steam's dialog controls and React. On the
 // Compatibility page of a game it draws the game's own values; in Settings > Compatibility
-// the values for all games. Both draw the catalog notproton-settings answers with.
+// the values for all games. Both draw the catalog lullaby-settings answers with.
 // React DOM, for the Advanced dialog's portal, by its module id in this build (78325);
 // without it the dialog stays inside the page.
 #define NP_PANEL_REACT_DOM \

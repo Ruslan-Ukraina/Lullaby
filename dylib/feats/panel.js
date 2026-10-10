@@ -4,8 +4,8 @@
 //
 // The webpatch puts this function expression into the page twice and calls it with the
 // names the page's module gives React's JSX runtime (J), Steam's dialog controls (B),
-// React (R) and React DOM (D, may be null). Everything the panel shows comes from the catalog notproton-settings answers
-// with (NotProtonSettings): it names no setting, key or text of its own, except the three
+// React (R) and React DOM (D, may be null). Everything the panel shows comes from the catalog lullaby-settings answers
+// with (LullabySettings): it names no setting, key or text of its own, except the three
 // lines below for when the catalog cannot be reached. Requests travel as virtual files
 // under steamloopback.host (dylib/feats/settingsbridge.c); the dylib puts its token in.
 //
@@ -55,7 +55,7 @@
   var seq = 0;
   function requestPath(request) {
     seq += 1;
-    return "/notproton-settings/" + TOKEN + "/" + Date.now().toString(36) + seq.toString(36) + "/" +
+    return "/lullaby-settings/" + TOKEN + "/" + Date.now().toString(36) + seq.toString(36) + "/" +
       b64url(JSON.stringify(request)) + ".json";
   }
   function ask(request) {

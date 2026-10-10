@@ -13,7 +13,7 @@ app=3527290
 C="$HOME/Library/Application Support/Steam/steamapps/compatdata/$app"
 W="$HOME/Library/Application Support/notproton/launchers/app-$app/notproton-wine.log"
 L="$C/pfx/drive_c/users/steamuser/AppData/LocalLow/LandCrab/PEAK/Player.log"
-CLI="$HOME/Library/Application Support/notproton/notproton-settings"
+CLI="$HOME/Library/Application Support/notproton/lullaby-settings"
 WINID=${WINID:-/private/tmp/claude-501/-Users-ruslanukraina-Projects-NotProton/6c7dbf3e-b527-4911-8194-ae858ee758d0/scratchpad/winid}
 
 [ "$renderer" = keep ] || "$CLI" set --app $app renderer "\"$renderer\"" > /dev/null || exit 1

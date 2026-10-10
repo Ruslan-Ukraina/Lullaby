@@ -8,7 +8,7 @@ here=$(cd "$(dirname "$0")" && pwd)
 OUT=${OUT:-$here/../scratch/perf}; mkdir -p "$OUT"
 C="$HOME/Library/Application Support/Steam/steamapps/compatdata/3527290"
 W="$HOME/Library/Application Support/notproton/launchers/app-3527290/notproton-wine.log"
-CLI="$HOME/Library/Application Support/notproton/notproton-settings"
+CLI="$HOME/Library/Application Support/notproton/lullaby-settings"
 "$CLI" set --app 3527290 emulateModeset "$emu" > /dev/null
 "$here/peak-screen.sh" "$mode" "$w" "$h" > /dev/null
 reg() { grep -a 'Fullscreen mode_h3630\|Resolution Width_h18\|Resolution Height_h26' "$C/pfx/user.reg" | sed 's/"Screenmanager //; s/_h[0-9]*"=dword:/=/' | tr '\n' ' '; }

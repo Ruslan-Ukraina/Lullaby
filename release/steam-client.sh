@@ -24,7 +24,7 @@ VALVE_TEAM=MXGJJ98X76
 # What steamclient.dylib and steamui.dylib need to load (otool -L, 2026-10-07).
 PACKAGES="bins_osx bins_client_osx bins_misc_osx bins_codecs_osx breakpad_osx"
 # Akamai first; the rest serve the same bytes (valve-packages.manifest).
-BASES=$(awk '$1 == "base" { printf "%s ", $2 }' "$repo/app/Sources/NotProtonApp/Resources/valve-packages.manifest")
+BASES=$(awk '$1 == "base" { printf "%s ", $2 }' "$repo/app/Sources/LullabyApp/Resources/valve-packages.manifest")
 
 die() { echo "==> steam-client: $*" >&2; exit 1; }
 sha() { shasum -a 256 "$1" | cut -d' ' -f1; }

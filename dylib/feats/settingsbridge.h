@@ -5,9 +5,9 @@
 // already answers that call for the compat chunk. A request of the panel is a path that
 // does not exist on disk:
 //
-//   steamui/notproton-settings/<token>/<nonce>/<base64url of a JSON request>.json
+//   steamui/lullaby-settings/<token>/<nonce>/<base64url of a JSON request>.json
 //
-// and the answer is what `notproton-settings panel <request>` prints, handed back as an
+// and the answer is what `lullaby-settings panel <request>` prints, handed back as an
 // anonymous file. The token is random per Steam Helper process and reaches the page only
 // inside the patched chunk, so no other page or program can drive the CLI through it.
 #ifndef NOTPROTON_FEATS_SETTINGSBRIDGE_H
@@ -26,7 +26,7 @@ extern int np_settings_timeout_ms;
 // This process's token, 32 lowercase hex digits.
 const char *np_settings_token(void);
 
-// Whether `path` is a request of the panel (a steamui path under notproton-settings/).
+// Whether `path` is a request of the panel (a steamui path under lullaby-settings/).
 int np_settings_should_serve(const char *path);
 
 // The answer to a request as a rewound anonymous fd, or -1 to fall through. A request
@@ -34,7 +34,7 @@ int np_settings_should_serve(const char *path);
 // page always gets JSON.
 int np_settings_serve(const char *path);
 
-// The JSON answer for the steamui-relative `rest` (notproton-settings/...), running `cli`.
+// The JSON answer for the steamui-relative `rest` (lullaby-settings/...), running `cli`.
 // Caller frees. Exposed for the hermetic test.
 char *np_settings_answer(const char *rest, const char *token, const char *cli, size_t *out_len);
 

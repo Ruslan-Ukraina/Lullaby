@@ -1,8 +1,8 @@
 // swift-tools-version: 6.2
 import Foundation
 import PackageDescription
-let testsPath = "Tests/NotProtonAppTests"
-let payloadPath = "Sources/NotProtonApp/Resources/payload"
+let testsPath = "Tests/LullabyAppTests"
+let payloadPath = "Sources/LullabyApp/Resources/payload"
 let packageRoot = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
 let hasTests = FileManager.default.fileExists(
     atPath: packageRoot.appendingPathComponent(testsPath).path)
@@ -13,7 +13,7 @@ let hasTests = FileManager.default.fileExists(
 let hasPayload = FileManager.default.fileExists(
     atPath: packageRoot.appendingPathComponent(payloadPath).path)
 let package = Package(
-    name: "NotProtonApp",
+    name: "LullabyApp",
     defaultLocalization: "en",
     platforms: [.macOS("26.0")],
     dependencies: [
@@ -21,20 +21,20 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "NotProtonSettings",
-            path: "Sources/NotProtonSettings",
+            name: "LullabySettings",
+            path: "Sources/LullabySettings",
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .executableTarget(
-            name: "notproton-settings",
-            dependencies: ["NotProtonSettings"],
-            path: "Sources/notproton-settings",
+            name: "lullaby-settings",
+            dependencies: ["LullabySettings"],
+            path: "Sources/lullaby-settings",
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .executableTarget(
-            name: "NotProtonApp",
-            dependencies: [.product(name: "Sparkle", package: "Sparkle"), "NotProtonSettings"],
-            path: "Sources/NotProtonApp",
+            name: "LullabyApp",
+            dependencies: [.product(name: "Sparkle", package: "Sparkle"), "LullabySettings"],
+            path: "Sources/LullabyApp",
             resources: (hasPayload ? [.copy("Resources/payload")] : []) + [
                 .copy("Resources/payload.manifest"),
                 .copy("Resources/valve-packages.manifest"),
@@ -44,8 +44,8 @@ let package = Package(
         ),
     ] + (hasTests ? [
         .testTarget(
-            name: "NotProtonAppTests",
-            dependencies: ["NotProtonApp", "NotProtonSettings"],
+            name: "LullabyAppTests",
+            dependencies: ["LullabyApp", "LullabySettings"],
             path: testsPath
         ),
     ] : [])

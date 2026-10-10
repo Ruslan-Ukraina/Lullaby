@@ -38,7 +38,7 @@ prune=0
 # this list and the one the installer stages from cannot drift apart. The manifest
 # sits in the app's resource directory because that is the only place Swift Package
 # Manager will package a file from.
-MANIFEST="${MANIFEST:-$repo/app/Sources/NotProtonApp/Resources/payload.manifest}"
+MANIFEST="${MANIFEST:-$repo/app/Sources/LullabyApp/Resources/payload.manifest}"
 if [ ! -f "$MANIFEST" ]; then
     echo "==> no payload manifest at $MANIFEST" >&2
     exit 1

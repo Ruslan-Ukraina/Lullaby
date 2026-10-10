@@ -119,14 +119,14 @@ echo "engine: $(readlink "$engine_root" 2>/dev/null || echo "$engine_root")" \
 
 # The stand-in SEVO_CLI names. Dormison runs it as
 # "app config <appid> <key> <value>" when a View menu setting changes. It logs the
-# call and hands it to notproton-settings, which stores the choice in the game's
+# call and hands it to lullaby-settings, which stores the choice in the game's
 # settings and rewrites its env files, so the choice holds on the next launch.
 sevo_stub=$(cat <<'STUB'
 #!/bin/sh
 # NotProton's stand-in for Sevoflurane's sevo CLI (docs/DECISIONS.md S1, P7A-5).
 log="$HOME/Library/Application Support/notproton/notproton-sevo.log"
 printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$log" 2>/dev/null
-cli="$HOME/Library/Application Support/notproton/notproton-settings"
+cli="$HOME/Library/Application Support/notproton/lullaby-settings"
 [ "$1" = app ] && [ "$2" = config ] && [ -x "$cli" ] || exit 0
 "$cli" "$@" >> "$log" 2>&1
 exit 0
@@ -515,7 +515,7 @@ import_prefix_settings() {
     controllers_remove=""
     echo "=== could not track the hidden controllers, leaving them as they are ===" >> "$log" 2>&1 || true
   fi
-  settings_file=$(mktemp "$WINEPREFIX/drive_c/notproton-settings.XXXXXX" 2>/dev/null) \
+  settings_file=$(mktemp "$WINEPREFIX/drive_c/lullaby-settings.XXXXXX" 2>/dev/null) \
     || settings_file=""
   if [ -z "$settings_file" ] || ! { printf '%s\r\n' \
       'Windows Registry Editor Version 5.00' '' \
@@ -562,18 +562,18 @@ if [ -n "$STEAM_COMPAT_DATA_PATH" ]; then
   mkdir -p "$WINEPREFIX"
   stage_step="prefix arch check"
   refuse_foreign_prefix
-  # The settings catalog (notproton-settings, docs/ROADMAP.md, section 4): it records this
+  # The settings catalog (lullaby-settings, docs/ROADMAP.md, section 4): it records this
   # game's programs, brings a prefix from before the catalog into it, and writes
   # .sevo/bottle.env and every program's file before anything starts.
   stage_step="game settings"
-  settings_cli="$support/notproton-settings"
+  settings_cli="$support/lullaby-settings"
   if [ -x "$settings_cli" ] && [ "$app_id" != 0 ]; then
     if "$settings_cli" launch --app "$app_id" --exe "$1" --prefix "$WINEPREFIX" \
       ${STEAM_COMPAT_INSTALL_PATH:+--install} ${STEAM_COMPAT_INSTALL_PATH:+"$STEAM_COMPAT_INSTALL_PATH"} \
       >> "$log" 2>&1; then
-      echo "settings: .sevo written by notproton-settings" >> "$log" 2>&1 || true
+      echo "settings: .sevo written by lullaby-settings" >> "$log" 2>&1 || true
     else
-      echo "=== notproton-settings failed, the prefix keeps its files ===" >> "$log" 2>&1 || true
+      echo "=== lullaby-settings failed, the prefix keeps its files ===" >> "$log" 2>&1 || true
     fi
   fi
   # NotProton's own keys: a launch option first, then the program's file, then

@@ -18,7 +18,7 @@
 
 extern char **environ;
 
-#define NP_SETTINGS_DIR        "notproton-settings/"
+#define NP_SETTINGS_DIR        "lullaby-settings/"
 #define NP_SETTINGS_MAX_REQ    (64 * 1024)
 #define NP_SETTINGS_MAX_ANSWER (4 * 1024 * 1024)
 
@@ -125,7 +125,7 @@ static long elapsed_ms(const struct timespec *since) {
 static char *run_cli(const char *cli, const char *request, size_t *out_len) {
     int pipefd[2];
     if (pipe(pipefd) != 0)
-        return error_answer("cannot reach notproton-settings", out_len);
+        return error_answer("cannot reach lullaby-settings", out_len);
     fcntl(pipefd[0], F_SETFD, FD_CLOEXEC);
 
     posix_spawn_file_actions_t actions;
@@ -143,8 +143,8 @@ static char *run_cli(const char *cli, const char *request, size_t *out_len) {
     if (rc != 0) {
         close(pipefd[0]);
         NP_WARN("settings: cannot start %s (%s)", cli, strerror(rc));
-        return error_answer(rc == ENOENT ? "notproton-settings is not installed"
-                                         : "notproton-settings did not start", out_len);
+        return error_answer(rc == ENOENT ? "lullaby-settings is not installed"
+                                         : "lullaby-settings did not start", out_len);
     }
 
     size_t cap = 65536, len = 0;
@@ -181,17 +181,17 @@ static char *run_cli(const char *cli, const char *request, size_t *out_len) {
         return error_answer("out of memory", out_len);
     if (timed_out || too_big) {
         free(buf);
-        NP_WARN("settings: notproton-settings %s", timed_out ? "timed out" : "answered too much");
-        return error_answer(timed_out ? "notproton-settings timed out" : "answer too large", out_len);
+        NP_WARN("settings: lullaby-settings %s", timed_out ? "timed out" : "answered too much");
+        return error_answer(timed_out ? "lullaby-settings timed out" : "answer too large", out_len);
     }
     while (len && (buf[len - 1] == '\n' || buf[len - 1] == '\r'))
         len--;
     buf[len] = '\0';
     if (len == 0 || buf[0] != '{') {
         free(buf);
-        NP_WARN("settings: notproton-settings exited %d without an answer",
+        NP_WARN("settings: lullaby-settings exited %d without an answer",
                 WIFEXITED(status) ? WEXITSTATUS(status) : -1);
-        return error_answer("notproton-settings gave no answer", out_len);
+        return error_answer("lullaby-settings gave no answer", out_len);
     }
     *out_len = len;
     return buf;
@@ -245,7 +245,7 @@ int np_settings_serve(const char *path) {
     if (!home)
         return -1;
     char cli[1100];
-    np_support_path(cli, sizeof(cli), home, "notproton-settings");
+    np_support_path(cli, sizeof(cli), home, "lullaby-settings");
 
     size_t len = 0;
     char *answer = np_settings_answer(rest, np_settings_token(), cli, &len);
@@ -266,7 +266,7 @@ int np_settings_serve(const char *path) {
     }
     free(answer);
     if (lseek(fd, 0, SEEK_SET) != 0) { close(fd); return -1; }
-    NP_LOG_FIRST("settings: the Steam panel reached notproton-settings (%s pid %d)", getprogname(), getpid());
+    NP_LOG_FIRST("settings: the Steam panel reached lullaby-settings (%s pid %d)", getprogname(), getpid());
     return fd;
 }
 

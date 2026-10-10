@@ -1,6 +1,6 @@
 #!/bin/sh
 # The View menu's stand-in for `sevo`: "app config <appid> <key> <value>" goes to
-# notproton-settings, which stores it (NotProtonSettings, SettingsCLITests); every
+# lullaby-settings, which stores it (LullabySettings, SettingsCLITests); every
 # other call, and a call while the CLI is missing, changes nothing. The stub is cut
 # out of compat_run.sh, so the real text is tested.
 set -u
@@ -25,12 +25,12 @@ check() { # description, expected calls
 "$work/sevo" app config 1 upscaler lanczos || { echo "FAIL: exit status without the CLI"; fail=1; }
 check "nothing runs without the CLI" ""
 
-cat > "$support/notproton-settings" <<EOF
+cat > "$support/lullaby-settings" <<EOF
 #!/bin/sh
 printf '%s\n' "\$*" >> "$calls"
 exit 3
 EOF
-chmod +x "$support/notproton-settings"
+chmod +x "$support/lullaby-settings"
 
 "$work/sevo" app config 3527290 upscaler metalfx
 "$work/sevo" app config 3527290 fps on
@@ -48,5 +48,5 @@ app config 1 a b;rm x"
 grep -q 'app config 3527290 fps on' "$support/notproton-sevo.log" \
   || { echo "FAIL: calls are not logged"; fail=1; }
 
-[ "$fail" -eq 0 ] && echo "==> stubcheck: View menu choices reach notproton-settings"
+[ "$fail" -eq 0 ] && echo "==> stubcheck: View menu choices reach lullaby-settings"
 exit "$fail"

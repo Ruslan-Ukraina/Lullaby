@@ -1,5 +1,5 @@
 // The catalog panel (feats/panel.js) as the gates splice it in, drawn from the catalog
-// and states notproton-settings printed (fixtures/, kept current by SettingsCLITests):
+// and states lullaby-settings printed (fixtures/, kept current by SettingsCLITests):
 // it shows the catalog's words in Steam's language and none of its own, the four quick
 // rows, a line only under a value that differs from what it inherits, Reset, the Advanced
 // dialog by group, the level for all games; it leaves Steam's launch options alone.
@@ -237,7 +237,7 @@ for (const lang of ['en', 'uk', 'ru']) {
 {
   t.ok(!/SetAppLaunchOptions|strLaunchOptions/.test(source), "Steam's launch options stay the player's: the panel neither reads nor writes them");
   const p = api.requestPath({ op: 'set', app: 3527290, id: 'fps', value: true });
-  const m = /^\/notproton-settings\/__NP_SETTINGS_TOKEN__\/[0-9a-z]{1,32}\/([A-Za-z0-9_-]+)\.json$/.exec(p);
+  const m = /^\/lullaby-settings\/__NP_SETTINGS_TOKEN__\/[0-9a-z]{1,32}\/([A-Za-z0-9_-]+)\.json$/.exec(p);
   const body = m && Buffer.from(m[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
   t.ok(body === '{"op":"set","app":3527290,"id":"fps","value":true}', `a request is a virtual file the dylib answers (${p})`);
   t.ok(api.langOf('ukrainian') === 'uk' && api.langOf('russian') === 'ru' && api.langOf('german') === 'en', "Steam's language");

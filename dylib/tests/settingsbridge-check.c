@@ -37,7 +37,7 @@ static const char *b64url(const char *text, char *out) {
 
 static char *ask(const char *token, const char *nonce, const char *request, const char *cli) {
     char enc[4096], rest[8192];
-    snprintf(rest, sizeof(rest), "notproton-settings/%s/%s/%s.json", token, nonce, b64url(request, enc));
+    snprintf(rest, sizeof(rest), "lullaby-settings/%s/%s/%s.json", token, nonce, b64url(request, enc));
     size_t len = 0;
     return np_settings_answer(rest, np_settings_token(), cli, &len);
 }
@@ -48,10 +48,10 @@ int main(void) {
     CHECK(strspn(token, "0123456789abcdef") == NP_SETTINGS_TOKEN_LEN, "token is hex");
     CHECK(np_settings_token() == token, "one token per process");
 
-    CHECK(np_settings_should_serve("/S/Steam.AppBundle/Steam/Contents/MacOS/steamui/notproton-settings/x/y/z.json"),
+    CHECK(np_settings_should_serve("/S/Steam.AppBundle/Steam/Contents/MacOS/steamui/lullaby-settings/x/y/z.json"),
           "a steamui settings path is served");
     CHECK(!np_settings_should_serve("/S/steamui/library.js"), "the chunk is not");
-    CHECK(!np_settings_should_serve("/tmp/notproton-settings/x/y.json"), "a path outside steamui is not");
+    CHECK(!np_settings_should_serve("/tmp/lullaby-settings/x/y.json"), "a path outside steamui is not");
     CHECK(!np_settings_should_serve(NULL), "no path is not");
 
     size_t n = 0;
@@ -89,16 +89,16 @@ int main(void) {
     free(answer);
 
     size_t len = 0;
-    answer = np_settings_answer("notproton-settings/short/1/e30.json", token, echo_cli, &len);
+    answer = np_settings_answer("lullaby-settings/short/1/e30.json", token, echo_cli, &len);
     CHECK(answer && strstr(answer, "\"refused\""), "a short token is refused");
     free(answer);
 
     char rest[256];
-    snprintf(rest, sizeof(rest), "notproton-settings/%s/1/e30.txt", token);
+    snprintf(rest, sizeof(rest), "lullaby-settings/%s/1/e30.txt", token);
     answer = np_settings_answer(rest, token, echo_cli, &len);
     CHECK(answer && strstr(answer, "malformed"), "a request must end in .json");
     free(answer);
-    snprintf(rest, sizeof(rest), "notproton-settings/%s/1/AA.json", token);
+    snprintf(rest, sizeof(rest), "lullaby-settings/%s/1/AA.json", token);
     answer = np_settings_answer(rest, token, echo_cli, &len);
     CHECK(answer && strstr(answer, "malformed"), "a request with a NUL byte is refused");
     free(answer);
@@ -120,6 +120,6 @@ int main(void) {
     if (system(cmd) != 0) printf("  note: could not remove %s\n", dir);
 
     if (failed) { printf("settingsbridge-check: %d failed\n", failed); return 1; }
-    printf("==> settingsbridge-check: the panel's requests reach notproton-settings only with this process's token\n");
+    printf("==> settingsbridge-check: the panel's requests reach lullaby-settings only with this process's token\n");
     return 0;
 }
