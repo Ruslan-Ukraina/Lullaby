@@ -1,4 +1,4 @@
-# Задача: форк NotProton на движке Dormison (без CrossOver) с самообновлением — v2
+# Задача: Lullaby — форк NotProton на движке Dormison (без CrossOver) с самообновлением — v2
 
 Положи этот файл в корень своего форка как `CLAUDE.md` (или вставь первым сообщением в Claude Code). Работай по фазам, после каждой фазы — коммит и короткий отчёт мне.
 
@@ -19,10 +19,10 @@
 ## 2. Проверенные факты (не трать время на повторное исследование)
 
 ### 2.1 NotProton — где он завязан на CrossOver
-- `app/Sources/NotProtonApp/Model/SupportedRunner.swift` — allow-list CrossOver Preview `27.0.0.40921` (Rosetta и FEX) с sha256 загрузчика и `ntdll.dll`.
+- `app/Sources/LullabyApp/Model/SupportedRunner.swift` — allow-list CrossOver Preview `27.0.0.40921` (Rosetta и FEX) с sha256 загрузчика и `ntdll.dll`.
 - `Model/CrossOverSource.swift`, `CrossOverLicense.swift` — поиск CrossOver и проверка лицензии.
-- `Model/RunnerInstaller.swift`, `RunnerSetup.swift`, `RunnerStore.swift`, `RunnerPatcher.swift` — копия CrossOver в `~/Library/Application Support/notproton/runners/<version>`, симлинк `runners/current`.
-- `Model/NtdllPatcher.swift` + `ntdll-patch/` (`resolve.py`, `apply.py`, `detour*.c`, `shim*.S`) — **бинарный патч ntdll.dll по захардкоженным RVA**. Детур при загрузке `steamclient64.dll`/`steamclient.dll` перенаправляет их экспорты и entry point на `lsteamclient.dll`. Это та же идея, что `steamclient_setup_trampolines` в Proton-Wine (`ValveSoftware/wine`, `dlls/ntdll/loader.c`, функции `use_lsteamclient` и далее + unix-вызов `unix_steamclient_setup_trampolines`).
+- `Model/RunnerInstaller.swift`, `RunnerSetup.swift`, `RunnerStore.swift`, `RunnerPatcher.swift` — копия CrossOver в `~/Library/Application Support/lullaby/runners/<version>`, симлинк `runners/current`.
+- `Model/NtdllPatcher.swift` + `ntdll-patch/` (`resolve.py`, `apply.py`, `detour*.c`, `shim*.S` — удалены, O3/P9-9, есть в истории git) — **бинарный патч ntdll.dll по захардкоженным RVA**. Детур при загрузке `steamclient64.dll`/`steamclient.dll` перенаправляет их экспорты и entry point на `lsteamclient.dll`. Это та же идея, что `steamclient_setup_trampolines` в Proton-Wine (`ValveSoftware/wine`, `dlls/ntdll/loader.c`, функции `use_lsteamclient` и далее + unix-вызов `unix_steamclient_setup_trampolines`).
 - `dylib/feats/compat_run.sh` (встраивается в dylib через `embed_script.py`) — запуск игры. Там `CX_ROOT`, `WINELOADER=$CX_ROOT/lib/wine/{aarch64,x86_64}-unix/…`, `WINESERVER=$CX_ROOT/CrossOver-Hosted Application/wineserver…`, `WINEDLLPATH`, `WINEDLLOVERRIDES="steamclient=n;steamclient64=n;lsteamclient=b"`, **`WINEMSYNC` по умолчанию 0** (менять на 1), симлинк `users/crossover`, фильтр env `CX_GRAPHICS*`. Там же создаётся **per-game .app-бандл с копией wine-загрузчика** (имя и иконка игры в Dock + macOS Game Mode), а `overlay-shim.dylib` подключается через `DYLD_INSERT_LIBRARIES`.
 - `bridge/setup-wine-tree.sh` — собирает lsteamclient и steam.exe-shim против **wine-11.15** (под CrossOver 27). Для Dormison нужна сборка против **его же исходников**.
 - Steam: `signatures/macos.arm64/<steam_build>.json` (AOB-сигнатуры `CCompatManager::*` и др.), `Model/UpdateBlock.swift` (`BootStrapperInhibitUpdateOnLaunch`), `Model/ValveFetcher.swift` + `valve-packages.manifest`.
@@ -125,14 +125,14 @@ NO-GO по любому пункту — остановись, опиши при
 
 ## 7. Автономный режим (я часто не у компьютера)
 
-Рабочие папки: `~/Projects/NotProton` (форк, ветка `dormison`), `~/Projects/dormison` (мой форк Dormison, клон без блобов), `~/Projects/sevoflurane` (эталон, только чтение).
+Рабочие папки: `~/Projects/NotProton` (форк, теперь Lullaby; папку можно переименовать в `~/Projects/Lullaby`), `~/Projects/dormison` (мой форк Dormison, клон без блобов), `~/Projects/sevoflurane` (эталон, только чтение).
 
 1. **Журнал.** Веди `docs/PROGRESS.md`: дата и время, фаза, что сделано, что дальше, ссылки на коммиты. Обновляй после каждого заметного шага. Новая сессия должна продолжить работу, прочитав только `CLAUDE.md` и `docs/PROGRESS.md`.
 2. **Не простаивай.** Если шаг заблокирован, запиши проблему в `docs/BLOCKERS.md` (что нужно от меня, точная команда или действие) и переходи к следующей незаблокированной задаче той же фазы. Останавливайся, только когда незаблокированной работы не осталось.
 3. **Контрольные точки — только человек:** одобрение плана Фазы 0; ручная проверка игр в Фазе 1 (подготовь `docs/SPIKE_TEST.md` — пошаговую инструкцию «для чайника» с ожидаемым результатом каждого шага и местом, где смотреть логи); создание ключей подписи и секретов GitHub в Фазе 6 (подготовь инструкцию в `docs/RELEASING.md`, ключи сам не создавай). Дойдя до контрольной точки, заверши остальную работу фазы, отправь уведомление на телефон и жди.
 4. **Не устанавливай системные инструменты сам**: никаких `sudo`, `curl | bash`, `brew install`. Если чего-то не хватает — запиши в `BLOCKERS.md` точную команду для меня. Python-пакеты — только в виртуальное окружение внутри проекта (`.venv`, добавить в `.gitignore`).
 5. **Git:** работай в ветке `dormison` (и `spike/dormison` для Фазы 1), пушь только в свой `origin`, никогда не делай force push и не трогай `main` апстрима. Перед рискованной правкой — коммит. Секреты и ключи никогда не коммить.
-6. **Ничего не удаляй вне репозиториев**, кроме собственных временных файлов сборки. Данные Steam, префиксы и `~/Library/Application Support/notproton` меняй только так, как требует задача, с резервной копией рядом.
+6. **Ничего не удаляй вне репозиториев**, кроме собственных временных файлов сборки. Данные Steam, префиксы и `~/Library/Application Support/lullaby` меняй только так, как требует задача, с резервной копией рядом.
 7. **Сборки и тесты** запускай сам и прикладывай в журнал код выхода и последние строки вывода. Не пиши «готово» без проверки.
 8. **Тесты с играми без меня** — только то, что можно сделать без интерфейса Steam: запуск через `open steam://rungameid/<appid>`, чтение логов, `screencapture` для скриншотов. Всё, что требует кликов в Steam, — в `SPIKE_TEST.md` для меня.
 
