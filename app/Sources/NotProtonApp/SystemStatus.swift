@@ -63,18 +63,6 @@ final class SystemStatus {
     var isBusy: Bool { activity != nil || runInFlight }
     var isIdle: Bool { !isBusy && !isRefreshing }
 
-    enum Confirmation: Identifiable, Hashable {
-        case replaceSteam
-        case blockUpdates
-        case removeEngine
-        case removeEverything
-        case stopSteamToInstall
-        case stopSteamForEngine
-
-        var id: Self { self }
-    }
-
-    var pendingConfirmation: Confirmation?
     var generation = 0
 
     func beginRun(_ label: String) -> Int {
@@ -119,20 +107,7 @@ final class SystemStatus {
         failure = nil
         failureRemedy = nil
         retryInstallForce = nil
-        retryEngine = nil
-        retryRestart = false
     }
-
-    // Engine updates: SystemStatus+Engine.swift.
-    var engineCheck: EngineUpdateCheck?
-    var engineChannel = EngineChannel.preferred
-    var pendingEngine: EngineAction?
-    /// Downloaded, checked and tested, waiting for the switch.
-    var preparedEngine: EnginePrepared?
-    /// Set when an engine update or rollback stopped because Steam would not quit.
-    var retryEngine: EngineAction?
-    /// When the engine list was last read.
-    var engineCheckedAt: Date?
 
     // Phase 5: SystemStatus+Updates.swift.
     var bridgeCheck: BridgeCheck?
@@ -144,85 +119,8 @@ final class SystemStatus {
     /// Set when an install stopped because Steam would not quit: the force flag to retry with.
     private(set) var retryInstallForce: Bool?
 
-    func retryInstall() async {
-        guard let force = retryInstallForce else { return }
-        AppLog.note("install: retry after Steam did not quit")
-        await requestInstall(force: force)
-    }
-
-    /// Install, Update and Reinstall. A running game refuses it here and in the installer;
-    /// a running Steam is asked about first, because the install closes it.
-    private(set) var pendingForce = false
-
     /// Set when the last install stopped Steam, so Status can offer to start it again.
     var offerSteamLaunch = false
-
-    func requestInstall(force: Bool = false) async {
-        guard isIdle else { return }
-        offerSteamLaunch = false
-        let state = await Task.detached(priority: .userInitiated) {
-            (game: SteamBundle.gameIsRunning, steam: SteamBundle.isRunning)
-        }.value
-        if state.game {
-            outcome = nil
-            setFailure(SteamInstaller.gameRunning)
-            AppLog.note("install: refused, a game is running")
-            return
-        }
-        if state.steam {
-            pendingForce = force
-            pendingConfirmation = .stopSteamToInstall
-            return
-        }
-        await installIntoSteam(force: force)
-    }
-
-    func confirmPendingInstall() async {
-        let force = pendingForce
-        pendingForce = false
-        await installIntoSteam(force: force)
-    }
-
-    func openSteam() {
-        offerSteamLaunch = false
-        AppLog.note("open Steam after install")
-        NSWorkspace.shared.openApplication(
-            at: SupportPaths.Steam.app, configuration: NSWorkspace.OpenConfiguration()
-        )
-    }
-
-    private(set) var pendingRemoval: String?
-
-    func requestEngineRemoval(_ tag: String) {
-        guard isIdle else { return }
-        pendingRemoval = tag
-        pendingConfirmation = .removeEngine
-    }
-
-    func cancelEngineRemoval() {
-        pendingRemoval = nil
-    }
-
-    func removePendingEngine() async {
-        guard let tag = pendingRemoval else { return }
-        pendingRemoval = nil
-        await perform(from: EngineStore.removeStep) { _ in
-            try await Task.detached(priority: .userInitiated) {
-                try EngineStore.remove(tag)
-            }.value
-            return "Removed \(EngineStore.displayName(tag))."
-        }
-    }
-
-    func switchEngine(to tag: String) async {
-        guard isIdle, tag != EngineStore.currentTag() else { return }
-        await perform(from: EngineStore.step) { _ in
-            try await Task.detached(priority: .userInitiated) {
-                try EngineStore.switchTo(tag)
-            }.value
-            return "Now using \(EngineStore.displayName(tag))."
-        }
-    }
 
     func perform(
         from first: String,
@@ -249,13 +147,6 @@ final class SystemStatus {
         }
 
         await refresh()
-    }
-
-    func fetchValveBinaries() async {
-        await perform(from: ValveFetcher.Phase.verifying.label) { progress in
-            let result = try await ValveFetcher.run { progress($0.label) }
-            return result.wroteNothing ? nil : "Downloaded missing components."
-        }
     }
 
     private static let restartHint = "Steam was stopped, so start it again."
@@ -299,48 +190,6 @@ final class SystemStatus {
         }
     }
 
-    /// The native frame is read by Steam when it starts, so a change offers a restart.
-    var offerSteamRestart = false
-    /// Set when a restart stopped because Steam would not quit.
-    var retryRestart = false
-
-    func setNativeSteamWindows(_ enabled: Bool, regularApp: Bool? = nil) async {
-        let asApp = regularApp ?? (snapshot?.steamAsRegularApp ?? false)
-        await perform(from: SteamWindows.step) { _ in
-            try SteamWindows.set(enabled, regularApp: asApp)
-            let running = await Task.detached {
-                SteamHelperFiles.sync(wanted: enabled)
-                return SteamBundle.isRunning
-            }.value
-            self.offerSteamRestart = running
-            return (enabled ? "Native Steam windows are on." : "Native Steam windows are off.")
-                + (running ? " Restart Steam to apply." : " They apply when Steam starts.")
-        }
-    }
-
-    /// Quits Steam the soft way (as Install does) and opens it again.
-    func restartSteam() async {
-        guard isIdle else { return }
-        offerSteamRestart = false
-        if await Task.detached(priority: .userInitiated, operation: { SteamBundle.gameIsRunning }).value {
-            setFailure(SteamInstaller.gameRunning)
-            return
-        }
-        await perform(from: "Restarting Steam") { _ in
-            do {
-                _ = try await Task.detached(priority: .userInitiated) {
-                    try SteamBundle.quitClient()
-                }.value
-            } catch let stillRunning as SteamBundle.StillRunning {
-                self.retryRestart = true
-                throw stillRunning
-            }
-            AppLog.note("steam windows: restarting Steam")
-            self.openSteam()
-            return "Steam restarted."
-        }
-    }
-
     func repairSteam() async {
         await perform(from: RepairPhase.checking.label) { progress in
             _ = await Task.detached(priority: .userInitiated) { SteamHelperFiles.remove() }.value
@@ -373,23 +222,5 @@ final class SystemStatus {
         }.value
         snapshot = captured
         AppLog.note(captured)
-        await measureRunnerSizes()
-    }
-
-    private(set) var runnerSizes: [String: Int64] = [:]
-
-    func measureRunnerSizes() async {
-        let known = Set(runnerSizes.keys)
-        let present = await Task.detached(priority: .utility) {
-            Set(EngineStore.installed().map(\.tag))
-        }.value
-
-        for stale in known.subtracting(present) { runnerSizes[stale] = nil }
-
-        for tag in present.subtracting(known) {
-            runnerSizes[tag] = await Task.detached(priority: .utility) {
-                EngineStore.size(of: tag)
-            }.value
-        }
     }
 }

@@ -95,47 +95,6 @@ extension SystemStatus {
         if let problem { AppLog.note("updates: check finished with a problem: \(problem)") }
     }
 
-    func installBridge(_ release: BridgeRelease) async {
-        guard isIdle else { return }
-        await perform(from: "Installing the Steam bridge, \(release.label)") { progress in
-            let result = try await Task.detached(priority: .userInitiated) {
-                try await BridgeUpdater().install(release) { progress($0.label) }
-            }.value
-            self.bridgeCheck = BridgeUpdater().evaluate(BridgeUpdater().catalog())
-            return "The Steam bridge is now \(release.label)."
-                + (result.previous.map { " \($0) is kept for Roll Back." } ?? "")
-                + " It applies to games started from now on."
-        }
-    }
-
-    func rollbackBridge() async {
-        guard isIdle else { return }
-        await perform(from: BridgeUpdater.rollbackStep) { _ in
-            let result = try await Task.detached(priority: .userInitiated) {
-                try BridgeUpdater().rollback()
-            }.value
-            self.bridgeCheck = BridgeUpdater().evaluate(BridgeUpdater().catalog())
-            return "The Steam bridge is back on \(result.id). It applies to games started from now on."
-        }
-    }
-
-    /// The toggle: on holds Steam's update block whatever Valve offers; off hands
-    /// it to the automatic gate, which may keep it while a build waits for support.
-    func setUpdateBlock(_ blocked: Bool) async {
-        await perform(from: blocked ? "Blocking Steam client updates" : "Letting NotProton manage Steam updates") { _ in
-            let decision = try await Task.detached(priority: .userInitiated) { () -> SteamGateDecision in
-                let gate = SteamUpdateGate()
-                try gate.setMode(blocked ? .manual : .auto)
-                return await gate.evaluate()
-            }.value
-            self.gateDecision = decision
-            if blocked { return "Steam client updates are blocked until you turn this off." }
-            return decision.block
-                ? "NotProton manages Steam updates. " + Self.gateSentence(decision.state)
-                : "NotProton manages Steam updates. Steam may update the next time it starts."
-        }
-    }
-
     nonisolated static func build(_ build: UInt64?) -> String { build.map(String.init) ?? "unknown" }
 
     /// One sentence for the Status row and the outcome line.

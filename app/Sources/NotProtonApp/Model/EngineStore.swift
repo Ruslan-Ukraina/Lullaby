@@ -65,21 +65,6 @@ enum EngineStore {
             .sorted { $0.tag.localizedStandardCompare($1.tag) == .orderedAscending }
     }
 
-    static func size(of tag: String, runners: URL = SupportPaths.runners) -> Int64 {
-        guard let walker = FileManager.default.enumerator(
-            at: runners.appending(path: tag),
-            includingPropertiesForKeys: [.totalFileAllocatedSizeKey, .fileAllocatedSizeKey],
-            options: []
-        ) else { return 0 }
-        var total: Int64 = 0
-        for case let url as URL in walker {
-            let values = try? url.resourceValues(
-                forKeys: [.totalFileAllocatedSizeKey, .fileAllocatedSizeKey])
-            total += Int64(values?.totalFileAllocatedSize ?? values?.fileAllocatedSize ?? 0)
-        }
-        return total
-    }
-
     static let currentLink = "current"
 
     /// Points `current` at another installed engine by renaming a new link over

@@ -35,10 +35,12 @@ struct D3DMetalStoreTests {
         let inner = dir.appending(path: "inner-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: inner, withIntermediateDirectories: true)
         try makeRedist(at: inner)
+        // makehybrid writes the same HFS+ volume (name, links) in hundredths of a second;
+        // hdiutil create spent about five seconds on each image (docs/OPTIMIZATION.md).
         func create(_ folder: URL, _ name: String, _ out: URL) throws {
             try D3DMetalStore.run("/usr/bin/hdiutil", [
-                "create", "-quiet", "-fs", "HFS+", "-volname", name, "-srcfolder",
-                folder.path(percentEncoded: false), "-format", "UDRO", out.path(percentEncoded: false),
+                "makehybrid", "-quiet", "-hfs", "-hfs-volume-name", name,
+                "-o", out.path(percentEncoded: false), folder.path(percentEncoded: false),
             ])
         }
         guard nested else {
