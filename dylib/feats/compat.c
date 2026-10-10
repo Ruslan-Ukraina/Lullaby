@@ -522,7 +522,7 @@ void *np_compat_manager(void) {
     return g_manager;
 }
 
-void np_compat_register_crossover(void *compat_mgr) {
+void np_compat_register_tool(void *compat_mgr) {
     static int registered = 0;
 
     // Every compat query arrives on the instance the properties page reads, which is
@@ -539,7 +539,7 @@ void np_compat_register_crossover(void *compat_mgr) {
     // install, when the manifest did not exist to be scanned, has nothing to find.
     if (np_compat_registered_tool(compat_mgr)) {
         registered = 1;
-        NP_LOG("np_compat_register_crossover: %s already registered from disk, "
+        NP_LOG("np_compat_register_tool: %s already registered from disk, "
                "skipping the runtime entry", TOOL_DIR_NAME);
         return;
     }
@@ -569,7 +569,7 @@ void np_compat_register_crossover(void *compat_mgr) {
 
     registered = 1;
     g_yld_register_tool(compat_mgr, tool);
-    NP_LOG("np_compat_register_crossover: registered %s into manager 0x%llx",
+    NP_LOG("np_compat_register_tool: registered %s into manager 0x%llx",
            name, (unsigned long long)(uintptr_t)compat_mgr);
 }
 

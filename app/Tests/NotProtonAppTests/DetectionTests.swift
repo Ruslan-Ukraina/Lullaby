@@ -51,7 +51,7 @@ struct EngineStoreTests {
         guard case .broken = EngineStore.state(runners: root) else {
             Issue.record("expected .broken"); return
         }
-        let foreign = try runners(["crossover-1"], current: "crossover-1")
+        let foreign = try runners(["foreign-1"], current: "foreign-1")
         defer { try? FileManager.default.removeItem(at: foreign) }
         guard case .broken = EngineStore.state(runners: foreign) else {
             Issue.record("expected .broken"); return

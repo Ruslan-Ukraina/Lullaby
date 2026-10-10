@@ -625,11 +625,11 @@ def report(path):
 
 
 def ntdlls(arg):
-    """Every ntdll.dll under a bundle, a CrossOver root, or a wine directory."""
+    """Every ntdll.dll under an engine root or a wine directory."""
     p = pathlib.Path(arg)
     if p.is_file():
         return [str(p)]
-    for root in (p / 'Contents/SharedSupport/CrossOver/lib/wine', p / 'lib/wine', p):
+    for root in (p / 'wine/lib/wine', p / 'lib/wine', p):
         archs = sorted(d for d in root.glob('*-windows') if d.is_dir())
         if not archs:
             continue
@@ -693,7 +693,7 @@ def shell_vars(path):
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        raise SystemExit(f"usage: {sys.argv[0]} [--sh] <CrossOver bundle | wine dir | ntdll.dll> ...")
+        raise SystemExit(f"usage: {sys.argv[0]} [--sh] <engine dir | wine dir | ntdll.dll> ...")
     if sys.argv[1] == '--sh':
         if len(sys.argv) != 3:
             raise SystemExit("--sh takes one ntdll.dll")

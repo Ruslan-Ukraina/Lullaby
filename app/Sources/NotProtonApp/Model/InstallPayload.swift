@@ -1,4 +1,4 @@
-// Deploys core NotProton components into the copy of CrossOver that NotProton deploys to the Steam location
+// Deploys NotProton's components into Steam and notproton/ (the engine itself is Dormison, set up by EngineUpdater)
 
 import Foundation
 

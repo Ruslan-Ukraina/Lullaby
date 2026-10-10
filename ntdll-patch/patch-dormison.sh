@@ -1,7 +1,7 @@
 #!/bin/sh
 # Patch the x86_64 ntdll.dll of an unpacked Dormison engine so that loading
 # steamclient64.dll routes its exports to lsteamclient.dll (route B2 in
-# docs/DECISIONS.md, the same detour the CrossOver build used).
+# docs/DECISIONS.md: the detour upstream NotProton used on CrossOver, kept as the spike's route).
 #
 #   ntdll-patch/patch-dormison.sh [engine dir]    default: runners/current
 #

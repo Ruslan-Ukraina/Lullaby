@@ -5,7 +5,7 @@
 
 #import "check.h"
 
-// for FEX CrossOver, lsteamclient loads the shim by hand
+// when the shim is not inserted into the process, lsteamclient loads it by hand
 static int delivery_by_dlopen(void)
 {
 	const char *path = getenv("NOTPROTON_OVERLAY_SHIM");

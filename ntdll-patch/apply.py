@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# Development tool. The real patcher lives in the app (NtdllPatcher.swift).
-# This is the original Python version, kept for validating patches against
-# new CrossOver builds.
+# Development tool of route B2, the binary ntdll.dll patch (docs/DECISIONS.md P1-1):
+# patches an engine's ntdll.dll at the RVAs resolve.py finds. What ships is route B1,
+# the hook built from Dormison's source (ntdll-patch/b1, P3-1).
 import os
 import sys
 

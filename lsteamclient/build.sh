@@ -21,7 +21,7 @@
 # An x86_64 unix half must be unsigned, because wine builtins fail to load once
 # codesigned. arm64 is the other way round: the platform will not map an unsigned
 # arm64 image at all, so the linker signs its output as it produces it and that
-# signature has to survive. CrossOver's own arm64 builtins are signed for the same
+# signature has to survive. Wine's own arm64 builtins are signed for the same
 # reason. PE files carry no Mach-O signature, so none of this applies to them.
 #
 # Reproducibility differs between the halves. A PE rebuild from unchanged source
@@ -38,7 +38,7 @@
 #   ./build.sh                 build and verify both halves
 #   ./build.sh --pe            PE halves only
 #   ./build.sh --unix          unix half only
-#   ./build.sh --install       also install to the CrossOver tree and bridge
+#   ./build.sh --install       also install into the bridge
 #
 # Overridable: WINE_BUILD, WINE_SRC_REL, BRIDGE_DIR, UNIX_ARCH
 
@@ -61,9 +61,8 @@ esac
 WINE_SRC_REL=${WINE_SRC_REL:-../dormison-src}
 # The complete tree, unlike $here, which holds only the authored files.
 TREE=${TREE:-$repo/build/lsteamclient}
-# The cloned runner, not the user's installed CrossOver. --install writes into this
-# tree, and the installed app has to stay stock: it is the only clean copy on the
-# machine and it is what the clone and the ntdll patcher are both taken from.
+# --install writes into the bridge only (DECISIONS P3-3): the engine stays as Dormison
+# shipped it, apart from the B1 ntdll.dll pair and the engine fixes the bridge carries.
 BRIDGE_DIR=${BRIDGE_DIR:-$HOME/Library/Application Support/notproton/bridge}
 
 install=0

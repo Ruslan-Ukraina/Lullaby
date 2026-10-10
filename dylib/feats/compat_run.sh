@@ -918,7 +918,7 @@ if [ "$foreground" = 0 ]; then
   exit $status
 fi
 
-# Fixes CrossOver window focus issues
+# Window focus: the game is started through its own bundle (name and icon in the Dock)
 steam_root="$(dirname "$(dirname "$(dirname "$STEAM_COMPAT_DATA_PATH")")")"
 manifest="$steam_root/steamapps/appmanifest_$app_id.acf"
 client_root="$STEAM_COMPAT_CLIENT_INSTALL_PATH"

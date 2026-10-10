@@ -368,16 +368,17 @@ panel-behavior:
 	node $(PANEL_TESTS)/cleanup.js $(OUT_DIR)/panel-emit && \
 	echo "==> panel behavior: renders as expected, no stale arguments"
 
-CX_ROOT ?= /Applications/CrossOver Preview.app
+# The engine whose ntdll.dll resolve.py reads (the B2 binary patch, DECISIONS P1-1).
+NTDLL_ENGINE ?= $(HOME)/Library/Application Support/notproton/runners/current/wine
 
 ntdll-resolve:
 	@if [ ! -f ntdll-patch/resolve.py ]; then \
 		$(call SKIP,ntdll-resolve,ntdll-patch/resolve.py); exit 0; fi; \
 	if ! python3 -c 'import capstone' >/dev/null 2>&1; then \
 		echo "==> ntdll-resolve: capstone not found, skipped (pip3 install capstone)"; exit 0; fi; \
-	if [ ! -d "$(CX_ROOT)" ]; then \
-		echo "==> ntdll-resolve: $(CX_ROOT) not present, skipped (set CX_ROOT)"; exit 0; fi; \
-	python3 ntdll-patch/resolve.py "$(CX_ROOT)"
+	if [ ! -d "$(NTDLL_ENGINE)" ]; then \
+		echo "==> ntdll-resolve: $(NTDLL_ENGINE) not present, skipped (set NTDLL_ENGINE)"; exit 0; fi; \
+	python3 ntdll-patch/resolve.py "$(NTDLL_ENGINE)"
 
 $(ARM64_DYLIB): $(OBJS)
 	@mkdir -p $(dir $@)
