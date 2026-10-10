@@ -128,6 +128,10 @@ extension SettingCopy {
                  uk: "Як графіка гри (Direct3D) показується на вашому Mac. Якщо гра виглядає неправильно або не запускається, спробуйте інший варіант.",
                  ru: "Как графика игры (Direct3D) показывается на вашем Mac. Если игра выглядит неправильно или не запускается, попробуйте другой вариант."),
             entries: [
+                HelpEntry(.same("D3DMetal"), L10n(
+                    "Apple's Direct3D 11 and 12 from the Game Porting Toolkit you add. Needed for Direct3D 12 games.",
+                    uk: "Direct3D 11 і 12 від Apple з Game Porting Toolkit, який ви додаєте. Потрібен для ігор на Direct3D 12.",
+                    ru: "Direct3D 11 и 12 от Apple из Game Porting Toolkit, который вы добавляете. Нужен для игр на Direct3D 12.")),
                 HelpEntry(.same("DXMT"), L10n(
                     "Direct3D 10 and 11 straight through Metal. The fastest option for most games.",
                     uk: "Direct3D 10 і 11 напряму через Metal. Найшвидший варіант для більшості ігор.",
@@ -136,14 +140,6 @@ extension SettingCopy {
                     "Direct3D 10 and 11 through Vulkan (MoltenVK). Try it if DXMT draws a game wrong.",
                     uk: "Direct3D 10 і 11 через Vulkan (MoltenVK). Спробуйте, якщо DXMT неправильно малює гру.",
                     ru: "Direct3D 10 и 11 через Vulkan (MoltenVK). Попробуйте, если DXMT неправильно рисует игру.")),
-                HelpEntry(.same("D3DMetal"), L10n(
-                    "Apple's Direct3D 11 and 12 from the Game Porting Toolkit you add. Needed for Direct3D 12 games.",
-                    uk: "Direct3D 11 і 12 від Apple з Game Porting Toolkit, який ви додаєте. Потрібен для ігор на Direct3D 12.",
-                    ru: "Direct3D 11 и 12 от Apple из Game Porting Toolkit, который вы добавляете. Нужен для игр на Direct3D 12.")),
-                HelpEntry(L10n("Mullion (experimental)", uk: "Mullion (експеримент)", ru: "Mullion (эксперимент)"), L10n(
-                    "Open-source Direct3D 10, 11 and 12 on Metal, an early test version. Only 64-bit games, M3 or newer. Downloaded the first time you pick it.",
-                    uk: "Відкритий Direct3D 10, 11 і 12 на Metal, рання тестова версія. Лише 64-бітні ігри, M3 або новіший. Завантажується, коли ви вперше його обираєте.",
-                    ru: "Открытый Direct3D 10, 11 и 12 на Metal, ранняя тестовая версия. Только 64-битные игры, M3 или новее. Скачивается, когда вы впервые его выбираете.")),
                 HelpEntry(.same("WineD3D"), L10n(
                     "Wine's built-in renderer (OpenGL). Direct3D 9 games always use it; Direct3D 11 games only at feature level 9_3.",
                     uk: "Вбудований рендерер Wine (OpenGL). Ігри на Direct3D 9 завжди йдуть через нього, а Direct3D 11 — лише на рівні 9_3.",

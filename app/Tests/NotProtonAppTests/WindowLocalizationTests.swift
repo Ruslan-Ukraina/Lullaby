@@ -123,7 +123,7 @@ struct CreditsTests {
             #expect(!credit.license.isEmpty && !credit.authors.isEmpty && !credit.role.isEmpty)
         }
         let parts = ["lsteamclient", "steam-shim", "Sparkle", "JsonCpp", "cJSON", "OpenVR", "Sevoflurane",
-                     "NotProtonNot", "Dormison", "Highball", "Mullion", "D3DMetal", "DXMT", "DXVK", "MoltenVK",
+                     "NotProtonNot", "Dormison", "Highball", "D3DMetal", "DXMT", "DXVK", "MoltenVK",
                      "Dobby"]
         for part in parts where text.contains(part) {
             #expect(credits.contains { $0.noticeMarker == part || $0.name.contains(part) }, "no credit for \(part)")

@@ -10,7 +10,7 @@
 | 2 | Интерфейсы `SteamNetworkingSocketsSerialized005` и `SteamAppDisableUpdate001` в lsteamclient | 3 — **сделано** (P3-2), проверено на живом клиенте; в Deadlock — SPIKE_TEST §9.1 |
 | 3 | Сосуществование с Sevoflurane: отличать наш wineserver от чужого, не пересекаться префиксами | 2 — сделано, ждёт ручной проверки |
 | 4 | Производительность: PEAK ~78 fps при 3024×1890, Deadlock ~60 fps (цель — 120); какой API на самом деле рисует Deadlock | после 7 |
-| 5 | DX12-игры (RE9): D3DMetal / Mullion | 7 |
+| 5 | DX12-игры (RE9): D3DMetal | 7 |
 | 6 | Модальные окна ошибок Wine и игр не должны блокировать автотесты | 2 — сделано (`NOTPROTON_WATCHDOG`) |
 | 7 | Риски VAC от хука steamclient. Пока не выяснены — без онлайн-матчей с VAC | 3 — **оценено** (`RISKS.md`, «R33: VAC»); онлайн с VAC по-прежнему не запускаем |
 | 8 | **Важно.** Полноэкранный режим самой игры (exclusive fullscreen) ломает картинку: 0 fps, изображение смещено. Переход игры в fullscreen превращать в нативный полноэкранный режим macOS | эксперимент «Also borderless full screen» — SPIKE_TEST §9.3 (вместе с проверкой Фазы 3); `EmulateModeset` и правки `winemac.drv` — после Фазы 3 (твоё решение) |
@@ -36,7 +36,7 @@
 | 32 | Диалог «Дополнительные настройки» через `showModal` Steam вместо своего затемнения (P7A-8) | косметика, по желанию |
 | 33 | Апскейлеры Anime4K/CuNNy: нужны пакеты шейдеров и `SEVO_SHADER_DIR`, в движке b1 их нет | когда Dormison начнёт их поставлять |
 | 34 | Живая проверка канала панели и DLSS → MetalFX (R59, R63) | SPIKE_TEST §14 |
-| 36 | Mullion: версия закреплена в коде (P7C-1); новые релизы — через подписанный манифест (семейство `mullion`), сборка из исходников в нашем CI по желанию | после Фазы 6 |
+| 36 | Mullion (эксперимент Фазы 7C) | **отменено пользователем 2026-10-10**: убран из кода, панели, NOTICE и README (P7C-4) |
 | 35 | **Переделать логику окон игр** (полный экран, окно, смена разрешения) на стабильный вариант: нынешняя (масштабирование Dormison) не устраивает владельца (раздел 35) | **на будущее**, твоё решение 2026-10-10 |
 
 ### Отложено
@@ -575,6 +575,6 @@
 
 1.1.1 (Ubisoft Connect: `InstallPath`/`SteamExe` в реестре) — **уже у нас** (A0910-11, `steam-shim/steam.cpp`). 1.1.3 (CrossOver с crossoverchina.com) — к нам не относится.
 
-1. **Перенести (рекомендую): dylib не уходит из Steam Helper в чужие программы** (1.1.4, `130cc2a`). Главный `Steam Helper` (без `--type=`) запускает `/usr/bin/profiles` и открывает приложения через LaunchServices; `DYLD_INSERT_LIBRARIES` с нашим dylib уходит туда. С выключенным SIP `profiles` падает. Апстрим: в главном Steam Helper ставится тот же хук запуска, insert убирается из окружения и возвращается только `steam_osx`/`Steam Helper`. У нас `np_init` иначе (окна Steam в процессе браузера, `np_steamwin_*`) — переносить руками, с тестом `spawn-live` апстрима («Steam Helper» → дочерние без insert, `--type=renderer` с insert). Небольшая правка dylib; нужна живая проверка Steam.
+1. ~~**Перенести (рекомендую): dylib не уходит из Steam Helper в чужие программы**~~ — **сделано 10.10 (A1010-6)**, живая проверка в Steam — твоя. (1.1.4, `130cc2a`). Главный `Steam Helper` (без `--type=`) запускает `/usr/bin/profiles` и открывает приложения через LaunchServices; `DYLD_INSERT_LIBRARIES` с нашим dylib уходит туда. С выключенным SIP `profiles` падает. Апстрим: в главном Steam Helper ставится тот же хук запуска, insert убирается из окружения и возвращается только `steam_osx`/`Steam Helper`. У нас `np_init` иначе (окна Steam в процессе браузера, `np_steamwin_*`) — переносить руками, с тестом `spawn-live` апстрима («Steam Helper» → дочерние без insert, `--type=renderer` с insert). Небольшая правка dylib; нужна живая проверка Steam.
 2. **Не переносится: PR #63 «thread-state» для Metaphor** (1.1.2). Это переменная CrossOver `CX_APPLEGPTK_LIBD3DSHARED_PATH`: CrossOver через `libd3dshared.dylib` включает поддержку Windows-потоков Rosetta даже без D3DMetal. В Dormison аналог `SEVO_LIBD3DSHARED_PATH` без D3DMetal ничего не включает (`supports_non_native_code_regions` только пишется в лог). Наша дорога к таким играм (волокна, `GS:0x20`) — патчи Highball 0008/0009/0011/0016 (отложено, A1010-1). Если игрок пожалуется на падение при старте как у Metaphor — смотреть туда.
 3. **Шрифты Proton — потом, по желанию** (1.1.4, `740b2e9`). Dormison (wine-staging) уже несёт Arial/Courier/Times (на основе Liberation), Tahoma, YaHei (`msyh`), японский IPA Gothic. Proton добавляет: жирные Arial/Courier, SimSun, Malgun (корейский), MS Gothic (Ume), Microsoft Sans Serif, Lucida Console, Nirmala, Noto для арабского, иврита, тайского, деванагари и др. Польза — игры с корейским/китайским/арабским текстом и лаунчеры с MS Sans Serif. Цена: сборка через fontforge + afdko (в CI — `brew install`), десятки МБ в приложении, BSD-3 Valve + OFL/лицензии шрифтов в NOTICE и credits. Дешевле: скачивать готовые шрифты по требованию (как Mullion) и класть ссылками в `drive_c/windows/Fonts`, как Proton `create_fonts_symlinks`.

@@ -32,8 +32,7 @@ public enum SettingLevel: String, CaseIterable, Sendable, Codable {
 public struct SettingChoice: Sendable, Equatable {
     public let value: JSONValue
     public let label: L10n
-    /// A component this choice needs ("d3dmetal": added by the player first; "mullion":
-    /// downloaded when picked, offered on an M3 or later for a 64-bit game).
+    /// A component this choice needs ("d3dmetal": added by the player first).
     public var requires: String?
 
     public init(_ value: JSONValue, _ label: L10n, requires: String? = nil) {
@@ -138,7 +137,7 @@ extension Setting {
             id: id, group: group, levels: levels, quick: quick, experimental: false, copy: copy,
             control: .choice(labels.map {
                 SettingChoice(.string($0.0.rawValue), $0.1,
-                              requires: ["d3dmetal", "mullion"].contains($0.0.rawValue) ? $0.0.rawValue : nil)
+                              requires: $0.0.rawValue == "d3dmetal" ? "d3dmetal" : nil)
             }), carrier: carrier,
             read: { $0[keyPath: key].map { .string($0.rawValue) } },
             write: { values, value in
@@ -159,9 +158,8 @@ public enum SettingCatalog {
     public static let all: [Setting] = [
         .choice(
             .renderer, in: .picture, levels: [.game], quick: 1, key: \.renderer,
-            labels: [(.dxmt, .same("DXMT")), (.dxvk, .same("DXVK")), (.wined3d, .same("WineD3D")),
-                     (.d3dmetal, .same("D3DMetal")),
-                     (.mullion, L10n("Mullion (experimental)", uk: "Mullion (експеримент)", ru: "Mullion (эксперимент)"))],
+            labels: [(.d3dmetal, .same("D3DMetal")), (.dxmt, .same("DXMT")), (.dxvk, .same("DXVK")),
+                     (.wined3d, .same("WineD3D"))],
             copy: .renderer, carrier: .runScript("NOTPROTON_RENDERER")),
         .flag(.retina, in: .picture, quick: 2, key: \.retina, copy: .retina,
               carrier: .registry(values: ["RetinaMode"], marker: "NOTPROTON_RETINA")),

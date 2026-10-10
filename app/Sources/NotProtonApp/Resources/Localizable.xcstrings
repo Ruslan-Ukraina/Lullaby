@@ -1033,30 +1033,6 @@
       },
       "generatesSymbol": false
     },
-    "Experimental Direct3D 10–12 renderer. Downloaded only if you pick it.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Experimental Direct3D 10–12 renderer. Downloaded only if you pick it."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Экспериментальный рендерер Direct3D 10–12. Скачивается, только если вы его выберете."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Експериментальний рендерер Direct3D 10–12. Завантажується, лише якщо ви його оберете."
-          }
-        }
-      },
-      "generatesSymbol": false
-    },
     "For DirectX 12 games. Download it from Apple first.": {
       "extractionState": "manual",
       "localizations": {

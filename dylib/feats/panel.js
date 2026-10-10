@@ -101,8 +101,6 @@
 
   // A choice that needs a component the player has not added (D3DMetal) is not offered.
   function available(ctx, c) {
-    // Mullion is offered on an M3 or later for a 64-bit game, and downloads when picked.
-    if (c.requires === "mullion") return !!(ctx.state && ctx.state.mullion && ctx.state.mullion.offered);
     return !c.requires || (c.requires === "d3dmetal" && !!toolkit(ctx).active);
   }
   function toolkit(ctx) { return (ctx.state && ctx.state.d3dmetal) || {}; }
