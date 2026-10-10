@@ -795,28 +795,6 @@ stage_renderer() {
       renderer_overrides="$names=b"
       export SEVO_LIBD3DSHARED_PATH="$ext/libd3dshared.dylib" D3DM_WINE_UNIX_CALL=1
       ;;
-    mullion)
-      # Mullion (docs/ROADMAP.md section 7, experimental): an LGPL fork of DXMT with Direct3D 12,
-      # downloaded by notproton-settings into notproton/mullion/<version>, never installed into
-      # the engine. 64-bit games only; its unix half finds the engine's ntdll.so and winemac.so
-      # through links beside it (MullionStore).
-      mul="$support/mullion/current"
-      [ -f "$mul/x86_64-unix/winemetal.so" ] || {
-        echo "=== Mullion is not downloaded: pick it again in Steam ===" >> "$log" 2>&1 || true
-        return 1; }
-      rm -rf "${dir:?}" && mkdir -p "$dir/x86_64-windows" "$dir/x86_64-unix" || return 1
-      for f in d3d10core d3d11 d3d12 d3d12core dxgi winemetal; do
-        ln -sfn "$mul/x86_64-windows/$f.dll" "$dir/x86_64-windows/$f.dll"
-      done
-      ln -sfn "$mul/x86_64-unix/winemetal.so" "$dir/x86_64-unix/winemetal.so"
-      # The prefix holds winemetal.dll as the loader requires (see DXMT above): Mullion's here.
-      if [ -n "$WINEPREFIX" ] && [ -d "$WINEPREFIX/drive_c/windows/system32" ]; then
-        cmp -s "$mul/x86_64-windows/winemetal.dll" "$WINEPREFIX/drive_c/windows/system32/winemetal.dll" \
-          || cp -f "$mul/x86_64-windows/winemetal.dll" "$WINEPREFIX/drive_c/windows/system32/winemetal.dll" || return 1
-      fi
-      renderer_overrides="d3d10core,d3d11,d3d12,d3d12core,dxgi,winemetal=b"
-      echo "mullion: $(readlink "$mul" 2>/dev/null || echo "$mul")" >> "$log" 2>&1 || true
-      ;;
     *) return 1 ;;
   esac
   for f in "$dir"/*/*; do
@@ -830,20 +808,8 @@ stage_renderer() {
 renderer="${NOTPROTON_RENDERER:-${CX_GRAPHICS_BACKEND:-$(env_value NOTPROTON_RENDERER)}}"
 renderer="${renderer:-dxmt}"
 [ -n "$NOTPROTON_D3DMETAL" ] || NOTPROTON_D3DMETAL=$(env_value NOTPROTON_D3DMETAL)
-# The Windows machine of the program Steam starts, from its PE header: 8664 or 14c.
-exe_machine() {
-  [ -f "$1" ] || return 1
-  off=$(od -A n -t u4 -j 60 -N 4 "$1" 2>/dev/null | tr -d ' ')
-  case "$off" in ''|*[!0-9]*) return 1 ;; esac
-  [ "$(od -A n -t x1 -j "$off" -N 4 "$1" 2>/dev/null | tr -d ' \n')" = 50450000 ] || return 1
-  od -A n -t x2 -j "$((off + 4))" -N 2 "$1" 2>/dev/null | tr -d ' \n'
-}
-if [ "$renderer" = mullion ] && [ "$(exe_machine "$1" 2>/dev/null)" = 014c ]; then
-  echo "=== Mullion runs 64-bit games only, this one is 32-bit: using DXMT ===" >> "$log" 2>&1 || true
-  renderer=dxmt
-fi
 case "$renderer" in
-  dxmt|dxvk|wined3d|d3dmetal|mullion) ;;
+  dxmt|dxvk|wined3d|d3dmetal) ;;
   *)
     echo "=== unknown renderer $renderer, using DXMT ===" >> "$log" 2>&1 || true
     renderer=dxmt ;;
@@ -858,7 +824,7 @@ if [ "$renderer" != wined3d ]; then
   if stage_renderer "$renderer_dir"; then
     export WINEDLLPATH_PREPEND="$renderers/$renderer_dir"
     export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:+$WINEDLLOVERRIDES;}$renderer_overrides"
-  elif { [ "$renderer" = d3dmetal ] || [ "$renderer" = mullion ]; } && stage_renderer dxmt; then
+  elif [ "$renderer" = d3dmetal ] && stage_renderer dxmt; then
     echo "=== $renderer unavailable, using DXMT ===" >> "$log" 2>&1 || true
     renderer=dxmt
     export WINEDLLPATH_PREPEND="$renderers/dxmt"

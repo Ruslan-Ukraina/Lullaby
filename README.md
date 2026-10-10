@@ -17,8 +17,6 @@ a free Wine engine for macOS, and keeps itself up to date.
 - **Renderers.** DXMT (Direct3D 10/11 on Metal, the default), DXVK, WineD3D, and:
   - **D3DMetal** for Direct3D 12 — from Apple's Game Porting Toolkit, which you download
     from Apple yourself and add in "Advanced settings". NotProton never ships it.
-  - **Mullion** (experimental) — open Direct3D 10/11/12 on Metal. Downloaded the first time
-    you pick it. Only 64-bit games, M3 or newer, macOS 15 or newer.
 - **Recipes.** Games NotProton knows get the setup that worked best (marked "NotProton
   recipe"); your own choice always wins, and "Restore recipe" goes back.
 - **Updates.** The engine (signed by Dormison), the Steam bridge, the Steam signatures and
@@ -41,7 +39,7 @@ Security → "Open Anyway".
 - **Online games with anti-cheat** (VAC, EasyAntiCheat, BattlEye): not tested, do not play
   them online.
 - **32-bit games** are not checked on a live game yet.
-- **Direct3D 12** needs D3DMetal (your own copy from Apple) or the experimental Mullion.
+- **Direct3D 12** needs D3DMetal (your own copy from Apple).
 - **Native full screen** (the green button) scales a fixed-size game window; use the game's
   borderless mode for full resolution. A rework is planned.
 - Some Steam client builds are not supported until their signatures are published; Steam
@@ -57,7 +55,6 @@ Security → "Open Anyway".
 | Two engine fixes (memory accounting, Retina screen size) | [Highball](https://github.com/gauthierpiarrette/highball-engine) by gauthierpiarrette | LGPL-2.1-or-later |
 | `lsteamclient` | Valve's [Proton](https://github.com/ValveSoftware/Proton) | Steamworks SDK License |
 | `steam-shim` | Valve's Proton `steam_helper` | BSD-3-Clause |
-| Mullion (downloaded on demand) | [Mullion](https://github.com/dttdrv/mullion), a fork of [DXMT](https://github.com/3Shain/dxmt) | LGPL-2.1-or-later |
 | D3DMetal (yours) | Apple Game Porting Toolkit | Apple's license, not distributed |
 
 The details, and which files each part covers, are in [NOTICE](NOTICE).

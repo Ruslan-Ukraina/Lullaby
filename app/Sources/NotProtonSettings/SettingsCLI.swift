@@ -14,8 +14,6 @@
 //   toolkit choose                       ask for the image (a macOS file dialog), then install;
 //                                        progress in d3dmetal/.install-status.json
 //   toolkit list                         installed D3DMetal versions as JSON
-//   mullion [install|state]              Mullion, the experimental renderer: download the pinned
-//                                        release and check it, or its state as JSON
 //   app config APPID KEY VALUE           what Dormison's View menu runs through SEVO_CLI
 //                                        (the `sevo app config` call; docs/ROADMAP.md §5.3)
 
@@ -49,9 +47,6 @@ public struct SettingsCLI {
             let root = URL(filePath: support)
             service.store = SettingsStore(root: root.appending(path: "settings"))
             service.d3dmetal = D3DMetalStore(root: root.appending(path: "d3dmetal"))
-            service.mullion = MullionStore(
-                root: root.appending(path: "mullion"),
-                engineUnix: root.appending(path: "runners/current/wine/lib/wine/x86_64-unix"))
             service.cli = root.appending(path: "notproton-sevo").path(percentEncoded: false)
             service.log = { _ in }
             service.engineVersion = { nil }
@@ -121,18 +116,6 @@ public struct SettingsCLI {
             return try sevoAppConfig(rest)
         case "toolkit":
             return try toolkit(rest)
-        case "mullion":
-            switch rest.first {
-            case "install":
-                do { try service.mullion.install(log: service.log) } catch {
-                    throw SettingsError.mullionUnavailable("\(error)")
-                }
-                return .ok(service.mullion.stateJSON().text)
-            case "state", nil:
-                return .ok(service.mullion.stateJSON().text)
-            default:
-                throw SettingsError.usage("mullion [install|state]")
-            }
         default:
             throw SettingsError.usage(Self.usage)
         }
@@ -298,6 +281,6 @@ public struct SettingsCLI {
     static let usage = """
         usage: notproton-settings catalog | state [--app ID] | set [--app ID] SETTING JSON | reset [--app ID]
                | launch --app ID --exe PROGRAM [--install DIR] [--prefix PFX] | materialize [--app ID]
-               | migrate | panel JSON | app config APPID KEY VALUE | toolkit … | mullion [install|state]
+               | migrate | panel JSON | app config APPID KEY VALUE | toolkit …
         """
 }
