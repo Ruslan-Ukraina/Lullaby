@@ -41,7 +41,7 @@
 	<key>LBReleasePublicKey</key>
 	<string></string>
 	<key>LBReleaseAccess</key>
-	<string>public</string>
+	<string>private</string>
 	<key>LBReleaseRepository</key>
 	<string>Ruslan-Ukraina/Lullaby</string>
 	<key>LBReleaseManifestTag</key>
