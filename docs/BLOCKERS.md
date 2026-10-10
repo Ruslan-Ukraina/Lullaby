@@ -4,16 +4,13 @@
 
 Обновлено: 2026-10-10, ~21:40 CEST.
 
-## Чистка GitHub — нужна твоя команда (10.10 ~22:00)
+## Чистка GitHub — сделано 10.10 ~22:10
 
-Автоматический режим не дал мне удалять ветки, теги и файлы релиза на GitHub. Резервная копия всего — `scratch/backups/lullaby-before-cleanup-2026-10-10.bundle`. Либо разреши мне (напиши «разрешаю удалять на GitHub» и подтверди запрос), либо выполни сам в терминале Claude Code (префикс `!`):
+Одна ветка `main`, один релиз (r5). Резервная копия всего удалённого — `scratch/backups/lullaby-before-cleanup-2026-10-10.bundle` (перенеси в iCloud Drive вместе с `lullaby-2026-10-10.bundle`).
 
-```
-! cd ~/Projects/NotProton && git push origin --delete dev dormison phase-7 phase-8 lullaby-rename spike/dormison wip/7b-d3dmetal
-! cd ~/Projects/NotProton && git push origin --delete dryrun-app-1 dryrun-app-2 dryrun-app-3 dryrun-bridge-1 dryrun-bridge-2 dryrun-bridge-3 dryrun-signatures-1 dryrun-signatures-2 v1.0.0 v1.0.1 v1.0.2
-! gh release delete-asset sources-dormison dormison-b1-src.tar.xz -R Ruslan-Ukraina/Lullaby -y && gh release delete-asset sources-dormison dormison-b2-src.tar.xz -R Ruslan-Ukraina/Lullaby -y
-```
-После этого я поправлю `SHA256SUMS` и описание релиза (только r5) и запишу в INDEPENDENCE.
+## Дальше — Фаза 6
+
+Нужны твои ключи подписи (RELEASING §1) и решение, как приложение будет получать обновления из приватного репозитория (сделать релизы публичными или токен в приложении).
 
 ## Переименование в Lullaby — сделано
 

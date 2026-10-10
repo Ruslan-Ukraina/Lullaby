@@ -1283,3 +1283,12 @@ PEAK, DXMT, меню; `perf/peak-ab.sh` чередует «исходно → и
 - **Mac:** удалены `runners/dormison-b2` (1,0 ГБ), ссылка `previous`, `bridges/bridge-dormison-b2-3` (82 МБ); `state.json` — только `current` (старый — в `scratch/backups/before-lullaby-20261010-2141/`). `--release plan`: «Встановлено», план пуст; r6 ждёт моста. Отката на b2 больше нет.
 - **Локально:** удалены слитые ветки `dormison`, `phase-7`, `lullaby-rename`, `spike/dormison`; `phase-8` (рабочая копия `NotProton-phase8`) и `wip/7b-d3dmetal` (не слита) — оставлены.
 - **Не сделано (заблокировано автоматическим режимом как разрушительное):** удаление на GitHub веток `dev dormison phase-7 phase-8 lullaby-rename spike/dormison wip/7b-d3dmetal`, тегов `dryrun-*` и `v1.0.0…v1.0.2`, файлов b1/b2 из релиза `sources-dormison`. Команды — BLOCKERS.
+
+## 2026-10-10 ~22:05–22:15 CEST — Чистка доделана; README по-украински
+
+- Владелец сам удалил на GitHub 7 веток, 11 тегов и архивы b1/b2 из релиза (команды из BLOCKERS). Я обновил `SHA256SUMS` и описание релиза: «Dormison sources (r5)», один архив.
+- **GitHub сейчас:** ветка `main` (`0009862` + этот коммит), тег `sources-dormison`, релиз с r5. Ветка по умолчанию — `main`.
+- **Локально:** рабочая копия `~/Projects/NotProton-phase8` убрана (`git worktree remove`), перед этим `scratch/bridge-feed` (из него `make app` берёт встроенный мост) и остальной её `scratch` перенесены в `~/Projects/NotProton/scratch/` (`bridge-feed`, `from-phase8-worktree`), кеш пакетов Valve для тестов — в `app/.build/test-caches`. Ветки `phase-8`, `wip/7b-d3dmetal` и 17 старых локальных тегов удалены. Остались только `main` и `sources-dormison`. Работа дальше — в `~/Projects/NotProton`, ветка `main`.
+- `Makefile`: иконка собирается заново, если в `out/icon` нет `Lullaby.icns` (старый кеш с `NotProton.icns` ломал `make app`).
+- README переведён на украинский (`0009862`); заодно macOS 26+ (как в `LSMinimumSystemVersion`).
+- `make app-tests` — 0 (421), `make app` — 0, из `main`.

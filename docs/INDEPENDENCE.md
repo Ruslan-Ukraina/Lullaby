@@ -97,6 +97,7 @@
 | r5 | `4ed1e4195327ab907e0c3c96dc5c2405bf753c9f` | 53 037 448 | `975aff1127f9efa80bfc659893277bd1729b8e93e5cb5740b73e207daefa8680` | `e7095cb97d6e42386d542d8926c6f1e79c26377e589ce5c72276d4eab0dbc16d` |
 
 - Проверка: sha256, которые GitHub показывает у ассетов (`gh release view … --json assets`), совпали с локальными. В релизе также `SHA256SUMS` (`shasum -a 256 -c SHA256SUMS`).
+- **10.10 ~22:10, чистка (P9-17):** в релизе оставлен только r5 (`dormison-r5-src.tar.xz` + `SHA256SUMS`), название «Dormison sources (r5)». Архивы b1 и b2 — локально в `~/Projects/NotProton/scratch/backups/dormison-sources/` (sha256 из таблицы сошлись).
 - Наши изменения поверх движка (B1-хук `ntdll.dll`, исправления Highball 0018/0020) — в этом репозитории: `ntdll-patch/b1/`, `engine-fixes/patches/`. Вместе с архивами это полный исходный код для LGPL.
 - **Не покрыто:** исходники DXMT, DXVK, MoltenVK, которые лежат в тарболе Dormison готовыми файлами (Dormison берёт их своими скриптами из `build-macos/`). Если понадобится — отдельное решение.
 - **Дальше (Фаза 6):** шаг в `dormison-bridge.yml` — на каждый новый движок с мостом добавлять его архив в этот релиз.
@@ -109,6 +110,7 @@
 - **Не входит:** ассеты релизов (архивы исходников Dormison из I1 — их копия лежит в scratchpad сессии, не постоянно), ключи и токены (их нет в git).
 - Восстановление: `git clone lullaby-2026-10-10.bundle Lullaby` (ветки — `origin/*`), затем `git remote set-url origin <новый адрес>` и `git push --all && git push --tags`.
 - В iCloud Drive переносит владелец.
+- **После чистки (P9-17)** в GitHub одна ветка `main` и один тег `sources-dormison`; всё удалённое — в `lullaby-before-cleanup-2026-10-10.bundle` (там же, sha256 `b33934f25b48e215a5fadf9b2445ffc95054fbf4b9f3147761dc03a98b24273c`). Его тоже стоит перенести в iCloud Drive.
 
 **Не предлагаю:** зеркалировать файлы Valve (проприетарные), GPTK/D3DMetal (Apple, запрещено), вливать в репозиторий весь Dormison (1+ ГБ истории; достаточно I1).
 

@@ -635,15 +635,17 @@ ICONGEN  := $(OUT_DIR)/icongen
 ICON_DOC := $(OUT_DIR)/Lullaby.icon
 ICON_DIR := $(OUT_DIR)/icon
 ICON_CAR := $(ICON_DIR)/Assets.car
+# Named after the app: a folder from before the rename (NotProton.icns) builds again.
+ICON_ICNS := $(ICON_DIR)/Lullaby.icns
 
-icon: $(ICON_CAR)
+icon: $(ICON_CAR) $(ICON_ICNS)
 
 $(ICONGEN): helpers/icon.swift
 	@mkdir -p $(OUT_DIR)
 	swiftc -O -o $@ $<
 	@echo "==> Built $@"
 
-$(ICON_CAR): $(ICONGEN)
+$(ICON_CAR) $(ICON_ICNS): $(ICONGEN)
 	rm -rf "$(ICON_DOC)" "$(ICON_DIR)"
 	$(ICONGEN) "$(ICON_DOC)"
 	@mkdir -p "$(ICON_DIR)"
@@ -652,7 +654,7 @@ $(ICON_CAR): $(ICONGEN)
 		--output-partial-info-plist "$(ICON_DIR)/partial.plist" >/dev/null
 	@echo "==> Built $@"
 
-app: app-config app-payload $(ICON_CAR)
+app: app-config app-payload $(ICON_CAR) $(ICON_ICNS)
 	swift build --package-path app -c release
 	rm -rf "$(APP_BUNDLE)"
 	@mkdir -p "$(APP_BUNDLE)/Contents/MacOS" "$(APP_BUNDLE)/Contents/Resources"
