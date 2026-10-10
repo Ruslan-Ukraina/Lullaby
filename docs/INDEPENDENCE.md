@@ -101,6 +101,15 @@
 - **Не покрыто:** исходники DXMT, DXVK, MoltenVK, которые лежат в тарболе Dormison готовыми файлами (Dormison берёт их своими скриптами из `build-macos/`). Если понадобится — отдельное решение.
 - **Дальше (Фаза 6):** шаг в `dormison-bridge.yml` — на каждый новый движок с мостом добавлять его архив в этот релиз.
 
+### I7 — сделано 10.10.2026 (P9-15)
+
+- `~/Projects/NotProton/scratch/backups/lullaby-2026-10-10.bundle` — 2 124 510 байт, sha256 `d1804c6019d3540718389b503eb5d026af4a4598b61020656a8268235c6dbb6d`.
+- Сделан из свежего `git clone --mirror` приватного `Ruslan-Ukraina/Lullaby` (`git bundle create … --branches --tags`): 8 веток (`dev`, `dormison`, `lullaby-rename`, `main`, `phase-7`, `phase-8`, `spike/dormison`, `wip/7b-d3dmetal`) и 12 тегов (`dryrun-*`, `v1.0.0…v1.0.2`, `sources-dormison`), полная история; последний коммит в нём — `6cf48ee`. Коммит с этой записью в бандл не вошёл.
+- Проверка: `git bundle verify` — код 0; `git clone <bundle>` даёт все ветки.
+- **Не входит:** ассеты релизов (архивы исходников Dormison из I1 — их копия лежит в scratchpad сессии, не постоянно), ключи и токены (их нет в git).
+- Восстановление: `git clone lullaby-2026-10-10.bundle Lullaby` (ветки — `origin/*`), затем `git remote set-url origin <новый адрес>` и `git push --all && git push --tags`.
+- В iCloud Drive переносит владелец.
+
 **Не предлагаю:** зеркалировать файлы Valve (проприетарные), GPTK/D3DMetal (Apple, запрещено), вливать в репозиторий весь Dormison (1+ ГБ истории; достаточно I1).
 
 ## 3. Что уже закреплено хорошо
