@@ -297,11 +297,17 @@ struct MainWindowFlowTests {
     }
 
     @Test("Known causes become plain sentences")
-    func problems() {
+    func problems() throws {
+        // A bundle of this user's, not /Applications/Steam.app: CI has no Steam, and an
+        // owner other than this user means another remedy (otherAccount).
+        let app = FileManager.default.temporaryDirectory.appending(path: "lullaby-tests-\(UUID().uuidString)/Steam.app")
+        try FileManager.default.createDirectory(at: app.appending(path: "Contents"), withIntermediateDirectories: true)
+        try Data("<plist/>".utf8).write(to: app.appending(path: "Contents/Info.plist"))
+        defer { try? FileManager.default.removeItem(at: app.deletingLastPathComponent()) }
         #expect(FlowProblem(SteamBundle.StillRunning(seconds: 30), step: .steam).cause == .steamDidNotQuit)
         #expect(FlowProblem(URLError(.notConnectedToInternet), step: .engine).cause == .offline)
         #expect(FlowProblem(StepFailure(step: "x", detail: SteamInstaller.gameRunning), step: .steam).cause == .gameRunning)
-        #expect(FlowProblem(WriteRefused(path: "/Applications/Steam.app"), step: .steam).cause == .appManagement)
+        #expect(FlowProblem(WriteRefused(path: app.path(percentEncoded: false)), step: .steam).cause == .appManagement)
         #expect(FlowProblem(KnownProblem(.noBridgeYet, log: "x"), step: .bridge).message
             == tr("The Steam bridge for this engine isn't ready yet. Try again later."))
         for id in FlowStep.ID.allCases { #expect(!FlowProblem.failedText(id).isEmpty) }
