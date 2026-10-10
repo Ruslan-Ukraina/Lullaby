@@ -182,6 +182,10 @@ jobs:
           grep -q "release: bridge" "$RUNNER_TEMP/feed-check.log"
 
       - name: Archive, sign and write the appcast
+        env:
+          # gh reads the published appcast; without a token it fails quietly and every
+          # release started a new appcast with only itself in it.
+          GH_TOKEN: ${{ github.token }}
         run: |
           arch="$RUNNER_TEMP/archives"; mkdir -p "$arch"
           zip="Lullaby-$VERSION.zip"
@@ -193,6 +197,8 @@ jobs:
           if [ "$DRY_RUN" != true ] && release/gh-publish.sh fetch "$MANIFEST_TAG" "$APPCAST" "$RUNNER_TEMP/appcast" --no-sig; then
             cp "$RUNNER_TEMP/appcast/$APPCAST" "$arch/appcast.xml"
             echo "Adding to the published appcast."
+          elif [ "$DRY_RUN" != true ]; then
+            echo "::warning::No published appcast was read; this one starts with only $VERSION."
           fi
           channel=""; [ "$PRE" = true ] && channel="--channel beta"
           "$SPARKLE_BIN/generate_appcast" --ed-key-file "$RUNNER_TEMP/keys/sparkle.key" \
