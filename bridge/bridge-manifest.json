@@ -7,11 +7,11 @@
         {
           "clean": "d6f5c3e38d43340ae17b2f540aaaa5499acc84d40d814780f84df2ea44449735",
           "file": "engine/ntdll.so",
-          "patched": "82c22d907bec6b0a0a6b9447e4c7db460d9193a894b5d2eec28681ff8cd6355f",
+          "patched": "38191f8cb6293b41752665a74f88091caa115764f8a15952e7de58ef494e7b2c",
           "patches": [
             {
               "name": "0001-ntdll-commit-charge-is-the-footprint.patch",
-              "sha256": "316fca107461f9bb1183203f0d165b4e3475aa9bd362138de26680d23fe65b6b"
+              "sha256": "7038903fa805c45adaa6af078a07510d50aad02a8b9f33cb6c0911415040f3ef"
             }
           ],
           "path": "wine/lib/wine/x86_64-unix/ntdll.so"
@@ -19,11 +19,11 @@
         {
           "clean": "358d922737979c8e6b8a939f2b750425b9d7f22a224ce64590a95dd4eafb1d23",
           "file": "engine/winemac.so",
-          "patched": "e3a8fc092f9bb03607b6429281525802ca2ccbeb3d643a21669626cda4f0681c",
+          "patched": "53434c6f4db4e2223ddbb99fb8907461baab0c9fa47b07f888cb753fae9446db",
           "patches": [
             {
               "name": "0001-winemac-retina-horzres-not-doubled.patch",
-              "sha256": "d4c4bde5a5ad80becc8919c30e928d24c61d8336620675ca67c89568169d48fa"
+              "sha256": "5221a76b849318c4d6d1340ed32b44f06cbc2a0a68fa246b8f369fa0bfa9ac92"
             }
           ],
           "path": "wine/lib/wine/x86_64-unix/winemac.so"
@@ -38,49 +38,49 @@
         {
           "name": "steam.exe",
           "path": "steam.exe",
-          "sha256": "a4566ef558458b8032d1f513937f071ecca2b1494fb71273a0dc75077e5b3c67"
+          "sha256": "def0787800500d87fc870ece11388ac95cc4d87473475a4f490b39b93916e3f0"
         },
         {
           "name": "x86_64-windows-lsteamclient.dll",
           "path": "x86_64-windows-lsteamclient.dll",
-          "sha256": "2c6ca412b7d34a46163d9b900a1310247aa3518ab6b79f1cec73a4015b4ced8d"
+          "sha256": "c8805f45772c4adc92ed8aa6dfbf408c11e8d709ec0a407da52cd231dddf69a8"
         },
         {
           "name": "x86_64-unix-lsteamclient.so",
           "path": "x86_64-unix-lsteamclient.so",
-          "sha256": "12c97e78664f76a77cddf75e71043293e958783e5787e6aa7b45d85e41db6a82"
+          "sha256": "48745336fda1c7c3990e5c5fea8338446ad2cbd9b0112acffe6a1ca2ba079990"
         },
         {
           "name": "i386-windows-lsteamclient.dll",
           "path": "i386-windows-lsteamclient.dll",
-          "sha256": "b2c6973afe2a14d52e3a65977636568c9b053339507625ca7ef6ad047644fbcb"
+          "sha256": "09f725639d23d465aff9602c175eb91755a7a8c1a04af47f6cbda41ca33de228"
         }
       ],
-      "id": "bridge-dormison-r5-1",
+      "id": "bridge-dormison-r5-2",
       "ntdll": [
         {
           "arch": "x86_64",
-          "b1": "d75572d9cd5110a3cec6950f6ed13473d0b834a79f90570a2d2445afb3ea28f7",
+          "b1": "51668e87d6cb40ac59c49b34561e6833b5e49d3bfebc3f94b6f1e49b170db9c8",
           "clean": "778819b3ce22645d777dc2cc7abfe725eb7c3779deb23bba6fe7acbec3f14364",
           "file": "ntdll/x86_64-ntdll.dll",
           "path": "wine/lib/wine/x86_64-windows/ntdll.dll"
         },
         {
           "arch": "i386",
-          "b1": "070c7fa2f46514986f5805526a34d7c78230e8467c2702228258448320fa465f",
+          "b1": "02c49590f54a72b563d544ad7b1ddb10b7f4f592df36e27d320dbd7ba787d420",
           "clean": "7084bb9da373379701e6e721aef42311c34f64da5b4d5c076f9a666f39b25e57",
           "file": "ntdll/i386-ntdll.dll",
           "path": "wine/lib/wine/i386-windows/ntdll.dll"
         }
       ],
       "patch": "0001-ntdll-redirect-steamclient-to-lsteamclient.patch",
-      "patchSha256": "e70d520f010f5f33556e7e9b911bc8cd9d55f6426ea9d637f881862eb3751524",
-      "rev": 1,
-      "sha256": "6bdfdb6ff8a09255d2b4f6f3c5c0cd694bccfc95a03770088301de7c28f39b34",
-      "sizeBytes": 7458752,
-      "url": "https://github.com/Ruslan-Ukraina/Lullaby/releases/download/bridge-dormison-r5-1/bridge-dormison-r5-1.tar.xz"
+      "patchSha256": "2592b6f3d8a32503e8ad79b86a7998fe53a0529f47a2458227161868493e2a26",
+      "rev": 2,
+      "sha256": "e30202dd8785a416b54620d9808e1e3809c7b88a749ead8f174328fbeccbc46e",
+      "sizeBytes": 2546648,
+      "url": "https://github.com/Ruslan-Ukraina/Lullaby/releases/download/bridge-dormison-r5-2/bridge-dormison-r5-2.tar.xz"
     }
   ],
   "schema": 1,
-  "serial": 1
+  "serial": 2
 }
