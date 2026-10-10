@@ -3,7 +3,7 @@
 # winemac.so) from the commit the release was built from, with NotProton's patches in
 # engine-fixes/patches/<file>/*.patch, applied in order. The bridge carries them into the
 # engine next to the B1 ntdll.dll pair (BridgeRelease.engineFiles); the release's file
-# stays beside each as <file>.notproton-orig.
+# stays beside each as <file>.lullaby-orig.
 #
 # Every file is first rebuilt without the patches and its code must match the release's
 # instruction for instruction (same compiler, same flags): only then is the patched build
@@ -19,7 +19,7 @@ set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$here/.." && pwd)
-support="$HOME/Library/Application Support/notproton"
+support="$HOME/Library/Application Support/lullaby"
 ENGINE=$(cd -P "${ENGINE:-$support/runners/current}" && pwd)
 WINE_SRC=${WINE_SRC:-$repo/scratch/dormison-src}
 WINE_BUILD=${WINE_BUILD:-$repo/scratch/dormison-build}
@@ -71,7 +71,7 @@ m = json.load(open(sys.argv[1]))
 print(next(c["sha256"] for c in m["components"] if c["path"] == sys.argv[2]))
 PY
 )
-	for f in "$ENGINE/$rel.notproton-orig" "$ENGINE/$rel"; do
+	for f in "$ENGINE/$rel.lullaby-orig" "$ENGINE/$rel"; do
 		[ -f "$f" ] && [ "$(sha "$f")" = "$want" ] && { echo "$f"; return 0; }
 	done
 	die "no clean $rel in $ENGINE (want $want)"

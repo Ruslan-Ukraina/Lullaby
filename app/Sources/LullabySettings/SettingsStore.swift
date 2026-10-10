@@ -1,4 +1,4 @@
-// Where the levels live: JSON files under ~/Library/Application Support/notproton/settings,
+// Where the levels live: JSON files under ~/Library/Application Support/lullaby/settings,
 // `global.json` for every game and `games/<appid>.json` per game. They are the source of
 // truth; the env files Dormison reads are derived from them (ConfigMaterializer).
 //
@@ -15,7 +15,7 @@ public struct SettingsStore: Sendable {
         self.root = root
     }
 
-    /// ~/Library/Application Support/notproton/settings.
+    /// ~/Library/Application Support/lullaby/settings.
     public static var standard: SettingsStore {
         SettingsStore(root: SettingsPaths.support.appending(path: "settings"))
     }
@@ -173,7 +173,7 @@ public enum SettingsPaths {
     public static var home: URL { URL(filePath: NSHomeDirectory()) }
 
     public static var support: URL {
-        home.appending(path: "Library/Application Support/notproton")
+        home.appending(path: "Library/Application Support/lullaby")
     }
 
     /// The CLI the installer places next to the other helpers; Dormison's View menu
@@ -182,7 +182,7 @@ public enum SettingsPaths {
 
     /// The shell stand-in compat_run.sh writes and names in SEVO_CLI (S1); it hands
     /// every call to `cli`.
-    public static var sevoStub: URL { support.appending(path: "notproton-sevo") }
+    public static var sevoStub: URL { support.appending(path: "lullaby-sevo") }
 
     public static var launchers: URL { support.appending(path: "launchers") }
 

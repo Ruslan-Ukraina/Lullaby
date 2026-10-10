@@ -134,7 +134,7 @@ struct FailureRemedyTests {
 
     @Test("A refusal inside a bundle offers the settings pane")
     func insideABundleOffersThePane() throws {
-        let target = try bundle().appending(path: "Contents/MacOS/notproton.dylib")
+        let target = try bundle().appending(path: "Contents/MacOS/lullaby.dylib")
         let status = SystemStatus()
 
         status.setFailure(WriteRefused(path: target.path(percentEncoded: false)))

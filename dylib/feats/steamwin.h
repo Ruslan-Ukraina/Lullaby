@@ -5,7 +5,7 @@
 // Steam Helper without --type=: the CEF browser process that owns Steam's windows.
 int np_steamwin_is_browser_process(int argc, const char **argv);
 
-// Reads notproton/steam-windows and, unless it is off, starts watching windows.
+// Reads lullaby/steam-windows and, unless it is off, starts watching windows.
 void np_steamwin_start(void);
 
 #endif

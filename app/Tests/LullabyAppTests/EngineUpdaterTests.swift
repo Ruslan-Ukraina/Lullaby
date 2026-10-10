@@ -61,7 +61,7 @@ private final class Flags: Sendable {
     let quitFails = Mutex(false)
 }
 
-/// A temporary notproton tree, a signing key, and fake Dormison releases.
+/// A temporary lullaby tree, a signing key, and fake Dormison releases.
 private struct Rig {
     let root = URL.temporaryDirectory.appending(path: "np-updater-\(UUID().uuidString)")
     var runners: URL { root.appending(path: "runners") }
@@ -470,10 +470,10 @@ struct EngineUpdaterTests {
         let ntdll = rig.runners.appending(path: "dormison-b1/wine/lib/wine/x86_64-windows/ntdll.dll")
         #expect(try Data(contentsOf: ntdll) == rig.b1Ntdll("x86_64", "dormison-b1"))
         #expect(try Data(contentsOf: rig.runners.appending(
-            path: "dormison-b1/wine/lib/wine/i386-windows/ntdll.dll.notproton-orig")) == rig.cleanNtdll("i386", "dormison-b1"))
+            path: "dormison-b1/wine/lib/wine/i386-windows/ntdll.dll.lullaby-orig")) == rig.cleanNtdll("i386", "dormison-b1"))
         #expect(try Data(contentsOf: rig.bridge.appending(path: "wine/i386-windows/ntdll.dll"))
             == rig.b1Ntdll("i386", "dormison-b1"))
-        #expect(rig.exists("runners/dormison-b1/notproton-engine.env"))
+        #expect(rig.exists("runners/dormison-b1/lullaby-engine.env"))
         #expect(rig.entries() == ["current", "dormison-b1"])
         #expect(try FileManager.default.contentsOfDirectory(atPath: rig.cache.path(percentEncoded: false)).isEmpty)
     }

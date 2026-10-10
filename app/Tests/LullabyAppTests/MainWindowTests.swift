@@ -30,7 +30,7 @@ private actor GameSwitch {
 }
 
 private func defaults() -> UserDefaults {
-    let name = "notproton-tests-\(UUID().uuidString)"
+    let name = "lullaby-tests-\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: name)!
     defaults.removePersistentDomain(forName: name)
     return defaults
@@ -375,11 +375,11 @@ struct DeleteTests {
     @Test("Delete keeps game settings, the toolkit, Steam's backups and the logs")
     func keeps() throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "np-delete-\(UUID().uuidString)")
-        let support = root.appending(path: "notproton")
+        let support = root.appending(path: "lullaby")
         let caches = root.appending(path: "caches")
         defer { try? FileManager.default.removeItem(at: root) }
         let names = ["runners", "bridge", "bridges", "signatures", "manifests", "mullion", "renderers",
-                     "settings", "d3dmetal", "backups", "app.log", "notproton.log", "overlay-shim.dylib"]
+                     "settings", "d3dmetal", "backups", "app.log", "lullaby.log", "overlay-shim.dylib"]
         try FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
         for name in names {
             let url = support.appending(path: name)
@@ -395,7 +395,7 @@ struct DeleteTests {
         try Deletion.removeFiles(targets)
 
         let left = Set(try FileManager.default.contentsOfDirectory(atPath: support.path(percentEncoded: false)))
-        #expect(left == ["settings", "d3dmetal", "backups", "app.log", "notproton.log"])
+        #expect(left == ["settings", "d3dmetal", "backups", "app.log", "lullaby.log"])
         #expect(!FileManager.default.fileExists(atPath: caches.path(percentEncoded: false)))
         #expect(targets.allSatisfy { !$0.path(percentEncoded: false).contains("compatdata") })
     }

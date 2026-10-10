@@ -7,8 +7,8 @@ label=$1; mode=$2; w=$3; h=$4; emu=$5
 here=$(cd "$(dirname "$0")" && pwd)
 OUT=${OUT:-$here/../scratch/perf}; mkdir -p "$OUT"
 C="$HOME/Library/Application Support/Steam/steamapps/compatdata/3527290"
-W="$HOME/Library/Application Support/notproton/launchers/app-3527290/notproton-wine.log"
-CLI="$HOME/Library/Application Support/notproton/lullaby-settings"
+W="$HOME/Library/Application Support/lullaby/launchers/app-3527290/lullaby-wine.log"
+CLI="$HOME/Library/Application Support/lullaby/lullaby-settings"
 "$CLI" set --app 3527290 emulateModeset "$emu" > /dev/null
 "$here/peak-screen.sh" "$mode" "$w" "$h" > /dev/null
 reg() { grep -a 'Fullscreen mode_h3630\|Resolution Width_h18\|Resolution Height_h26' "$C/pfx/user.reg" | sed 's/"Screenmanager //; s/_h[0-9]*"=dword:/=/' | tr '\n' ' '; }
@@ -21,5 +21,5 @@ step 1-start
 osascript -e 'tell application "System Events" to key code 36 using option down'; step 2-toggled
 osascript -e 'tell application "System Events" to key code 36 using option down'; step 3-back
 osascript -e 'tell application id "com.ruslanukraina.lullaby.launcher.3527290" to quit'
-i=0; while [ $i -lt 60 ]; do i=$((i+1)); tail -3 "$C/notproton-run.log" | grep -q 'session ending' && break; sleep 1; done
+i=0; while [ $i -lt 60 ]; do i=$((i+1)); tail -3 "$C/lullaby-run.log" | grep -q 'session ending' && break; sleep 1; done
 echo "$label saved: $(reg)"; sleep 12

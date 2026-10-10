@@ -55,7 +55,7 @@ struct EngineProviderTests {
         defer { try? FileManager.default.removeItem(at: root) }
 
         let written = try DormisonEngine(root: root.appending(path: "current")).writeEnvironmentFile()
-        #expect(written.standardizedFileURL.path == dir.appending(path: "notproton-engine.env").standardizedFileURL.path)
+        #expect(written.standardizedFileURL.path == dir.appending(path: "lullaby-engine.env").standardizedFileURL.path)
         let values = Dictionary(
             ConfigMaterializer.parse(try String(contentsOf: written, encoding: .utf8)).map { ($0.key, $0.value) },
             uniquingKeysWith: { $1 })
@@ -74,7 +74,7 @@ struct EngineProviderTests {
         let (root, dir) = try engine()
         defer { try? FileManager.default.removeItem(at: root) }
         let provider = DormisonEngine(root: root.appending(path: "current"))
-        let file = dir.appending(path: "notproton-engine.env")
+        let file = dir.appending(path: "lullaby-engine.env")
 
         #expect(provider.ensureEnvironmentFile())
         let first = try String(contentsOf: file, encoding: .utf8)

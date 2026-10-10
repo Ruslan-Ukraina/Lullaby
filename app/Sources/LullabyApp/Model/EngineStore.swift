@@ -70,7 +70,7 @@ enum EngineStore {
     /// Points `current` at another installed engine by renaming a new link over
     /// the old one, so there is no moment without a current engine. The engine it
     /// leaves becomes `previous`, the one Rollback returns to.
-    /// `bridge` defaults to the bridge beside `runners` (notproton/bridge).
+    /// `bridge` defaults to the bridge beside `runners` (lullaby/bridge).
     static func switchTo(_ tag: String, runners: URL = SupportPaths.runners, bridge: URL? = nil) throws {
         guard tag.hasPrefix(prefix), !tag.contains("/"),
               DormisonEngine(root: runners.appending(path: tag)).isUsable

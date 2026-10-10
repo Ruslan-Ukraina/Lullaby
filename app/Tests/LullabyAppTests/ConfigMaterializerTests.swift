@@ -20,7 +20,7 @@ struct SettingsFixture {
         service = SettingsService(
             store: SettingsStore(root: root.appending(path: "support/settings")),
             library: GameLibrary(roots: [steam]),
-            cli: "/support/notproton-sevo",
+            cli: "/support/lullaby-sevo",
             gameIsRunning: { _ in running },
             engineVersion: { "dormison-b1" },
             log: { _ in })
@@ -98,7 +98,7 @@ struct ConfigMaterializerTests {
         var bottle = try #require(fixture.read(".sevo/bottle.env", in: 5))
         #expect(bottle.contains("NOTPROTON_MSYNC=0"))
         #expect(bottle.contains("WINEMSYNC=0"), "a new bottle.env starts with the setting")
-        #expect(bottle.contains("SEVO_CLI=/support/notproton-sevo"))
+        #expect(bottle.contains("SEVO_CLI=/support/lullaby-sevo"))
 
         // The run script set WINEMSYNC=1 for the session now running.
         try fixture.write(bottle.replacingOccurrences(of: "WINEMSYNC=0", with: "WINEMSYNC=1"), ".sevo/bottle.env", in: 5)
@@ -209,7 +209,7 @@ struct ConfigMigrationTests {
         SEVO_LINEAR_MOUSE=0
         SEVO_CURSOR_CONFINE=0
         WINEMSYNC=1
-        SEVO_CLI=/support/notproton-sevo
+        SEVO_CLI=/support/lullaby-sevo
 
         """
 
@@ -230,7 +230,7 @@ struct ConfigMigrationTests {
             """, ".sevo/apps/deadlock.exe.env", in: 1422450)
         try fixture.write("SEVO_LOADER=/b/Deadlock.app/Contents/MacOS/wine\n", ".sevo/apps/steam.exe.env", in: 1422450)
         try fixture.write("deadlock.exe\n", ".sevo/game-exe", in: 1422450)
-        try "0".write(to: fixture.prefix(1422450).deletingLastPathComponent().appending(path: "notproton-msync"),
+        try "0".write(to: fixture.prefix(1422450).deletingLastPathComponent().appending(path: "lullaby-msync"),
                       atomically: true, encoding: .utf8)
 
         // What the panel's first look at the game runs (SettingsCLI "state").

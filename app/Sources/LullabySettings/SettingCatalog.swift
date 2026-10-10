@@ -61,7 +61,7 @@ public enum SettingCarrier: Sendable, Equatable {
     /// A NotProton key compat_run.sh reads from the env files and acts on itself.
     case runScript(String)
     /// Keys only bottle.env may set (Dormison ignores them in a program's file), plus the
-    /// prefix's `notproton-msync` marker.
+    /// prefix's `lullaby-msync` marker.
     case bottleOnly([String])
 
     /// Every key this carrier writes into an env file.

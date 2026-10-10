@@ -12,7 +12,7 @@
 // (Install and Update run the same steps; update starts from the plan.)
 // update and onboarding run only on a scratch tree (--support, and --steam for the gate).
 // Options for a scratch tree, never the real one:
-//   --support DIR      a notproton folder: runners/, bridge/, bridges/, manifests/,
+//   --support DIR      a lullaby folder: runners/, bridge/, bridges/, manifests/,
 //                      signatures/macos.arm64/, steam-update-gate
 //   --steam DIR        stands for ~/Library/Application Support/Steam: steam.cfg and
 //                      Steam.AppBundle/…/package (with Steam's manifests, if any)

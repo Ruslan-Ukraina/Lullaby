@@ -1,14 +1,14 @@
 // Steam bridge builds on disk and the one games use (Phase 5, DECISIONS P5-2).
 //
-//   notproton/bridges/<id>/          a downloaded build: the files its entry lists
+//   lullaby/bridges/<id>/          a downloaded build: the files its entry lists
 //                                    and bridge.json (the entry); checked when installed
-//   notproton/bridges/state.json     { "current": id, "previous": id }
-//   notproton/bridge/                what compat_run.sh reads: the active build's
+//   lullaby/bridges/state.json     { "current": id, "previous": id }
+//   lullaby/bridge/                what compat_run.sh reads: the active build's
 //                                    lsteamclient and steam.exe, Valve's files, and
 //                                    the copy of the engine's B1 ntdll.dll
 //
 // Activating a build puts its B1 ntdll.dll pair into the engine (the release's file
-// kept as ntdll.dll.notproton-orig) and its four files into notproton/bridge. A
+// kept as ntdll.dll.lullaby-orig) and its four files into lullaby/bridge. A
 // bridge only fits the engine it was built against: the commit in engine-info.json
 // must be the entry's, and the engine's own ntdll.dll must be the one the B1 pair
 // was built from. lsteamclient and steam.exe load only in game processes, so Steam
@@ -288,7 +288,7 @@ struct BridgeStore: Sendable {
         return nil
     }
 
-    /// B1 pair into the engine, files into notproton/bridge, state updated.
+    /// B1 pair into the engine, files into lullaby/bridge, state updated.
     func activate(_ release: BridgeRelease, engine root: URL) throws {
         let step = Self.step
         guard let engine = Self.engineInfo(root) else {
@@ -313,7 +313,7 @@ struct BridgeStore: Sendable {
     }
 
     /// The engine's ntdll.dll pair becomes this bridge's B1. The release's file is
-    /// found in place or as .notproton-orig and must be the one the pair was built from.
+    /// found in place or as .lullaby-orig and must be the one the pair was built from.
     static func applyB1(_ release: BridgeRelease, to engine: URL) throws {
         let fm = FileManager.default
         guard let root = release.root else {
@@ -322,7 +322,7 @@ struct BridgeStore: Sendable {
         for item in release.ntdll {
             let live = engine.appending(path: item.path)
             if Digest.sha256IfPresent(live) == item.b1 { continue }
-            let original = live.deletingLastPathComponent().appending(path: "ntdll.dll.notproton-orig")
+            let original = live.deletingLastPathComponent().appending(path: "ntdll.dll.lullaby-orig")
             if Digest.sha256IfPresent(live) == item.clean {
                 let staging = live.deletingLastPathComponent().appending(path: ".ntdll.dll.orig.new")
                 try? fm.removeItem(at: staging)
@@ -345,10 +345,10 @@ struct BridgeStore: Sendable {
         try applyEngineFiles(release, root: root, to: engine)
     }
 
-    static let originalSuffix = ".notproton-orig"
+    static let originalSuffix = ".lullaby-orig"
 
     /// The bridge's engine fixes into the engine, each release file kept beside it as
-    /// <name>.notproton-orig; a fix an earlier bridge put in and this one does not carry
+    /// <name>.lullaby-orig; a fix an earlier bridge put in and this one does not carry
     /// gets the release's file back, so a roll-back undoes it.
     static func applyEngineFiles(_ release: BridgeRelease, root: URL, to engine: URL) throws {
         let fm = FileManager.default
@@ -507,7 +507,7 @@ struct BridgeUpdater: Sendable {
     }
 
     /// The build state.json names, or, before anything wrote it (an install from
-    /// before Phase 5), the one whose files notproton/bridge already holds.
+    /// before Phase 5), the one whose files lullaby/bridge already holds.
     func current(in fitting: [BridgeRelease]) -> BridgeRelease? {
         if let id = store.state.current { return fitting.first { $0.id == id } }
         return fitting.first { release in
@@ -564,7 +564,7 @@ struct BridgeUpdater: Sendable {
         }
         report(.switching)
         // An install from before Phase 5 has no state.json yet: the build already in
-        // notproton/bridge becomes the one Roll Back returns to.
+        // lullaby/bridge becomes the one Roll Back returns to.
         if store.state.current == nil, let inferred = active {
             try store.save(.init(current: inferred.id, previous: nil))
         }

@@ -8,7 +8,7 @@ enum AppLog {
 
     private static let sizeLimit = 512 * 1024
 
-    private static let queue = DispatchQueue(label: "notproton.applog")
+    private static let queue = DispatchQueue(label: "lullaby.applog")
 
     private nonisolated(unsafe) static var isOn = false
 

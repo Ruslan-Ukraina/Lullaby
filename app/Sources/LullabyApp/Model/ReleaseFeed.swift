@@ -7,7 +7,7 @@
 //
 // A document is trusted only after its signature checks out over the exact bytes.
 // Its `serial` must not go down: an older signed manifest replayed by a mirror is
-// refused. The last accepted copy is kept with its .sig in notproton/manifests and
+// refused. The last accepted copy is kept with its .sig in lullaby/manifests and
 // verified again every time it is read.
 
 import CryptoKit

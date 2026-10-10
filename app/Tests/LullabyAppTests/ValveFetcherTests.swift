@@ -29,7 +29,7 @@ struct ValveFetcherTests {
 
         let manifest = try ValvePackageManifest.bundled()
         let log = PhaseLog()
-        let outcome = try await ValveFetcher.run(manifest: manifest, bridge: bridge) { phase in
+        let outcome = try await ValveFetcher.run(manifest: manifest, bridge: bridge, downloads: TestCache.valvePackages) { phase in
             log.labels.append(phase.label)
         }
         let phases = log.labels
@@ -69,8 +69,8 @@ struct ValveFetcherTests {
         defer { try? FileManager.default.removeItem(at: bridge) }
 
         let manifest = try ValvePackageManifest.bundled()
-        _ = try await ValveFetcher.run(manifest: manifest, bridge: bridge)
-        let again = try await ValveFetcher.run(manifest: manifest, bridge: bridge)
+        _ = try await ValveFetcher.run(manifest: manifest, bridge: bridge, downloads: TestCache.valvePackages)
+        let again = try await ValveFetcher.run(manifest: manifest, bridge: bridge, downloads: TestCache.valvePackages)
 
         #expect(again.installed.isEmpty)
         #expect(again.unchanged.count == 10)
@@ -83,7 +83,7 @@ struct ValveFetcherTests {
         defer { try? FileManager.default.removeItem(at: bridge) }
 
         let manifest = try ValvePackageManifest.bundled()
-        _ = try await ValveFetcher.run(manifest: manifest, bridge: bridge)
+        _ = try await ValveFetcher.run(manifest: manifest, bridge: bridge, downloads: TestCache.valvePackages)
 
         // One deleted and one corrupted, including a file the bridge stages twice from a single
         // archive entry, which is where a shared inner path could go wrong.
@@ -92,7 +92,7 @@ struct ValveFetcherTests {
         try FileManager.default.removeItem(at: bridge.appending(path: deleted))
         try Data("not a PE".utf8).write(to: bridge.appending(path: corrupted))
 
-        let repair = try await ValveFetcher.run(manifest: manifest, bridge: bridge)
+        let repair = try await ValveFetcher.run(manifest: manifest, bridge: bridge, downloads: TestCache.valvePackages)
 
         #expect(Set(repair.installed) == [deleted, corrupted])
         #expect(repair.unchanged.count == 8)
@@ -125,7 +125,7 @@ struct ValveFetcherTests {
         )
 
         await #expect(throws: StepFailure.self) {
-            try await ValveFetcher.run(manifest: tampered, bridge: bridge)
+            try await ValveFetcher.run(manifest: tampered, bridge: bridge, downloads: TestCache.valvePackages)
         }
 
         let landed = try FileManager.default.contentsOfDirectory(atPath: bridge.path(percentEncoded: false))
@@ -193,7 +193,7 @@ struct ValveFetcherTests {
 
         let landed = try files.contentsOfDirectory(atPath: bridge.path(percentEncoded: false))
         #expect(
-            !landed.contains { $0.contains("notproton-pending") },
+            !landed.contains { $0.contains("lullaby-pending") },
             "a staging file was left in the bridge: \(landed)"
         )
     }

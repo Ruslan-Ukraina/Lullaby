@@ -56,8 +56,8 @@ jobs:
 
       - name: No debug channel in the dylib (BACKLOG 20)
         run: |
-          if strings -a out/notproton.dylib | grep -q steam-windows-debug; then
-            echo "out/notproton.dylib carries the Steam Helper debug channel"; exit 1
+          if strings -a out/lullaby.dylib | grep -q steam-windows-debug; then
+            echo "out/lullaby.dylib carries the Steam Helper debug channel"; exit 1
           fi
 
       - name: Hermetic C suites

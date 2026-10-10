@@ -63,7 +63,7 @@ WINE_SRC_REL=${WINE_SRC_REL:-../dormison-src}
 TREE=${TREE:-$repo/build/lsteamclient}
 # --install writes into the bridge only (DECISIONS P3-3): the engine stays as Dormison
 # shipped it, apart from the B1 ntdll.dll pair and the engine fixes the bridge carries.
-BRIDGE_DIR=${BRIDGE_DIR:-$HOME/Library/Application Support/notproton/bridge}
+BRIDGE_DIR=${BRIDGE_DIR:-$HOME/Library/Application Support/lullaby/bridge}
 
 install=0
 do_pe=1

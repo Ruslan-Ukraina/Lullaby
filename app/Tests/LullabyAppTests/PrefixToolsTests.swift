@@ -115,7 +115,7 @@ struct PrefixToolsTests {
         try FileManager.default.createDirectory(at: prefix.root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
         let engine = DormisonEngine(root: try fakeEngine(in: root))
-        let marker = prefix.root.appending(path: "notproton-msync")
+        let marker = prefix.root.appending(path: "lullaby-msync")
         let bottle = prefix.pfx.appending(path: ".sevo/bottle.env")
 
         // Dormison: on, and a 0 only counts once a Dormison run left a bottle.env, so a
@@ -325,7 +325,7 @@ struct PrefixToolsTests {
         try Data("stale system".utf8).write(to: pfx.appending(path: "system.reg"))
         try fm.createSymbolicLink(
             at: pfx.appending(path: "drive_c/users/crossover/Documents"), withDestinationURL: home)
-        try Data("0".utf8).write(to: library.compatdata.appending(path: "1574480/notproton-msync"))
+        try Data("0".utf8).write(to: library.compatdata.appending(path: "1574480/lullaby-msync"))
         return try #require(PrefixStore.all(libraries: [library]).first)
     }
 
@@ -371,7 +371,7 @@ struct PrefixToolsTests {
 
         #expect(!fm.fileExists(
             atPath: prefix.root.appending(path: "pfx.rebuild").path(percentEncoded: false)))
-        #expect(fm.fileExists(atPath: prefix.root.appending(path: "notproton-msync").path(percentEncoded: false)))
+        #expect(fm.fileExists(atPath: prefix.root.appending(path: "lullaby-msync").path(percentEncoded: false)))
 
         let kept = try #require(PrefixStore.backups(of: prefix).first)
         #expect(PrefixStore.backups(of: prefix).count == 1)
@@ -988,7 +988,7 @@ struct PrefixToolsTests {
         let entry = library.compatdata.appending(path: "1574480")
         try FileManager.default.createDirectory(
             at: entry.appending(path: "pfx/drive_c"), withIntermediateDirectories: true)
-        try Data("log".utf8).write(to: entry.appending(path: "notproton-run.log"))
+        try Data("log".utf8).write(to: entry.appending(path: "lullaby-run.log"))
 
         let prefix = try #require(PrefixStore.all(libraries: [library]).first)
         try PrefixTools.delete(prefix)

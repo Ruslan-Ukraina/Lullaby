@@ -16,21 +16,21 @@ LC_ALL=C
 export LC_ALL
 
 steam="$HOME/Library/Application Support/Steam"
-support="$HOME/Library/Application Support/notproton"
+support="$HOME/Library/Application Support/lullaby"
 compat="${STEAM_LIBRARY:-$steam}/steamapps/compatdata"
 
 appid=${1:-}
 if [ -z "$appid" ]; then
 	# The run log of the last launch is the newest one.
-	newest=$(find "$compat" -mindepth 2 -maxdepth 2 -name notproton-run.log \
+	newest=$(find "$compat" -mindepth 2 -maxdepth 2 -name lullaby-run.log \
 		-exec stat -f '%m %N' {} + 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
-	[ -n "$newest" ] || { echo "no notproton-run.log under $compat, launch a game first" >&2; exit 1; }
+	[ -n "$newest" ] || { echo "no lullaby-run.log under $compat, launch a game first" >&2; exit 1; }
 	appid=$(basename "$(dirname "$newest")")
 fi
 case "$appid" in ''|*[!0-9]*) echo "not an app id: $appid" >&2; exit 1 ;; esac
 
-run="$compat/$appid/notproton-run.log"
-wine="$support/launchers/app-$appid/notproton-wine.log"
+run="$compat/$appid/lullaby-run.log"
+wine="$support/launchers/app-$appid/lullaby-wine.log"
 [ -f "$run" ] || { echo "no run log at $run" >&2; exit 1; }
 
 pass=0
@@ -42,7 +42,7 @@ verdict() {
 show() { sed 's/^/         /'; }
 
 # Only the last session in the run log counts.
-last_session() { awk '/^=== notproton run /{buf=""} {buf=buf $0 "\n"} END{printf "%s", buf}' "$run"; }
+last_session() { awk '/^=== lullaby run /{buf=""} {buf=buf $0 "\n"} END{printf "%s", buf}' "$run"; }
 session=$(last_session)
 # The run script writes its closing line up to ~11 s after Steam shows "Play"
 # again: give an unfinished session 30 s. A stop from Steam ends it with the
@@ -116,11 +116,11 @@ if printf '%s\n' "$session" | grep -a -q -E "^=== (wine prefix killed|terminatio
 else
 	verdict fail "the session has not ended (still running, or hung): quit the game and wait 15 s"
 fi
-# Ours: engine under notproton/runners, launchers, or our compatdata. Other
+# Ours: engine under lullaby/runners, launchers, or our compatdata. Other
 # Wine (Sevoflurane bottles, CrossOver) is listed, never a failure.
 all_wine=$(pgrep -fl "wineserver|steam\.exe|x86_64-unix/wine|MacOS/wine" 2>/dev/null)
-left=$(printf '%s\n' "$all_wine" | grep -a -E "notproton/(runners|launchers)|$compat" )
-foreign=$(printf '%s\n' "$all_wine" | grep -a -v -E "notproton/(runners|launchers)|$compat" | grep -a .)
+left=$(printf '%s\n' "$all_wine" | grep -a -E "lullaby/(runners|launchers)|$compat" )
+foreign=$(printf '%s\n' "$all_wine" | grep -a -v -E "lullaby/(runners|launchers)|$compat" | grep -a .)
 if [ -n "$foreign" ]; then
 	echo "         Wine processes that are not ours (ignored):"
 	printf '%s\n' "$foreign" | show
@@ -165,15 +165,15 @@ printf '%s\n' "$session" | grep -a -E "overlay (injected|disabled)" | show
 
 echo
 echo "S1. Nothing called Sevoflurane"
-if [ -s "$support/notproton-sevo.log" ]; then
-	tail -3 "$support/notproton-sevo.log" | show
+if [ -s "$support/lullaby-sevo.log" ]; then
+	tail -3 "$support/lullaby-sevo.log" | show
 	echo "         (View menu settings went to NotProton's stand-in, as they should)"
 fi
 sevo_pid=$(pgrep -f "Sevoflurane.app/Contents/MacOS/" 2>/dev/null | head -1)
 if [ -n "$sevo_pid" ]; then
 	sevo_start=$(date -j -f '%a %b %e %T %Y' "$(ps -o lstart= -p "$sevo_pid")" +%s 2>/dev/null || echo 0)
 	# the log is appended to across sessions: the session starts at its own header line
-	run_start=$(date -j -f '%a %b %e %T %Y' "$(printf '%s\n' "$session" | sed -n 's/^=== notproton run \(.*\) [A-Z]* \([0-9]*\) ===$/\1 \2/p' | head -1)" +%s 2>/dev/null || echo 0)
+	run_start=$(date -j -f '%a %b %e %T %Y' "$(printf '%s\n' "$session" | sed -n 's/^=== lullaby run \(.*\) [A-Z]* \([0-9]*\) ===$/\1 \2/p' | head -1)" +%s 2>/dev/null || echo 0)
 	if [ "$sevo_start" -le "$run_start" ]; then
 		verdict ok "Sevoflurane.app was already open before this session (not started by us)"
 	else

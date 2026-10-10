@@ -228,7 +228,7 @@ for (const lang of ['en', 'uk', 'ru']) {
   const tree = broken.view(ctxFor(clone(gameState), 'ru'));
   t.ok(text(tree).includes(broken.FALLBACK.ru.replace('%@', 'Steam UI (y4)')), 'a control Steam renamed is reported, not drawn');
   const noReact = new Function('return ' + source)()(J, B, {});
-  const out = noReact.Game({ details: { unAppID: 1, strCompatToolName: 'notproton', vecPlatforms: ['windows'] } });
+  const out = noReact.Game({ details: { unAppID: 1, strCompatToolName: 'lullaby', vecPlatforms: ['windows'] } });
   t.ok(text(out).includes('React'), 'without React the panel says so instead of calling hooks');
 }
 
@@ -242,7 +242,7 @@ for (const lang of ['en', 'uk', 'ru']) {
   t.ok(body === '{"op":"set","app":3527290,"id":"fps","value":true}', `a request is a virtual file the dylib answers (${p})`);
   t.ok(api.langOf('ukrainian') === 'uk' && api.langOf('russian') === 'ru' && api.langOf('german') === 'en', "Steam's language");
   const run = d => api.runsThroughNotProton(d);
-  t.ok(run({ strCompatToolName: 'notproton', vecPlatforms: ['windows', 'osx'] }), 'a forced NotProton');
+  t.ok(run({ strCompatToolName: 'lullaby', vecPlatforms: ['windows', 'osx'] }), 'a forced NotProton');
   t.ok(run({ strCompatToolName: '', vecPlatforms: ['windows'] }), 'a Windows-only game');
   t.ok(!run({ strCompatToolName: '', vecPlatforms: ['windows', 'osx'] }), 'not a game with a macOS build');
   t.ok(!run({ strCompatToolName: 'proton_9', vecPlatforms: ['windows'] }), 'not another tool');

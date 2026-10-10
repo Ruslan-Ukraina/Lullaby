@@ -7,9 +7,9 @@
 // Everything here is public AppKit reached through the Objective-C runtime, no
 // byte signatures, so a Steam update cannot shift it.
 //
-// The switch is notproton/steam-windows (steamwin_css.h):
+// The switch is lullaby/steam-windows (steamwin_css.h):
 //   off     nothing at all happens (Steam as shipped)
-//   log     every window is described in notproton.log, none is changed
+//   log     every window is described in lullaby.log, none is changed
 //   native  real windows get the macOS frame: title bar with traffic lights over
 //           Steam's own row, rounded corners, system shadow, full screen, Stage
 //           Manager, tiling. Menus, tooltips and dropdowns are left alone.
@@ -170,9 +170,9 @@ static BOOL is_dialog(NSWindowStyleMask sdl_style) {
 // which would cover Steam's row, so it is taken off there and put back after.
 static void set_toolbar(NSWindow *w, BOOL on) {
     if (on && !w.toolbar) {
-        w.toolbar = [[NSToolbar alloc] initWithIdentifier:@"notproton.steam"];
+        w.toolbar = [[NSToolbar alloc] initWithIdentifier:@"lullaby.steam"];
         w.toolbarStyle = NSWindowToolbarStyleUnifiedCompact;
-    } else if (!on && [w.toolbar.identifier isEqualToString:@"notproton.steam"]) {
+    } else if (!on && [w.toolbar.identifier isEqualToString:@"lullaby.steam"]) {
         w.toolbar = nil;
     }
 }
@@ -347,7 +347,7 @@ static void survey(NSString *why) {
 //
 // Built only with `make NP_DEV=1` (NP_STEAMWIN_DEBUG) and never in a release
 // (docs/BACKLOG.md 20); without the native windows switch nothing here runs anyway.
-// notproton/steam-windows-debug, one command per line, run once and deleted. For
+// lullaby/steam-windows-debug, one command per line, run once and deleted. For
 // checking the frame without a mouse: Steam Helper acts on its own windows, and
 // events it sends itself need no accessibility permission. Target: the window
 // whose title contains @<text>, else the main window "Steam".

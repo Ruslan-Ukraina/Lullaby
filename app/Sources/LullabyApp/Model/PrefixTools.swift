@@ -24,7 +24,7 @@ enum PrefixTools {
     /// compat_run.sh's rule: msync+ is on, and only a marker that a Dormison run
     /// wrote, which leaves a bottle.env in the prefix, can turn it off.
     static func syncBackend(prefix: WinePrefix) -> String {
-        let marker = prefix.root.appending(path: "notproton-msync")
+        let marker = prefix.root.appending(path: "lullaby-msync")
         let recorded = (try? String(contentsOf: marker, encoding: .utf8))?
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let bottle = prefix.pfx.appending(path: ".sevo/bottle.env")

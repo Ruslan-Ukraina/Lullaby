@@ -1,6 +1,6 @@
 // Phase 5 pieces of the dylib, without Steam:
 //   - np_update_gate_rearm_paths writes Steam's update block back the way the app's
-//     UpdateBlock does, only when notproton/steam-update-gate says auto or manual;
+//     UpdateBlock does, only when lullaby/steam-update-gate says auto or manual;
 //   - np_sigdb_candidates lists <build>.json databases newest first, so the loader
 //     falls back to an older one when the newest does not fit the installed Steam.
 // Usage: out/updategate-check
@@ -141,7 +141,7 @@ static void candidate_cases(void) {
     n = np_sigdb_candidates(dir, paths, 2);
     if (n != 2 || !strstr(paths[0], "1790904859") || !strstr(paths[1], "1789086785"))
         fail("candidates capped at 2: got %d (%s, %s)", n, n > 0 ? paths[0] : "-", n > 1 ? paths[1] : "-");
-    if (np_sigdb_candidates("/nonexistent/notproton", paths, 4) != -1) fail("missing folder: expected -1");
+    if (np_sigdb_candidates("/nonexistent/lullaby", paths, 4) != -1) fail("missing folder: expected -1");
 }
 
 int main(void) {

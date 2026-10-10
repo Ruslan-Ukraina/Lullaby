@@ -88,7 +88,7 @@ enum ValveFetcher {
                 at: destination.deletingLastPathComponent(), withIntermediateDirectories: true
             )
 
-            let pending = destination.appendingPathExtension("notproton-pending")
+            let pending = destination.appendingPathExtension("lullaby-pending")
             try? files.removeItem(at: pending)
             try files.copyItem(at: extracted.appending(path: file.innerPath), to: pending)
 

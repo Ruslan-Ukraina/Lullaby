@@ -1480,7 +1480,7 @@ run:
 
         /* Hand the child our own std handles, otherwise everything it prints is lost
          * (upstream NotProton 1.1.x, "Stop steam shim from discarding output of launched
-         * games"): the game's own output then reaches notproton-wine.log. */
+         * games"): the game's own output then reaches lullaby-wine.log. */
         si.dwFlags |= STARTF_USESTDHANDLES;
         si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
         si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);

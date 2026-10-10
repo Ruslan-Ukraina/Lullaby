@@ -378,7 +378,7 @@
   function runsThroughNotProton(d) {
     if (!d) return false;
     var tool = d.strCompatToolName || "";
-    if (tool) return tool === "notproton";
+    if (tool) return tool === "lullaby";
     return (d.vecPlatforms || []).indexOf("osx") < 0;
   }
 

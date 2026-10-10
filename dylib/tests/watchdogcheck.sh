@@ -27,20 +27,20 @@ PATH="$work/bin:$PATH"; export PATH
   echo '[ -n "$watchdog_pid" ] && wait "$watchdog_pid"'
 } > "$work/sim.sh"
 
-run() { : > "$work/kills"; : > "$work/run.log"; rm -f "$work/compat/notproton-watchdog.png"; env "$@" sh "$work/sim.sh"; }
+run() { : > "$work/kills"; : > "$work/run.log"; rm -f "$work/compat/lullaby-watchdog.png"; env "$@" sh "$work/sim.sh"; }
 fail=0
 
-: > "$work/loader/notproton-wine.log"
+: > "$work/loader/lullaby-wine.log"
 run NOTPROTON_WATCHDOG=2
 [ "$(grep -c k "$work/kills")" = 1 ] || { echo "FAIL: no frame, prefix not killed once"; fail=1; }
 grep -q "watchdog: no first frame in 2s" "$work/run.log" || { echo "FAIL: no log line"; fail=1; }
-[ -f "$work/compat/notproton-watchdog.png" ] || { echo "FAIL: no screenshot"; fail=1; }
+[ -f "$work/compat/lullaby-watchdog.png" ] || { echo "FAIL: no screenshot"; fail=1; }
 
-echo "sevo:gfx pid=1 first present +10ms" > "$work/loader/notproton-wine.log"
+echo "sevo:gfx pid=1 first present +10ms" > "$work/loader/lullaby-wine.log"
 run NOTPROTON_WATCHDOG=3
 [ "$(grep -c k "$work/kills")" = 0 ] || { echo "FAIL: killed a game that drew"; fail=1; }
 
-: > "$work/loader/notproton-wine.log"
+: > "$work/loader/lullaby-wine.log"
 run NOTPROTON_WATCHDOG=
 [ "$(grep -c k "$work/kills")" = 0 ] || { echo "FAIL: watchdog ran without the variable"; fail=1; }
 run NOTPROTON_WATCHDOG=abc

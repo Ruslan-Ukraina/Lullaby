@@ -12,7 +12,7 @@ enum EngineSmokeTest {
         let fm = FileManager.default
         let wine = engine.appending(path: "wine/bin/wine")
         let wineserver = engine.appending(path: "wine/bin/wineserver")
-        let scratch = fm.temporaryDirectory.appending(path: "notproton-engine-test-\(UUID().uuidString)")
+        let scratch = fm.temporaryDirectory.appending(path: "lullaby-engine-test-\(UUID().uuidString)")
         let prefix = scratch.appending(path: "pfx")
         try fm.createDirectory(at: scratch, withIntermediateDirectories: true)
         defer { try? fm.removeItem(at: scratch) }

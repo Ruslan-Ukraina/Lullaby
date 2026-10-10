@@ -75,9 +75,9 @@ struct DormisonEngine: EngineProvider {
         return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
     }
 
-    // MARK: notproton-engine.env
+    // MARK: lullaby-engine.env
 
-    static let envFileName = "notproton-engine.env"
+    static let envFileName = "lullaby-engine.env"
 
     /// What compat_run.sh sources. One NAME='value' per line, single-quoted so the
     /// shell never expands anything.

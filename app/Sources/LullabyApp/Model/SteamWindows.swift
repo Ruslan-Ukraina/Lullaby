@@ -1,8 +1,8 @@
-// "Native Steam windows" (docs/BACKLOG.md 15): the switch notproton.dylib reads in
+// "Native Steam windows" (docs/BACKLOG.md 15): the switch lullaby.dylib reads in
 // Steam Helper and steam_osx when Steam starts. The file holds one word: "native"
 // turns the macOS frame on; "native-app" also runs Steam Helper as a regular app,
 // so Spaces and Stage Manager treat Steam's windows as app windows (experiment,
-// DECISIONS W10 option B); "log" only describes Steam's windows in notproton.log;
+// DECISIONS W10 option B); "log" only describes Steam's windows in lullaby.log;
 // anything else (or no file) leaves Steam as shipped. Off by default.
 
 import Foundation

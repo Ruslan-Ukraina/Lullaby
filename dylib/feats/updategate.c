@@ -50,7 +50,7 @@ static int key_value(const char *line, const char *end, const char **vs, const c
 
 static int write_atomically(const char *path, const char *data, size_t len) {
     char tmp[1100];
-    int n = snprintf(tmp, sizeof(tmp), "%s.notproton-new", path);
+    int n = snprintf(tmp, sizeof(tmp), "%s.lullaby-new", path);
     if (n < 0 || n >= (int)sizeof(tmp)) return -1;
     FILE *f = fopen(tmp, "wb");
     if (!f) return -1;

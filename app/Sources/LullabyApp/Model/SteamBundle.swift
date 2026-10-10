@@ -23,7 +23,7 @@ enum SteamBundle {
     static let controllerBlockKey = "SDL_JOYSTICK_BLACKLIST_DEVICES"
     static let controllerBlockValue = "0x05ac/0x0004"
 
-    static let plistBackupName = "Info.plist.before-notproton"
+    static let plistBackupName = "Info.plist.before-lullaby"
     static let environmentKey = "LSEnvironment"
 
     static var isPresent: Bool {
@@ -35,8 +35,8 @@ enum SteamBundle {
         Shell.processIsRunning(named: "steam_osx")
     }
 
-    /// Wine of ours: an engine from notproton/runners or a game bundle from
-    /// notproton/launchers. Other Wine on the Mac (Sevoflurane bottles) does not count.
+    /// Wine of ours: an engine from lullaby/runners or a game bundle from
+    /// lullaby/launchers. Other Wine on the Mac (Sevoflurane bottles) does not count.
     static var gameIsRunning: Bool {
         [SupportPaths.runners, SupportPaths.launchers].contains {
             Shell.processIsRunning(commandLineContaining: $0.path(percentEncoded: false))

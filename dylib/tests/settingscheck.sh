@@ -72,7 +72,7 @@ in_registry() {
 launch() {
 	new_case
 	in_registry 057e/2006 057e/2007 057e/2009
-	printf '%s\n' 057e/2006 057e/2007 057e/2009 > "$case_dir/notproton-hidden-controllers"
+	printf '%s\n' 057e/2006 057e/2007 057e/2009 > "$case_dir/lullaby-hidden-controllers"
 	[ "$3" != unwritable ] || chmod 500 "$case_dir/pfx/drive_c"
 	run_in "$1" "$2"
 }
@@ -141,7 +141,7 @@ echo "== controllers on Steam's ignore list"
 again() { : > "$case_dir/calls"; : > "$case_dir/log"; rm -f "$case_dir/imported"; run_in "$1" "$2"; }
 hidden() { printf '%s\r\n' "[HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\WineBus\\Devices\\$1]" '"Hidraw"=dword:00000000' ''; }
 shown() { printf '%s\r\n' "[-HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\WineBus\\Devices\\$1]" ''; }
-owned() { tr '\n' ' ' < "$case_dir/notproton-hidden-controllers" | sed 's/ $//'; }
+owned() { tr '\n' ' ' < "$case_dir/lullaby-hidden-controllers" | sed 's/ $//'; }
 
 new_case
 IGNORE='' EXCEPT='' RAW=''
@@ -212,7 +212,7 @@ same_file "so the next launch can remove it once it leaves the list" "$work/expe
 echo "== helper launches"
 new_case
 in_registry 054c/0ce6 057e/2006 057e/2007 057e/2009
-printf '%s\n' 054c/0ce6 057e/2006 057e/2007 057e/2009 > "$case_dir/notproton-hidden-controllers"
+printf '%s\n' 054c/0ce6 057e/2006 057e/2007 057e/2009 > "$case_dir/lullaby-hidden-controllers"
 IGNORE='' EXCEPT='' RAW='' VERB=run
 again "" 0
 same_file "a helper with no list keeps the hidden controllers" "$work/retina-off" "$case_dir/imported"
@@ -223,7 +223,7 @@ again "" 0
 { cat "$work/retina-off"; shown 054c/0ce6; shown 057e/2006; shown 057e/2007; shown 057e/2009; } > "$work/expected"
 same_file "NOTPROTON_RAW_CONTROLLERS=1 still clears them in a helper" "$work/expected" "$case_dir/imported"
 in_registry 054c/0ce6 057e/2006 057e/2007 057e/2009
-printf '%s\n' 054c/0ce6 057e/2006 057e/2007 057e/2009 > "$case_dir/notproton-hidden-controllers"
+printf '%s\n' 054c/0ce6 057e/2006 057e/2007 057e/2009 > "$case_dir/lullaby-hidden-controllers"
 IGNORE='' EXCEPT='' RAW='' VERB=waitforexitandrun
 again "" 0
 { cat "$work/retina-off"; shown 054c/0ce6; } > "$work/expected"
@@ -231,8 +231,8 @@ same_file "a game with no list still drops them" "$work/expected" "$case_dir/imp
 unset VERB
 
 in_registry
-rm -f "$case_dir/notproton-hidden-controllers"
-ln -s /dev/null "$case_dir/notproton-hidden-controllers"
+rm -f "$case_dir/lullaby-hidden-controllers"
+ln -s /dev/null "$case_dir/lullaby-hidden-controllers"
 IGNORE='0x054c/0x0ce6' EXCEPT='' RAW=''
 again "" 0
 same_file "a linked tracking file writes no controller keys" "$work/retina-off" "$case_dir/imported"

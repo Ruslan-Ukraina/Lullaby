@@ -9,7 +9,7 @@ src="$here/../feats/compat_run.sh"
 work=$(mktemp -d "${TMPDIR:-/tmp}/stubcheck.XXXXXX") || exit 1
 trap 'rm -rf "${work:?}"' EXIT
 HOME="$work/home"; export HOME
-support="$HOME/Library/Application Support/notproton"
+support="$HOME/Library/Application Support/lullaby"
 mkdir -p "$support"
 sed -n "/^sevo_stub=\$(cat <<'STUB'/,/^STUB/p" "$src" | sed '1d;$d' > "$work/sevo"
 chmod +x "$work/sevo"
@@ -45,7 +45,7 @@ check "arguments arrive as they were given" "app config 3527290 upscaler metalfx
 app config 3527290 fps on
 app config 1 a b;rm x"
 
-grep -q 'app config 3527290 fps on' "$support/notproton-sevo.log" \
+grep -q 'app config 3527290 fps on' "$support/lullaby-sevo.log" \
   || { echo "FAIL: calls are not logged"; fail=1; }
 
 [ "$fail" -eq 0 ] && echo "==> stubcheck: View menu choices reach lullaby-settings"

@@ -18,7 +18,7 @@ struct PinnedDownloadTests {
 
     private func scratch() throws -> URL {
         let url = FileManager.default.temporaryDirectory
-            .appending(path: "notproton-pinned-\(UUID().uuidString)")
+            .appending(path: "lullaby-pinned-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
     }

@@ -20,7 +20,7 @@ struct SteamInstallerTests {
         return try await SteamRepair.stage(
             bundle,
             bases: manifest.bases,
-            downloads: SupportPaths.packageDownloads,
+            downloads: TestCache.valvePackages,
             work: work.appending(path: "staging")
         )
     }
@@ -75,7 +75,7 @@ struct SteamInstallerTests {
         var deployedVersion: URL { support.appending(path: "dylib.version") }
         var backups: URL { support.appending(path: "backups") }
         var bridge: URL { support.appending(path: "bridge") }
-        var toolFolder: URL { work.appending(path: "compatibilitytools.d/notproton") }
+        var toolFolder: URL { work.appending(path: "compatibilitytools.d/lullaby") }
         var runScript: URL { toolFolder.appending(path: "run") }
     }
 
@@ -280,7 +280,7 @@ struct SteamInstallerTests {
 
         _ = try install(fixture)
 
-        let backup = fixture.backups.appending(path: "Info.plist.before-notproton")
+        let backup = fixture.backups.appending(path: "Info.plist.before-lullaby")
         let saved = try #require(SteamBundle.readInfoPlist(at: backup))
         let environment = try #require(saved[SteamBundle.environmentKey] as? [String: Any])
         #expect(environment[SteamBundle.insertKey] == nil, "the backup already carries an insert")

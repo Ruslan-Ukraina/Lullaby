@@ -4,12 +4,12 @@
 //
 // Automatic mode holds the block by default and lifts it only while Valve offers a
 // build that signatures-manifest.json lists and whose database is on disk. Steam
-// then updates on its next start, and notproton.dylib, once the client is up,
+// then updates on its next start, and lullaby.dylib, once the client is up,
 // writes the block back (dylib/feats/updategate.c), so the build after that waits
 // again even when Lullaby.app is not open. Manual mode ("Block Steam client
 // updates") holds the block whatever Valve offers.
 //
-// notproton/steam-update-gate holds the mode, one word. Without it, a block that
+// lullaby/steam-update-gate holds the mode, one word. Without it, a block that
 // is already in steam.cfg counts as the person's own (manual), as before Phase 5.
 
 import Foundation

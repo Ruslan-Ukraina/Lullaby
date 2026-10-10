@@ -37,8 +37,8 @@ struct UninstallTests {
         let macOS = app.appending(path: "Contents/MacOS")
         let inner = root.appending(path: "inner")
         let legacyCompat = inner.appending(path: "legacycompat")
-        let compatTool = root.appending(path: "compatibilitytools.d/notproton")
-        let support = root.appending(path: "notproton")
+        let compatTool = root.appending(path: "compatibilitytools.d/lullaby")
+        let support = root.appending(path: "lullaby")
         let caches = root.appending(path: "valve-packages")
 
         for dir in [macOS, inner, legacyCompat, compatTool, support, caches] {

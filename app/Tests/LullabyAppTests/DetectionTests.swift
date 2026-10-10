@@ -78,7 +78,7 @@ struct EngineStoreTests {
         #expect(EngineStore.currentTag(runners: root) == "dormison-b2")
         #expect(EngineUpdater(runners: root).previousTarget == "dormison-b1")
         #expect(FileManager.default.fileExists(
-            atPath: root.appending(path: "dormison-b2/notproton-engine.env").path(percentEncoded: false)))
+            atPath: root.appending(path: "dormison-b2/lullaby-engine.env").path(percentEncoded: false)))
 
         #expect(throws: StepFailure.self) {
             try EngineStore.switchTo("dormison-b9", runners: root, bridge: root.appending(path: "bridge"))
@@ -143,16 +143,16 @@ struct SupportPathTests {
     @Test("Paths match what the dylib and the run script use")
     func pathsAreStable() {
         let support = SupportPaths.support.path(percentEncoded: false)
-        #expect(support.hasSuffix("/Library/Application Support/notproton"))
+        #expect(support.hasSuffix("/Library/Application Support/lullaby"))
 
         #expect(SupportPaths.signatures.path(percentEncoded: false)
-            .hasSuffix("/notproton/signatures/macos.arm64"))
+            .hasSuffix("/lullaby/signatures/macos.arm64"))
         #expect(SupportPaths.overlayShim.path(percentEncoded: false)
-            .hasSuffix("/notproton/overlay-shim.dylib"))
+            .hasSuffix("/lullaby/overlay-shim.dylib"))
         #expect(SupportPaths.currentRunner.path(percentEncoded: false)
-            .hasSuffix("/notproton/runners/current"))
+            .hasSuffix("/lullaby/runners/current"))
         #expect(SupportPaths.Steam.deployedDylib.path(percentEncoded: false)
-            == "/Applications/Steam.app/Contents/MacOS/notproton.dylib")
+            == "/Applications/Steam.app/Contents/MacOS/lullaby.dylib")
         #expect(SupportPaths.Steam.infoPlist.path(percentEncoded: false)
             == "/Applications/Steam.app/Contents/Info.plist")
     }

@@ -5,7 +5,7 @@
 #define NP_UPDATE_GATE_FILE "steam-update-gate"
 #define NP_UPDATE_GATE_KEY  "BootStrapperInhibitUpdateOnLaunch"
 
-// When notproton/steam-update-gate says auto or manual, writes
+// When lullaby/steam-update-gate says auto or manual, writes
 // BootStrapperInhibitUpdateOnLaunch=enable into Steam's steam.cfg files, the way
 // the app's UpdateBlock does. Called once the client is up (steamclient.dylib is
 // loaded), after the bootstrapper's own update check, so a lift Lullaby.app made

@@ -64,8 +64,8 @@ bundle)
 	check_keys "$kind" "$(plist "$app" NPReleasePublicKey)" "$(plist "$app" SUPublicEDKey)" \
 		"$(plist "$app" NPReleaseFeedURL)" "$(plist "$app" SUFeedURL)"
 	if [ "$KIND" != dev ] || [ "${NP_DEV:-}" != 1 ]; then
-		found=$(find "$app" -name notproton.dylib -type f)
-		[ -n "$found" ] || die "no notproton.dylib in $app"
+		found=$(find "$app" -name lullaby.dylib -type f)
+		[ -n "$found" ] || die "no lullaby.dylib in $app"
 		for dylib in $found; do
 			if strings -a "$dylib" | grep -q steam-windows-debug; then
 				die "$dylib carries the Steam Helper debug channel (BACKLOG 20)"

@@ -7,7 +7,7 @@ CFLAGS   := -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) \
             -fPIC -MMD -MP \
             -Idylib -Ivendor -Ivendor/dobby/include
 LDFLAGS  := -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) \
-            -dynamiclib -install_name @rpath/notproton.dylib
+            -dynamiclib -install_name @rpath/lullaby.dylib
 
 # AppKit is weak: steam_osx and Steam Helper have it, nothing else needs it.
 FRAMEWORKS := -framework CoreFoundation -framework Foundation -framework CoreGraphics -weak_framework AppKit -lobjc
@@ -58,9 +58,9 @@ RUN_SCRIPT_H  := $(GENERATED_DIR)/compat_run.h
 PANEL_JS_H    := $(GENERATED_DIR)/panel_js.h
 CFLAGS += -I$(GENERATED_DIR)
 
-ARM64_DYLIB := $(OUT_DIR)/notproton.arm64.dylib
-X86_STUB    := $(OUT_DIR)/notproton.x86_64.dylib
-TARGET      := $(OUT_DIR)/notproton.dylib
+ARM64_DYLIB := $(OUT_DIR)/lullaby.arm64.dylib
+X86_STUB    := $(OUT_DIR)/lullaby.x86_64.dylib
+TARGET      := $(OUT_DIR)/lullaby.dylib
 
 OBJS := $(patsubst %.c,$(OUT_DIR)/%.o,$(SRCS)) $(patsubst %.m,$(OUT_DIR)/%.o,$(OBJC_SRCS))
 DEPS := $(OBJS:.o=.d)
@@ -324,9 +324,11 @@ spawn-env:
 
 SPAWN_LIVE := dylib/tests/spawn-live
 
+# HOME points into the scratch folder: the dylib logs to <HOME>/Library/Application
+# Support/lullaby, and a run here must not create that folder on the developer's Mac.
 spawn-live: $(TARGET)
 	@if [ ! -d $(SPAWN_LIVE) ]; then $(call SKIP,spawn-live,$(SPAWN_LIVE)); exit 0; fi; \
-	tmp=$$(mktemp -d); trap 'rm -rf "$${tmp:?}"' EXIT; mkdir -p $$tmp/sub; \
+	tmp=$$(mktemp -d); trap 'rm -rf "$${tmp:?}"' EXIT; mkdir -p $$tmp/sub $$tmp/home; \
 	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -O1 -Wall -Wextra \
 	  -o $$tmp/child $(SPAWN_LIVE)/child.c || exit 1; \
 	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -O1 -Wall -Wextra \
@@ -341,8 +343,8 @@ spawn-live: $(TARGET)
 	            "Steam Helper:sub/Steam Helper:1" "Steam Helper:child:1:--type=renderer"; do \
 		drv=$${spec%%:*}; rest=$${spec#*:}; kid=$${rest%%:*}; rest=$${rest#*:}; \
 		want=$${rest%%:*}; arg=$${rest#*:}; [ "$$arg" = "$$rest" ] && arg=""; \
-		got=$$(DYLD_INSERT_LIBRARIES=$$PWD/$(TARGET) "$$tmp/$$drv" "$$tmp/$$kid" $$arg 2>/dev/null \
-		       | grep -c "/notproton.dylib$$") || true; \
+		got=$$(HOME=$$tmp/home DYLD_INSERT_LIBRARIES=$$PWD/$(TARGET) "$$tmp/$$drv" "$$tmp/$$kid" $$arg 2>/dev/null \
+		       | grep -c "/lullaby.dylib$$") || true; \
 		if [ "$$got" != "$$want" ]; then \
 			echo "$$drv $$arg -> $$kid: dylib loaded $$got, wanted $$want"; fail=1; fi; \
 	done; \
@@ -379,7 +381,7 @@ $(ARM64_DYLIB): $(OBJS)
 $(X86_STUB): dylib/stub_x86_64.c
 	@mkdir -p $(dir $@)
 	$(CC) -arch x86_64 -mmacosx-version-min=$(MIN_VER) \
-		-dynamiclib -install_name @rpath/notproton.dylib \
+		-dynamiclib -install_name @rpath/lullaby.dylib \
 		-o $@ $<
 
 $(TARGET): $(ARM64_DYLIB) $(X86_STUB)
@@ -392,7 +394,7 @@ $(OUT_DIR)/%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 OBJCFLAGS := $(filter-out -std=c17,$(CFLAGS)) -fobjc-arc -fobjc-weak
-# Steam Helper's debug command channel (notproton/steam-windows-debug) is for
+# Steam Helper's debug command channel (lullaby/steam-windows-debug) is for
 # development only: `make NP_DEV=1 ...`. Never in a release (docs/BACKLOG.md 20).
 ifeq ($(NP_DEV),1)
 OBJCFLAGS += -DNP_STEAMWIN_DEBUG=1
@@ -414,7 +416,7 @@ $(PANEL_JS_H): dylib/feats/panel.js dylib/embed_js.py
 
 $(OUT_DIR)/dylib/feats/webpatch.o: $(PANEL_JS_H)
 
-SUPPORT_DIR        := $(HOME)/Library/Application Support/notproton
+SUPPORT_DIR        := $(HOME)/Library/Application Support/lullaby
 OVERLAY_SHIM_SRC   := overlay-shim/overlay_shim.m
 OVERLAY_SHIM_ARM   := $(OUT_DIR)/overlay-shim.arm64.dylib
 OVERLAY_SHIM_X86   := $(OUT_DIR)/overlay-shim.x86_64.dylib
@@ -518,8 +520,8 @@ dobby:
 	$(MAKE) -C $(DOBBY_DIR) -j$(shell sysctl -n hw.ncpu)
 
 STEAM_APP    := /Applications/Steam.app
-DEPLOY_DST   := $(STEAM_APP)/Contents/MacOS/notproton.dylib
-INSTALL_DST  := $(SUPPORT_DIR)/notproton.dylib
+DEPLOY_DST   := $(STEAM_APP)/Contents/MacOS/lullaby.dylib
+INSTALL_DST  := $(SUPPORT_DIR)/lullaby.dylib
 
 dylib-install: $(TARGET)
 	$(call install_atomically,$(TARGET),$(INSTALL_DST))
@@ -538,10 +540,10 @@ deploy: $(TARGET) dylib-install sigdb-install helpers-install
 	$(call install_atomically,$(TARGET),$(DEPLOY_DST))
 	@echo "==> Deployed: $(DEPLOY_DST) (restart Steam to load)"
 	@for b in $(LAUNCHABLE_BUNDLES); do \
-		p=$$(find "$$b" -name notproton.dylib -type f 2>/dev/null | head -1); \
+		p=$$(find "$$b" -name lullaby.dylib -type f 2>/dev/null | head -1); \
 		[ -n "$$p" ] || continue; \
 		cmp -s "$$p" "$(DEPLOY_DST)" && continue; \
-		echo "==> warning: $$b carries a different notproton.dylib"; \
+		echo "==> warning: $$b carries a different lullaby.dylib"; \
 		echo "==> warning: launching it reverts this deploy, so rebuild it with 'make app'"; \
 	done
 
@@ -570,7 +572,7 @@ bridge:
 app-payload: $(TARGET) $(OVERLAY_SHIM) $(ICONMAKER) $(APPINFO)
 	@mkdir -p "$(APP_PAYLOAD)/signatures/macos.arm64"
 	@mkdir -p "$(APP_PAYLOAD)/bridge"
-	cp -f $(TARGET) "$(APP_PAYLOAD)/notproton.dylib"
+	cp -f $(TARGET) "$(APP_PAYLOAD)/lullaby.dylib"
 	cp -f $(OVERLAY_SHIM) "$(APP_PAYLOAD)/overlay-shim.dylib"
 	cp -f $(ICONMAKER) "$(APP_PAYLOAD)/iconmaker"
 	cp -f $(APPINFO) "$(APP_PAYLOAD)/appinfo"

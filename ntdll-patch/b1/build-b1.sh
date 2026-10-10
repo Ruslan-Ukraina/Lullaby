@@ -14,7 +14,7 @@ set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$here/../.." && pwd)
-support="$HOME/Library/Application Support/notproton"
+support="$HOME/Library/Application Support/lullaby"
 ENGINE=$(cd -P "${ENGINE:-$support/runners/current}" && pwd)
 WINE_SRC=${WINE_SRC:-$repo/scratch/dormison-src}
 WINE_BUILD=${WINE_BUILD:-$repo/scratch/dormison-build}
@@ -37,7 +37,7 @@ OUT=${OUT:-$repo/scratch/ntdll-b1/$version}
 mkdir -p "$OUT"
 
 [ -d "$WINE_BUILD/dlls/ntdll" ] || die "no wine build tree at $WINE_BUILD, run bridge/setup-wine-tree.sh"
-# The release's commit itself, or the fork's notproton/b1-steamclient branch on top of
+# The release's commit itself, or the fork's lullaby/b1-steamclient branch on top of
 # it, whose only change is dlls/ntdll/loader.c.
 head=$(git -C "$WINE_SRC" rev-parse HEAD)
 if [ "$head" != "$commit" ]; then
@@ -57,7 +57,7 @@ m = json.load(open(sys.argv[1]))
 print(next(c["sha256"] for c in m["components"] if c["path"] == sys.argv[2]))
 PY
 )
-	for f in "$ENGINE/$rel.notproton-orig" "$ENGINE/$rel"; do
+	for f in "$ENGINE/$rel.lullaby-orig" "$ENGINE/$rel"; do
 		[ -f "$f" ] && [ "$(sha "$f")" = "$want" ] && { echo "$f"; return 0; }
 	done
 	die "no clean $rel in $ENGINE (want $want)"

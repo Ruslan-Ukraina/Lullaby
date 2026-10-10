@@ -4,15 +4,15 @@
 #   install-b1.sh              runners/current
 #   install-b1.sh --restore    put the release's clean files back (B1 off, B2 off)
 #
-# Next to each engine file stay the release's clean copy (.notproton-orig) and,
-# for x86_64, the spike's B2 binary patch (.notproton-b2) if it was there. Files
+# Next to each engine file stay the release's clean copy (.lullaby-orig) and,
+# for x86_64, the spike's B2 binary patch (.lullaby-b2) if it was there. Files
 # are switched by rename, and not while a game of ours runs.
 # Overridable: ENGINE, BRIDGE_DIR, B1_DIR.
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$here/../.." && pwd)
-support="$HOME/Library/Application Support/notproton"
+support="$HOME/Library/Application Support/lullaby"
 ENGINE=$(cd -P "${ENGINE:-$support/runners/current}" && pwd)
 BRIDGE_DIR=${BRIDGE_DIR:-$support/bridge}
 
@@ -25,8 +25,8 @@ restore=0
 version=$(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$ENGINE/engine-info.json")
 B1_DIR=${B1_DIR:-$repo/scratch/ntdll-b1/$version}
 
-if pgrep -f "notproton/(runners|launchers)/" >/dev/null 2>&1; then
-	die "a game of ours is running (pgrep -f 'notproton/(runners|launchers)/'), quit it first"
+if pgrep -f "lullaby/(runners|launchers)/" >/dev/null 2>&1; then
+	die "a game of ours is running (pgrep -f 'lullaby/(runners|launchers)/'), quit it first"
 fi
 
 clean_sha() {
@@ -46,12 +46,12 @@ install_atomically() {
 for a in x86_64 i386; do
 	rel="wine/lib/wine/$a-windows/ntdll.dll"
 	live="$ENGINE/$rel"
-	orig="$live.notproton-orig"
+	orig="$live.lullaby-orig"
 	want=$(clean_sha "$rel")
 
 	# The release's file, kept once and never overwritten.
 	if [ ! -f "$orig" ]; then
-		[ "$(sha "$live")" = "$want" ] || die "$rel is not the release's file and there is no .notproton-orig"
+		[ "$(sha "$live")" = "$want" ] || die "$rel is not the release's file and there is no .lullaby-orig"
 		cp -p "$live" "$orig"
 	fi
 	[ "$(sha "$orig")" = "$want" ] || die "$orig is not the release's $rel ($want)"
@@ -71,10 +71,10 @@ for a in x86_64 i386; do
 		echo "==> $a: already B1"
 	else
 		# Only the spike's binary patch is worth keeping; an older B1 build is not.
-		if [ "$cur" != "$want" ] && [ ! -f "$live.notproton-b2" ] \
+		if [ "$cur" != "$want" ] && [ ! -f "$live.lullaby-b2" ] \
 			&& ! grep -a -q "lead to lsteamclient" "$live"; then
-			cp -p "$live" "$live.notproton-b2"
-			echo "==> $a: the previous patched file is kept as ntdll.dll.notproton-b2"
+			cp -p "$live" "$live.lullaby-b2"
+			echo "==> $a: the previous patched file is kept as ntdll.dll.lullaby-b2"
 		fi
 		install_atomically "$new" "$live"
 		echo "==> $a: installed B1 $(sha "$new")"

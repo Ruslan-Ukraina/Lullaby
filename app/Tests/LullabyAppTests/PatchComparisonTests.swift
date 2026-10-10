@@ -38,7 +38,7 @@ struct PatchComparisonTests {
         let support = root.appending(path: "support")
         let installed = PatchComparison.Installed(
             dylib: root.appending(path: "Steam.app/Contents/MacOS/\(SupportPaths.dylibName)"),
-            runScript: root.appending(path: "compatibilitytools.d/notproton/run"),
+            runScript: root.appending(path: "compatibilitytools.d/lullaby/run"),
             bridge: support.appending(path: "bridge"),
             overlayShim: support.appending(path: "overlay-shim.dylib"),
             iconmaker: support.appending(path: "iconmaker"),

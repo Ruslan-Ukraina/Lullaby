@@ -45,7 +45,7 @@ public struct SettingsCLI {
             let root = URL(filePath: support)
             service.store = SettingsStore(root: root.appending(path: "settings"))
             service.d3dmetal = D3DMetalStore(root: root.appending(path: "d3dmetal"))
-            service.cli = root.appending(path: "notproton-sevo").path(percentEncoded: false)
+            service.cli = root.appending(path: "lullaby-sevo").path(percentEncoded: false)
             service.log = { _ in }
             service.engineVersion = { nil }
         }

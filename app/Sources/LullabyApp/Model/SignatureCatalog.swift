@@ -1,6 +1,6 @@
 // Signature databases for the Steam client and the Steam builds they are known to
-// fit (Phase 5, DECISIONS P5-3). notproton.dylib reads the databases from
-// notproton/signatures/macos.arm64 when Steam starts, newest first, and keeps the
+// fit (Phase 5, DECISIONS P5-3). lullaby.dylib reads the databases from
+// lullaby/signatures/macos.arm64 when Steam starts, newest first, and keeps the
 // first one whose signatures all resolve (dylib/core/loader.c), so a database for
 // a newer Steam never breaks the build that is installed.
 //
@@ -124,7 +124,7 @@ struct SignatureSupport: Sendable, Equatable {
         builds.keys.filter { supports($0, installedIn: directory) }.sorted()
     }
 
-    /// The parts of a database notproton.dylib needs to load it (resolver/sigdb.c).
+    /// The parts of a database lullaby.dylib needs to load it (resolver/sigdb.c).
     static func isUsableDatabase(_ data: Data, file: String) -> Bool {
         guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               json["schema_version"] as? Int == 3, json["arch"] as? String == "arm64",
@@ -187,7 +187,7 @@ struct SignatureUpdater: Sendable {
             guard SignatureSupport.isUsableDatabase(data, file: database.file) else {
                 throw StepFailure(
                     step: SignatureSupport.step,
-                    detail: "The signature database \(database.file) is not one notproton.dylib can read, so NotProton refused it.")
+                    detail: "The signature database \(database.file) is not one lullaby.dylib can read, so NotProton refused it.")
             }
             try atomicReplace(target, with: data, step: SignatureSupport.step)
             installed.append(database.file)

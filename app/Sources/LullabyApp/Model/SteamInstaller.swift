@@ -232,7 +232,7 @@ enum SteamInstaller {
 
     static func assertBundleIsWritable(_ app: URL) throws {
         let directory = app.appending(path: "Contents/MacOS")
-        let probe = directory.appending(path: ".notproton-write-probe")
+        let probe = directory.appending(path: ".lullaby-write-probe")
         do {
             try Data("probe".utf8).write(to: probe)
             try FileManager.default.removeItem(at: probe)

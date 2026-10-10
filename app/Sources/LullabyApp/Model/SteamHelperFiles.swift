@@ -5,7 +5,7 @@
 // With native Steam windows on (and your go-ahead, 2026-10-07), NotProton adds:
 //   Resources/<lang>.lproj/InfoPlist.strings  CFBundleName/CFBundleDisplayName "Steam"
 //   a custom bundle icon                        Steam.app's icon, as Finder sets one
-// Everything added is listed in Resources/.notproton-added, and only that (plus the
+// Everything added is listed in Resources/.lullaby-added, and only that (plus the
 // copies of Steam.app's Assets.car and Steam.icns an earlier attempt left) is
 // removed by Repair, Remove Everything and switching native windows off.
 
@@ -14,7 +14,7 @@ import Foundation
 
 enum SteamHelperFiles {
     static let step = "Steam Helper name and icon"
-    static let markerName = ".notproton-added"
+    static let markerName = ".lullaby-added"
     static let strings = "\"CFBundleName\" = \"Steam\";\n\"CFBundleDisplayName\" = \"Steam\";\n"
 
     static var helper: URL {

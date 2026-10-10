@@ -24,7 +24,7 @@
 // way: this sha256 and size, and Dormison's own signature.
 //
 // Three places feed the catalog, the higher wins for one id:
-//   installed  notproton/bridges/<id>/bridge.json, files verified when installed;
+//   installed  lullaby/bridges/<id>/bridge.json, files verified when installed;
 //   bundled    the app's payload (engine-support/bridge-manifest.json), no url and
 //              no file digests: SwiftPM strips Mach-O resources (R27), the app's
 //              own signature covers them. A bridge with engine fixes (Mach-O .so
@@ -112,7 +112,7 @@ struct BridgeRelease: Sendable, Equatable {
     /// "revision 2 for Dormison b1"
     var label: String { "revision \(rev) for \(EngineStore.displayName(engine))" }
 
-    /// The four files in BridgePayload's shape, for staging into notproton/bridge.
+    /// The four files in BridgePayload's shape, for staging into lullaby/bridge.
     func located() throws -> BridgePayload.Located {
         guard let root else {
             throw StepFailure(step: BridgeStore.step, detail: "The Steam bridge \(id) is not downloaded yet.")

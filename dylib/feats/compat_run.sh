@@ -1,5 +1,5 @@
 #!/bin/sh
-# notproton compatibility tool shim: runs Windows games from Steam on the
+# lullaby compatibility tool shim: runs Windows games from Steam on the
 # Dormison engine NotProton unpacked into runners/current
 set -e
 
@@ -56,7 +56,7 @@ case "$verb" in
     ;;
 esac
 
-support="$HOME/Library/Application Support/notproton"
+support="$HOME/Library/Application Support/lullaby"
 # The Dormison engine. wine/bin/wine is its front door; x86_64-unix/wine is the
 # loader proper, the one Dormison re-executes every Windows program through and
 # the one a game's bundle carries a copy of. The server is native arm64.
@@ -64,13 +64,13 @@ engine_root="$support/runners/current"
 wine_unix="$engine_root/wine/lib/wine/x86_64-unix"
 WINELOADER="$engine_root/wine/bin/wine"
 WINESERVER="$engine_root/wine/bin/wineserver"
-# The app writes the engine's paths to notproton-engine.env (DormisonEngine). It
+# The app writes the engine's paths to lullaby-engine.env (DormisonEngine). It
 # is read as data, never sourced: one NP_ENGINE_NAME='value' per line.
 engine_env_get() {
-  sed -n "s/^$1='\(.*\)'\$/\1/p" "$engine_root/notproton-engine.env" 2>/dev/null | head -1 \
+  sed -n "s/^$1='\(.*\)'\$/\1/p" "$engine_root/lullaby-engine.env" 2>/dev/null | head -1 \
     | sed "s/'\\\\''/'/g"
 }
-if [ -f "$engine_root/notproton-engine.env" ]; then
+if [ -f "$engine_root/lullaby-engine.env" ]; then
   env_unix=$(engine_env_get NP_ENGINE_UNIX_DIR)
   env_loader=$(engine_env_get NP_ENGINE_WINELOADER)
   env_server=$(engine_env_get NP_ENGINE_WINESERVER)
@@ -87,11 +87,11 @@ export PATH="$engine_root/wine/bin:$PATH"
 # Dormison's View menu saves a setting through $SEVO_CLI and falls back to
 # Sevoflurane's /usr/local/bin/sevo when that is unset. NotProton never calls
 # Sevoflurane (docs/DECISIONS.md S1), so it always names this stand-in.
-sevo_cli="$support/notproton-sevo"
+sevo_cli="$support/lullaby-sevo"
 export SEVO_CLI="$sevo_cli"
 
 if [ -n "$STEAM_COMPAT_DATA_PATH" ]; then
-  log="$STEAM_COMPAT_DATA_PATH/notproton-run.log"
+  log="$STEAM_COMPAT_DATA_PATH/lullaby-run.log"
 else
   log=/dev/null
 fi
@@ -99,7 +99,7 @@ fi
   && : > "$log" || true
 run_started=$(date +%s)
 {
-  echo "=== notproton run $(date) ==="
+  echo "=== lullaby run $(date) ==="
   echo "verb=$verb"
   echo "args:"; for a in "$@"; do echo "  [$a]"; done
   echo "cwd=$(pwd)"
@@ -124,9 +124,9 @@ echo "engine: $(readlink "$engine_root" 2>/dev/null || echo "$engine_root")" \
 sevo_stub=$(cat <<'STUB'
 #!/bin/sh
 # NotProton's stand-in for Sevoflurane's sevo CLI (docs/DECISIONS.md S1, P7A-5).
-log="$HOME/Library/Application Support/notproton/notproton-sevo.log"
+log="$HOME/Library/Application Support/lullaby/lullaby-sevo.log"
 printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$log" 2>/dev/null
-cli="$HOME/Library/Application Support/notproton/lullaby-settings"
+cli="$HOME/Library/Application Support/lullaby/lullaby-settings"
 [ "$1" = app ] && [ "$2" = config ] && [ -x "$cli" ] || exit 0
 "$cli" "$@" >> "$log" 2>&1
 exit 0
@@ -466,7 +466,7 @@ write_owned_controllers() {
 # controller support in most games. NOTPROTON_RAW_CONTROLLERS=1 in the launch options
 # hands every controller back to the game.
 plan_hidden_controllers() {
-  controllers_file="$STEAM_COMPAT_DATA_PATH/notproton-hidden-controllers"
+  controllers_file="$STEAM_COMPAT_DATA_PATH/lullaby-hidden-controllers"
   controllers_add=""
   controllers_remove=""
   controllers_wanted=""
@@ -589,10 +589,10 @@ if [ -n "$STEAM_COMPAT_DATA_PATH" ]; then
     WINEMSYNC=$(sed -n 's/^NOTPROTON_MSYNC=//p' "$WINEPREFIX/.sevo/bottle.env" 2>/dev/null | head -1)
     [ -n "$WINEMSYNC" ] && msync_from=settings
   fi
-  if [ -z "$WINEMSYNC" ] && [ -r "$STEAM_COMPAT_DATA_PATH/notproton-msync" ] \
+  if [ -z "$WINEMSYNC" ] && [ -r "$STEAM_COMPAT_DATA_PATH/lullaby-msync" ] \
     && [ -f "$WINEPREFIX/.sevo/bottle.env" ]; then
     WINEMSYNC=$(tr -d ' \t\n' \
-      < "$STEAM_COMPAT_DATA_PATH/notproton-msync" 2>/dev/null || true)
+      < "$STEAM_COMPAT_DATA_PATH/lullaby-msync" 2>/dev/null || true)
     msync_from=carried-over
   fi
   [ -n "$WINEMSYNC" ] || msync_from=default
@@ -765,7 +765,7 @@ stage_renderer() {
       renderer_overrides="d3d11,d3d10core=b"
       ;;
     d3dmetal)
-      # Apple's D3DMetal from the player's Game Porting Toolkit (notproton/d3dmetal/<version>,
+      # Apple's D3DMetal from the player's Game Porting Toolkit (lullaby/d3dmetal/<version>,
       # named by NOTPROTON_D3DMETAL in bottle.env). Its macOS half goes into the running
       # engine's wine/lib/external, where the engine's x86_64-unix/{d3d11,d3d12,dxgi,...}.so
       # links lead (Apple's layout); doing it at every D3DMetal launch is what carries it into
@@ -892,7 +892,7 @@ while [ -n "$client_root" ] && [ "$client_root" != "/" ] && [ ! -d "$client_root
   client_root=$(dirname "$client_root")
 done
 # Icon stuff
-appinfo_tool="$HOME/Library/Application Support/notproton/appinfo"
+appinfo_tool="$HOME/Library/Application Support/lullaby/appinfo"
 appinfo_vdf="$client_root/appcache/appinfo.vdf"
 meta_name=""
 meta_icon=""
@@ -927,7 +927,7 @@ mkdir -p "$loader_macos" "$loader_res"
 icon_arg=""
 resolve_icon() {
   set +e
-  iconmaker="$HOME/Library/Application Support/notproton/iconmaker"
+  iconmaker="$HOME/Library/Application Support/lullaby/iconmaker"
   art_dir="$client_root/appcache/librarycache/$app_id"
   art=""
   if [ -n "$meta_clienticon" ]; then
@@ -979,13 +979,13 @@ resolve_icon() {
     icon_source="$art $(stat -f %m "$art" 2>/dev/null || echo 0)"
   fi
   icon_cache="$loader_root/game.icns"
-  if [ -n "$art" ] && [ -s "$icon_cache" ] &&   [ "$(cat "$loader_root/notproton-icon.source" 2>/dev/null)" =   "$icon_source" ] && cp -f "$icon_cache" "$loader_res/game.icns"; then
+  if [ -n "$art" ] && [ -s "$icon_cache" ] &&   [ "$(cat "$loader_root/lullaby-icon.source" 2>/dev/null)" =   "$icon_source" ] && cp -f "$icon_cache" "$loader_res/game.icns"; then
     icon_arg="  <key>CFBundleIconFile</key><string>game</string>"
     echo "icon reused from $art" >> "$log" 2>&1 || true
   elif [ -n "$art" ] && [ -x "$iconmaker" ]; then
     if "$iconmaker" "$art" "$icon_cache" >> "$log" 2>&1 &&   cp -f "$icon_cache" "$loader_res/game.icns"; then
       icon_arg="  <key>CFBundleIconFile</key><string>game</string>"
-      printf '%s\n' "$icon_source" > "$loader_root/notproton-icon.source"
+      printf '%s\n' "$icon_source" > "$loader_root/lullaby-icon.source"
       echo "icon built from $art" >> "$log" 2>&1 || true
     elif [ "$art" = "$ico" ]; then
       # A cached .ico that iconmaker rejects is corrupt and passes the size
@@ -1066,9 +1066,9 @@ export WINELOADER="$WINELOADER"
 # from ever opening sevoflurane:// (S1).
 export SEVO_LOADER_TREE="$wine_unix"
 export SEVO_CLI="$sevo_cli"
-wine_log="$loader_root/notproton-wine.log"
+wine_log="$loader_root/lullaby-wine.log"
 exec > "\$wine_log" 2>&1
-shim="$HOME/Library/Application Support/notproton/overlay-shim.dylib"
+shim="$HOME/Library/Application Support/lullaby/overlay-shim.dylib"
 if [ -n "\$STEAM_DYLD_INSERT_LIBRARIES" ]; then
   if [ -f "\$shim" ]; then
     export DYLD_INSERT_LIBRARIES="\$shim:\$STEAM_DYLD_INSERT_LIBRARIES"
@@ -1148,9 +1148,9 @@ start_watchdog() {
       sleep 1
       waited=$((waited + 1))
       kill -0 "$parent" 2>/dev/null || exit 0
-      grep -a -q "first present" "$loader_root/notproton-wine.log" 2>/dev/null && exit 0
+      grep -a -q "first present" "$loader_root/lullaby-wine.log" 2>/dev/null && exit 0
     done
-    shot="$STEAM_COMPAT_DATA_PATH/notproton-watchdog.png"
+    shot="$STEAM_COMPAT_DATA_PATH/lullaby-watchdog.png"
     screencapture -x "$shot" >/dev/null 2>&1 || true
     echo "=== watchdog: no first frame in ${limit}s, screenshot $shot, killing wine prefix ===" >> "$log" 2>&1 || true
     kill_wine_prefix

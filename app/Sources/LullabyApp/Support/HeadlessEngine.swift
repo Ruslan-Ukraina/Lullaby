@@ -7,7 +7,7 @@
 //   --engine rollback       switch back to the previous engine
 // Options: --channel beta|stable, --quit-steam (agree to close Steam), and
 // --runners DIR --bridge DIR --cache DIR to work on a scratch tree instead of
-// notproton's. With --runners, Steam is not in the way: it never uses that tree.
+// lullaby's. With --runners, Steam is not in the way: it never uses that tree.
 // Exits 0 on success, 1 otherwise.
 
 import Foundation

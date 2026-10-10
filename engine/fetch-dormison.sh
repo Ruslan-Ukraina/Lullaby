@@ -28,7 +28,7 @@ MANIFEST_URL=${MANIFEST_URL:-https://github.com/kageroumado/dormison/releases/do
 ASSET_PREFIX=https://github.com/kageroumado/dormison/releases/download/
 CHANNEL=${CHANNEL:-beta}
 CACHE=${CACHE:-$repo/scratch/engine}
-RUNNERS=${RUNNERS:-$HOME/Library/Application Support/notproton/runners}
+RUNNERS=${RUNNERS:-$HOME/Library/Application Support/lullaby/runners}
 VERIFY=$repo/scratch/bin/verify-ed25519
 
 activate=0

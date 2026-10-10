@@ -3,7 +3,7 @@
 #   perf/peak-screen.sh MODE WIDTH HEIGHT    MODE: 0 exclusive, 1 fullscreen window, 3 windowed
 set -eu
 P="$HOME/Library/Application Support/Steam/steamapps/compatdata/3527290/pfx"
-E="$HOME/Library/Application Support/notproton/runners/current/wine/bin"
+E="$HOME/Library/Application Support/lullaby/runners/current/wine/bin"
 k='HKCU\Software\LandCrab\PEAK'
 hex() { printf '0x%x' "$1"; }
 WINEPREFIX="$P" WINEDEBUG=-all

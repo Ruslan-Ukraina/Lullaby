@@ -4,8 +4,8 @@ import Foundation
 
 enum SupportPaths {
 
-    static let supportDirName = "notproton"
-    static let dylibName = "notproton.dylib"
+    static let supportDirName = "lullaby"
+    static let dylibName = "lullaby.dylib"
 
     static var home: URL {
         URL(filePath: NSHomeDirectory())
@@ -15,7 +15,7 @@ enum SupportPaths {
         home.appending(path: "Library/Application Support")
     }
 
-    // ~/Library/Application Support/notproton
+    // ~/Library/Application Support/lullaby
     static var support: URL {
         applicationSupport.appending(path: supportDirName)
     }
@@ -46,7 +46,7 @@ enum SupportPaths {
     static var settingsCLI: URL { support.appending(path: settingsCLIName) }
     // The stand-in Dormison's View menu calls instead of Sevoflurane's CLI, written by
     // compat_run.sh (docs/DECISIONS.md S1).
-    static var sevoCLI: URL { support.appending(path: "notproton-sevo") }
+    static var sevoCLI: URL { support.appending(path: "lullaby-sevo") }
 
     static var packageDownloads: URL {
         home.appending(path: "Library/Caches/\(supportDirName)/valve-packages")
@@ -97,7 +97,7 @@ enum SupportPaths {
         static var legacyCompat: URL { innerClient.appending(path: "legacycompat") }
 
         static var compatTool: URL {
-            userData.appending(path: "compatibilitytools.d/notproton")
+            userData.appending(path: "compatibilitytools.d/lullaby")
         }
 
         static var libraryFoldersVDF: URL { userData.appending(path: "steamapps/libraryfolders.vdf") }

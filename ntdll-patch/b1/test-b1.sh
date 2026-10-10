@@ -12,7 +12,7 @@ set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$here/../.." && pwd)
-support="$HOME/Library/Application Support/notproton"
+support="$HOME/Library/Application Support/lullaby"
 ENGINE=$(cd -P "${ENGINE:-$support/runners/current}" && pwd)
 BRIDGE_DIR=${BRIDGE_DIR:-$support/bridge}
 WORK=${WORK:-$repo/scratch/b1-test}
@@ -32,7 +32,7 @@ fi
 for a in x86_64 i386; do
 	live="$clone/wine/lib/wine/$a-windows/ntdll.dll"
 	clean="$ENGINE/wine/lib/wine/$a-windows/ntdll.dll"
-	[ -f "$clean.notproton-orig" ] && clean="$clean.notproton-orig"
+	[ -f "$clean.lullaby-orig" ] && clean="$clean.lullaby-orig"
 	if [ "$1" = --clean ]; then
 		cp -f "$clean" "$live"
 	else

@@ -59,7 +59,7 @@ struct TestFeed {
     }
 }
 
-/// A notproton tree in a temporary folder: an engine, the app's bundled bridge, and
+/// A lullaby tree in a temporary folder: an engine, the app's bundled bridge, and
 /// the folders the bridge store writes.
 struct BridgeRig {
     static let commit = "52c2a4b918d6ec5f469ed4e5f58777598c9378ff"

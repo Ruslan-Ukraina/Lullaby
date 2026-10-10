@@ -42,11 +42,11 @@ struct ReleaseAccessTests {
     private static let repo = URL(filePath: #filePath)
         .deletingLastPathComponent().deletingLastPathComponent()
         .deletingLastPathComponent().deletingLastPathComponent()
-    private static let base = URL(string: "https://github.com/owner/notproton/releases/download/")!
+    private static let base = URL(string: "https://github.com/owner/lullaby/releases/download/")!
     private static let key = Curve25519.Signing.PrivateKey().publicKey.rawRepresentation.base64EncodedString()
 
     private func transport(_ github: FakeGitHub) -> GitHubAssetTransport {
-        GitHubAssetTransport(base: Self.base, repository: "owner/notproton", token: "t0ken", client: github)
+        GitHubAssetTransport(base: Self.base, repository: "owner/lullaby", token: "t0ken", client: github)
     }
 
     @Test("A feed file is read through the API: the release by tag, then the asset as octet-stream, with the token")
@@ -56,9 +56,9 @@ struct ReleaseAccessTests {
         #expect(data == Data("{}".utf8))
         let requests = github.requests.withLock { $0 }
         #expect(requests.count == 2)
-        #expect(requests[0].url?.absoluteString == "https://api.github.com/repos/owner/notproton/releases/tags/manifest")
+        #expect(requests[0].url?.absoluteString == "https://api.github.com/repos/owner/lullaby/releases/tags/manifest")
         #expect(requests[0].value(forHTTPHeaderField: "Accept") == "application/vnd.github+json")
-        #expect(requests[1].url?.absoluteString == "https://api.github.com/repos/owner/notproton/releases/assets/42")
+        #expect(requests[1].url?.absoluteString == "https://api.github.com/repos/owner/lullaby/releases/assets/42")
         #expect(requests[1].value(forHTTPHeaderField: "Accept") == "application/octet-stream")
         for request in requests {
             #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer t0ken")
@@ -119,19 +119,19 @@ struct ReleaseAccessTests {
     func privateSetup() throws {
         let url = Self.base.absoluteString
         if case .off(let reason) = ReleaseFeed.setup(url: url, key: Self.key, access: "private",
-                                                     repository: "owner/notproton", token: nil, manifestTag: nil) {
+                                                     repository: "owner/lullaby", token: nil, manifestTag: nil) {
             #expect(reason == ReleaseAccess.needsToken)
         } else {
             Issue.record("a private feed without a token is ready")
         }
-        if case .ready = ReleaseFeed.setup(url: url, key: Self.key, access: "private", repository: "notproton",
+        if case .ready = ReleaseFeed.setup(url: url, key: Self.key, access: "private", repository: "lullaby",
                                            token: "t", manifestTag: nil) { Issue.record("no owner, but ready") }
         if case .ready = ReleaseFeed.setup(url: url, key: Self.key, access: "shared", repository: "o/r",
                                            token: "t", manifestTag: nil) { Issue.record("unknown mode, but ready") }
         guard case .ready(let feed) = ReleaseFeed.setup(url: url, key: Self.key, access: "private",
-                                                        repository: "owner/notproton", token: "t", manifestTag: "feeds")
+                                                        repository: "owner/lullaby", token: "t", manifestTag: "feeds")
         else { Issue.record("private feed with a token is off"); return }
-        #expect(feed.access == .private(repository: "owner/notproton", token: "t"))
+        #expect(feed.access == .private(repository: "owner/lullaby", token: "t"))
         #expect(feed.bridgeManifestURL.absoluteString == url + "feeds/bridge-manifest.json")
         #expect(feed.transport(over: MemoryTransport()) is GitHubAssetTransport)
         guard case .ready(let open) = ReleaseFeed.setup(url: url, key: Self.key, access: "public",

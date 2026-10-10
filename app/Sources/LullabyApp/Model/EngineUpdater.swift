@@ -7,7 +7,7 @@
 // downloaded and checked if it is not on disk (BridgeStore) → unpack beside the
 // runners into .<version>.partial → every file against engine-manifest.json →
 // commit is the bridge's → B1 ntdll.dll pair over the release's (the release's
-// kept as .notproton-orig) → smoke test in a throwaway prefix → Steam and games
+// kept as .lullaby-orig) → smoke test in a throwaway prefix → Steam and games
 // closed → switch → the live bridge follows the engine → prune to one previous
 // engine.
 //

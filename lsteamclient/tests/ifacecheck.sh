@@ -5,7 +5,7 @@
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$here/../.." && pwd)
-support="$HOME/Library/Application Support/notproton"
+support="$HOME/Library/Application Support/lullaby"
 BRIDGE_DIR=${BRIDGE_DIR:-$support/bridge}
 WORK=${WORK:-$repo/scratch/b1-test}
 die() { echo "==> $*" >&2; exit 1; }

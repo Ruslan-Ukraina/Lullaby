@@ -5,7 +5,7 @@
 //
 // What lands on disk is what Apple's Read Me says to install, `redist/lib/` with its own
 // shape: `d3dmetal/<version>/lib/{external, wine/x86_64-unix, wine/x86_64-windows}` in one
-// store under notproton/, kept across engine updates and roll-backs. The `.so` files there
+// store under lullaby/, kept across engine updates and roll-backs. The `.so` files there
 // are symlinks into `../../external/`, so the tree is copied whole with ditto. compat_run.sh
 // puts the newest usable version's `lib/external` into the running engine's `wine/lib` at
 // each D3DMetal launch (the engine already carries the `.so` links to it), and the Windows
@@ -46,7 +46,7 @@ public struct D3DMetalStore: Sendable {
         self.macOS = macOS
     }
 
-    /// ~/Library/Application Support/notproton/d3dmetal.
+    /// ~/Library/Application Support/lullaby/d3dmetal.
     public static var standard: D3DMetalStore {
         D3DMetalStore(root: SettingsPaths.support.appending(path: "d3dmetal"))
     }

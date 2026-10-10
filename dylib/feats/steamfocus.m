@@ -1,4 +1,4 @@
-// Steam Helper as a regular app (notproton/steam-windows = native-app, DECISIONS W10
+// Steam Helper as a regular app (lullaby/steam-windows = native-app, DECISIONS W10
 // option B). Steam's windows belong to Steam Helper, a UIElement app, so Spaces and
 // Stage Manager treat them as an agent's windows; as a regular app they behave as
 // app windows. This file traces who activates whom, in steam_osx and in Steam
@@ -109,13 +109,13 @@ static BOOL t_ra_activate_from(id self, SEL _cmd, NSRunningApplication *from,
 // 30 s after steam_osx becomes a background app, loginwindow asks Background Task
 // Management whether Steam may run in the background, hears no and quits it
 // (DECISIONS W16, W18). So by default steam_osx keeps its icon. The file
-// notproton/steam-windows-oneicon turns hiding on for diagnosis; then the Apple
+// lullaby/steam-windows-oneicon turns hiding on for diagnosis; then the Apple
 // Events steam_osx receives are traced (who sends quit or steam://exit).
 static BOOL kHideOsxIcon = NO;
 
 static BOOL one_icon_requested(void) {
     NSString *path = [NSHomeDirectory() stringByAppendingPathComponent:
-        @"Library/Application Support/notproton/steam-windows-oneicon"];
+        @"Library/Application Support/lullaby/steam-windows-oneicon"];
     return [NSFileManager.defaultManager fileExistsAtPath:path];
 }
 

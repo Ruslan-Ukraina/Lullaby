@@ -6,7 +6,7 @@
 //   by the player's hand after that;
 // - `.sevo/apps/<exe>.env`, written by the Game Settings window and the View menu's
 //   stand-in, plus the run script's SEVO_LOADER;
-// - `<compatdata>/notproton-msync`, the msync+ debugging marker.
+// - `<compatdata>/lullaby-msync`, the msync+ debugging marker.
 // A prefix whose bottle.env lacks the catalog's header has not been migrated. Each
 // one is per game, so everything it holds that differs from the old profile is that
 // game's own choice. Values already in the store win: they are newer.
@@ -50,8 +50,8 @@ public enum ConfigMigration {
         where name.hasSuffix(".env") {
             try? manager.copyItem(at: apps.appending(path: name), to: backup.appending(path: "apps/\(name)"))
         }
-        let marker = prefix.deletingLastPathComponent().appending(path: "notproton-msync")
-        try? manager.copyItem(at: marker, to: backup.appending(path: "notproton-msync"))
+        let marker = prefix.deletingLastPathComponent().appending(path: "lullaby-msync")
+        try? manager.copyItem(at: marker, to: backup.appending(path: "lullaby-msync"))
     }
 
     /// The values a prefix's old files hold, as one game level. Keys no setting owns any
@@ -89,7 +89,7 @@ public enum ConfigMigration {
         if !exes.isEmpty { values.exes = Array(NSOrderedSet(array: exes)) as? [String] }
 
         // msync+ was switched off for debugging.
-        let marker = prefix.deletingLastPathComponent().appending(path: "notproton-msync")
+        let marker = prefix.deletingLastPathComponent().appending(path: "lullaby-msync")
         if let text = try? String(contentsOf: marker, encoding: .utf8),
             text.trimmingCharacters(in: .whitespacesAndNewlines) == "0"
         {

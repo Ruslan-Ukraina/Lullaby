@@ -1,4 +1,4 @@
-// Deploys NotProton's components into Steam and notproton/ (the engine itself is Dormison, set up by EngineUpdater)
+// Deploys NotProton's components into Steam and lullaby/ (the engine itself is Dormison, set up by EngineUpdater)
 
 import Foundation
 

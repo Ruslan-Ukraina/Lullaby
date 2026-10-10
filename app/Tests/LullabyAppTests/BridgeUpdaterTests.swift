@@ -23,7 +23,7 @@ struct BridgeUpdaterTests {
         #expect(rig.engineNtdll("x86_64") == BridgeRig.b1("x86_64", "dormison-b1", rev: 1))
         #expect(rig.engineNtdll("i386") == BridgeRig.b1("i386", "dormison-b1", rev: 1))
         // The release's file is kept for the next revision and for engine reinstalls.
-        let orig = engineRoot.appending(path: "wine/lib/wine/i386-windows/ntdll.dll.notproton-orig")
+        let orig = engineRoot.appending(path: "wine/lib/wine/i386-windows/ntdll.dll.lullaby-orig")
         #expect(try Data(contentsOf: orig) == BridgeRig.clean("i386", "dormison-b1"))
         // compat_run.sh compares the engine against the bridge's copy.
         #expect(rig.liveFile("wine/x86_64-windows/ntdll.dll") == BridgeRig.b1("x86_64", "dormison-b1", rev: 1))
@@ -31,7 +31,7 @@ struct BridgeUpdaterTests {
         #expect(updater.active?.id == "bridge-dormison-b1-1")
     }
 
-    @Test("Before state.json exists, the bridge already in notproton/bridge counts as active")
+    @Test("Before state.json exists, the bridge already in lullaby/bridge counts as active")
     func inferredActive() async throws {
         let rig = BridgeRig()
         defer { rig.remove() }
@@ -93,7 +93,7 @@ struct BridgeUpdaterTests {
         try Data("someone else's ntdll".utf8).write(
             to: engineRoot.appending(path: "wine/lib/wine/x86_64-windows/ntdll.dll"))
         try FileManager.default.removeItem(
-            at: engineRoot.appending(path: "wine/lib/wine/x86_64-windows/ntdll.dll.notproton-orig"))
+            at: engineRoot.appending(path: "wine/lib/wine/x86_64-windows/ntdll.dll.lullaby-orig"))
         let bundled = try #require(updater.catalog().release(id: "bridge-dormison-b1-1"))
         let patched = await failureMessage { try updater.store.activate(bundled, engine: engineRoot) }
         #expect(patched.contains("not the file the Steam loader patch was built for"))
@@ -172,7 +172,7 @@ struct BridgeUpdaterTests {
         #expect(offered.engineFiles.map(\.path) == [fix])
         _ = try await updater.install(offered)
         #expect(rig.engineFile(fix) == BridgeRig.fixed("dormison-b1", rev: 2))
-        #expect(rig.engineFile(fix + ".notproton-orig") == BridgeRig.cleanFix("dormison-b1"))
+        #expect(rig.engineFile(fix + ".lullaby-orig") == BridgeRig.cleanFix("dormison-b1"))
         #expect(rig.engineNtdll("x86_64") == BridgeRig.b1("x86_64", "dormison-b1", rev: 2))
         // The entry as installed keeps the fix, so the bridge on disk is complete.
         let installed = try #require(BridgeStore.installedReleases(in: rig.store).first)
@@ -181,7 +181,7 @@ struct BridgeUpdaterTests {
         // Revision 1 carries no fix: the release's file comes back and the copy goes.
         _ = try updater.rollback()
         #expect(rig.engineFile(fix) == BridgeRig.cleanFix("dormison-b1"))
-        #expect(rig.engineFile(fix + ".notproton-orig") == nil)
+        #expect(rig.engineFile(fix + ".lullaby-orig") == nil)
         #expect(rig.engineNtdll("x86_64") == BridgeRig.b1("x86_64", "dormison-b1", rev: 1))
 
         // Forth again: the fix is back.

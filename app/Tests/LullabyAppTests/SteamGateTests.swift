@@ -4,7 +4,7 @@ import Testing
 
 @testable import LullabyApp
 
-/// A Steam folder, a notproton folder and a test feed in a temporary directory.
+/// A Steam folder, a lullaby folder and a test feed in a temporary directory.
 private struct GateRig {
     let root = URL.temporaryDirectory.appending(path: "np-gate-\(UUID().uuidString)")
     let feed = TestFeed()
@@ -12,9 +12,9 @@ private struct GateRig {
     var package: URL { root.appending(path: "Steam/package") }
     var cfg: URL { root.appending(path: "Steam/steam.cfg") }
     var innerCfg: URL { root.appending(path: "Steam/inner/steam.cfg") }
-    var signatures: URL { root.appending(path: "notproton/signatures/macos.arm64") }
-    var manifests: URL { root.appending(path: "notproton/manifests") }
-    var gateFile: URL { root.appending(path: "notproton/steam-update-gate") }
+    var signatures: URL { root.appending(path: "lullaby/signatures/macos.arm64") }
+    var manifests: URL { root.appending(path: "lullaby/manifests") }
+    var gateFile: URL { root.appending(path: "lullaby/steam-update-gate") }
     var payload: URL { root.appending(path: "payload") }
 
     init() throws {
@@ -241,7 +241,7 @@ struct SteamGateTests {
         #expect(!FileManager.default.fileExists(atPath: rig.signatures.appending(path: "1791249696.json").path(percentEncoded: false)))
         #expect(!rig.signatureUpdater.support().supports(1791249696, installedIn: rig.signatures))
 
-        // Signed and matching, but not a database notproton.dylib can load.
+        // Signed and matching, but not a database lullaby.dylib can load.
         let junk = Data("{\"schema_version\":2}".utf8)
         let url = rig.feed.feed.asset("signatures", "1791249696.json")
         rig.feed.transport.put(url, junk)
@@ -251,7 +251,7 @@ struct SteamGateTests {
             "builds": [["build": 1791249696, "database": "1791249696.json"]],
         ])
         let unusable = await failureMessage { _ = try await rig.signatureUpdater.update() }
-        #expect(unusable.contains("not one notproton.dylib can read"))
+        #expect(unusable.contains("not one lullaby.dylib can read"))
 
         #expect(SignatureSupport.isUsableDatabase(GateRig.database(1791249696), file: "1791249696.json"))
         #expect(!SignatureSupport.isUsableDatabase(GateRig.database(1791249696), file: "1791249697.json"))
