@@ -138,6 +138,7 @@ enum HeadlessRelease {
                 return 1
             }
             var env = SetupEnvironment(bridge: setup.bridge, signatures: setup.signatures, gate: setup.gate)
+            env.legacy = nil
             env.engine = scratchEngine(setup)
             let steps: [FlowStep]
             if command == "update" {

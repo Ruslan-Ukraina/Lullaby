@@ -8,6 +8,8 @@ struct LullabyApp: App {
     @State private var main: MainModel
 
     init() {
+        // Before anything writes into the real support folder.
+        HeadlessMigration.runIfRequested()
         AppLog.start()
         DormisonEngine().ensureEnvironmentFile()
         HeadlessInstall.runIfRequested()

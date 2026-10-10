@@ -202,10 +202,10 @@ final class MainModel {
         await run(kind)
     }
 
-    static func closesSteam(_ kind: FlowKind, plan: UpdatePlan?) -> Bool {
+    static func closesSteam(_ kind: FlowKind, plan: UpdatePlan?, legacy: Bool = LegacyMigration.isNeeded()) -> Bool {
         switch kind {
         case .install, .reinstall, .delete: true
-        case .update: plan?.closesSteam ?? false
+        case .update: (plan?.closesSteam ?? false) || legacy
         case .addToolkit, .steamUpdates: false
         }
     }

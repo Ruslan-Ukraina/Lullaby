@@ -13,10 +13,13 @@ enum InstallState: Equatable, Sendable {
     case incomplete
     /// Steam carries another add-on in Lullaby's place.
     case foreign
+    /// NotProton, this app's old name, is installed; Install moves it to Lullaby.
+    case legacy
     case installed(engine: String?)
 
     static func from(_ snapshot: StatusSnapshot?) -> InstallState {
         guard let snapshot else { return .checking }
+        if snapshot.legacy, snapshot.steam != .steamMissing { return .legacy }
         let engine: String? = if case .engine(let version) = snapshot.runner {
             EngineStore.displayName(version)
         } else { nil }
@@ -120,6 +123,7 @@ struct MainScreen: Equatable {
         case .notInstalled: tr("Not installed")
         case .incomplete: tr("Not fully installed. Press Install to finish.")
         case .foreign: tr("Steam has another add-on installed")
+        case .legacy: tr("NotProton found. Press Install to move it to Lullaby; games and settings stay.")
         case .installed(let engine):
             if let plan, !plan.isEmpty {
                 tr("Update available: \(plan.parts.formatted(.list(type: .and)))")
@@ -136,6 +140,7 @@ struct MainScreen: Equatable {
     private static func tone(_ install: InstallState, plan: UpdatePlan?) -> Tone {
         switch install {
         case .steamMissing, .foreign, .incomplete: .problem
+        case .legacy: .attention
         case .installed: plan?.isEmpty == false ? .attention : .normal
         default: .normal
         }

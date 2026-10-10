@@ -27,6 +27,8 @@ struct StatusSnapshot: Sendable {
     var nativeSteamWindows = false
     var steamAsRegularApp = false
     var updates = UpdatesSnapshot()
+    /// NotProton's files or patch are still on this Mac (LegacyMigration).
+    var legacy = false
 
     static func capture(bundledVersion: String) -> StatusSnapshot {
         let patch = PatchComparison.inspect()
@@ -42,7 +44,8 @@ struct StatusSnapshot: Sendable {
             engineCapabilities: DormisonEngine().capabilities,
             nativeSteamWindows: SteamWindows.isOn(),
             steamAsRegularApp: SteamWindows.isRegularApp(),
-            updates: UpdatesSnapshot.capture()
+            updates: UpdatesSnapshot.capture(),
+            legacy: LegacyMigration.isNeeded()
         )
     }
 }

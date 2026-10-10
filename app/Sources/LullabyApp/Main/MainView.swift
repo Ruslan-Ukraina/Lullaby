@@ -29,8 +29,10 @@ struct MainView: View {
                 .font(.callout)
                 .foregroundStyle(screen.tone == .problem ? AnyShapeStyle(.red)
                     : screen.tone == .attention ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
-                .lineLimit(1)
-                .truncationMode(.middle)
+                // Two lines, wrapped: a longer status (Ukrainian, Russian) was cut in the middle.
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 1)
             mainButton(screen)
                 .padding(.top, 12)

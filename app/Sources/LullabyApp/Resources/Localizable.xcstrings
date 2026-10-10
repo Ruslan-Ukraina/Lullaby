@@ -625,6 +625,30 @@
       },
       "generatesSymbol": false
     },
+    "Couldn't move NotProton's files to Lullaby. Details are in the log.": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't move NotProton's files to Lullaby. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось перенести файлы NotProton в Lullaby. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося перенести файли NotProton у Lullaby. Подробиці — у журналі."
+          }
+        }
+      }
+    },
     "Couldn't reinstall Lullaby": {
       "extractionState": "manual",
       "generatesSymbol": false,
@@ -1345,6 +1369,30 @@
       },
       "generatesSymbol": false
     },
+    "Moving from NotProton": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moving from NotProton"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перенос из NotProton"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перенесення з NotProton"
+          }
+        }
+      }
+    },
     "New": {
       "extractionState": "manual",
       "localizations": {
@@ -1488,6 +1536,30 @@
         }
       },
       "generatesSymbol": false
+    },
+    "NotProton found. Press Install to move it to Lullaby; games and settings stay.": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NotProton found. Press Install to move it to Lullaby; games and settings stay."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Найден NotProton. «Установить» перенесёт его в Lullaby, игры и настройки останутся."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Знайдено NotProton. «Встановити» перенесе його в Lullaby, ігри й налаштування залишаться."
+          }
+        }
+      }
     },
     "OK": {
       "extractionState": "manual",

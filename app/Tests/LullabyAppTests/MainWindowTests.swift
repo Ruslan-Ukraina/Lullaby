@@ -135,13 +135,17 @@ struct MainWindowStateTests {
     // The window itself, drawn for each state at its fixed size: a state that broke the
     // layout (a crash, or a view too tall for 360×220) fails here.
     @Test("The window draws every state at 360×220", arguments: [
-        "not-installed", "installing", "installed", "update-available", "updating", "error",
+        "not-installed", "incomplete", "legacy", "installing", "installed", "update-available", "updating", "error",
     ])
     func draws(_ name: String) throws {
         let model = MainModel(badge: BadgeStore(defaults: defaults(), dock: { _ in }))
         switch name {
         case "not-installed":
             model.installOverride = .notInstalled
+        case "incomplete":
+            model.installOverride = .incomplete
+        case "legacy":
+            model.installOverride = .legacy
         case "installing":
             model.installOverride = .notInstalled
             model.runner.show(.running(.install, step: 1, of: 5, title: tr("Downloading the engine"),
@@ -272,20 +276,24 @@ struct MainWindowFlowTests {
     func updateClosesSteam() {
         var plan = UpdatePlan()
         plan.app = "1.2.0"
-        #expect(!MainModel.closesSteam(.update, plan: plan))
+        #expect(!MainModel.closesSteam(.update, plan: plan, legacy: false))
+        #expect(MainModel.closesSteam(.update, plan: plan, legacy: true), "the move from NotProton closes Steam")
         plan.steamPatch = true
-        #expect(MainModel.closesSteam(.update, plan: plan))
+        #expect(MainModel.closesSteam(.update, plan: plan, legacy: false))
         #expect(MainModel.closesSteam(.install, plan: nil))
         #expect(!MainModel.closesSteam(.steamUpdates, plan: nil))
     }
 
     @Test("Install and Update are one flow that checks every part: Rosetta, engine, bridge, signatures, Steam")
     func oneFlow() {
-        #expect(SetupSteps.setup(nil).map(\.id) == [.rosetta, .engine, .bridge, .signatures, .steam])
+        // This Mac's own files must not decide the steps (LegacyMigrationTests covers the move).
+        var env = SetupEnvironment()
+        env.legacy = nil
+        #expect(SetupSteps.setup(nil, env).map(\.id) == [.rosetta, .engine, .bridge, .signatures, .steam])
         var plan = updatePlan
-        #expect(SetupSteps.setup(plan).map(\.id) == [.rosetta, .engine, .bridge, .signatures, .steam])
+        #expect(SetupSteps.setup(plan, env).map(\.id) == [.rosetta, .engine, .bridge, .signatures, .steam])
         plan.app = "1.2.0"
-        #expect(SetupSteps.setup(plan).map(\.id) == [.rosetta, .engine, .bridge, .signatures, .steam, .app])
+        #expect(SetupSteps.setup(plan, env).map(\.id) == [.rosetta, .engine, .bridge, .signatures, .steam, .app])
     }
 
     @Test("Known causes become plain sentences")

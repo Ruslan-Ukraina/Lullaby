@@ -36,6 +36,9 @@ struct SetupEnvironment: Sendable {
     var bridge = BridgeUpdater()
     var signatures = SignatureUpdater()
     var gate = SteamUpdateGate()
+    /// Where an installation under the old name is looked for (LegacyMigration); none
+    /// for `--release` runs on a scratch tree.
+    var legacy: LegacyMigration.Layout? = .live
 
     static var live: SetupEnvironment { SetupEnvironment() }
 }
@@ -49,11 +52,19 @@ enum SetupSteps {
     static func setup(_ plan: UpdatePlan? = nil, _ env: SetupEnvironment = .live) -> [FlowStep] {
         var steps = [rosetta(), engine(plan?.engine, env), bridge(env), signatures(env), steam(force: false)]
         if plan?.app != nil { steps.append(app()) }
-        return steps
+        return migrate(env) + steps
     }
 
-    static func reinstall() -> [FlowStep] {
-        [engine(), bridge(), signatures(), steam(force: true)]
+    static func reinstall(_ env: SetupEnvironment = .live) -> [FlowStep] {
+        migrate(env) + [engine(), bridge(), signatures(), steam(force: true)]
+    }
+
+    /// First, when NotProton's files or patch are still there (docs/RENAME_LULLABY.md §3).
+    static func migrate(_ env: SetupEnvironment) -> [FlowStep] {
+        guard let layout = env.legacy, LegacyMigration.isNeeded(layout) else { return [] }
+        return [FlowStep(.migrate, tr("Moving from NotProton")) { detail in
+            _ = try await LegacyMigration.run(layout, effects: .live)
+        }]
     }
 
     static func rosetta() -> FlowStep {
