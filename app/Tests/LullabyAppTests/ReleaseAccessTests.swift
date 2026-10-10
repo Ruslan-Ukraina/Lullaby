@@ -65,6 +65,22 @@ struct ReleaseAccessTests {
         }
     }
 
+    @Test("Sparkle gets the appcast's direct address: its own Accept header would make the API answer JSON")
+    func appcastDirectAddress() async throws {
+        let github = FakeGitHub(["manifest": ["appcast.xml": (id: 9, data: Data("<rss/>".utf8))]])
+        let asked = Mutex<[URLRequest]>([])
+        let direct = URL(string: "https://release-assets.githubusercontent.com/x/appcast?sig=1")!
+        let url = try await transport(github).directURL(tag: "manifest", file: "appcast.xml", locate: { request in
+            asked.withLock { $0.append(request) }
+            return direct
+        })
+        #expect(url == direct)
+        let request = try #require(asked.withLock { $0.first })
+        #expect(request.url?.absoluteString == "https://api.github.com/repos/owner/lullaby/releases/assets/9")
+        #expect(request.value(forHTTPHeaderField: "Accept") == "application/octet-stream")
+        #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer t0ken")
+    }
+
     @Test("A download (a bridge) resolves the same way, and one release is looked up once")
     func downloadAndCache() async throws {
         let bytes = Data(repeating: 7, count: 100)

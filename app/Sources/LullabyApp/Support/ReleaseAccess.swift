@@ -196,6 +196,39 @@ struct GitHubAssetTransport: EngineTransport {
         return Self.api.appending(path: "repos/\(repository)/releases/assets/\(id)")
     }
 
+    /// The short-lived direct address GitHub's API redirects an asset to. Sparkle's appcast
+    /// request sets its own Accept header (SUAppcastDriver), and with that the API answers
+    /// with JSON about the asset instead of the asset: so Sparkle gets this address, which
+    /// serves the file whatever the headers.
+    func directURL(tag: String, file: String, locate: LocateRedirect = liveLocate) async throws -> URL {
+        let request = apiRequest(url: try await assetURL(tag: tag, file: file), accept: "application/octet-stream")
+        return try await locate(request)
+    }
+
+    typealias LocateRedirect = @Sendable (URLRequest) async throws -> URL
+
+    static let liveLocate: LocateRedirect = { request in
+        let session = URLSession(configuration: .ephemeral, delegate: NoRedirect(), delegateQueue: nil)
+        defer { session.finishTasksAndInvalidate() }
+        let (_, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw TransportFailure(detail: "GitHub's answer for the appcast is not HTTP.")
+        }
+        if http.statusCode == 401 || http.statusCode == 403 {
+            throw TransportFailure(detail: "GitHub answered \(http.statusCode).", status: http.statusCode)
+        }
+        guard (300..<400).contains(http.statusCode),
+              let location = http.value(forHTTPHeaderField: "Location"), let url = URL(string: location),
+              url.scheme == "https"
+        else { throw TransportFailure(detail: "GitHub did not redirect to the appcast (\(http.statusCode)).", status: http.statusCode) }
+        return url
+    }
+
+    private final class NoRedirect: NSObject, URLSessionTaskDelegate {
+        func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                        newRequest request: URLRequest) async -> URLRequest? { nil }
+    }
+
     private func request(for url: URL) async throws -> URLRequest {
         guard let (tag, file) = asset(of: url) else { return URLRequest(url: url) }
         var request = apiRequest(url: try await assetURL(tag: tag, file: file), accept: "application/octet-stream")

@@ -114,14 +114,15 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
             + "pre-releases \(Self.prereleases ? "on" : "off")")
     }
 
-    /// Private mode: the appcast's current API address, from its public-style one.
+    /// Private mode: the appcast's current direct address (short-lived, so resolved before
+    /// every check), from its public-style one.
     private func resolveAppcast(then done: @escaping @MainActor () -> Void) async {
         guard let privateFeed,
               let text = Bundle.main.object(forInfoDictionaryKey: Self.feedKey) as? String,
               let url = URL(string: text), let (tag, file) = privateFeed.asset(of: url)
         else { return }
         do {
-            resolvedAppcast = try await privateFeed.assetURL(tag: tag, file: file)
+            resolvedAppcast = try await privateFeed.directURL(tag: tag, file: file)
             done()
         } catch {
             AppLog.note("app updates: the private appcast cannot be reached: \(error.localizedDescription)")
