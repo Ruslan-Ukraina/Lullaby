@@ -3000,6 +3000,30 @@
         }
       },
       "generatesSymbol": false
+    },
+    "GitHub didn't accept the access token. Add a new one in ⚙︎ → Access Token…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub didn't accept the access token. Add a new one in ⚙︎ → Access Token…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub не принял токен доступа. Добавьте новый в ⚙︎ → Токен доступа…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub не прийняв токен доступу. Додайте новий у ⚙︎ → Токен доступу…"
+          }
+        }
+      },
+      "generatesSymbol": false
     }
   },
   "version": "1.0"

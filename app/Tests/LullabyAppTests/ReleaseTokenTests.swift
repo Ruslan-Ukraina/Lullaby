@@ -29,6 +29,20 @@ struct ReleaseTokenTests {
         #expect(got == .unreachable)
     }
 
+    @Test("A refused token is named as such, not as a lost connection", arguments: [401, 403])
+    func refusedIsNotOffline(status: Int) {
+        let error = TransportFailure(detail: "x", status: status)
+        #expect(ReleaseAccess.failure(error) == ReleaseAccess.tokenRejected)
+        let problem = FlowProblem(StepFailure(step: "x", detail: ReleaseAccess.failure(error)), step: .bridge)
+        #expect(problem.cause == .tokenRejected)
+    }
+
+    @Test("Other failures stay offline")
+    func otherFailures() {
+        #expect(ReleaseAccess.failure(TransportFailure(detail: "x", status: 500)) == EngineUpdater.offline)
+        #expect(ReleaseAccess.failure(URLError(.notConnectedToInternet)) == EngineUpdater.offline)
+    }
+
     @Test("The check lists the repository's releases on api.github.com with the token")
     func request() async {
         let seen = Recorder()

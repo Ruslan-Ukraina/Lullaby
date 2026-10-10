@@ -174,7 +174,7 @@ struct SignedDocument: Sendable {
             signature = try await transport.fetch(EngineSignature.signatureURL(for: url), limit: 1024)
         } catch {
             AppLog.note("release feed: \(name) fetch failed: \(error.localizedDescription)")
-            throw StepFailure(step: ReleaseFeed.step, detail: EngineUpdater.offline)
+            throw StepFailure(step: ReleaseFeed.step, detail: ReleaseAccess.failure(error))
         }
         let document: SignedDocument
         do {

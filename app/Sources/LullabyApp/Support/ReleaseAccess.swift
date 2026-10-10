@@ -23,6 +23,19 @@ enum ReleaseAccess: Equatable, Sendable {
 
     var isPrivate: Bool { if case .private = self { true } else { false } }
 
+    /// GitHub's API refused the token (401, 403): expired, revoked or mistyped. Not
+    /// "check your connection", which sent the owner looking in the wrong place.
+    static let tokenRejected =
+        "GitHub did not accept Lullaby's access token. Add a new one in ⚙︎ → Access Token…"
+
+    /// What a failed fetch from the feed tells the window: the token, or the network.
+    static func failure(_ error: Error) -> String {
+        if let status = (error as? TransportFailure)?.status, status == 401 || status == 403 {
+            return tokenRejected
+        }
+        return EngineUpdater.offline
+    }
+
     static let needsToken =
         "Lullaby's releases are private and this Mac has no access token for them. Add it in ⚙︎ → Access Token…"
 }

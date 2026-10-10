@@ -29,6 +29,8 @@ extension EngineTransport {
 
 struct TransportFailure: LocalizedError, Equatable {
     let detail: String
+    /// The HTTP status, when the server answered with one other than 200.
+    var status: Int? = nil
     var errorDescription: String? { detail }
 }
 
@@ -48,7 +50,7 @@ struct URLSessionEngineTransport: EngineTransport, RequestTransport {
         let name = request.url?.lastPathComponent ?? "the file"
         let (data, response) = try await URLSession.shared.data(for: request, delegate: RedirectGuard())
         if let http = response as? HTTPURLResponse, http.statusCode != 200 {
-            throw TransportFailure(detail: "\(name): the server answered \(http.statusCode).")
+            throw TransportFailure(detail: "\(name): the server answered \(http.statusCode).", status: http.statusCode)
         }
         guard data.count <= limit else {
             throw TransportFailure(detail: "\(name) is larger than expected.")

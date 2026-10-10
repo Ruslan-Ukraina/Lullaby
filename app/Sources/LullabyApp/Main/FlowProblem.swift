@@ -10,6 +10,7 @@ struct FlowProblem: Equatable, Sendable {
         case steamDidNotQuit
         case gameRunning
         case offline
+        case tokenRejected
         case appManagement
         case otherAccount
         case rosettaMissing
@@ -42,6 +43,8 @@ struct FlowProblem: Equatable, Sendable {
             cause = .offline
         } else if text.contains(SteamInstaller.gameRunning) || text.contains(EngineUpdater.gameRunning) {
             cause = .gameRunning
+        } else if text.contains(ReleaseAccess.tokenRejected) {
+            cause = .tokenRejected
         } else if text.contains(EngineUpdater.offline) {
             cause = .offline
         } else {
@@ -63,6 +66,8 @@ struct FlowProblem: Equatable, Sendable {
             tr("A game is still running. Quit it, then try again.")
         case .offline:
             tr("No connection to the internet. Check it, then try again.")
+        case .tokenRejected:
+            tr("GitHub didn't accept the access token. Add a new one in ⚙︎ → Access Token…")
         case .appManagement:
             tr("macOS didn't let Lullaby change Steam. Allow Lullaby under App Management in System Settings, then try again.")
         case .otherAccount:

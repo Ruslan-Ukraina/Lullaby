@@ -167,7 +167,7 @@ struct BridgeStore: Sendable {
         do {
             signature = try await transport.fetch(EngineSignature.signatureURL(for: url), limit: 1024)
         } catch {
-            throw StepFailure(step: step, detail: EngineUpdater.offline)
+            throw StepFailure(step: step, detail: ReleaseAccess.failure(error))
         }
         guard EngineSignature.isValid(try Data(contentsOf: part, options: .mappedIfSafe), signatureFile: signature, key: key) else {
             try? fm.removeItem(at: part)

@@ -176,7 +176,7 @@ struct SignatureUpdater: Sendable {
                 data = try await transport.fetch(url, limit: 8 << 20)
             } catch {
                 AppLog.note("signatures: \(database.file) fetch failed: \(error.localizedDescription)")
-                throw StepFailure(step: SignatureSupport.step, detail: EngineUpdater.offline)
+                throw StepFailure(step: SignatureSupport.step, detail: ReleaseAccess.failure(error))
             }
             guard Digest.sha256(of: data) == database.sha256 else {
                 AppLog.note("signatures: \(database.file) sha256 does not match the manifest")
