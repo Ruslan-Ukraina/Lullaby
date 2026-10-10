@@ -1,6 +1,7 @@
-// The NotProton window (Phase 8, ROADMAP §9): icon, name, one status line, Install or
-// Delete, Update, the progress or the problem of the running step, ⚙︎ at the bottom
-// left and the credits signature at the bottom right. System controls only.
+// The NotProton window (Phase 8, ROADMAP §9, with the owner's edit): icon, name, a line
+// of state, one button (Install, Update or Delete), ⚙︎ at the bottom left and the
+// credits signature at the bottom right. A failure is a system alert; the same button
+// tries again. System controls only.
 
 import AppKit
 import SwiftUI
@@ -15,86 +16,90 @@ struct MainView: View {
 
     var body: some View {
         let screen = model.screen
-        VStack(alignment: .leading, spacing: 0) {
-            header(screen)
-            Spacer(minLength: 12)
-            buttons(screen)
-            Spacer(minLength: 8)
-            MessageLine(message: screen.message)
-                .frame(maxWidth: .infinity, minHeight: 40, alignment: .topLeading)
-            Spacer(minLength: 4)
+        VStack(spacing: 0) {
+            Image(nsImage: NSApplication.shared.applicationIconImage)
+                .resizable()
+                .frame(width: 56, height: 56)
+                .accessibilityHidden(true)
+            Text(verbatim: "NotProton")
+                .font(.title3.weight(.semibold))
+                .padding(.top, 4)
+                .accessibilityAddTraits(.isHeader)
+            Text(screen.status)
+                .font(.callout)
+                .foregroundStyle(screen.tone == .problem ? AnyShapeStyle(.red)
+                    : screen.tone == .attention ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .padding(.top, 1)
+            mainButton(screen)
+                .padding(.top, 12)
+            progress(screen)
+                .frame(height: 10)
+                .padding(.top, 6)
+            Spacer(minLength: 0)
             footer(screen)
         }
         .padding(.horizontal, 20)
-        .padding(.top, 16)
-        .padding(.bottom, 14)
+        .padding(.top, 14)
+        .padding(.bottom, 12)
         .frame(width: Self.size.width, height: Self.size.height)
         .confirmationDialog(questionTitle, isPresented: questionShown, titleVisibility: .visible,
                             presenting: model.question) { question in
             questionButtons(question)
         } message: { question in
-            questionMessage(question)
+            Text(questionMessage(question))
+        }
+        .alert(screen.problemKind.map(FlowProblem.title) ?? "", isPresented: alertShown,
+               presenting: screen.problem) { problem in
+            if let pane = problem.settingsPane {
+                Button(tr("Open Settings")) { Remedy.openSettings(pane) }
+            }
+            Button(tr("OK"), role: .cancel) {}
+        } message: { problem in
+            Text(problem.message)
         }
         .sheet(isPresented: $showsCredits) { CreditsView() }
-        .sheet(isPresented: deleteShown) { DeleteSheet().environment(model) }
     }
 
     // MARK: Parts
 
-    private func header(_ screen: MainScreen) -> some View {
-        HStack(spacing: 14) {
-            Image(nsImage: NSApplication.shared.applicationIconImage)
-                .resizable()
-                .frame(width: 56, height: 56)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(verbatim: "NotProton")
-                    .font(.title2.weight(.semibold))
-                    .accessibilityAddTraits(.isHeader)
-                Text(screen.status)
-                    .font(.callout)
-                    .foregroundStyle(screen.tone == .problem ? AnyShapeStyle(.red)
-                        : screen.tone == .attention ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .help(model.versionsLine)
-            }
-            .accessibilityElement(children: .combine)
-            Spacer(minLength: 0)
+    private func mainButton(_ screen: MainScreen) -> some View {
+        Button { Task { await model.press() } } label: {
+            Text(MainScreen.label(screen.button))
+                .frame(minWidth: 120)
+        }
+        .buttonStyle(screen.button == .delete ? AnyPrimitiveButtonStyle(.bordered)
+            : AnyPrimitiveButtonStyle(.borderedProminent))
+        .controlSize(.large)
+        .keyboardShortcut(screen.button == .delete ? nil : .defaultAction)
+        .disabled(!screen.buttonEnabled)
+        .accessibilityHint(hint(screen.button))
+    }
+
+    private func hint(_ button: MainScreen.Button) -> String {
+        switch button {
+        case .install: tr("Installs the engine and adds NotProton to Steam.")
+        case .update: tr("Updates the engine, the Steam bridge, Steam support and NotProton.")
+        case .delete: tr("Removes NotProton from Steam. Asks first.")
         }
     }
 
-    private func buttons(_ screen: MainScreen) -> some View {
-        HStack(spacing: 10) {
-            switch screen.primary {
-            case .install:
-                Button(tr("Install")) { Task { await model.pressInstall() } }
-                    .buttonStyle(.borderedProminent)
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(!screen.primaryEnabled)
-                    .accessibilityHint(tr("Installs the engine and adds NotProton to Steam."))
-            case .delete:
-                Button(tr("Delete…")) { model.pressDelete() }
-                    .buttonStyle(.bordered)
-                    .disabled(!screen.primaryEnabled)
-                    .accessibilityHint(tr("Removes NotProton from Steam. Asks first."))
-            }
-            if screen.showsUpdate {
-                Button(tr("Update")) { Task { await model.pressUpdate() } }
-                    .buttonStyle(screen.updateEnabled ? AnyPrimitiveButtonStyle(.borderedProminent)
-                        : AnyPrimitiveButtonStyle(.bordered))
-                    .keyboardShortcut("u", modifiers: .command)
-                    .disabled(!screen.updateEnabled)
-                    .accessibilityHint(screen.updateEnabled
-                        ? tr("Updates the engine, the Steam bridge, Steam support and NotProton.")
-                        : tr("Everything is up to date."))
-            }
+    @ViewBuilder
+    private func progress(_ screen: MainScreen) -> some View {
+        if let progress = screen.progress {
+            ProgressView(value: Double(progress.step), total: Double(max(progress.of, 1)))
+                .progressViewStyle(.linear)
+                .frame(width: 200)
+                .accessibilityLabel(tr("Progress"))
+                .accessibilityValue(tr("Step \(String(progress.step + 1)) of \(String(progress.of))"))
+        } else {
+            Color.clear
         }
-        .controlSize(.large)
     }
 
     private func footer(_ screen: MainScreen) -> some View {
-        HStack {
+        HStack(alignment: .bottom) {
             Button {
                 model.gearOpened()
                 showsGear = true
@@ -121,8 +126,8 @@ struct MainView: View {
 
             Button { showsCredits = true } label: {
                 Text(verbatim: "Ruslan_Ukraina")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.caption2.weight(.light))
+                    .foregroundStyle(.tertiary)
                     .underline(hoveringCredits)
             }
             .buttonStyle(.plain)
@@ -132,21 +137,20 @@ struct MainView: View {
         }
     }
 
-    // MARK: Questions
+    // MARK: Questions and the alert
 
-    private var questionShown: Binding<Bool> {
-        Binding(get: { model.question != nil && model.question != .delete },
-                set: { if !$0, model.question != .delete { model.question = nil } })
+    private var alertShown: Binding<Bool> {
+        Binding(get: { model.alertShown && model.screen.problem != nil }, set: { model.alertShown = $0 })
     }
 
-    private var deleteShown: Binding<Bool> {
-        Binding(get: { model.question == .delete }, set: { if !$0 { model.question = nil } })
+    private var questionShown: Binding<Bool> {
+        Binding(get: { model.question != nil }, set: { if !$0 { model.question = nil } })
     }
 
     private var questionTitle: String {
         switch model.question {
         case .closeSteam?: tr("Close Steam?")
-        case .delete?: ""
+        case .delete?: tr("Delete NotProton?")
         case .steamUpdatesOff?: tr("Turn off Steam updates?")
         case nil: ""
         }
@@ -160,84 +164,27 @@ struct MainView: View {
                 .keyboardShortcut(.defaultAction)
             Button(tr("Cancel"), role: .cancel) {}
         case .delete:
-            EmptyView()
+            Button(tr("Delete"), role: .destructive) { Task { await model.confirmDelete() } }
+            Button(tr("Cancel"), role: .cancel) {}
         case .steamUpdatesOff:
             Button(tr("Turn Off")) { Task { await model.confirmSteamUpdatesOff() } }
             Button(tr("Cancel"), role: .cancel) {}
         }
     }
 
-    @ViewBuilder
-    private func questionMessage(_ question: MainModel.Question) -> some View {
+    private func questionMessage(_ question: MainModel.Question) -> String {
         switch question {
         case .closeSteam:
-            Text(tr("Steam is open. NotProton will close it, then you can open it again."))
+            tr("Steam is open. NotProton will close it, then you can open it again.")
         case .delete:
-            EmptyView()
+            tr("NotProton is removed from Steam, and Steam goes back to how it was. Game prefixes and their backups, game settings and the Game Porting Toolkit stay.")
         case .steamUpdatesOff:
-            Text(tr("Steam won't update at all, even to versions NotProton supports. You can turn this back on here."))
+            tr("Steam won't update at all, even to versions NotProton supports. You can turn this back on here.")
         }
     }
 }
 
-/// The line under the buttons: the running step, the problem with Retry, or the result.
-struct MessageLine: View {
-    @Environment(MainModel.self) private var model
-    let message: MainScreen.Message
-
-    var body: some View {
-        switch message {
-        case .none:
-            EmptyView()
-        case .progress(let title, let detail, let step, let count):
-            VStack(alignment: .leading, spacing: 4) {
-                ProgressView(value: Double(step), total: Double(max(count, 1)))
-                    .progressViewStyle(.linear)
-                    .accessibilityLabel(tr("Progress"))
-                    .accessibilityValue(tr("Step \(String(step + 1)) of \(String(count))"))
-                Text(detail.map { "\(title) · \($0)" } ?? title)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-            .accessibilityElement(children: .combine)
-        case .problem(let problem):
-            HStack(alignment: .top, spacing: 8) {
-                Text(problem.message)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .lineLimit(3)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .help(problem.detail)
-                Spacer(minLength: 0)
-                if let pane = problem.settingsPane {
-                    Button(tr("Open Settings")) { Remedy.openSettings(pane) }
-                        .controlSize(.small)
-                }
-                // ⌘R is the old window's Refresh; Retry is reached with Tab.
-                Button(tr("Retry")) { Task { await model.retry() } }
-                    .controlSize(.small)
-            }
-        case .done(let text, let openSteam):
-            HStack(spacing: 8) {
-                Text(text)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
-                if openSteam {
-                    Button(tr("Open Steam")) { model.openSteam() }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.small)
-                }
-            }
-        }
-    }
-}
-
-/// `.buttonStyle` takes one concrete type; Update switches between two.
+/// `.buttonStyle` takes one concrete type; the button switches between two.
 struct AnyPrimitiveButtonStyle: PrimitiveButtonStyle {
     private let body: (Configuration) -> AnyView
 

@@ -13,8 +13,6 @@ enum FlowKind: String, Sendable, CaseIterable {
     case update
     case reinstall
     case delete
-    case rollbackEngine
-    case rollbackBridge
     case addToolkit
     case steamUpdates
 }
@@ -23,8 +21,7 @@ enum FlowKind: String, Sendable, CaseIterable {
 struct FlowStep: Identifiable, Sendable {
     enum ID: String, Sendable, CaseIterable {
         case waitForGame, rosetta, engine, bridge, signatures, steam, app
-        case quitSteam, removeSteam, removeFiles, removePrefixes
-        case rollbackEngine, rollbackBridge, toolkit, steamUpdates
+        case removeSteam, removeFiles, toolkit, steamUpdates
     }
 
     let id: ID

@@ -42,24 +42,18 @@ struct SetupEnvironment: Sendable {
 
 enum SetupSteps {
 
-    // MARK: Install (onboarding)
+    // MARK: Install and Update (onboarding)
 
-    static func install(_ env: SetupEnvironment = .live) -> [FlowStep] {
-        [rosetta(), engine(nil, env), bridge(env), signatures(env), steam(force: false)]
+    /// Install and Update are one flow (owner's edit to Phase 8): every part is checked
+    /// and put in place or updated, whatever is already current is left alone.
+    static func setup(_ plan: UpdatePlan? = nil, _ env: SetupEnvironment = .live) -> [FlowStep] {
+        var steps = [rosetta(), engine(plan?.engine, env), bridge(env), signatures(env), steam(force: false)]
+        if plan?.app != nil { steps.append(app()) }
+        return steps
     }
 
     static func reinstall() -> [FlowStep] {
         [engine(), bridge(), signatures(), steam(force: true)]
-    }
-
-    static func update(_ plan: UpdatePlan, _ env: SetupEnvironment = .live) -> [FlowStep] {
-        var steps = [signatures(env)]
-        if let release = plan.engine { steps.append(engine(release, env)) }
-        // The bridge is checked again after an engine switch: a new engine wants its own.
-        if plan.bridge != nil || plan.engine != nil { steps.append(bridge(env)) }
-        if plan.steamPatch { steps.append(steam(force: false)) }
-        if plan.app != nil { steps.append(app()) }
-        return steps
     }
 
     static func rosetta() -> FlowStep {
@@ -128,6 +122,10 @@ enum SetupSteps {
             guard FileManager.default.fileExists(atPath: SupportPaths.Steam.app.path(percentEncoded: false)) else {
                 throw KnownProblem(.steamMissing, log: "/Applications/Steam.app is missing")
             }
+            if !force, await Task.detached(priority: .userInitiated, operation: { isCurrentInSteam() }).value {
+                AppLog.note("install: Steam already has this NotProton, left alone")
+                return
+            }
             let result = try await Task.detached(priority: .userInitiated) {
                 try SteamInstaller.run(force: force, report: { phase in
                     if case .stoppingClient = phase { detail(tr("Closing Steam")) }
@@ -145,6 +143,14 @@ enum SetupSteps {
         }
     }
 
+    /// Steam.app carries this app's patch, unchanged, and this account has every part.
+    static func isCurrentInSteam() -> Bool {
+        let patch = PatchComparison.inspect()
+        guard case .installed = SteamBundle.deployment(bundledVersion: AppVersion.bundled, stale: patch?.stale ?? [])
+        else { return false }
+        return PayloadInspector.inspect().isComplete
+    }
+
     static func app() -> FlowStep {
         FlowStep(.app, tr("Updating NotProton")) { _ in
             // Sparkle shows its own window, downloads, and asks to relaunch.
@@ -154,8 +160,8 @@ enum SetupSteps {
 
     // MARK: Delete (ROADMAP §9.3)
 
-    static func delete(prefixes: Bool) -> [FlowStep] {
-        var steps = [
+    static func delete() -> [FlowStep] {
+        [
             FlowStep(.removeSteam, tr("Returning Steam to how it was")) { _ in
                 let result = try await Uninstall.run(directories: [])
                 guard result.restoredValveSignature else {
@@ -168,31 +174,9 @@ enum SetupSteps {
                 }.value
             },
         ]
-        if prefixes {
-            steps.append(FlowStep(.removePrefixes, tr("Deleting game prefixes")) { _ in
-                try await Task.detached(priority: .userInitiated) {
-                    for prefix in PrefixStore.all() { try PrefixTools.delete(prefix) }
-                }.value
-            })
-        }
-        return steps
     }
 
     // MARK: ⚙︎
-
-    static func rollbackEngine() -> [FlowStep] {
-        [FlowStep(.rollbackEngine, tr("Going back to the previous engine")) { detail in
-            _ = try await Task.detached(priority: .userInitiated) {
-                try EngineUpdater().rollback(mayQuitSteam: true) { detail(progressText($0)) }
-            }.value
-        }]
-    }
-
-    static func rollbackBridge() -> [FlowStep] {
-        [FlowStep(.rollbackBridge, tr("Going back to the previous Steam bridge")) { _ in
-            _ = try await Task.detached(priority: .userInitiated) { try BridgeUpdater().rollback() }.value
-        }]
-    }
 
     static func addToolkit(_ image: URL) -> [FlowStep] {
         [FlowStep(.toolkit, tr("Adding the Game Porting Toolkit")) { _ in
@@ -247,9 +231,9 @@ enum SetupSteps {
     }
 }
 
-/// Delete keeps what a player made or added (ROADMAP §9.3): game settings, the Game
-/// Porting Toolkit, Steam's backups and the logs. Prefixes are in Steam's libraries,
-/// not here, and go only when the player ticks the box.
+/// Delete keeps what a player made or added (owner's edit to Phase 8): game settings, the
+/// Game Porting Toolkit, Steam's backups and the logs. Prefixes and their backups are in
+/// Steam's libraries, not here, and Delete never touches them.
 enum Deletion {
     static let kept: Set<String> = ["settings", "d3dmetal", "backups"]
 

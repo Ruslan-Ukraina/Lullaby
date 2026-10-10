@@ -1,5 +1,5 @@
-// A failed step, in words a player understands (Phase 8, ROADMAP §9.1 "ошибка — понятный
-// текст и Retry"). The model's own errors are English sentences for the log; here they
+// A failed step, in words a player understands (Phase 8: a system alert; the same button
+// tries again). The model's own errors are English sentences for the log; here they
 // are sorted into the few cases a player can act on, each with a translated text, and
 // everything else becomes "this step did not work, details are in the log".
 
@@ -58,19 +58,19 @@ struct FlowProblem: Equatable, Sendable {
     var message: String {
         switch cause {
         case .steamDidNotQuit:
-            tr("Steam didn't close. Quit Steam yourself, then press Retry.")
+            tr("Steam didn't close. Quit Steam yourself, then try again.")
         case .gameRunning:
-            tr("A game is still running. Quit it, then press Retry.")
+            tr("A game is still running. Quit it, then try again.")
         case .offline:
-            tr("No connection to the internet. Check it, then press Retry.")
+            tr("No connection to the internet. Check it, then try again.")
         case .appManagement:
-            tr("macOS didn't let NotProton change Steam. Allow NotProton under App Management in System Settings, then press Retry.")
+            tr("macOS didn't let NotProton change Steam. Allow NotProton under App Management in System Settings, then try again.")
         case .otherAccount:
             tr("Steam was installed by another user of this Mac. Only that user can install NotProton into it.")
         case .rosettaMissing:
-            tr("Windows games need Rosetta. Install it when macOS asks, then press Retry.")
+            tr("Windows games need Rosetta. Install it when macOS asks, then try again.")
         case .steamMissing:
-            tr("Steam isn't in the Applications folder. Install Steam, then press Retry.")
+            tr("Steam isn't in the Applications folder. Install Steam, then try again.")
         case .engineNotSupportedYet:
             tr("A new engine is out, but NotProton doesn't support it yet. Try again later.")
         case .noBridgeYet:
@@ -82,26 +82,34 @@ struct FlowProblem: Equatable, Sendable {
         }
     }
 
-    /// Opens the App Management pane: shown as a button next to Retry.
+    /// The alert's title, by what was being done.
+    static func title(_ kind: FlowKind) -> String {
+        switch kind {
+        case .install: tr("Couldn't install NotProton")
+        case .update: tr("Couldn't update NotProton")
+        case .reinstall: tr("Couldn't reinstall NotProton")
+        case .delete: tr("Couldn't delete NotProton")
+        case .addToolkit: tr("Couldn't add the Game Porting Toolkit")
+        case .steamUpdates: tr("Couldn't change Steam updates")
+        }
+    }
+
+    /// Opens the App Management pane: a second button in the alert.
     var settingsPane: URL? {
         cause == .appManagement ? Remedy.appManagement.settingsPane : nil
     }
 
     static func failedText(_ step: FlowStep.ID) -> String {
         switch step {
-        case .waitForGame: tr("A game is still running. Quit it, then press Retry.")
+        case .waitForGame: tr("A game is still running. Quit it, then try again.")
         case .rosetta: tr("Couldn't check Rosetta. Details are in the log.")
         case .engine: tr("Couldn't install the engine. Details are in the log.")
         case .bridge: tr("Couldn't install the Steam bridge. Details are in the log.")
         case .signatures: tr("Couldn't download Steam support files. Details are in the log.")
         case .steam: tr("Couldn't install NotProton into Steam. Details are in the log.")
         case .app: tr("Couldn't update NotProton. Details are in the log.")
-        case .quitSteam: tr("Couldn't close Steam. Details are in the log.")
         case .removeSteam: tr("Couldn't return Steam to how it was. Details are in the log.")
         case .removeFiles: tr("Couldn't delete NotProton's files. Details are in the log.")
-        case .removePrefixes: tr("Couldn't delete the game prefixes. Details are in the log.")
-        case .rollbackEngine: tr("Couldn't go back to the previous engine. Details are in the log.")
-        case .rollbackBridge: tr("Couldn't go back to the previous Steam bridge. Details are in the log.")
         case .toolkit: tr("Couldn't add the Game Porting Toolkit. Details are in the log.")
         case .steamUpdates: tr("Couldn't change Steam updates. Details are in the log.")
         }

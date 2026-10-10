@@ -9,6 +9,7 @@
 //   --release update            the window's Update: the plan, then its steps, in turn
 //   --release onboarding        the window's Install without its Steam step: Rosetta,
 //                               engine, bridge, signatures (Phase 8)
+// (Install and Update run the same steps; update starts from the plan.)
 // update and onboarding run only on a scratch tree (--support, and --steam for the gate).
 // Options for a scratch tree, never the real one:
 //   --support DIR      a notproton folder: runners/, bridge/, bridges/, manifests/,
@@ -125,7 +126,7 @@ enum HeadlessRelease {
                 print("release: engine check failed: \(error.localizedDescription)")
             }
             print("release: update plan \(plan.isEmpty ? "nothing" : plan.parts.joined(separator: ", ")); "
-                + "steps \(SetupSteps.update(plan).map(\.id.rawValue).joined(separator: " ")); "
+                + "steps \(SetupSteps.setup(plan).map(\.id.rawValue).joined(separator: " ")); "
                 + "closes Steam \(plan.closesSteam)")
             for language in ["en", "uk", "ru"] {
                 print("release: status [\(language)] \(statusLine(plan, language: language))")
@@ -146,9 +147,9 @@ enum HeadlessRelease {
                     plan.engine = release
                 }
                 print("release: update plan \(plan.isEmpty ? "nothing" : plan.parts.joined(separator: ", "))")
-                steps = SetupSteps.update(plan, env)
+                steps = SetupSteps.setup(plan, env)
             } else {
-                steps = Array(SetupSteps.install(env).dropLast())
+                steps = Array(SetupSteps.setup(nil, env).dropLast())
             }
             return await runSteps(steps)
         case "gate":

@@ -5,11 +5,11 @@ import Testing
 
 @testable import NotProtonApp
 
-// Phase 8 (ROADMAP §9.8): the window's six states, the flows behind its buttons, the
-// badge and Delete. Nothing here touches Steam, the engine or the network: the steps
-// and the probes are stand-ins.
+// Phase 8 (ROADMAP §9.8, with the owner's edit): the window's states, its one button
+// (Install, Update, Delete), the flows behind it, the badge and Delete. Nothing here
+// touches Steam, the engine or the network: the steps and the probes are stand-ins.
 
-private func step(_ id: FlowStep.ID, _ log: Log, fail: Bool = false) -> FlowStep {
+private func step(_ id: FlowStep.ID, _ log: Log) -> FlowStep {
     FlowStep(id, id.rawValue) { _ in
         await log.add(id)
         if await log.shouldFail(id) { throw StepFailure(step: id.rawValue, detail: "stand-in failure") }
@@ -36,87 +36,100 @@ private func defaults() -> UserDefaults {
     return defaults
 }
 
+@MainActor
+private func model(_ log: Log? = nil, steam: Bool = false) -> MainModel {
+    let model = MainModel(badge: BadgeStore(defaults: defaults(), dock: { _ in }))
+    model.probe = { (false, steam) }
+    model.findUpdates = { _ in UpdatePlan() }
+    if let log {
+        model.steps = { kind, _ in
+            switch kind {
+            case .delete: SetupSteps.delete().map { step($0.id, log) }
+            default: [step(.engine, log), step(.bridge, log), step(.steam, log)]
+            }
+        }
+    }
+    return model
+}
+
 private let release = EngineRelease(
     channel: .beta, version: "dormison-b3",
     url: URL(string: "https://github.com/kageroumado/dormison/releases/download/b3/dormison-b3.tar.xz")!,
     sha256: String(repeating: "0", count: 64), sizeBytes: 1, notes: nil, minAppVersion: nil)
 
+private var updatePlan: UpdatePlan {
+    var plan = UpdatePlan()
+    plan.engine = release
+    plan.steamPatch = true
+    return plan
+}
+
 @MainActor
 @Suite("Main window states")
 struct MainWindowStateTests {
 
-    @Test("Not installed: blue Install, no Update")
+    @Test("Not installed: the one button is a blue Install")
     func notInstalled() {
         let screen = MainScreen.make(install: .notInstalled, plan: nil, flow: nil)
-        #expect(screen.primary == .install)
-        #expect(screen.primaryEnabled)
-        #expect(!screen.showsUpdate)
+        #expect(screen.button == .install)
+        #expect(screen.buttonEnabled)
         #expect(screen.status == tr("Not installed"))
-        #expect(screen.message == .none)
+        #expect(screen.problem == nil && screen.progress == nil)
     }
 
-    @Test("Installing: the step shows, nothing else can be pressed")
+    @Test("Installing: the step shows under the name, the button waits")
     func installing() {
         let flow = FlowState.running(.install, step: 1, of: 5, title: "Downloading the engine", detail: "Downloaded 10 MB")
         let screen = MainScreen.make(install: .notInstalled, plan: nil, flow: flow)
-        #expect(screen.message == .progress(title: "Downloading the engine", detail: "Downloaded 10 MB", step: 1, of: 5))
-        #expect(!screen.primaryEnabled)
+        #expect(screen.button == .install)
+        #expect(!screen.buttonEnabled)
         #expect(!screen.gearEnabled)
-        #expect(screen.status == tr("Installing…"))
+        #expect(screen.status == "Downloading the engine · Downloaded 10 MB")
+        #expect(screen.progress?.step == 1 && screen.progress?.of == 5)
     }
 
-    @Test("Installed: grey Delete, Update shown but off when nothing is new")
+    @Test("Installed and current: the button is a grey Delete")
     func installed() {
         let screen = MainScreen.make(install: .installed(engine: "Dormison b2"), plan: UpdatePlan(), flow: nil)
-        #expect(screen.primary == .delete)
-        #expect(screen.showsUpdate)
-        #expect(!screen.updateEnabled)
-        #expect(screen.status.contains("Dormison b2"))
-        #expect(screen.tone == .normal)
+        #expect(screen.button == .delete)
+        #expect(screen.buttonEnabled)
+        #expect(screen.status == tr("Installed · \("Dormison b2")"))
     }
 
-    @Test("Update available: Update can be pressed, the status names what is new")
+    @Test("Delete waits while the window looks for updates")
+    func deleteWaitsForTheCheck() {
+        #expect(!MainScreen.make(install: .installed(engine: "Dormison b2"), plan: nil, flow: nil, checking: true).buttonEnabled)
+        #expect(!MainScreen.make(install: .installed(engine: "Dormison b2"), plan: nil, flow: nil).buttonEnabled)
+    }
+
+    @Test("Update available: the button is Update, Delete is not offered")
     func updateAvailable() {
-        var plan = UpdatePlan()
-        plan.engine = release
-        plan.steamPatch = true
-        let screen = MainScreen.make(install: .installed(engine: "Dormison b2"), plan: plan, flow: nil)
-        #expect(screen.updateEnabled)
+        let screen = MainScreen.make(install: .installed(engine: "Dormison b2"), plan: updatePlan, flow: nil)
+        #expect(screen.button == .update)
+        #expect(screen.buttonEnabled)
         #expect(screen.tone == .attention)
-        #expect(screen.status.contains("Dormison b3"))
-        #expect(screen.status.contains(tr("Steam patch")))
+        #expect(screen.status.contains("Dormison b3") && screen.status.contains(tr("Steam patch")))
     }
 
-    @Test("Updating: Update and Delete wait")
+    @Test("Updating: the button keeps its name and waits")
     func updating() {
-        var plan = UpdatePlan()
-        plan.bridge = nil
-        plan.steamPatch = true
-        let flow = FlowState.running(.update, step: 0, of: 2, title: "Getting Steam support files", detail: nil)
-        let screen = MainScreen.make(install: .installed(engine: "Dormison b2"), plan: plan, flow: flow)
-        #expect(!screen.updateEnabled)
-        #expect(!screen.primaryEnabled)
-        #expect(screen.status == tr("Updating…"))
+        let flow = FlowState.running(.update, step: 0, of: 5, title: "Checking Rosetta", detail: nil)
+        let screen = MainScreen.make(install: .installed(engine: "Dormison b2"), plan: updatePlan, flow: flow)
+        #expect(screen.button == .update)
+        #expect(!screen.buttonEnabled)
+        #expect(screen.status == "Checking Rosetta")
     }
 
-    @Test("Error: a plain sentence and Retry")
+    @Test("Error: a problem for the system alert, and the button stays pressable")
     func error() {
         let problem = FlowProblem(cause: .offline, detail: "The Internet connection appears to be offline.")
         let flow = FlowState.failed(.install, step: 1, of: 5, title: "Downloading the engine", problem: problem)
         let screen = MainScreen.make(install: .notInstalled, plan: nil, flow: flow)
-        #expect(screen.message == .problem(problem))
-        #expect(screen.tone == .problem)
-        #expect(screen.primaryEnabled)
-        #expect(problem.message == tr("No connection to the internet. Check it, then press Retry."))
-    }
-
-    @Test("Install's last word offers Open Steam")
-    func doneOffersSteam() {
-        let screen = MainScreen.make(install: .installed(engine: "Dormison b2"), plan: UpdatePlan(), flow: .finished(.install))
-        #expect(screen.message == .done(tr("Done! Open Steam and start a Windows game."), openSteam: true))
-        let deleted = MainScreen.make(install: .notInstalled, plan: nil, flow: .finished(.delete))
-        guard case .done(_, let openSteam) = deleted.message else { Issue.record("no outcome"); return }
-        #expect(!openSteam)
+        #expect(screen.problem == problem)
+        #expect(screen.problemKind == .install)
+        #expect(screen.button == .install && screen.buttonEnabled)
+        #expect(FlowProblem.title(.install) == tr("Couldn't install NotProton"))
+        #expect(problem.message == tr("No connection to the internet. Check it, then try again."))
     }
 
     // The window itself, drawn for each state at its fixed size: a state that broke the
@@ -126,7 +139,6 @@ struct MainWindowStateTests {
     ])
     func draws(_ name: String) throws {
         let model = MainModel(badge: BadgeStore(defaults: defaults(), dock: { _ in }))
-        var plan = UpdatePlan()
         switch name {
         case "not-installed":
             model.installOverride = .notInstalled
@@ -136,16 +148,14 @@ struct MainWindowStateTests {
                                        detail: SetupSteps.downloaded(10_000_000, of: 240_000_000)))
         case "installed":
             model.installOverride = .installed(engine: "Dormison b2")
-            model.plan = plan
+            model.plan = UpdatePlan()
         case "update-available":
             model.installOverride = .installed(engine: "Dormison b2")
-            plan.engine = release
-            model.plan = plan
+            model.plan = updatePlan
         case "updating":
             model.installOverride = .installed(engine: "Dormison b2")
-            plan.engine = release
-            model.plan = plan
-            model.runner.show(.running(.update, step: 1, of: 3, title: tr("Downloading the engine"), detail: nil))
+            model.plan = updatePlan
+            model.runner.show(.running(.update, step: 1, of: 5, title: tr("Downloading the engine"), detail: nil))
         default:
             model.installOverride = .notInstalled
             model.runner.show(.failed(.install, step: 4, of: 5, title: tr("Installing into Steam"),
@@ -159,8 +169,7 @@ struct MainWindowStateTests {
         #expect(SetupSteps.downloaded(0, of: 10).isEmpty)
         if let folder = ProcessInfo.processInfo.environment["NP_WINDOW_SNAPSHOTS"] {
             let url = URL(filePath: folder).appending(path: "\(name).png")
-            let rep = NSBitmapImageRep(cgImage: image)
-            try rep.representation(using: .png, properties: [:])?.write(to: url)
+            try NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])?.write(to: url)
         }
     }
 }
@@ -169,85 +178,94 @@ struct MainWindowStateTests {
 @Suite("Main window flows")
 struct MainWindowFlowTests {
 
-    @Test("A failed step stops the flow; Retry starts from it, not from the beginning")
+    @Test("A failed step stops the flow; the runner goes on from it, not from the beginning")
     func retryResumes() async {
         let log = Log()
         await log.fail([.bridge])
         let runner = FlowRunner()
         let steps = [step(.rosetta, log), step(.engine, log), step(.bridge, log), step(.steam, log)]
 
-        let first = await runner.start(.install, steps)
-        #expect(!first)
-        guard case .failed(.install, let index, 4, _, let problem)? = runner.state else {
+        #expect(!(await runner.start(.install, steps)))
+        guard case .failed(.install, 2, 4, _, let problem)? = runner.state else {
             Issue.record("not failed: \(String(describing: runner.state))"); return
         }
-        #expect(index == 2)
         #expect(problem.cause == .failed(.bridge))
-        #expect(problem.message == FlowProblem.failedText(.bridge))
 
         await log.fail([])
-        let second = await runner.retry()
-        #expect(second)
+        #expect(await runner.retry())
         #expect(runner.state == .finished(.install))
         #expect(await log.ran == [.rosetta, .engine, .bridge, .bridge, .steam])
     }
 
-    @Test("Install runs its steps, then puts the badge up once")
-    func installBadges() async {
+    @Test("The button: Install runs, a failure raises the alert, the same button goes on")
+    func installAlertThenSameButton() async {
         let log = Log()
-        let store = defaults()
-        var dock: [String?] = []
-        let model = MainModel(badge: BadgeStore(defaults: store, dock: { dock.append($0) }))
-        model.steps = { kind, _ in kind == .install ? [step(.engine, log), step(.steam, log)] : [] }
-        model.probe = { (false, false) }
-        model.findUpdates = { _ in UpdatePlan() }
+        await log.fail([.bridge])
+        let model = model(log)
+        model.installOverride = .notInstalled
 
-        await model.pressInstall()
-        #expect(model.runner.state == .finished(.install))
-        #expect(await log.ran == [.engine, .steam])
+        await model.press()
+        #expect(model.alertShown)
+        #expect(model.screen.problem?.cause == .failed(.bridge))
+        #expect(model.screen.button == .install)
+
+        model.alertShown = false
+        await log.fail([])
+        await model.press()
+        #expect(!model.alertShown)
+        #expect(await log.ran == [.engine, .bridge, .bridge, .steam])
+        #expect(model.runner.state == nil)
         #expect(model.showsBadge)
-        #expect(dock.last == "1")
     }
 
-    @Test("Steam running: Install asks before closing it, and runs only after Yes")
+    @Test("The button: Update runs when there is an update")
+    func updateButton() async {
+        let log = Log()
+        let model = model(log)
+        model.installOverride = .installed(engine: "Dormison b2")
+        model.plan = updatePlan
+        #expect(model.screen.button == .update)
+        await model.press()
+        #expect(await log.ran == [.engine, .bridge, .steam])
+    }
+
+    @Test("Steam running: the button asks before closing it, and runs only after Yes")
     func asksAboutSteam() async {
         let log = Log()
-        let model = MainModel(badge: BadgeStore(defaults: defaults(), dock: { _ in }))
-        model.steps = { _, _ in [step(.steam, log)] }
-        model.probe = { (false, true) }
-        model.findUpdates = { _ in UpdatePlan() }
+        let model = model(log, steam: true)
+        model.installOverride = .notInstalled
 
-        await model.pressInstall()
+        await model.press()
         #expect(model.question == .closeSteam(.install))
         #expect(await log.ran.isEmpty)
 
         await model.confirmCloseSteam(.install)
-        #expect(await log.ran == [.steam])
+        #expect(await log.ran == [.engine, .bridge, .steam])
     }
 
-    @Test("A running game stops every flow with a plain sentence; Retry goes on once it is closed")
+    @Test("A running game stops the flow; the same button goes on once it is closed")
     func gameRunning() async {
         let log = Log()
         let game = GameSwitch()
-        let model = MainModel(badge: BadgeStore(defaults: defaults(), dock: { _ in }))
-        model.steps = { _, _ in [step(.steam, log)] }
+        let model = model(log, steam: true)
+        model.installOverride = .installed(engine: "Dormison b2")
+        model.plan = updatePlan
         model.probe = { (await game.running, true) }
-        model.findUpdates = { _ in UpdatePlan() }
 
-        await model.pressUpdate()
-        guard case .failed(.update, 0, 2, _, let problem)? = model.runner.state else {
+        await model.press()
+        guard case .failed(.update, 0, 4, _, let problem)? = model.runner.state else {
             Issue.record("not refused: \(String(describing: model.runner.state))"); return
         }
         #expect(problem.cause == .gameRunning)
-        #expect(await log.ran.isEmpty)
+        #expect(problem.message == tr("A game is still running. Quit it, then try again."))
+        #expect(model.alertShown)
 
-        await model.retry()
+        await model.press()
         #expect(await log.ran.isEmpty)
 
         await game.quit()
-        await model.retry()
-        #expect(model.runner.state == .finished(.update))
-        #expect(await log.ran == [.steam])
+        await model.press()
+        #expect(await log.ran == [.engine, .bridge, .steam])
     }
 
     @Test("Update closes Steam only when the engine or the Steam patch changes")
@@ -258,23 +276,16 @@ struct MainWindowFlowTests {
         plan.steamPatch = true
         #expect(MainModel.closesSteam(.update, plan: plan))
         #expect(MainModel.closesSteam(.install, plan: nil))
-        #expect(!MainModel.closesSteam(.rollbackBridge, plan: nil))
+        #expect(!MainModel.closesSteam(.steamUpdates, plan: nil))
     }
 
-    @Test("Update's steps: only what is new, the bridge checked again after an engine")
-    func updateSteps() {
-        var plan = UpdatePlan()
-        #expect(SetupSteps.update(plan).map(\.id) == [.signatures])
-        plan.steamPatch = true
+    @Test("Install and Update are one flow that checks every part: Rosetta, engine, bridge, signatures, Steam")
+    func oneFlow() {
+        #expect(SetupSteps.setup(nil).map(\.id) == [.rosetta, .engine, .bridge, .signatures, .steam])
+        var plan = updatePlan
+        #expect(SetupSteps.setup(plan).map(\.id) == [.rosetta, .engine, .bridge, .signatures, .steam])
         plan.app = "1.2.0"
-        #expect(SetupSteps.update(plan).map(\.id) == [.signatures, .steam, .app])
-        plan.engine = release
-        #expect(SetupSteps.update(plan).map(\.id) == [.signatures, .engine, .bridge, .steam, .app])
-    }
-
-    @Test("Install is the onboarding: Rosetta, engine, bridge, signatures, Steam")
-    func installOrder() {
-        #expect(SetupSteps.install().map(\.id) == [.rosetta, .engine, .bridge, .signatures, .steam])
+        #expect(SetupSteps.setup(plan).map(\.id) == [.rosetta, .engine, .bridge, .signatures, .steam, .app])
     }
 
     @Test("Known causes become plain sentences")
@@ -286,6 +297,7 @@ struct MainWindowFlowTests {
         #expect(FlowProblem(KnownProblem(.noBridgeYet, log: "x"), step: .bridge).message
             == tr("The Steam bridge for this engine isn't ready yet. Try again later."))
         for id in FlowStep.ID.allCases { #expect(!FlowProblem.failedText(id).isEmpty) }
+        for kind in FlowKind.allCases { #expect(!FlowProblem.title(kind).isEmpty) }
     }
 }
 
@@ -316,14 +328,12 @@ struct BadgeTests {
 
         badge.installFinished()
         #expect(!badge.isShowing)
-        // A new start of the app keeps it off.
         #expect(!BadgeStore(defaults: store, dock: { _ in }).isShowing)
     }
 
     @Test("The model lights the Steam updates row only the one time")
     func modelHighlight() {
-        let store = defaults()
-        let model = MainModel(badge: BadgeStore(defaults: store, dock: { _ in }))
+        let model = MainModel(badge: BadgeStore(defaults: defaults(), dock: { _ in }))
         model.badge.installFinished()
         model.showsBadge = model.badge.isShowing
         model.gearOpened()
@@ -338,45 +348,28 @@ struct BadgeTests {
 @Suite("Delete")
 struct DeleteTests {
 
-    @Test("Delete asks with the prefixes box off")
-    func asksWithBoxOff() {
-        let model = MainModel(badge: BadgeStore(defaults: defaults(), dock: { _ in }))
-        model.deletePrefixes = true
-        model.pressDelete()
-        #expect(model.question == .delete)
-        #expect(!model.deletePrefixes)
-        #expect(!MainModel.realSteps(.delete, model).map(\.id).contains(.removePrefixes))
-    }
-
-    // The buttons' path: Delete… → the sheet (box off) → Delete → the steps run → Install.
-    @Test("Delete through its question runs without the prefixes step, then offers Install")
+    @Test("Delete asks first; Yes returns Steam and removes the files, then the button is Install")
     func throughTheQuestion() async {
         let log = Log()
-        let model = MainModel(badge: BadgeStore(defaults: defaults(), dock: { _ in }))
+        let model = model(log, steam: true)
         model.installOverride = .installed(engine: "Dormison b2")
-        model.probe = { (false, true) }
-        model.findUpdates = { _ in UpdatePlan() }
-        model.steps = { kind, model in
-            #expect(kind == .delete)
-            return SetupSteps.delete(prefixes: model.deletePrefixes).map { step($0.id, log) }
-        }
-        #expect(model.screen.primary == .delete)
+        model.plan = UpdatePlan()
+        #expect(model.screen.button == .delete)
 
-        model.pressDelete()
+        await model.press()
         #expect(model.question == .delete)
+        #expect(await log.ran.isEmpty)
         await model.confirmDelete()
         #expect(model.question == nil)
         #expect(await log.ran == [.removeSteam, .removeFiles])
 
         model.installOverride = .notInstalled
-        #expect(model.screen.primary == .install)
-        #expect(model.screen.message == .done(tr("NotProton is deleted. Steam is back to how it was."), openSteam: false))
+        #expect(model.screen.button == .install)
     }
 
-    @Test("Game prefixes go only when the box is ticked")
-    func prefixesOnlyWhenTicked() {
-        #expect(SetupSteps.delete(prefixes: false).map(\.id) == [.removeSteam, .removeFiles])
-        #expect(SetupSteps.delete(prefixes: true).map(\.id) == [.removeSteam, .removeFiles, .removePrefixes])
+    @Test("Delete never has a prefixes step")
+    func noPrefixes() {
+        #expect(SetupSteps.delete().map(\.id) == [.removeSteam, .removeFiles])
     }
 
     @Test("Delete keeps game settings, the toolkit, Steam's backups and the logs")
@@ -387,10 +380,10 @@ struct DeleteTests {
         defer { try? FileManager.default.removeItem(at: root) }
         let names = ["runners", "bridge", "bridges", "signatures", "manifests", "mullion", "renderers",
                      "settings", "d3dmetal", "backups", "app.log", "notproton.log", "overlay-shim.dylib"]
+        try FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
         for name in names {
             let url = support.appending(path: name)
             if name.contains(".") {
-                try FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
                 try Data("x".utf8).write(to: url)
             } else {
                 try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
@@ -404,7 +397,6 @@ struct DeleteTests {
         let left = Set(try FileManager.default.contentsOfDirectory(atPath: support.path(percentEncoded: false)))
         #expect(left == ["settings", "d3dmetal", "backups", "app.log", "notproton.log"])
         #expect(!FileManager.default.fileExists(atPath: caches.path(percentEncoded: false)))
-        // Prefixes live in Steam's libraries, never under notproton/.
         #expect(targets.allSatisfy { !$0.path(percentEncoded: false).contains("compatdata") })
     }
 }

@@ -1,6 +1,7 @@
-// ⚙︎ (ROADMAP §9.1): Steam updates off, roll back the engine or the bridge, Reinstall,
-// add the Game Porting Toolkit, open the logs. The first time it opens after Install,
-// the Steam updates row is highlighted and a short tip explains it (§9.4).
+// ⚙︎ (Phase 8, owner's edit), top to bottom: Reinstall; Steam's and Dormison's versions
+// (read only; a Steam build NotProton has no signatures for is orange, "not checked");
+// Turn Off Steam Updates; Install GPTK. The first time it opens after Install, the Steam
+// updates row is highlighted and a short tip explains it (§9.4).
 
 import AppKit
 import SwiftUI
@@ -8,54 +9,64 @@ import UniformTypeIdentifiers
 
 struct GearPanel: View {
     @Environment(MainModel.self) private var model
-    @Environment(\.openWindow) private var openWindow
     let close: () -> Void
     @State private var showsTip = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            steamUpdatesRow
-            Divider()
-            action(tr("Roll Back Engine"), systemImage: "arrow.uturn.backward",
-                   detail: model.engineRollback.map { tr("Back to \(EngineStore.displayName($0))") },
-                   enabled: model.engineRollback != nil) {
-                Task { await model.pressRollbackEngine() }
-            }
-            action(tr("Roll Back Steam Bridge"), systemImage: "arrow.uturn.backward",
-                   detail: model.bridgeRollback.map { tr("Back to \($0.id)") },
-                   enabled: model.bridgeRollback != nil) {
-                Task { await model.pressRollbackBridge() }
-            }
             action(tr("Reinstall"), systemImage: "arrow.clockwise",
                    detail: tr("Puts every part back in place."),
                    enabled: model.install != .steamMissing) {
                 Task { await model.pressReinstall() }
             }
-            action(tr("Add Game Porting Toolkit…"), systemImage: "plus",
-                   detail: tr("For DirectX 12 games. Download it from Apple first."), enabled: true) {
-                chooseToolkit()
-            }
             Divider()
-            action(tr("Open Logs"), systemImage: "doc.text.magnifyingglass",
-                   detail: tr("Attach them when you report a problem."), enabled: true) {
-                model.revealLogs()
-            }
-            action(tr("More Settings…"), systemImage: "slider.horizontal.3",
-                   detail: tr("Prefixes, backups and the full status, as before."), enabled: true) {
-                openWindow(id: "classic")
-            }
-            if !model.versionsLine.isEmpty {
-                Text(model.versionsLine)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
+            versions
+            Divider()
+            steamUpdatesRow
+            Divider()
+            action(tr("Install GPTK…"), systemImage: "plus",
+                   detail: toolkitDetail, enabled: true) {
+                chooseToolkit()
             }
         }
         .padding(14)
-        .frame(width: 300)
+        .frame(width: 290)
         .onAppear { showsTip = model.highlightSteamUpdates }
     }
+
+    // MARK: Versions
+
+    private var versions: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let steam = model.steamVersion {
+                versionRow("Steam", steam.build, note: steam.checked ? nil : tr("not checked"))
+            } else {
+                versionRow("Steam", "—", note: nil)
+            }
+            versionRow("Dormison", model.engineVersion.map { $0.replacingOccurrences(of: "Dormison ", with: "") } ?? "—",
+                       note: nil)
+        }
+        .font(.callout)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func versionRow(_ name: String, _ value: String, note: String?) -> some View {
+        HStack(spacing: 6) {
+            Text(verbatim: name)
+                .foregroundStyle(.secondary)
+                .frame(width: 70, alignment: .leading)
+            Text(verbatim: value)
+                .monospacedDigit()
+                .textSelection(.enabled)
+            if let note {
+                Text(note).font(.caption)
+            }
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(note == nil ? AnyShapeStyle(.primary) : AnyShapeStyle(.orange))
+    }
+
+    // MARK: Steam updates
 
     private var steamUpdatesRow: some View {
         Toggle(isOn: Binding(
@@ -86,6 +97,18 @@ struct GearPanel: View {
         }
     }
 
+    // MARK: GPTK
+
+    private var toolkitDetail: String {
+        let toolkits = model.toolkits
+        let list = toolkits.installed.joined(separator: ", ")
+        var lines = [list.isEmpty
+            ? tr("For DirectX 12 games. Download it from Apple first.")
+            : tr("Installed: \(list)")]
+        for version in toolkits.unusable { lines.append(tr("D3DMetal \(version) needs macOS 27.")) }
+        return lines.joined(separator: "\n")
+    }
+
     private func action(
         _ title: String, systemImage: String, detail: String?, enabled: Bool, perform: @escaping () -> Void
     ) -> some View {
@@ -101,6 +124,7 @@ struct GearPanel: View {
                     Text(title)
                     if let detail {
                         Text(detail).font(.caption).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 Spacer(minLength: 0)

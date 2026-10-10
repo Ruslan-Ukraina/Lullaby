@@ -11,8 +11,6 @@
 //   migrate                              bring every pre-catalog prefix into the store
 //   panel JSON                           one request of the Steam panel, answered as JSON
 //   toolkit add PATH                     install D3DMetal from a Game Porting Toolkit image
-//   toolkit choose                       ask for the image (a macOS file dialog), then install;
-//                                        progress in d3dmetal/.install-status.json
 //   toolkit list                         installed D3DMetal versions as JSON
 //   mullion [install|state]              Mullion, the experimental renderer: download the pinned
 //                                        release and check it, or its state as JSON
@@ -166,8 +164,6 @@ public struct SettingsCLI {
                 try service.set(id, value, appID: app)
             case "reset":
                 try service.reset(appID: app)
-            case "addToolkit":
-                try startToolkitChooser()
             default:
                 throw SettingsError.usage("unknown op \(op)")
             }
@@ -185,17 +181,10 @@ public struct SettingsCLI {
         case "add":
             guard arguments.count == 2 else { throw SettingsError.usage("toolkit add PATH") }
             return .ok(try install(URL(filePath: arguments[1])).text)
-        case "choose":
-            store.setStatus(.object(["state": .string("choosing")]))
-            guard let path = Self.chooseImage() else {
-                store.setStatus(.object(["state": .string("cancelled")]))
-                return .ok()
-            }
-            return .ok(try install(URL(filePath: path)).text)
         case "list":
             return .ok(store.stateJSON().text)
         default:
-            throw SettingsError.usage("toolkit add PATH | choose | list")
+            throw SettingsError.usage("toolkit add PATH | list")
         }
     }
 
@@ -217,32 +206,6 @@ public struct SettingsCLI {
             service.log("d3dmetal: install from \(source.path(percentEncoded: false)) failed: \(error)")
             throw error
         }
-    }
-
-    /// The Steam panel cannot show a macOS file dialog itself, and its request has to come
-    /// back within seconds: a second CLI process asks for the image and installs it, and the
-    /// panel follows `d3dmetal/.install-status.json` in the game's state.
-    func startToolkitChooser() throws {
-        let process = Process()
-        process.executableURL = URL(filePath: CommandLine.arguments[0]).standardizedFileURL
-        process.arguments = ["toolkit", "choose"]
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
-        service.d3dmetal.setStatus(.object(["state": .string("choosing")]))
-        try process.run()
-    }
-
-    /// A macOS file dialog for the toolkit's disk image, through osascript so this CLI needs
-    /// no window of its own. nil when the player cancels.
-    static func chooseImage() -> String? {
-        let script = """
-            set f to choose file with prompt "Game Porting Toolkit (.dmg)" of type {"com.apple.disk-image-udif", "dmg"} \
-            default location (path to downloads folder)
-            POSIX path of f
-            """
-        guard let output = try? D3DMetalStore.run("/usr/bin/osascript", ["-e", script]) else { return nil }
-        let path = output.trimmingCharacters(in: .whitespacesAndNewlines)
-        return path.isEmpty ? nil : path
     }
 
     // MARK: - Dormison's View menu

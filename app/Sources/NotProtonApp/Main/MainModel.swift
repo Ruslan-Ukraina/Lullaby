@@ -1,9 +1,11 @@
-// The main window's logic (Phase 8): Install, Update, Delete and the ⚙︎ actions, each a
-// FlowRunner list of steps. Status's SystemStatus still reads the state of Steam, the
-// engine and the bridge, and still runs the Steam update gate while the app is open.
+// The main window's logic (Phase 8 with the owner's edit): one button (Install, Update or
+// Delete) and the actions under ⚙︎, each a FlowRunner list of steps. Status's SystemStatus
+// still reads the state of Steam, the engine and the bridge, and still runs the Steam
+// update gate while the app is open.
 
 import AppKit
 import Foundation
+import NotProtonSettings
 import Observation
 
 @MainActor
@@ -29,12 +31,13 @@ final class MainModel {
     let runner: FlowRunner
     let badge: BadgeStore
     var plan: UpdatePlan?
+    var checking = false
     var question: Question?
-    /// Delete's box: also delete game prefixes. Off unless the player ticks it (§9.3).
-    var deletePrefixes = false
     var showsBadge: Bool
     /// Set the one time ⚙︎ opens with the badge on: the row is highlighted, the tip shown.
     var highlightSteamUpdates = false
+    /// The failed flow's alert is on screen; closing it keeps the flow for a retry.
+    var alertShown = false
 
     /// Stand-ins for tests: the real steps, the game and Steam probes, the update check.
     @ObservationIgnored var steps: @MainActor (FlowKind, MainModel) -> [FlowStep] = MainModel.realSteps
@@ -59,26 +62,29 @@ final class MainModel {
     var install: InstallState { installOverride ?? InstallState.from(status.snapshot) }
 
     var screen: MainScreen {
-        MainScreen.make(install: install, plan: plan, flow: runner.state)
+        MainScreen.make(install: install, plan: plan, flow: runner.state, checking: checking)
     }
 
-    /// "NotProton 1.1.0 · Dormison b2 · bridge b2-3 · Steam patch 1506B51E, 10 Oct 2026":
-    /// what is installed, for ⚙︎ and the status line's tooltip (CLAUDE.md §8, build and date).
-    var versionsLine: String {
-        var parts = ["NotProton \(AppVersion.bundled)"]
-        guard let snapshot = status.snapshot else { return parts[0] }
-        if case .engine(let version) = snapshot.runner { parts.append(EngineStore.displayName(version)) }
-        if let bridge = snapshot.updates.activeBridge { parts.append(bridge.id) }
-        if let patch = snapshot.patch, let build = patch.build {
-            let date = patch.installedAt.map { ", " + $0.formatted(date: .abbreviated, time: .shortened) } ?? ""
-            parts.append("Steam patch \(build)\(date)")
-        }
-        return parts.joined(separator: " · ")
+    // MARK: ⚙︎ read-only lines
+
+    /// Steam's build, and whether NotProton has signatures for it ("checked").
+    var steamVersion: (build: String, checked: Bool)? {
+        guard let updates = status.snapshot?.updates, let build = updates.installedSteam else { return nil }
+        return (String(build), updates.supportedBuilds.contains(build))
+    }
+
+    var engineVersion: String? {
+        guard case .engine(let version)? = status.snapshot?.runner else { return nil }
+        return EngineStore.displayName(version)
     }
 
     var steamUpdatesOff: Bool { status.snapshot?.updates.gateMode == .manual }
-    var engineRollback: String? { status.snapshot?.rollbackTarget }
-    var bridgeRollback: BridgeRelease? { status.snapshot?.updates.bridgeRollback }
+
+    /// Installed D3DMetal versions, and those this macOS cannot run (D3DMetal 4 needs 27).
+    var toolkits: (installed: [String], unusable: [String]) {
+        let store = D3DMetalStore.standard
+        return (store.installed().map(\.version), store.unusable().map(\.version))
+    }
 
     // MARK: Opening
 
@@ -92,6 +98,8 @@ final class MainModel {
 
     func checkForUpdates() async {
         guard install.isInstalled, !runner.isRunning else { plan = nil; return }
+        checking = true
+        defer { checking = false }
         plan = await findUpdates(self)
         AppLog.note("main: update check, \(plan.map { $0.isEmpty ? "nothing" : $0.parts.joined(separator: ", ") } ?? "not checked")")
     }
@@ -108,23 +116,30 @@ final class MainModel {
         return plan
     }
 
-    // MARK: Buttons
+    // MARK: The button
 
-    func pressInstall() async { await begin(.install) }
-    func pressUpdate() async { await begin(.update) }
-    func pressReinstall() async { await begin(.reinstall) }
-    func pressRollbackEngine() async { await begin(.rollbackEngine) }
-    func pressRollbackBridge() async { await begin(.rollbackBridge) }
-
-    func pressDelete() {
-        deletePrefixes = false
-        question = .delete
+    /// Install, Update or Delete. After a failure the same button goes on from the step
+    /// that failed (owner's edit: no separate Retry).
+    func press() async {
+        let button = screen.button
+        if case .failed(let kind, _, _, _, _)? = runner.state, kind == button.kind, button != .delete {
+            AppLog.note("main: \(kind.rawValue) pressed again, going on from the failed step")
+            await retry()
+            return
+        }
+        switch button {
+        case .install: await begin(.install)
+        case .update: await begin(.update)
+        case .delete: question = .delete
+        }
     }
 
     func confirmDelete() async {
         question = nil
         await begin(.delete, asked: true)
     }
+
+    func pressReinstall() async { await begin(.reinstall) }
 
     func addToolkit(_ image: URL) async {
         pendingImage = image
@@ -158,16 +173,6 @@ final class MainModel {
         await finished(succeeded: succeeded)
     }
 
-    func openSteam() {
-        runner.dismiss()
-        AppLog.note("main: open Steam")
-        NSWorkspace.shared.openApplication(at: SupportPaths.Steam.app, configuration: NSWorkspace.OpenConfiguration())
-    }
-
-    func revealLogs() {
-        NSWorkspace.shared.activateFileViewerSelecting([AppLog.file])
-    }
-
     /// ⚙︎ opened: the badge goes for good, and the first time the Steam updates row lights up.
     func gearOpened() {
         highlightSteamUpdates = badge.gearOpened()
@@ -180,7 +185,7 @@ final class MainModel {
         guard !runner.isRunning else { return }
         let state = await probe()
         if state.game, kind != .addToolkit, kind != .steamUpdates {
-            // The flow stops on its first step; Retry looks again once the game is closed.
+            // The flow stops on its first step; pressing again looks once more.
             AppLog.note("main: \(kind.rawValue) waits, a game is running")
             let probe = self.probe
             let wait = FlowStep(.waitForGame, tr("Checking for running games")) { _ in
@@ -199,9 +204,9 @@ final class MainModel {
 
     static func closesSteam(_ kind: FlowKind, plan: UpdatePlan?) -> Bool {
         switch kind {
-        case .install, .reinstall, .delete, .rollbackEngine: true
+        case .install, .reinstall, .delete: true
         case .update: plan?.closesSteam ?? false
-        case .rollbackBridge, .addToolkit, .steamUpdates: false
+        case .addToolkit, .steamUpdates: false
         }
     }
 
@@ -212,6 +217,7 @@ final class MainModel {
 
     private func finished(succeeded: Bool) async {
         guard succeeded, case .finished(let kind)? = runner.state else {
+            alertShown = runner.canRetry
             await status.refresh()
             return
         }
@@ -220,20 +226,20 @@ final class MainModel {
             showsBadge = badge.isShowing
         }
         await status.refresh()
-        if kind == .update || kind == .install || kind == .reinstall || kind == .rollbackEngine || kind == .rollbackBridge {
+        runner.dismiss()
+        if kind == .delete {
+            plan = nil
+        } else if kind != .steamUpdates, kind != .addToolkit {
             await checkForUpdates()
         }
-        if kind == .delete { plan = nil }
     }
 
     static func realSteps(_ kind: FlowKind, _ model: MainModel) -> [FlowStep] {
         switch kind {
-        case .install: SetupSteps.install()
-        case .update: SetupSteps.update(model.plan ?? UpdatePlan())
+        case .install: SetupSteps.setup(nil)
+        case .update: SetupSteps.setup(model.plan ?? UpdatePlan())
         case .reinstall: SetupSteps.reinstall()
-        case .delete: SetupSteps.delete(prefixes: model.deletePrefixes)
-        case .rollbackEngine: SetupSteps.rollbackEngine()
-        case .rollbackBridge: SetupSteps.rollbackBridge()
+        case .delete: SetupSteps.delete()
         case .addToolkit: model.pendingImage.map(SetupSteps.addToolkit) ?? []
         case .steamUpdates: SetupSteps.steamUpdates(off: model.pendingUpdatesOff)
         }

@@ -83,10 +83,10 @@ struct CreditsView: View {
             VStack(spacing: 4) {
                 Image(nsImage: NSApplication.shared.applicationIconImage)
                     .resizable()
-                    .frame(width: 48, height: 48)
+                    .frame(width: 36, height: 36)
                     .accessibilityHidden(true)
                 Text(verbatim: "NotProton")
-                    .font(.title3.weight(.semibold))
+                    .font(.headline)
                 Text(tr("Made by Ruslan_Ukraina on the work of these people."))
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -99,12 +99,12 @@ struct CreditsView: View {
             Divider()
 
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 14) {
+                LazyVStack(alignment: .leading, spacing: 10) {
                     ForEach(Credits.all) { credit in
                         CreditRow(credit: credit)
                     }
                 }
-                .padding(20)
+                .padding(16)
             }
 
             Divider()
@@ -119,7 +119,7 @@ struct CreditsView: View {
             }
             .padding(14)
         }
-        .frame(width: 380, height: 460)
+        .frame(width: 320, height: 400)
     }
 }
 
@@ -131,9 +131,9 @@ private struct CreditRow: View {
             HStack(alignment: .firstTextBaseline) {
                 if let link = credit.link, let url = URL(string: link) {
                     Link(credit.name, destination: url)
-                        .font(.body.weight(.semibold))
+                        .font(.callout.weight(.semibold))
                 } else {
-                    Text(credit.name).font(.body.weight(.semibold))
+                    Text(credit.name).font(.callout.weight(.semibold))
                 }
                 Spacer()
                 Text(credit.license)
@@ -141,7 +141,7 @@ private struct CreditRow: View {
                     .foregroundStyle(.secondary)
             }
             Text(credit.authors)
-                .font(.callout)
+                .font(.caption)
             Text(credit.role)
                 .font(.caption)
                 .foregroundStyle(.secondary)
