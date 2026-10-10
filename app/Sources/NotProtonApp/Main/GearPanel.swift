@@ -1,5 +1,5 @@
-// ⚙︎ (Phase 8, owner's edits of 10.10), top to bottom: Turn Off Steam Updates; Reinstall;
-// Install GPTK; Steam's and Dormison's versions at the very bottom (read only; a Steam
+// ⚙︎ (Phase 8, owner's edits of 10.10), top to bottom: Reinstall; Install GPTK; Turn Off
+// Steam Updates; Steam's and Dormison's versions at the very bottom (read only; a Steam
 // build NotProton has no signatures for is orange, "not checked"). The first time it opens after Install, the Steam
 // updates row is highlighted and a short tip explains it (§9.4).
 
@@ -14,8 +14,6 @@ struct GearPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            steamUpdatesRow
-            Divider()
             action(tr("Reinstall"), systemImage: "arrow.clockwise",
                    detail: tr("Puts every part back in place."),
                    enabled: model.install != .steamMissing) {
@@ -26,6 +24,8 @@ struct GearPanel: View {
                    detail: toolkitDetail, enabled: true) {
                 chooseToolkit()
             }
+            Divider()
+            steamUpdatesRow
             Divider()
             versions
         }
