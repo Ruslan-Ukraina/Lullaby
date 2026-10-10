@@ -102,7 +102,8 @@ char *lb_steamwin_css_transform(const uint8_t *src, size_t src_len, size_t *out_
     // Only stylesheets that style the title bar, and never twice.
     if (!memmem(src, src_len, ANCHOR, sizeof(ANCHOR) - 1))
         return NULL;
-    if (memmem(src, src_len, "Lullaby: native Steam windows", 31))
+    static const char MARK[] = "Lullaby: native Steam windows";
+    if (memmem(src, src_len, MARK, sizeof(MARK) - 1))
         return NULL;
     size_t extra = sizeof(LB_STEAMWIN_CSS) - 1;
     char *out = malloc(src_len + extra + 1);
