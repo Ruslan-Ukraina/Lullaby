@@ -140,3 +140,24 @@
 | `text.waitSpin` | Wait spin | Очікування (spin) | Ожидание (spin) |
 
 <!-- rows=129 same=13 -->
+
+
+## Новые тексты после strings-final (10.10.2026) — на проверку
+
+Не было в `docs/strings-final.md`: подсказка D3DMetal (шаг 3), добавление Game Porting Toolkit (Фаза 7B), рецепты (5б). Переводы — мои; правь как обычно.
+
+| ключ | en | uk | ru |
+|---|---|---|---|
+| `setting.renderer.help.entry[D3DMetal]` | Apple's Direct3D 11 and 12 from the Game Porting Toolkit you add. Needed for Direct3D 12 games. | Direct3D 11 і 12 від Apple з Game Porting Toolkit, який ви додаєте. Потрібен для ігор на Direct3D 12. | Direct3D 11 и 12 от Apple из Game Porting Toolkit, который вы добавляете. Нужен для игр на Direct3D 12. |
+| `text.recipe` | NotProton recipe | Рецепт NotProton | Рецепт NotProton |
+| `text.recipeValue` | NotProton recipe: %@ | Рецепт NotProton: %@ | Рецепт NotProton: %@ |
+| `text.resetRecipe` | Restore recipe | Повернути рецепт | Вернуть рецепт |
+| `text.toolkitAdd` | Add Game Porting Toolkit… | Додати Game Porting Toolkit… | Добавить Game Porting Toolkit… |
+| `text.toolkitChoosing` | Choose the .dmg in the window that opened. | Виберіть .dmg у вікні, що відкрилося. | Выберите .dmg в открывшемся окне. |
+| `text.toolkitFailed` | Could not add D3DMetal: %@ | Не вдалося додати D3DMetal: %@ | Не удалось добавить D3DMetal: %@ |
+| `text.toolkitInstalled` | Installed: %@ | Встановлено: %@ | Установлено: %@ |
+| `text.toolkitInstalling` | Installing D3DMetal… | Встановлення D3DMetal… | Установка D3DMetal… |
+| `text.toolkitMissing` | D3DMetal is not installed — add it | D3DMetal не встановлено — додати | D3DMetal не установлен — добавить |
+| `text.toolkitNeedsMacOS` | D3DMetal %@ needs macOS 27 or later. | D3DMetal %@ потребує macOS 27 або новішої. | D3DMetal %@ требует macOS 27 или новее. |
+| `text.toolkitNote` | Direct3D 12 needs Apple's D3DMetal. Download the Game Porting Toolkit from Apple (free Apple Account) and choose its .dmg here. NotProton does not distribute it. | Для Direct3D 12 потрібен D3DMetal від Apple. Завантажте Game Porting Toolkit з сайту Apple (безкоштовний Apple Account) і виберіть тут його .dmg. NotProton його не поширює. | Для Direct3D 12 нужен D3DMetal от Apple. Скачайте Game Porting Toolkit с сайта Apple (бесплатный Apple Account) и выберите здесь его .dmg. NotProton его не распространяет. |
+| `text.toolkitTitle` | D3DMetal · Apple Game Porting Toolkit | D3DMetal · Apple Game Porting Toolkit | D3DMetal · Apple Game Porting Toolkit |
