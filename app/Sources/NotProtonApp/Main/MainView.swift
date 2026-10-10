@@ -215,9 +215,9 @@ struct MessageLine: View {
                     Button(tr("Open Settings")) { Remedy.openSettings(pane) }
                         .controlSize(.small)
                 }
+                // ⌘R is the old window's Refresh; Retry is reached with Tab.
                 Button(tr("Retry")) { Task { await model.retry() } }
                     .controlSize(.small)
-                    .keyboardShortcut("r", modifiers: .command)
             }
         case .done(let text, let openSteam):
             HStack(spacing: 8) {

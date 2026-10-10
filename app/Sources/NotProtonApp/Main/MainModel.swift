@@ -180,10 +180,14 @@ final class MainModel {
         guard !runner.isRunning else { return }
         let state = await probe()
         if state.game, kind != .addToolkit, kind != .steamUpdates {
-            AppLog.note("main: \(kind.rawValue) refused, a game is running")
-            await runner.start(kind, [FlowStep(.quitSteam, MainScreen.runningLine(kind)) { _ in
-                throw KnownProblem(.gameRunning, log: "a game is running")
-            }])
+            // The flow stops on its first step; Retry looks again once the game is closed.
+            AppLog.note("main: \(kind.rawValue) waits, a game is running")
+            let probe = self.probe
+            let wait = FlowStep(.waitForGame, tr("Checking for running games")) { _ in
+                if await probe().game { throw KnownProblem(.gameRunning, log: "a game is running") }
+            }
+            let succeeded = await runner.start(kind, [wait] + steps(kind, self))
+            await finished(succeeded: succeeded)
             return
         }
         if state.steam, !asked, Self.closesSteam(kind, plan: plan) {

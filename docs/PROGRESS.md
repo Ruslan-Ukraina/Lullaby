@@ -1144,3 +1144,17 @@ PEAK, DXMT, меню; `perf/peak-ab.sh` чередует «исходно → и
 5. Фазу 8 начинать с плана по ROADMAP §9 и показать его владельцу до кода.
 
 - 10.10: две правки upstream (Dock для служебных процессов, инструмент по умолчанию) — **не нужны**, проверено (DECISIONS A1010-5).
+
+## 2026-10-10 ~11:30–12:40 CEST — Фаза 8: маленькое окно NotProton (ветка `phase-8`, папка `~/Projects/NotProton-phase8`)
+
+Рабочая папка — отдельный git worktree от `phase-7` (`phase-7` и `~/Projects/NotProton` не тронуты). Для `make app` в ней `scratch/dormison-build` и `scratch/ntdll-b1` — ссылки на основную папку, `build/dobby` и `app/.build` скопированы оттуда.
+
+- **Контрольная точка §9.6** показана в чате (32 функции старого окна с предложением ⚙︎ / Steam / удалить). Ответа ещё нет → ничего не удалено, старое окно — «Інші налаштування…» в ⚙︎ (P8-1).
+- **Окно** (`app/Sources/NotProtonApp/Main/`): 360×220, иконка, название, строка статуса; Install (синяя) ↔ «Видалити…» (серая, лист с флажком префиксов, выключен); «Оновити» (активна, когда есть план); прогресс по шагам, ошибка понятным текстом + «Повторити» (с шага ошибки), «Відкрити параметри» для App Management; ⚙︎ слева внизу (оновлення Steam, откат движка и моста, Reinstall, GPTK, журналы, старое окно, версии); «Ruslan_Ukraina» → credits (17 частей, сверка с NOTICE). Бейдж «1» в Dock и точка на ⚙︎ после первого Install, подсветка + поповер §9.4, снимается навсегда. Решения P8-1…P8-10.
+- **Install = онбординг:** Rosetta (Intel-помощник для системного вопроса, P8-4) → движок → мост → сигнатуры → Steam → «Відкрити Steam». **Update:** план при открытии (движок, мост, патч Steam, приложение через Sparkle без окна), автопроверки Sparkle выключены (P8-7).
+- **Локализация:** `Localizable.xcstrings`, 135 строк × en/uk/ru, `CFBundleLocalizations`. Тексты — в `docs/strings-review.md` можно выгрузить по просьбе.
+- **Тесты:** `MainWindowTests` (6 состояний + отрисовка каждого в 360×220, шаги и Retry, вопрос о Steam, игра запущена, порядок шагов, бейдж, Delete и что он оставляет), `WindowLocalizationTests` (полнота, лишние ключи, `%@`, lproj в пакете, текст §9.4), `CreditsTests`. **`make app-tests` — код 0, 434 теста** (было 405). **`make app` — код 0**, `out/NotProton.app` (dev), помощник Rosetta — x86_64, `codesign --deep --strict` ок.
+- **Update на тестовой ленте** (тестовый ключ Фазы 7, `scratch/local-bridge/dormison-b2/feed`, временное дерево в scratchpad; ничего не ставилось): `NotProtonApp --release plan --support … --feed file://… --key …` → `bridge-dormison-b2-3 available`, `engine dormison-b3 is out, waiting for support`, план «Steam bridge», шаги `signatures bridge`, Steam не закрывается; строка статуса en «Update available: Steam bridge», uk «Є оновлення: міст Steam», ru «Есть обновление: мост Steam».
+- **Найдено:** у Dormison вышел **b3**; моста для b3 нет → Install на чистом Mac или после Delete сейчас не поставит движок (BLOCKERS «Фаза 8» п. 2, BACKLOG 36.1, R70). Старое окно умело бы то же самое — это не новая поломка, но окно делает её заметной.
+- В `/Applications` ничего не ставилось, Steam и игры не запускались, снимков экрана нет (картинки состояний — только из теста, в scratchpad, не в git).
+- **Дальше:** твой ответ по §9.6 и по b3 (BLOCKERS), ручная проверка SPIKE_TEST §17.

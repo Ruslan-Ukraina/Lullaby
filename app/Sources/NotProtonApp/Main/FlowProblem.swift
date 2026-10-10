@@ -89,6 +89,7 @@ struct FlowProblem: Equatable, Sendable {
 
     static func failedText(_ step: FlowStep.ID) -> String {
         switch step {
+        case .waitForGame: tr("A game is still running. Quit it, then press Retry.")
         case .rosetta: tr("Couldn't check Rosetta. Details are in the log.")
         case .engine: tr("Couldn't install the engine. Details are in the log.")
         case .bridge: tr("Couldn't install the Steam bridge. Details are in the log.")

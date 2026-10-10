@@ -22,7 +22,7 @@ enum FlowKind: String, Sendable, CaseIterable {
 /// One step of a flow. `id` names it in the log and the tests; `title` is shown.
 struct FlowStep: Identifiable, Sendable {
     enum ID: String, Sendable, CaseIterable {
-        case rosetta, engine, bridge, signatures, steam, app
+        case waitForGame, rosetta, engine, bridge, signatures, steam, app
         case quitSteam, removeSteam, removeFiles, removePrefixes
         case rollbackEngine, rollbackBridge, toolkit, steamUpdates
     }

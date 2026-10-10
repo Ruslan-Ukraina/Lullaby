@@ -24,6 +24,11 @@ private actor Log {
     func fail(_ ids: Set<FlowStep.ID>) { failing = ids }
 }
 
+private actor GameSwitch {
+    var running = true
+    func quit() { running = false }
+}
+
 private func defaults() -> UserDefaults {
     let name = "notproton-tests-\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: name)!
@@ -219,19 +224,29 @@ struct MainWindowFlowTests {
         #expect(await log.ran == [.steam])
     }
 
-    @Test("A running game stops every flow with a plain sentence")
+    @Test("A running game stops every flow with a plain sentence; Retry goes on once it is closed")
     func gameRunning() async {
         let log = Log()
+        let game = GameSwitch()
         let model = MainModel(badge: BadgeStore(defaults: defaults(), dock: { _ in }))
         model.steps = { _, _ in [step(.steam, log)] }
-        model.probe = { (true, true) }
+        model.probe = { (await game.running, true) }
+        model.findUpdates = { _ in UpdatePlan() }
 
         await model.pressUpdate()
-        guard case .failed(.update, _, _, _, let problem)? = model.runner.state else {
-            Issue.record("not refused"); return
+        guard case .failed(.update, 0, 2, _, let problem)? = model.runner.state else {
+            Issue.record("not refused: \(String(describing: model.runner.state))"); return
         }
         #expect(problem.cause == .gameRunning)
         #expect(await log.ran.isEmpty)
+
+        await model.retry()
+        #expect(await log.ran.isEmpty)
+
+        await game.quit()
+        await model.retry()
+        #expect(model.runner.state == .finished(.update))
+        #expect(await log.ran == [.steam])
     }
 
     @Test("Update closes Steam only when the engine or the Steam patch changes")

@@ -337,6 +337,30 @@
       },
       "generatesSymbol": false
     },
+    "Checking for running games": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking for running games"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверка запущенных игр"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевірка запущених ігор"
+          }
+        }
+      }
+    },
     "Checking…": {
       "extractionState": "manual",
       "localizations": {

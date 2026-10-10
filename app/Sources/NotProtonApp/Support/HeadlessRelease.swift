@@ -4,6 +4,8 @@
 //   --release gate              the Steam gate only
 //   --release bridge-install    install the bridge revision on offer
 //   --release bridge-rollback   switch back to the previous bridge
+//   --release plan              what the window's Update would install, and its status
+//                               line in en, uk and ru (Phase 8); installs nothing
 // Options for a scratch tree, never the real one:
 //   --support DIR      a notproton folder: runners/, bridge/, bridges/, manifests/,
 //                      signatures/macos.arm64/, steam-update-gate
@@ -99,6 +101,29 @@ enum HeadlessRelease {
             print("release: bridge \(try await setup.bridge.check().summary)")
             print("release: bridge rollback target \(setup.bridge.rollbackTarget?.id ?? "none")")
             return 0
+        case "plan":
+            var plan = UpdatePlan()
+            let bridge = try await setup.bridge.check()
+            print("release: bridge \(bridge.summary)")
+            if case .available(let release, _) = bridge { plan.bridge = release }
+            var engine = EngineUpdater()
+            engine.runners = setup.bridge.runners
+            engine.support = { [bridgeUpdater = setup.bridge] in bridgeUpdater.catalog() }
+            engine.refreshBridges = {}
+            do {
+                let check = try await engine.check(channel: EngineChannel.preferred)
+                print("release: engine \(check.summary)")
+                if case .available(let release) = check { plan.engine = release }
+            } catch {
+                print("release: engine check failed: \(error.localizedDescription)")
+            }
+            print("release: update plan \(plan.isEmpty ? "nothing" : plan.parts.joined(separator: ", ")); "
+                + "steps \(SetupSteps.update(plan).map(\.id.rawValue).joined(separator: " ")); "
+                + "closes Steam \(plan.closesSteam)")
+            for language in ["en", "uk", "ru"] {
+                print("release: status [\(language)] \(statusLine(plan, language: language))")
+            }
+            return 0
         case "gate":
             let decision = await setup.gate.evaluate()
             print("release: gate mode \(setup.gate.mode.rawValue), \(decision.state.summary), block=\(decision.block)")
@@ -115,8 +140,23 @@ enum HeadlessRelease {
             print("release: bridge back on \(outcome.id), from \(outcome.previous ?? "none")")
             return 0
         default:
-            print("release: unknown command \(command); use check, gate, bridge-install or bridge-rollback")
+            print("release: unknown command \(command); use check, plan, gate, bridge-install or bridge-rollback")
             return 1
         }
+    }
+
+    /// The window's status line for `plan`, read from the catalog of one language.
+    private static func statusLine(_ plan: UpdatePlan, language: String) -> String {
+        guard let path = Bundle.module.path(forResource: language, ofType: "lproj"),
+              let bundle = Bundle(path: path) else { return "(no \(language).lproj)" }
+        func text(_ key: String) -> String { bundle.localizedString(forKey: key, value: key, table: "Localizable") }
+        guard !plan.isEmpty else { return text("Installed") }
+        var parts: [String] = []
+        if let engine = plan.engine { parts.append(EngineStore.displayName(engine.version)) }
+        if plan.bridge != nil { parts.append(text("Steam bridge")) }
+        if plan.steamPatch { parts.append(text("Steam patch")) }
+        if let app = plan.app { parts.append("NotProton \(app)") }
+        let list = parts.formatted(.list(type: .and).locale(Locale(identifier: language)))
+        return String(format: text("Update available: %@"), list)
     }
 }
