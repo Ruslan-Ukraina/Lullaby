@@ -1,264 +1,78 @@
+// Lullaby's app icon: the owner's art (app/Icon/lullaby-1024.png, 10.10.2026) as an Icon
+// Composer document that actool compiles (make icon).
+//
+//     icon <art.png> <output.icon>
+//
+// The art comes rounded, with a light rim. macOS 26 draws its own shape over a full-bleed
+// square, so the rim is cut off and everything outside the art's rounded body takes the
+// colour of the nearest pixel toward the centre; the system mask then trims the corners.
+// One layer, no glass effects of the system on top: the art has its own.
+// (The earlier generated orbit icon is in git history.)
+
 import CoreGraphics
 import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 
-let canvas: CGFloat = 1024
-let center = CGPoint(x: canvas / 2, y: canvas / 2)
-let space = CGColorSpace(name: CGColorSpace.sRGB)!
-let white = CGColor(red: 1, green: 1, blue: 1, alpha: 1)
-let coverage: CGFloat = 0.90
-
-let orbitRadiusX: CGFloat = 492
-let orbitRadiusY: CGFloat = 95
-let strokeWidth: CGFloat = 38
-let knockoutGap: CGFloat = 22
-let ringOuterRadius: CGFloat = 219
-let ringBand: CGFloat = 48
-let coreRadius: CGFloat = 137
-let orbitAngle: CGFloat = -21
-let orbitShiftY: CGFloat = -44
-
-enum Element: String, CaseIterable {
-    case orbitBack = "Orbit Back"
-    case sphereRing = "Sphere Ring"
-    case sphereCore = "Sphere Core"
-    case orbitFront = "Orbit Front"
-
-    var fileName: String {
-        rawValue.lowercased().replacingOccurrences(of: " ", with: "-") + ".png"
-    }
-
-    var depth: Double {
-        switch self {
-        case .orbitBack: 0.40
-        case .sphereRing: 0.70
-        case .sphereCore: 0.90
-        case .orbitFront: 1.00
-        }
-    }
-
-    var translucency: Double {
-        switch self {
-        case .orbitBack: 0.30
-        case .sphereRing: 0.35
-        case .sphereCore: 0.50
-        case .orbitFront: 0.30
-        }
-    }
-}
-
-func makeContext(size: CGFloat) -> CGContext {
-    let context = CGContext(
-        data: nil,
-        width: Int(size),
-        height: Int(size),
-        bitsPerComponent: 8,
-        bytesPerRow: 0,
-        space: space,
-        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-    )!
-    context.setAllowsAntialiasing(true)
-    context.interpolationQuality = .high
-    return context
-}
-
-func circle(_ radius: CGFloat) -> CGRect {
-    CGRect(
-        x: center.x - radius,
-        y: center.y - radius,
-        width: radius * 2,
-        height: radius * 2
-    )
-}
-
-func orbitFrame() -> CGAffineTransform {
-    CGAffineTransform(translationX: center.x, y: center.y + orbitShiftY)
-        .rotated(by: orbitAngle * .pi / 180)
-}
-
-func orbitPath() -> CGPath {
-    var transform = orbitFrame()
-    let box = CGRect(
-        x: -orbitRadiusX,
-        y: -orbitRadiusY,
-        width: orbitRadiusX * 2,
-        height: orbitRadiusY * 2
-    )
-    return CGPath(ellipseIn: box, transform: &transform)
-}
-
-func halfPlane(front: Bool) -> CGPath {
-    let big = canvas * 2
-    let overlap: CGFloat = 6
-    let rect = front
-        ? CGRect(x: -big, y: -big, width: big * 2, height: big + overlap)
-        : CGRect(x: -big, y: -overlap, width: big * 2, height: big + overlap)
-    var transform = orbitFrame()
-    return CGPath(rect: rect, transform: &transform)
-}
-
-func strokeHalf(front: Bool, into context: CGContext) {
-    context.saveGState()
-    context.addPath(halfPlane(front: front))
-    context.clip()
-    context.setLineWidth(strokeWidth)
-    context.addPath(orbitPath())
-    context.strokePath()
-    context.restoreGState()
-}
-
-func cutNearHalf(from context: CGContext) {
-    context.saveGState()
-    context.addPath(halfPlane(front: true))
-    context.clip()
-    context.setBlendMode(.clear)
-    context.setLineWidth(strokeWidth + knockoutGap * 2)
-    context.addPath(orbitPath())
-    context.strokePath()
-    context.restoreGState()
-}
-
-func draw(_ element: Element, into context: CGContext) {
-    context.setStrokeColor(white)
-    context.setFillColor(white)
-
-    switch element {
-    case .orbitBack:
-        strokeHalf(front: false, into: context)
-        context.setBlendMode(.clear)
-        context.fillEllipse(in: circle(ringOuterRadius + knockoutGap))
-        context.setBlendMode(.normal)
-
-    case .sphereRing:
-        context.setLineWidth(ringBand)
-        context.strokeEllipse(in: circle(ringOuterRadius - ringBand / 2))
-        cutNearHalf(from: context)
-
-    case .sphereCore:
-        context.fillEllipse(in: circle(coreRadius))
-        cutNearHalf(from: context)
-
-    case .orbitFront:
-        strokeHalf(front: true, into: context)
-    }
-}
-
-func render(_ elements: [Element]) -> CGImage {
-    let context = makeContext(size: canvas)
-    for element in elements {
-        draw(element, into: context)
-    }
-    return context.makeImage()!
-}
-
-func inkBounds(_ image: CGImage) -> CGRect {
-    let width = image.width
-    let height = image.height
-    var pixels = [UInt8](repeating: 0, count: width * height * 4)
-    pixels.withUnsafeMutableBytes { buffer in
-        let scan = CGContext(
-            data: buffer.baseAddress,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: width * 4,
-            space: space,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        )!
-        scan.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
-    }
-    var minX = width, minY = height, maxX = -1, maxY = -1
-    for y in 0..<height {
-        for x in 0..<width where pixels[(y * width + x) * 4 + 3] > 8 {
-            if x < minX { minX = x }
-            if x > maxX { maxX = x }
-            if y < minY { minY = y }
-            if y > maxY { maxY = y }
-        }
-    }
-    guard maxX >= minX, maxY >= minY else {
-        return CGRect(x: 0, y: 0, width: CGFloat(width), height: CGFloat(height))
-    }
-    return CGRect(
-        x: CGFloat(minX),
-        y: CGFloat(minY),
-        width: CGFloat(maxX - minX + 1),
-        height: CGFloat(maxY - minY + 1)
-    )
-}
-
-func normalized(_ image: CGImage, sharedInk ink: CGRect) -> CGImage {
-    let scale = canvas * coverage / max(ink.width, ink.height)
-    let context = makeContext(size: canvas)
-    context.translateBy(x: canvas / 2, y: canvas / 2)
-    context.scaleBy(x: scale, y: scale)
-    context.translateBy(x: -ink.midX, y: -ink.midY)
-    context.draw(image, in: CGRect(x: 0, y: 0, width: canvas, height: canvas))
-    return context.makeImage()!
-}
-
-func write(_ image: CGImage, to url: URL) throws {
-    guard
-        let destination = CGImageDestinationCreateWithURL(
-            url as CFURL,
-            UTType.png.identifier as CFString,
-            1,
-            nil
-        )
-    else {
-        throw CocoaError(.fileWriteUnknown)
-    }
-    CGImageDestinationAddImage(destination, image, nil)
-    guard CGImageDestinationFinalize(destination) else {
-        throw CocoaError(.fileWriteUnknown)
-    }
-}
-
-func group(for element: Element) -> [String: Any] {
-    [
-        "blur-material": NSNull(),
-        "layers": [
-            [
-                "fill": ["solid": "srgb:1.00000,1.00000,1.00000,1.00000"],
-                "image-name": element.fileName,
-                "name": element.rawValue,
-            ]
-        ],
-        "opacity": 1,
-        "refractivity": ["depth": element.depth, "enabled": true, "strength": 0.005],
-        "shadow": ["kind": "neutral", "opacity": 0.5],
-        "specular": "inside",
-        "translucency": ["enabled": true, "value": element.translucency],
-    ]
-}
-
-guard CommandLine.arguments.count == 2 else {
-    FileHandle.standardError.write("usage: icon <output.icon>\n".data(using: .utf8)!)
+guard CommandLine.arguments.count == 3 else {
+    FileHandle.standardError.write("usage: icon <art.png> <output.icon>\n".data(using: .utf8)!)
     exit(2)
 }
 
-let root = URL(fileURLWithPath: CommandLine.arguments[1], isDirectory: true)
+let inset = 14
+let src = CGImageSourceCreateWithURL(URL(fileURLWithPath: CommandLine.arguments[1]) as CFURL, nil)!
+let img = CGImageSourceCreateImageAtIndex(src, 0, nil)!
+let n = 1024
+let space = CGColorSpace(name: CGColorSpace.sRGB)!
+let ctx = CGContext(data: nil, width: n, height: n, bitsPerComponent: 8, bytesPerRow: n*4, space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+ctx.interpolationQuality = .high
+// 1. The art at full size; everything outside its rounded body minus the rim is filled.
+ctx.draw(img, in: CGRect(x: 0, y: 0, width: n, height: n))
+let p = ctx.data!.assumingMemoryBound(to: UInt8.self)
+let radius = 250.0, lo = Double(inset), hi = Double(n - 1 - inset)
+func inside(_ x: Int, _ y: Int) -> Bool {
+    let fx = Double(x), fy = Double(y)
+    guard fx >= lo, fx <= hi, fy >= lo, fy <= hi else { return false }
+    let cx = min(max(fx, lo + radius), hi - radius), cy = min(max(fy, lo + radius), hi - radius)
+    return (fx - cx) * (fx - cx) + (fy - cy) * (fy - cy) <= radius * radius
+}
+let c = Double(n - 1) / 2
+var copy = [UInt8](UnsafeBufferPointer(start: p, count: n * n * 4))
+for y in 0..<n { for x in 0..<n where !inside(x, y) {
+    var t = 0.0, xx = x, yy = y
+    while t < 1, !inside(xx, yy) {
+        t += 0.001
+        xx = Int((Double(x) + (c - Double(x)) * t).rounded()); yy = Int((Double(y) + (c - Double(y)) * t).rounded())
+    }
+    let i = (y * n + x) * 4, j = (yy * n + xx) * 4
+    for k in 0..<3 { copy[i + k] = p[j + k] }; copy[i + 3] = 255
+}}
+// 2. Crop the rim away and scale back to 1024.
+let filled = CGContext(data: &copy, width: n, height: n, bitsPerComponent: 8, bytesPerRow: n*4, space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!.makeImage()!
+let cropped = filled.cropping(to: CGRect(x: inset, y: inset, width: n - 2*inset, height: n - 2*inset))!
+ctx.clear(CGRect(x: 0, y: 0, width: n, height: n))
+ctx.interpolationQuality = .high
+ctx.draw(cropped, in: CGRect(x: 0, y: 0, width: n, height: n))
+let out = ctx.makeImage()!
+
+let root = URL(fileURLWithPath: CommandLine.arguments[2], isDirectory: true)
 let assets = root.appendingPathComponent("Assets", isDirectory: true)
 try? FileManager.default.removeItem(at: root)
 try FileManager.default.createDirectory(at: assets, withIntermediateDirectories: true)
-
-let sharedInk = inkBounds(render(Element.allCases))
-for element in Element.allCases {
-    let layer = normalized(render([element]), sharedInk: sharedInk)
-    try write(layer, to: assets.appendingPathComponent(element.fileName))
-}
+let layer = "lullaby.png"
+let dest = CGImageDestinationCreateWithURL(
+    assets.appendingPathComponent(layer) as CFURL, UTType.png.identifier as CFString, 1, nil)!
+CGImageDestinationAddImage(dest, out, nil)
+guard CGImageDestinationFinalize(dest) else { throw CocoaError(.fileWriteUnknown) }
 
 let document: [String: Any] = [
-    "features": ["refractivity", "specular-location"],
-    "fill": [
-        "linear-gradient": [
-            "srgb:0.25882,0.25882,0.26667,1.00000",
-            "srgb:0.12549,0.12549,0.13333,1.00000",
-        ]
-    ],
-    "groups": Element.allCases.map(group(for:)),
-    "supported-platforms": ["circles": ["watchOS"], "squares": "shared"],
+    "fill": ["solid": "srgb:0.45882,0.59608,0.86275,1.00000"],
+    "groups": [[
+        "layers": [["image-name": layer, "name": "Lullaby"]],
+        "shadow": ["kind": "none", "opacity": 0],
+        "translucency": ["enabled": false, "value": 0],
+    ]],
+    "supported-platforms": ["squares": "shared"],
 ]
 try JSONSerialization
     .data(withJSONObject: document, options: [.prettyPrinted, .sortedKeys])

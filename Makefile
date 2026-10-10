@@ -645,9 +645,11 @@ $(ICONGEN): helpers/icon.swift
 	swiftc -O -o $@ $<
 	@echo "==> Built $@"
 
-$(ICON_CAR) $(ICON_ICNS): $(ICONGEN)
+ICON_ART := app/Icon/lullaby-1024.png
+
+$(ICON_CAR) $(ICON_ICNS): $(ICONGEN) $(ICON_ART)
 	rm -rf "$(ICON_DOC)" "$(ICON_DIR)"
-	$(ICONGEN) "$(ICON_DOC)"
+	$(ICONGEN) "$(ICON_ART)" "$(ICON_DOC)"
 	@mkdir -p "$(ICON_DIR)"
 	xcrun actool "$(ICON_DOC)" --compile "$(ICON_DIR)" --platform macosx \
 		--minimum-deployment-target 26.0 --app-icon Lullaby \
