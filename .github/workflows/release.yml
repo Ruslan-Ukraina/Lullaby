@@ -198,6 +198,24 @@ jobs:
           "$SPARKLE_BIN/generate_appcast" --ed-key-file "$RUNNER_TEMP/keys/sparkle.key" \
             --download-url-prefix "${FEED}$GITHUB_REF_NAME/" \
             --embed-release-notes --maximum-versions 1000 $channel "$arch"
+          # generate_appcast drops the items whose archives are not in this folder (every
+          # earlier release): put them back, so a Mac that skipped a version still finds
+          # its way, then sign the edited appcast again.
+          if [ -f "$RUNNER_TEMP/appcast/$APPCAST" ]; then
+            python3 -I - "$RUNNER_TEMP/appcast/$APPCAST" "$arch/appcast.xml" <<'PY'
+          import re, sys
+          old, new = open(sys.argv[1]).read(), open(sys.argv[2]).read()
+          item = re.compile(r"<item>.*?</item>", re.S)
+          version = re.compile(r"<sparkle:version>([^<]+)</sparkle:version>")
+          have = {m.group(1) for m in version.finditer(new)}
+          kept = [i for i in item.findall(old) if (v := version.search(i)) and v.group(1) not in have]
+          if kept:
+              new = new.replace("</channel>", "\n".join(kept) + "\n</channel>", 1)
+              open(sys.argv[2], "w").write(new)
+          print(f"kept {len(kept)} earlier item(s)")
+          PY
+            "$SPARKLE_BIN/sign_update" --ed-key-file "$RUNNER_TEMP/keys/sparkle.key" "$arch/appcast.xml"
+          fi
           grep -Eq "sparkle:version>$APP_BUILD<|sparkle:version=\"$APP_BUILD\"" "$arch/appcast.xml"
           grep -q "sparkle:edSignature" "$arch/appcast.xml"
           "$SPARKLE_BIN/sign_update" --verify --ed-key-file "$RUNNER_TEMP/keys/sparkle.key" "$arch/appcast.xml"
