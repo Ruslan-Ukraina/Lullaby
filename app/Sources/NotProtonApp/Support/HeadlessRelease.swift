@@ -6,6 +6,10 @@
 //   --release bridge-rollback   switch back to the previous bridge
 //   --release plan              what the window's Update would install, and its status
 //                               line in en, uk and ru (Phase 8); installs nothing
+//   --release update            the window's Update: the plan, then its steps, in turn
+//   --release onboarding        the window's Install without its Steam step: Rosetta,
+//                               engine, bridge, signatures (Phase 8)
+// update and onboarding run only on a scratch tree (--support, and --steam for the gate).
 // Options for a scratch tree, never the real one:
 //   --support DIR      a notproton folder: runners/, bridge/, bridges/, manifests/,
 //                      signatures/macos.arm64/, steam-update-gate
@@ -29,6 +33,8 @@ enum HeadlessRelease {
         var bridge = BridgeUpdater()
         var signatures = SignatureUpdater()
         var gate = SteamUpdateGate()
+        /// Both --support and --steam given: nothing real is written.
+        var scratch = false
     }
 
     static func runIfRequested(arguments: [String] = CommandLine.arguments) {
@@ -71,6 +77,7 @@ enum HeadlessRelease {
             ]
             setup.gate.package = steam.appending(path: "Steam.AppBundle/Steam/Contents/MacOS/package")
         }
+        setup.scratch = option("--support") != nil && option("--steam") != nil
         let signatures = setup.signatures
         setup.gate.support = { signatures.support() }
         let configured = setup
@@ -124,6 +131,26 @@ enum HeadlessRelease {
                 print("release: status [\(language)] \(statusLine(plan, language: language))")
             }
             return 0
+        case "update", "onboarding":
+            guard setup.scratch else {
+                print("release: \(command) runs only on a scratch tree (--support and --steam)")
+                return 1
+            }
+            var env = SetupEnvironment(bridge: setup.bridge, signatures: setup.signatures, gate: setup.gate)
+            env.engine = scratchEngine(setup)
+            let steps: [FlowStep]
+            if command == "update" {
+                var plan = UpdatePlan()
+                if case .available(let release, _) = try await setup.bridge.check() { plan.bridge = release }
+                if case .available(let release)? = try? await env.engine.check(channel: EngineChannel.preferred) {
+                    plan.engine = release
+                }
+                print("release: update plan \(plan.isEmpty ? "nothing" : plan.parts.joined(separator: ", "))")
+                steps = SetupSteps.update(plan, env)
+            } else {
+                steps = Array(SetupSteps.install(env).dropLast())
+            }
+            return await runSteps(steps)
         case "gate":
             let decision = await setup.gate.evaluate()
             print("release: gate mode \(setup.gate.mode.rawValue), \(decision.state.summary), block=\(decision.block)")
@@ -143,6 +170,41 @@ enum HeadlessRelease {
             print("release: unknown command \(command); use check, plan, gate, bridge-install or bridge-rollback")
             return 1
         }
+    }
+
+    /// EngineUpdater on the scratch tree: never quits Steam, reads the scratch bridge list.
+    private static func scratchEngine(_ setup: Setup) -> EngineUpdater {
+        var engine = EngineUpdater()
+        let bridge = setup.bridge
+        engine.runners = bridge.runners
+        engine.bridge = bridge.store.live
+        engine.bridges = bridge.store.store
+        engine.cache = bridge.runners.deletingLastPathComponent().appending(path: "cache/engine")
+        engine.feed = bridge.feed
+        engine.support = { bridge.catalog() }
+        engine.refreshBridges = { try? await bridge.refreshManifest() }
+        engine.steamIsRunning = { false }
+        engine.quitSteam = { false }
+        return engine
+    }
+
+    /// The steps one after another, as FlowRunner runs them in the window; a failure
+    /// prints the window's sentence for it.
+    private static func runSteps(_ steps: [FlowStep]) async -> Int32 {
+        for (index, step) in steps.enumerated() {
+            print("release: step \(index + 1)/\(steps.count) \(step.id.rawValue) — \(step.title)")
+            do {
+                try await step.run { detail in if !detail.isEmpty { print("release:   \(detail)") } }
+            } catch {
+                let problem = FlowProblem(error, step: step.id)
+                print("release: failed at \(step.id.rawValue): \(problem.cause)")
+                print("release: window says: \(problem.message)")
+                print("release: log says: \(problem.detail)")
+                return 1
+            }
+        }
+        print("release: all \(steps.count) steps done")
+        return 0
     }
 
     /// The window's status line for `plan`, read from the catalog of one language.

@@ -156,6 +156,7 @@ struct MainWindowStateTests {
         let image = try #require(renderer.cgImage)
         #expect(image.width == Int(MainView.size.width) * 2)
         #expect(image.height == Int(MainView.size.height) * 2)
+        #expect(SetupSteps.downloaded(0, of: 10).isEmpty)
         if let folder = ProcessInfo.processInfo.environment["NP_WINDOW_SNAPSHOTS"] {
             let url = URL(filePath: folder).appending(path: "\(name).png")
             let rep = NSBitmapImageRep(cgImage: image)
@@ -345,6 +346,31 @@ struct DeleteTests {
         #expect(model.question == .delete)
         #expect(!model.deletePrefixes)
         #expect(!MainModel.realSteps(.delete, model).map(\.id).contains(.removePrefixes))
+    }
+
+    // The buttons' path: Delete… → the sheet (box off) → Delete → the steps run → Install.
+    @Test("Delete through its question runs without the prefixes step, then offers Install")
+    func throughTheQuestion() async {
+        let log = Log()
+        let model = MainModel(badge: BadgeStore(defaults: defaults(), dock: { _ in }))
+        model.installOverride = .installed(engine: "Dormison b2")
+        model.probe = { (false, true) }
+        model.findUpdates = { _ in UpdatePlan() }
+        model.steps = { kind, model in
+            #expect(kind == .delete)
+            return SetupSteps.delete(prefixes: model.deletePrefixes).map { step($0.id, log) }
+        }
+        #expect(model.screen.primary == .delete)
+
+        model.pressDelete()
+        #expect(model.question == .delete)
+        await model.confirmDelete()
+        #expect(model.question == nil)
+        #expect(await log.ran == [.removeSteam, .removeFiles])
+
+        model.installOverride = .notInstalled
+        #expect(model.screen.primary == .install)
+        #expect(model.screen.message == .done(tr("NotProton is deleted. Steam is back to how it was."), openSteam: false))
     }
 
     @Test("Game prefixes go only when the box is ticked")

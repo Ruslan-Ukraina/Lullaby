@@ -1158,3 +1158,13 @@ PEAK, DXMT, меню; `perf/peak-ab.sh` чередует «исходно → и
 - **Найдено:** у Dormison вышел **b3**; моста для b3 нет → Install на чистом Mac или после Delete сейчас не поставит движок (BLOCKERS «Фаза 8» п. 2, BACKLOG 36.1, R70). Старое окно умело бы то же самое — это не новая поломка, но окно делает её заметной.
 - В `/Applications` ничего не ставилось, Steam и игры не запускались, снимков экрана нет (картинки состояний — только из теста, в scratchpad, не в git).
 - **Дальше:** твой ответ по §9.6 и по b3 (BLOCKERS), ручная проверка SPIKE_TEST §17.
+
+### 10.10 ~12:15–12:45 — Update и Install окна прогнаны целиком (временное дерево, ТЕСТОВЫЙ ключ)
+
+Шаги окна получили окружение (`SetupEnvironment`: EngineUpdater, BridgeUpdater, SignatureUpdater, SteamUpdateGate; в окне — настоящие). Новые безоконные команды `--release update` и `--release onboarding` прогоняют **те же шаги**, что кнопки Update и Install, и работают только во временном дереве (`--support` и `--steam` обязательны). Настоящие `notproton/`, Steam и `/Applications` не тронуты.
+
+- **Тестовая лента** — своя копия в scratchpad: мост `bridge-dormison-b2-3` из ленты Фазы 7 (ссылки переписаны на копию) + новый `signatures-manifest.json` (`feed.py publish-signatures`), оба подписаны ТЕСТОВЫМ ключом `SmS/Cork…`. В ленте Фазы 7 манифеста сигнатур нет; без него шаг сигнатур падает. Окно показывает это как «нет интернета» — неточно (BACKLOG 36.6).
+- **Update** (дерево: APFS-копия движка b2, временная папка Steam с копией манифестов пакета): план «міст Steam» → шаг 1/2 сигнатуры (4 сборки Steam, гейт: `current 1788652215, supported`) → шаг 2/2 мост: скачано 7,5 МБ, проверено, установлено. Код 0. После этого план пуст (`bridge up to date with bridge-dormison-b2-3`) — кнопка Update гаснет.
+- **Install (онбординг) без шага Steam**, пустое дерево: Rosetta — есть → движок — **остановка**: «A new engine is out, but NotProton doesn't support it yet. Try again later.» (`dormison-b3: No Steam bridge has been published for it yet`). Это вживую подтверждает блокер b3 (BLOCKERS «Фаза 8», п. 2).
+- Шаг «Установка в Steam» и Delete на настоящем Steam не запускались (правила: Steam и рабочую установку без твоего слова не трогать). Delete проверен тестом через вопрос и лист, с подставными шагами; что Delete оставляет — тестом на временной папке.
+- Тесты окна: 33 (наборы MainWindow, Badge, Delete, Localization, Credits). Итог: **`make app` — код 0, `make app-tests` — код 0, 435 тестов.**

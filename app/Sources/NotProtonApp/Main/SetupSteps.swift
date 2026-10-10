@@ -29,23 +29,34 @@ struct UpdatePlan: Equatable, Sendable {
     var closesSteam: Bool { engine != nil || steamPatch }
 }
 
+/// The updaters the steps use. The window uses the real ones; `--release update` and
+/// `--release onboarding` hand in ones pointed at a scratch tree and a test feed.
+struct SetupEnvironment: Sendable {
+    var engine = EngineUpdater()
+    var bridge = BridgeUpdater()
+    var signatures = SignatureUpdater()
+    var gate = SteamUpdateGate()
+
+    static var live: SetupEnvironment { SetupEnvironment() }
+}
+
 enum SetupSteps {
 
     // MARK: Install (onboarding)
 
-    static func install() -> [FlowStep] {
-        [rosetta(), engine(), bridge(), signatures(), steam(force: false)]
+    static func install(_ env: SetupEnvironment = .live) -> [FlowStep] {
+        [rosetta(), engine(nil, env), bridge(env), signatures(env), steam(force: false)]
     }
 
     static func reinstall() -> [FlowStep] {
         [engine(), bridge(), signatures(), steam(force: true)]
     }
 
-    static func update(_ plan: UpdatePlan) -> [FlowStep] {
-        var steps = [signatures()]
-        if let release = plan.engine { steps.append(engine(release)) }
+    static func update(_ plan: UpdatePlan, _ env: SetupEnvironment = .live) -> [FlowStep] {
+        var steps = [signatures(env)]
+        if let release = plan.engine { steps.append(engine(release, env)) }
         // The bridge is checked again after an engine switch: a new engine wants its own.
-        if plan.bridge != nil || plan.engine != nil { steps.append(bridge()) }
+        if plan.bridge != nil || plan.engine != nil { steps.append(bridge(env)) }
         if plan.steamPatch { steps.append(steam(force: false)) }
         if plan.app != nil { steps.append(app()) }
         return steps
@@ -56,14 +67,14 @@ enum SetupSteps {
     }
 
     /// Installs the engine when there is none; with a release, switches to it.
-    static func engine(_ wanted: EngineRelease? = nil) -> FlowStep {
+    static func engine(_ wanted: EngineRelease? = nil, _ env: SetupEnvironment = .live) -> FlowStep {
         FlowStep(.engine, tr("Downloading the engine")) { detail in
-            let updater = EngineUpdater()
+            let updater = env.engine
             let release: EngineRelease
             if let wanted {
                 release = wanted
             } else {
-                if case .engine = EngineStore.state() { return }
+                if updater.installedVersion != nil { return }
                 switch try await updater.check(channel: EngineChannel.preferred) {
                 case .available(let found), .upToDate(let found, true):
                     release = found
@@ -78,15 +89,15 @@ enum SetupSteps {
         }
     }
 
-    static func bridge() -> FlowStep {
+    static func bridge(_ env: SetupEnvironment = .live) -> FlowStep {
         FlowStep(.bridge, tr("Installing the Steam bridge")) { detail in
-            let updater = BridgeUpdater()
+            let updater = env.bridge
             let check: BridgeCheck
             do {
                 check = try await updater.check()
             } catch {
                 // Without a release feed (a local build) the bridge inside the app is the one.
-                guard case .off = ReleaseFeed.configured else { throw error }
+                guard case .off = updater.feed else { throw error }
                 check = updater.evaluate(updater.catalog())
             }
             switch check {
@@ -102,13 +113,13 @@ enum SetupSteps {
         }
     }
 
-    static func signatures() -> FlowStep {
+    static func signatures(_ env: SetupEnvironment = .live) -> FlowStep {
         FlowStep(.signatures, tr("Getting Steam support files")) { _ in
-            let outcome = try await SignatureUpdater().update()
+            let outcome = try await env.signatures.update()
             if !outcome.installed.isEmpty {
                 AppLog.note("updates: new signature databases \(outcome.installed.joined(separator: " "))")
             }
-            _ = await SteamUpdateGate().evaluate()
+            _ = await env.gate.evaluate()
         }
     }
 
@@ -226,6 +237,7 @@ enum SetupSteps {
     }
 
     static func downloaded(_ received: Int64, of total: Int64) -> String {
+        guard received > 0 else { return "" }
         // Sizes in the window's language, not the region's: "10 MB of 240 MB" in English.
         let language = Bundle.module.preferredLocalizations.first ?? "en"
         let style = ByteCountFormatStyle(style: .file, locale: Locale(identifier: language))
