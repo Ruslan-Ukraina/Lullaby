@@ -234,6 +234,10 @@ __attribute__((constructor))
 static void np_init(int argc, const char **argv) {
     // Steam's windows live in Steam Helper's browser process, not in steam_osx.
     if (np_steamwin_is_browser_process(argc, argv)) {
+        // The main Steam Helper (no --type=) also runs tools such as /usr/bin/profiles and
+        // opens apps: they start without the insert (hook_spawn.c).
+        np_log_attach();
+        np_hooks_spawn_install();
         np_steamwin_start();
         np_steamfocus_start("helper", 1);
         return;
