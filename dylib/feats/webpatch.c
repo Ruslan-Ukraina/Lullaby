@@ -1,28 +1,28 @@
 // Enables Steam Play in the UI/enables the Compatibility tab in game properties
 #include "webpatch.h"
 #include "../util/log.h"
-#include "panel_js.h"  // NP_PANEL_JS, generated from feats/panel.js
+#include "panel_js.h"  // LB_PANEL_JS, generated from feats/panel.js
 
 #include <stdlib.h>
 #include <string.h>
 
-#define NP_C1 "\001"
-#define NP_C2 "\002"
-#define NP_C3 "\003"
-#define NP_C4 "\004"
-#define NP_C5 "\005"
-#define NP_C6 "\006"
-#define NP_C7 "\007"
-#define NP_C8 "\010"
-#define NP_CAP_MAX 8
+#define LB_C1 "\001"
+#define LB_C2 "\002"
+#define LB_C3 "\003"
+#define LB_C4 "\004"
+#define LB_C5 "\005"
+#define LB_C6 "\006"
+#define LB_C7 "\007"
+#define LB_C8 "\010"
+#define LB_CAP_MAX 8
 
 typedef struct {
     const char *find;
     const char *replace;
     int         expect;   // exact occurrence count, else abort
-} np_gate_t;
+} lb_gate_t;
 
-typedef struct { const char *at; size_t len; } np_cap_t;
+typedef struct { const char *at; size_t len; } lb_cap_t;
 
 static int is_ident_char(unsigned char c) {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
@@ -30,12 +30,12 @@ static int is_ident_char(unsigned char c) {
 }
 
 static int cap_index(unsigned char c) {
-    return (c >= 1 && c <= NP_CAP_MAX) ? c - 1 : -1;
+    return (c >= 1 && c <= LB_CAP_MAX) ? c - 1 : -1;
 }
 
 static size_t match_at(const char *src, size_t len, size_t pos,
-                       const char *find, np_cap_t *caps) {
-    for (int i = 0; i < NP_CAP_MAX; i++) { caps[i].at = NULL; caps[i].len = 0; }
+                       const char *find, lb_cap_t *caps) {
+    for (int i = 0; i < LB_CAP_MAX; i++) { caps[i].at = NULL; caps[i].len = 0; }
 
     size_t s = pos;
     for (const char *f = find; *f; f++) {
@@ -63,7 +63,7 @@ static size_t match_at(const char *src, size_t len, size_t pos,
 }
 
 static size_t count_matches(const char *src, size_t len, const char *find) {
-    np_cap_t caps[NP_CAP_MAX];
+    lb_cap_t caps[LB_CAP_MAX];
     size_t n = 0;
     for (size_t i = 0; i < len; ) {
         size_t used = match_at(src, len, i, find, caps);
@@ -72,9 +72,9 @@ static size_t count_matches(const char *src, size_t len, const char *find) {
     return n;
 }
 
-typedef struct { char *buf; size_t len, cap; } np_out_t;
+typedef struct { char *buf; size_t len, cap; } lb_out_t;
 
-static int out_reserve(np_out_t *o, size_t extra) {
+static int out_reserve(lb_out_t *o, size_t extra) {
     if (o->len + extra + 1 <= o->cap) return 1;
     size_t want = o->cap ? o->cap : 1024;
     while (want < o->len + extra + 1) want *= 2;
@@ -85,14 +85,14 @@ static int out_reserve(np_out_t *o, size_t extra) {
     return 1;
 }
 
-static int out_put(np_out_t *o, const char *p, size_t n) {
+static int out_put(lb_out_t *o, const char *p, size_t n) {
     if (!out_reserve(o, n)) return 0;
     memcpy(o->buf + o->len, p, n);
     o->len += n;
     return 1;
 }
 
-static int out_expand(np_out_t *o, const char *replace, const np_cap_t *caps) {
+static int out_expand(lb_out_t *o, const char *replace, const lb_cap_t *caps) {
     for (const char *r = replace; *r; r++) {
         int ci = cap_index((unsigned char)*r);
         if (ci < 0) {
@@ -119,10 +119,10 @@ static int out_expand(np_out_t *o, const char *replace, const np_cap_t *caps) {
 // msync debugging switch at every start. A known renderer moves over to
 // LULLABY_RENDERER unless that is already set; WINEMSYNC=0 is a deliberate
 // debugging choice and stays. Options without either are not written.
-#define NP_CX_OPTIONS_CSS \
+#define LB_CX_OPTIONS_CSS \
     "\".MSCXPanel{margin-top:10px}\""
 
-#define NP_CX_OPTIONS_CLEAN \
+#define LB_CX_OPTIONS_CLEAN \
     "x=>{const a=x.split(\" \"),c=a.find(p=>p.indexOf(\"CX_GRAPHICS_BACKEND=\")===0);" \
     "if(!c&&a.indexOf(\"WINEMSYNC=1\")<0)return x;" \
     "const k=a.filter(p=>p&&p.indexOf(\"CX_GRAPHICS_BACKEND=\")!==0&&p!==\"WINEMSYNC=1\")," \
@@ -131,9 +131,9 @@ static int out_expand(np_out_t *o, const char *replace, const np_cap_t *caps) {
     "&&[\"dxmt\",\"dxvk\",\"wined3d\"].indexOf(v)>=0)k.unshift(\"LULLABY_RENDERER=\"+v);" \
     "return k.join(\" \")}"
 
-#define NP_CX_OPTIONS_BODY(ARG, RT, BARREL) \
+#define LB_CX_OPTIONS_BODY(ARG, RT, BARREL) \
     ARG "=>{" \
-    "const t=" ARG ".details,r=t.strLaunchOptions||\"\",o=(" NP_CX_OPTIONS_CLEAN ")(r)," \
+    "const t=" ARG ".details,r=t.strLaunchOptions||\"\",o=(" LB_CX_OPTIONS_CLEAN ")(r)," \
     "g=k=>{const p=o.split(\" \").find(x=>x.indexOf(k+\"=\")===0);return p?p.slice(k.length+1):\"\"}," \
     "s=ps=>{const a=o.split(\" \").filter(x=>x&&!ps.some(p=>x.indexOf(p[0]+\"=\")===0));" \
     "ps.forEach(p=>{if(p[1])a.unshift(p[0]+\"=\"+p[1])});" \
@@ -147,7 +147,7 @@ static int out_expand(np_out_t *o, const char *replace, const np_cap_t *caps) {
     "&&!t.strCompatToolName)return null;" \
     "o!==r&&SteamClient.Apps.SetAppLaunchOptions(t.unAppID,o);" \
     "return(0," RT ".jsx)(\"div\",{className:\"MSCXPanel\",children:(0," RT ".jsxs)(" RT ".Fragment,{children:[" \
-    "(0," RT ".jsx)(\"style\",{children:" NP_CX_OPTIONS_CSS "})," \
+    "(0," RT ".jsx)(\"style\",{children:" LB_CX_OPTIONS_CSS "})," \
     "(0," RT ".jsx)(" BARREL ".XY,{label:\"Graphics\",children:" \
     "(0," RT ".jsx)(" BARREL ".m,{rgOptions:B,selectedOption:b," \
     "onChange:v=>s([[\"LULLABY_RENDERER\",v.data],[\"CX_GRAPHICS_BACKEND\",\"\"]])})},\"gfx\")" \
@@ -159,27 +159,27 @@ static int out_expand(np_out_t *o, const char *replace, const np_cap_t *caps) {
 // the values for all games. Both draw the catalog lullaby-settings answers with.
 // React DOM, for the Advanced dialog's portal, by its module id in this build (78325);
 // without it the dialog stays inside the page.
-#define NP_PANEL_REACT_DOM \
+#define LB_PANEL_REACT_DOM \
     "(function(){try{var d=r(78325);return d&&d.createPortal?d:null}catch(x){return null}})()"
 
-#define NP_PANEL_COMPONENT \
-    "NPPanel=(" NP_PANEL_JS ")(i,c,n," NP_PANEL_REACT_DOM "),"
+#define LB_PANEL_COMPONENT \
+    "LBPanel=(" LB_PANEL_JS ")(i,c,n," LB_PANEL_REACT_DOM "),"
 
 // The settings page's module does not import Steam's dialog controls, so they are
 // required by the module id the compat page's module imports them by (64608 in this
 // build); a module that is not there leaves the panel to say so rather than throw.
 // Built on first render, after every module of the chunk has loaded.
-#define NP_PANEL_GLOBAL_STATEMENT \
-    "var NPPanelG;function NPGlobal(){if(!NPPanelG)NPPanelG=(" NP_PANEL_JS ")(i," \
+#define LB_PANEL_GLOBAL_STATEMENT \
+    "var LBPanelG;function LBGlobal(){if(!LBPanelG)LBPanelG=(" LB_PANEL_JS ")(i," \
     "(function(){try{var b=r(64608);return b&&b.y4?b:null}catch(x){return null}})(),n," \
-    NP_PANEL_REACT_DOM ");" \
-    "return NPPanelG.Global()}"
+    LB_PANEL_REACT_DOM ");" \
+    "return LBPanelG.Global()}"
 
 // Valve is testing a new compatibility page UI, this logic relates to supporting that
-#define NP_CX_OPTIONS_STATEMENT \
-    "var MSCXOpts=" NP_CX_OPTIONS_BODY("np", NP_C3, NP_C4) ";"
+#define LB_CX_OPTIONS_STATEMENT \
+    "var MSCXOpts=" LB_CX_OPTIONS_BODY("np", LB_C3, LB_C4) ";"
 
-static const np_gate_t g_gates_forcetool[] = {
+static const lb_gate_t g_gates_forcetool[] = {
     // SteamPlay settings section
     { "function ue(e){return(0,T.CI)()?",
       "function ue(e){return true?", 1 },
@@ -206,17 +206,17 @@ static const np_gate_t g_gates_forcetool[] = {
     { "Rt=(0,a.PA)(e=>(0,i.jsxs)(c.nB,{children:[(0,i.jsx)(\"div\",{className:K().HiddenIfNotLast,"
       "children:(0,A.we)(\"#AppProperties_CompatibilityNoOptions\")}),(0,i.jsx)(It,{...e}),"
       "(0,i.jsx)(xt,{...e})]}));",
-      NP_PANEL_COMPONENT
+      LB_PANEL_COMPONENT
       "Rt=(0,a.PA)(e=>(0,i.jsxs)(c.nB,{children:[(0,i.jsx)(\"div\",{className:K().HiddenIfNotLast,"
       "children:(0,A.we)(\"#AppProperties_CompatibilityNoOptions\")}),(0,i.jsx)(It,{...e}),"
-      "(0,i.jsx)(xt,{...e}),(0,i.jsx)(NPPanel.Game,{...e})]}));", 1 },
+      "(0,i.jsx)(xt,{...e}),(0,i.jsx)(LBPanel.Game,{...e})]}));", 1 },
     // Settings > Compatibility: Lullaby's values for all games under Steam Play's own
     { "function h(e){return(0,i.jsxs)(A.sh,{children:[(0,i.jsx)(\"div\",{children:(0,l.we)"
       "(\"#Settings_SteamPlay_IsWildcardEnabled\")}),(0,i.jsx)(g,{bottomSeparator:\"none\"})]})}",
-      NP_PANEL_GLOBAL_STATEMENT
+      LB_PANEL_GLOBAL_STATEMENT
       "function h(e){return(0,i.jsxs)(A.sh,{children:[(0,i.jsx)(\"div\",{children:(0,l.we)"
       "(\"#Settings_SteamPlay_IsWildcardEnabled\")}),(0,i.jsx)(g,{bottomSeparator:\"none\"}),"
-      "(0,i.jsx)(NPGlobal,{})]})}", 1 },
+      "(0,i.jsx)(LBGlobal,{})]})}", 1 },
     { "get is_invalid_os_type(){return this.most_available_per_client_data.is_invalid_os_type}",
       "get is_invalid_os_type(){return false}", 1 },
     // Reminder banner for 32 bit Mac games
@@ -229,61 +229,61 @@ static const np_gate_t g_gates_forcetool[] = {
 };
 
 // Support for new compatibility tab UI in the Steam beta
-static const np_gate_t g_gates_selecttool[] = {
+static const lb_gate_t g_gates_selecttool[] = {
     // AppProperties Compatibility tab
-    { "(0," NP_C1 ".CI)()&&" NP_C2 ".push({title:(0," NP_C3 ".we)"
+    { "(0," LB_C1 ".CI)()&&" LB_C2 ".push({title:(0," LB_C3 ".we)"
       "(\"#AppProperties_CompatibilityPage\")",
-      "true&&" NP_C2 ".push({title:(0," NP_C3 ".we)"
+      "true&&" LB_C2 ".push({title:(0," LB_C3 ".we)"
       "(\"#AppProperties_CompatibilityPage\")", 2 },
     // Settings page Compatibility entry.
-    { "Compatibility:{visible:" NP_C1 "&&(0," NP_C2 ".CI)(),title:",
-      "Compatibility:{visible:" NP_C1 "&&true,title:", 1 },
-    { "function " NP_C1 "(" NP_C2 "){return(0," NP_C3 ".jsxs)(" NP_C4 ".XY,{label:(0," NP_C5 ".we)"
-      "(\"#Settings_SteamPlay_SteamPlay\"),children:[(0," NP_C3 ".jsx)(" NP_C6 ",{details:" NP_C2 ".details}),"
-      "(0," NP_C3 ".jsx)(" NP_C7 ".G,{setting:\"compat_show_all_tools\",label:(0," NP_C5 ".we)"
-      "(\"#Settings_SteamPlay_ShowAll\"),feature:" NP_C8 ".OK})]})}",
-      NP_CX_OPTIONS_STATEMENT
-      "function " NP_C1 "(" NP_C2 "){return(0," NP_C3 ".jsxs)(" NP_C3 ".Fragment,{children:["
-      "(0," NP_C3 ".jsxs)(" NP_C4 ".XY,{label:(0," NP_C5 ".we)"
-      "(\"#Settings_SteamPlay_SteamPlay\"),children:[(0," NP_C3 ".jsx)(" NP_C6 ",{details:" NP_C2 ".details}),"
-      "(0," NP_C3 ".jsx)(" NP_C7 ".G,{setting:\"compat_show_all_tools\",label:(0," NP_C5 ".we)"
-      "(\"#Settings_SteamPlay_ShowAll\"),feature:" NP_C8 ".OK})]}),"
-      "(0," NP_C3 ".jsx)(MSCXOpts,{details:" NP_C2 ".details})]})}", 1 },
+    { "Compatibility:{visible:" LB_C1 "&&(0," LB_C2 ".CI)(),title:",
+      "Compatibility:{visible:" LB_C1 "&&true,title:", 1 },
+    { "function " LB_C1 "(" LB_C2 "){return(0," LB_C3 ".jsxs)(" LB_C4 ".XY,{label:(0," LB_C5 ".we)"
+      "(\"#Settings_SteamPlay_SteamPlay\"),children:[(0," LB_C3 ".jsx)(" LB_C6 ",{details:" LB_C2 ".details}),"
+      "(0," LB_C3 ".jsx)(" LB_C7 ".G,{setting:\"compat_show_all_tools\",label:(0," LB_C5 ".we)"
+      "(\"#Settings_SteamPlay_ShowAll\"),feature:" LB_C8 ".OK})]})}",
+      LB_CX_OPTIONS_STATEMENT
+      "function " LB_C1 "(" LB_C2 "){return(0," LB_C3 ".jsxs)(" LB_C3 ".Fragment,{children:["
+      "(0," LB_C3 ".jsxs)(" LB_C4 ".XY,{label:(0," LB_C5 ".we)"
+      "(\"#Settings_SteamPlay_SteamPlay\"),children:[(0," LB_C3 ".jsx)(" LB_C6 ",{details:" LB_C2 ".details}),"
+      "(0," LB_C3 ".jsx)(" LB_C7 ".G,{setting:\"compat_show_all_tools\",label:(0," LB_C5 ".we)"
+      "(\"#Settings_SteamPlay_ShowAll\"),feature:" LB_C8 ".OK})]}),"
+      "(0," LB_C3 ".jsx)(MSCXOpts,{details:" LB_C2 ".details})]})}", 1 },
     { "get is_invalid_os_type(){return this.most_available_per_client_data.is_invalid_os_type}",
       "get is_invalid_os_type(){return false}", 1 },
     // Reminder banner for 32 bit Mac games
-    { NP_C1 ".is_invalid_os_type&&(0," NP_C2 ".jsx)(" NP_C3 ",{})",
-      "!" NP_C1 ".local_per_client_data?.installed&&"
-      NP_C1 ".most_available_per_client_data?.is_invalid_os_type&&"
-      "(0," NP_C2 ".jsx)(" NP_C3 ",{})", 1 },
-    { "(0," NP_C1 ".we)(\"#GameList_Entry_Invalid_OSType2\")",
+    { LB_C1 ".is_invalid_os_type&&(0," LB_C2 ".jsx)(" LB_C3 ",{})",
+      "!" LB_C1 ".local_per_client_data?.installed&&"
+      LB_C1 ".most_available_per_client_data?.is_invalid_os_type&&"
+      "(0," LB_C2 ".jsx)(" LB_C3 ",{})", 1 },
+    { "(0," LB_C1 ".we)(\"#GameList_Entry_Invalid_OSType2\")",
       "\"Turn on Lullaby (Dormison) under Properties > Compatibility to install "
       "and run the Windows version.\"", 1 },
 };
 
-static const np_gate_t g_fixes[] = {
+static const lb_gate_t g_fixes[] = {
     { "(\"#AddNonSteam_Filter_Exe_MacOS\"),rFilePatterns:[\"*.app\"]",
       "(\"#AddNonSteam_Filter_Exe_MacOS\"),rFilePatterns:[\"*.app\",\"*.exe\"]", 1 },
     { "{strFileTypeName:\"Image Files (*.tga,*.png)\",rFilePatterns:[\"*.tga\",\"*.png\"]}",
       "{strFileTypeName:\"Image Files (*.tga,*.png,*.exe)\","
       "rFilePatterns:[\"*.tga\",\"*.png\",\"*.exe\"]}", 1 },
 };
-#define NP_FIX_COUNT (sizeof(g_fixes) / sizeof(g_fixes[0]))
+#define LB_FIX_COUNT (sizeof(g_fixes) / sizeof(g_fixes[0]))
 
 typedef struct {
     const char     *name;
     const char     *probe;
-    const np_gate_t *gates;
+    const lb_gate_t *gates;
     size_t          count;
-} np_ui_shape_t;
+} lb_ui_shape_t;
 
-static const np_ui_shape_t g_shapes[] = {
-    { NP_SHAPE_FORCETOOL,  "#AppProperties_CompatilibityForceTool",
+static const lb_ui_shape_t g_shapes[] = {
+    { LB_SHAPE_FORCETOOL,  "#AppProperties_CompatilibityForceTool",
       g_gates_forcetool,  sizeof(g_gates_forcetool) / sizeof(g_gates_forcetool[0]) },
-    { NP_SHAPE_SELECTTOOL, "#AppProperties_Compat_SelectTool",
+    { LB_SHAPE_SELECTTOOL, "#AppProperties_Compat_SelectTool",
       g_gates_selecttool, sizeof(g_gates_selecttool) / sizeof(g_gates_selecttool[0]) },
 };
-#define NP_SHAPE_COUNT (sizeof(g_shapes) / sizeof(g_shapes[0]))
+#define LB_SHAPE_COUNT (sizeof(g_shapes) / sizeof(g_shapes[0]))
 
 static int has_suffix(const char *s, const char *suf) {
     size_t ls = strlen(s), lf = strlen(suf);
@@ -300,8 +300,8 @@ static const char *inside_steamui(const char *path) {
 }
 
 // The compatibility UI has shipped in both chunk~*.js and sp.js.
-// np_webpatch_transform rejects scripts without matching anchors.
-int np_webpatch_should_patch(const char *path) {
+// lb_webpatch_transform rejects scripts without matching anchors.
+int lb_webpatch_should_patch(const char *path) {
     if (!path || !has_suffix(path, ".js"))
         return 0;
 
@@ -313,32 +313,32 @@ int np_webpatch_should_patch(const char *path) {
         && strncmp(rest, "libraries/", sizeof("libraries/") - 1) != 0;
 }
 
-char *np_webpatch_transform(const uint8_t *src, size_t src_len, size_t *out_len,
+char *lb_webpatch_transform(const uint8_t *src, size_t src_len, size_t *out_len,
                             const char **out_shape) {
     const char *s = (const char *)src;
 
     if (out_shape)
         *out_shape = NULL;
 
-    const np_ui_shape_t *shape = NULL;
-    for (size_t i = 0; i < NP_SHAPE_COUNT; i++) {
+    const lb_ui_shape_t *shape = NULL;
+    for (size_t i = 0; i < LB_SHAPE_COUNT; i++) {
         if (count_matches(s, src_len, g_shapes[i].probe) == 0)
             continue;
         if (shape) {
-            NP_WARN("webpatch: chunk carries both the '%s' and '%s' compat UI, "
+            LB_WARN("webpatch: chunk carries both the '%s' and '%s' compat UI, "
                     "refusing to guess which one renders", shape->name, g_shapes[i].name);
             return NULL;
         }
         shape = &g_shapes[i];
     }
-    int    fix_on[NP_FIX_COUNT];
+    int    fix_on[LB_FIX_COUNT];
     size_t fix_live = 0;
-    for (size_t f = 0; f < NP_FIX_COUNT; f++) {
+    for (size_t f = 0; f < LB_FIX_COUNT; f++) {
         size_t n = count_matches(s, src_len, g_fixes[f].find);
         fix_on[f] = n == (size_t)g_fixes[f].expect;
         if (fix_on[f]) { fix_live++; continue; }
         if (n)
-            NP_WARN("webpatch: fix %zu expected %d occurrence(s), found %zu; "
+            LB_WARN("webpatch: fix %zu expected %d occurrence(s), found %zu; "
                     "leaving it alone", f, g_fixes[f].expect, n);
     }
 
@@ -353,28 +353,28 @@ char *np_webpatch_transform(const uint8_t *src, size_t src_len, size_t *out_len,
         for (size_t g = 0; g < shape->count; g++) {
             size_t n = count_matches(s, src_len, shape->gates[g].find);
             if (n != (size_t)shape->gates[g].expect) {
-                NP_WARN("webpatch: [%s] gate %zu expected %d occurrence(s), found %zu",
+                LB_WARN("webpatch: [%s] gate %zu expected %d occurrence(s), found %zu",
                         shape->name, g, shape->gates[g].expect, n);
                 drifted = 1;
             }
         }
         if (drifted) {
-            NP_ERR("webpatch: [%s] compat UI left unpatched, a Steam update moved the "
+            LB_ERR("webpatch: [%s] compat UI left unpatched, a Steam update moved the "
                    "anchors", shape->name);
             return NULL;
         }
     }
 
-    np_out_t out = {0};
-    np_cap_t caps[NP_CAP_MAX];
+    lb_out_t out = {0};
+    lb_cap_t caps[LB_CAP_MAX];
     for (size_t i = 0; i < src_len; ) {
-        const np_gate_t *hit = NULL;
+        const lb_gate_t *hit = NULL;
         size_t used = 0;
         for (size_t g = 0; shape && g < shape->count; g++) {
             used = match_at(s, src_len, i, shape->gates[g].find, caps);
             if (used) { hit = &shape->gates[g]; break; }
         }
-        for (size_t f = 0; !hit && f < NP_FIX_COUNT; f++) {
+        for (size_t f = 0; !hit && f < LB_FIX_COUNT; f++) {
             if (!fix_on[f]) continue;
             used = match_at(s, src_len, i, g_fixes[f].find, caps);
             if (used) { hit = &g_fixes[f]; break; }
@@ -388,7 +388,7 @@ char *np_webpatch_transform(const uint8_t *src, size_t src_len, size_t *out_len,
     if (!out_reserve(&out, 0)) { free(out.buf); return NULL; }
     out.buf[out.len] = '\0';
     *out_len = out.len;
-    NP_LOG("webpatch: [%s] %zu gates, %zu fixes applied",
+    LB_LOG("webpatch: [%s] %zu gates, %zu fixes applied",
            shape ? shape->name : "no compat UI", shape ? shape->count : 0, fix_live);
     return out.buf;
 }

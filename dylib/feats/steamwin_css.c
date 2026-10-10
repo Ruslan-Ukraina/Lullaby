@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static np_steamwin_mode_t g_mode = NP_SW_OFF;
+static lb_steamwin_mode_t g_mode = LB_SW_OFF;
 static pthread_once_t g_mode_once = PTHREAD_ONCE_INIT;
 
 // The first word only, whole: "native", "native-app" or "log"; anything else is off, as
@@ -22,36 +22,36 @@ static int is_word(const char *text, const char *word) {
     return next == '\0' || next == '\n' || next == '\r' || next == ' ' || next == '\t';
 }
 
-np_steamwin_mode_t np_steamwin_parse_mode(const char *text) {
+lb_steamwin_mode_t lb_steamwin_parse_mode(const char *text) {
     if (!text)
-        return NP_SW_OFF;
+        return LB_SW_OFF;
     while (*text == ' ' || *text == '\t' || *text == '\n' || *text == '\r')
         text++;
     if (is_word(text, "native-app"))
-        return NP_SW_NATIVE_APP;
+        return LB_SW_NATIVE_APP;
     if (is_word(text, "native"))
-        return NP_SW_NATIVE;
+        return LB_SW_NATIVE;
     if (is_word(text, "log"))
-        return NP_SW_LOG;
-    return NP_SW_OFF;
+        return LB_SW_LOG;
+    return LB_SW_OFF;
 }
 
 static void read_mode(void) {
-    const char *home = np_home_dir();
+    const char *home = lb_home_dir();
     if (!home)
         return;
     char path[512];
-    np_support_path(path, sizeof(path), home, NP_STEAMWIN_SWITCH_FILE);
+    lb_support_path(path, sizeof(path), home, LB_STEAMWIN_SWITCH_FILE);
     FILE *f = fopen(path, "r");
     if (!f)
         return;
     char word[32] = {0};
     if (fgets(word, sizeof(word), f))
-        g_mode = np_steamwin_parse_mode(word);
+        g_mode = lb_steamwin_parse_mode(word);
     fclose(f);
 }
 
-np_steamwin_mode_t np_steamwin_mode(void) {
+lb_steamwin_mode_t lb_steamwin_mode(void) {
     pthread_once(&g_mode_once, read_mode);
     return g_mode;
 }
@@ -61,11 +61,11 @@ static int has_suffix(const char *s, const char *suf) {
     return ls >= lf && memcmp(s + ls - lf, suf, lf) == 0;
 }
 
-int np_steamwin_css_should_patch(const char *path) {
+int lb_steamwin_css_should_patch(const char *path) {
     return path && has_suffix(path, ".css") && strstr(path, "/steamui/") != NULL;
 }
 
-// All rules apply only under `.TitleBar.NPDesktop`, a class np_steamwin_js_transform
+// All rules apply only under `.TitleBar.LBDesktop`, a class lb_steamwin_js_transform
 // adds to Steam's TitleBar outside the in-game overlay: overlay windows have no
 // macOS frame and keep Valve's buttons and spacing.
 //
@@ -86,17 +86,17 @@ int np_steamwin_css_should_patch(const char *path) {
 //                  (background-origin), so the freed strip continues the dialog's
 //                  own gradient: no black, no band; border-box keeps the height.
 //                  Popups without a DialogContent are not moved.
-const char NP_STEAMWIN_CSS[] =
+const char LB_STEAMWIN_CSS[] =
     "\n/* Lullaby: native Steam windows */\n"
-    ".TitleBar.OSX.NPDesktop .title-bar-actions.window-controls{visibility:hidden!important}\n"
-    ".friendListHeaderContainer.titleBarContainer.OSX:has(> .TitleBar.NPDesktop){padding-top:12px!important}\n"
-    "html.ModalDialogPopup:has(.TitleBar.NPDesktop) .DialogContent:not(.DialogContent .DialogContent)"
+    ".TitleBar.OSX.LBDesktop .title-bar-actions.window-controls{visibility:hidden!important}\n"
+    ".friendListHeaderContainer.titleBarContainer.OSX:has(> .TitleBar.LBDesktop){padding-top:12px!important}\n"
+    "html.ModalDialogPopup:has(.TitleBar.LBDesktop) .DialogContent:not(.DialogContent .DialogContent)"
     "{border-top:14px solid transparent!important;box-sizing:border-box!important;"
     "background-origin:border-box!important}\n";
 
 static const char ANCHOR[] = ".title-bar-actions";
 
-char *np_steamwin_css_transform(const uint8_t *src, size_t src_len, size_t *out_len) {
+char *lb_steamwin_css_transform(const uint8_t *src, size_t src_len, size_t *out_len) {
     if (!src || !out_len)
         return NULL;
     // Only stylesheets that style the title bar, and never twice.
@@ -104,12 +104,12 @@ char *np_steamwin_css_transform(const uint8_t *src, size_t src_len, size_t *out_
         return NULL;
     if (memmem(src, src_len, "Lullaby: native Steam windows", 31))
         return NULL;
-    size_t extra = sizeof(NP_STEAMWIN_CSS) - 1;
+    size_t extra = sizeof(LB_STEAMWIN_CSS) - 1;
     char *out = malloc(src_len + extra + 1);
     if (!out)
         return NULL;
     memcpy(out, src, src_len);
-    memcpy(out + src_len, NP_STEAMWIN_CSS, extra);
+    memcpy(out + src_len, LB_STEAMWIN_CSS, extra);
     out[src_len + extra] = '\0';
     *out_len = src_len + extra;
     return out;
@@ -118,7 +118,7 @@ char *np_steamwin_css_transform(const uint8_t *src, size_t src_len, size_t *out_
 // MARK: TitleBar class
 
 // TitleBar in library.js: `…popup:M,children:C}=e,…("TitleBar","title-area",p&&"OSX",…`.
-// After `p&&"OSX",` goes `p&&!<overlay?>(M)&&"NPDesktop",`. The overlay test uses
+// After `p&&"OSX",` goes `p&&!<overlay?>(M)&&"LBDesktop",`. The overlay test uses
 // names Steam does not minify: window.g_PopupManager.GetPopups(), each popup's
 // window and BIsInOverlay() (a popup of a game's overlay has its PID in
 // browser_info). Anything unexpected counts as not the overlay.
@@ -128,13 +128,13 @@ static const char TB_OVERLAY[] =
     "Array.from(m.GetPopups()).some(function(e){return e&&e.window===w&&"
     "(e.BIsInOverlay?e.BIsInOverlay():!!(e.browser_info&&e.browser_info.m_unPID))}))}"
     "catch(n){return!1}}(";
-static const char TB_TAIL[] = ")&&\"NPDesktop\",";
+static const char TB_TAIL[] = ")&&\"LBDesktop\",";
 
 static int ident_char(char c) {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '$';
 }
 
-char *np_steamwin_js_transform(const uint8_t *src, size_t src_len, size_t *out_len) {
+char *lb_steamwin_js_transform(const uint8_t *src, size_t src_len, size_t *out_len) {
     const char *s = (const char *)src;
     if (!s || !out_len)
         return NULL;
@@ -144,7 +144,7 @@ char *np_steamwin_js_transform(const uint8_t *src, size_t src_len, size_t *out_l
     size_t rest = src_len - (size_t)(at - s) - (sizeof(TB_ANCHOR) - 1);
     if (memmem(at + 1, rest, TB_ANCHOR, sizeof(TB_ANCHOR) - 1))
         return NULL;                        // more than one TitleBar: not the shape we know
-    if (memmem(s, src_len, "NPDesktop", 9))
+    if (memmem(s, src_len, "LBDesktop", 9))
         return NULL;                        // already patched
 
     // `p&&"OSX",` right after the anchor.

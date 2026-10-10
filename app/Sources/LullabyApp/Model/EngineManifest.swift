@@ -34,7 +34,7 @@ enum EngineSignature {
         try! Curve25519.Signing.PublicKey(rawRepresentation: Data(base64Encoded: dormisonKeyBase64)!)
     }
 
-    /// The releases the engine manifest lives in (NPEngineManifestURL, from
+    /// The releases the engine manifest lives in (LBEngineManifestURL, from
     /// release/feed.json), and the only place engine tarballs may come from.
     /// Dormison's own by default; any other location still needs Dormison's signature.
     static var assetPathPrefix: String {
@@ -85,9 +85,9 @@ struct EngineRelease: Sendable, Equatable {
 
 struct EngineManifest: Sendable, Equatable {
     static let defaultURL = URL(string: "https://github.com/kageroumado/dormison/releases/download/manifest/engine.json")!
-    static let infoKey = "NPEngineManifestURL"
+    static let infoKey = "LBEngineManifestURL"
 
-    /// NPEngineManifestURL when it is a GitHub release download over https, else Dormison's.
+    /// LBEngineManifestURL when it is a GitHub release download over https, else Dormison's.
     static var url: URL { configuredURL(Bundle.main.object(forInfoDictionaryKey: infoKey) as? String) }
 
     static func configuredURL(_ text: String?) -> URL {

@@ -123,7 +123,7 @@ for (const lang of ['en', 'uk', 'ru']) {
   t.ok(text(renderer.props.description).includes(catalog.text.defaultValue.ru.replace('%@', 'DXMT')),
     'a game-only row of its own names Lullaby\'s default');
   const up = rowFor(tree, 'upscaler', 'ru');
-  t.ok(!walk(up.props.description).some(n => n.props && n.props.className === 'NPInherit'),
+  t.ok(!walk(up.props.description).some(n => n.props && n.props.className === 'LBInherit'),
     'an inherited row has no line under it');
   const retina = rowFor(tree, 'retina', 'ru');
   t.ok(retina.props.checked === true && !text(retina.props.description).includes(catalog.text.inherited.ru.split('%@')[0]),
@@ -134,7 +134,7 @@ for (const lang of ['en', 'uk', 'ru']) {
   t.ok(!('own' in catalog.text) && !('ownGlobal' in catalog.text), 'no "Custom" label left in the catalog');
   t.ok(rowsOf(tree).filter(n => n.type === 'DropdownField').every(n => n.props.childrenContainerWidth === 'min'),
     'lists are as wide as their choices');
-  t.ok(!walk(tree).some(n => n.props && n.props.className === 'NPLink'), 'no Reset in the rows');
+  t.ok(!walk(tree).some(n => n.props && n.props.className === 'LBLink'), 'no Reset in the rows');
   fps.props.onChange(false);
   const upscaler = rowFor(tree, 'upscaler', 'ru');
   upscaler.props.onChange({ data: JSON.stringify('metalfx') });
@@ -144,11 +144,11 @@ for (const lang of ['en', 'uk', 'ru']) {
   t.ok(JSON.stringify(ctx.calls) === JSON.stringify([['set', 'fps', false], ['set', 'upscaler', 'metalfx'], ['reset']]),
     `a toggle and a list set values, the button resets the game (${JSON.stringify(ctx.calls)})`);
   const css = text(walk(tree).find(n => n.type === 'style'));
-  const z = Number((/\.NPOverlay\{[^}]*z-index:(\d+)/.exec(css) || [])[1]);
+  const z = Number((/\.LBOverlay\{[^}]*z-index:(\d+)/.exec(css) || [])[1]);
   t.ok(z >= 1500 && z < 1600, `the dialog sits under Steam's menus (.DialogMenuPosition 1600), as Steam's own modals (1500): ${z}`);
-  t.ok(/\.NPDialog \.DialogDropDown\{font-size:13px;padding:8px 14px/.test(css), "the dialog's lists are the page's size");
+  t.ok(/\.LBDialog \.DialogDropDown\{font-size:13px;padding:8px 14px/.test(css), "the dialog's lists are the page's size");
 
-  const info = walk(renderer.props.label).find(n => n.props && /NPInfo/.test(n.props.className || ''));
+  const info = walk(renderer.props.label).find(n => n.props && /LBInfo/.test(n.props.className || ''));
   t.ok(info && info.props.role === 'button', 'every row has an (i)');
 }
 
@@ -157,19 +157,19 @@ for (const lang of ['en', 'uk', 'ru']) {
 {
   const ctx = ctxFor(clone(gameState), 'uk', { advanced: true });
   const tree = api.view(ctx);
-  const overlay = walk(tree).find(n => n.props && n.props.className === 'NPOverlay');
+  const overlay = walk(tree).find(n => n.props && n.props.className === 'LBOverlay');
   t.ok(!!overlay, 'Advanced settings opens over the window');
   const portal = walk(tree).find(n => n.type === 'Portal');
   t.ok(portal && portal.host === ctx.host && walk(portal).includes(overlay),
     "the dialog goes into the window's body through a portal, not into the page");
   const inline = new Function('return ' + source)()(J, B, R, null).view(ctxFor(clone(gameState), 'uk', { advanced: true }));
-  t.ok(!walk(inline).some(n => n.type === 'Portal') && walk(inline).some(n => n.props && n.props.className === 'NPOverlay'),
+  t.ok(!walk(inline).some(n => n.type === 'Portal') && walk(inline).some(n => n.props && n.props.className === 'LBOverlay'),
     'without React DOM the dialog stays inline');
   const inDialog = rowsOf(overlay).map(n => text(n.props.label));
   const others = catalog.settings.filter(s => s.quick === undefined && s.levels.includes('game'));
   t.ok(others.every(s => inDialog.some(l => l.startsWith(s.title.uk))) && inDialog.length >= others.length,
     `every other row is in the dialog (${inDialog.length} of ${others.length})`);
-  const groups = walk(overlay).filter(n => n.props && n.props.className === 'NPGroup').map(n => text(n));
+  const groups = walk(overlay).filter(n => n.props && n.props.className === 'LBGroup').map(n => text(n));
   t.ok(JSON.stringify(groups) === JSON.stringify(catalog.groups.map(g => g.title.uk)),
     `by group, in order, no Game Porting Toolkit block (it is added in Lullaby) (${groups})`);
   const buttons = walk(overlay).filter(n => n.type === 'Button');
@@ -197,9 +197,9 @@ for (const lang of ['en', 'uk', 'ru']) {
   t.ok(text(retina.props.description).includes(catalog.text.defaultValue.ru.replace('%@', '\u0412\u044b\u043a\u043b.')),
     'a changed value for all games names Lullaby\'s default');
   const fps = rowFor(tree, 'fps', 'ru');
-  t.ok(!walk(fps.props.description).some(n => n.props && n.props.className === 'NPInherit'), 'an unchanged one has no line');
+  t.ok(!walk(fps.props.description).some(n => n.props && n.props.className === 'LBInherit'), 'an unchanged one has no line');
   const dialog = walk(api.view(ctxFor(clone(globalState), 'ru', { advanced: true })))
-    .find(n => n.props && n.props.className === 'NPOverlay');
+    .find(n => n.props && n.props.className === 'LBOverlay');
   t.ok(!rowsOf(dialog).some(n => text(n.props.label).startsWith(titleOf('msync', 'ru'))), 'msync+ is a game\'s alone');
   t.ok(text(dialog).includes(catalog.text.resetGlobal.ru), 'reset to Lullaby\'s defaults');
 }
@@ -209,8 +209,8 @@ for (const lang of ['en', 'uk', 'ru']) {
 {
   const running = Object.assign(clone(gameState), { status: 'restartGame', running: true });
   const tree = api.view(ctxFor(running, 'en'));
-  const status = walk(tree).find(n => n.props && /NPStatus/.test(n.props.className || ''));
-  t.ok(/NPWarn/.test(status.props.className) && text(status).includes(catalog.text.restartGame.en), 'a running game: after a restart');
+  const status = walk(tree).find(n => n.props && /LBStatus/.test(n.props.className || ''));
+  t.ok(/LBWarn/.test(status.props.className) && text(status).includes(catalog.text.restartGame.en), 'a running game: after a restart');
   const first = api.view(ctxFor(Object.assign(clone(gameState), { status: 'firstLaunch', exes: [] }), 'uk'));
   t.ok(text(first).includes(catalog.text.firstLaunch.uk), 'a game not started yet: at its first launch');
   for (const lang of ['en', 'uk', 'ru']) {

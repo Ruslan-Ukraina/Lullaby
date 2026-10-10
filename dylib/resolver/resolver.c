@@ -20,7 +20,7 @@ static const struct { uint32_t mask, val; } prologue_forms[] = {
     { 0xFFC003E0, 0xA90003E0 },  // STP  Xt, Xt2, [SP, #off]
 };
 
-int np_looks_like_prologue(uintptr_t addr) {
+int lb_looks_like_prologue(uintptr_t addr) {
     if (!addr) return 0;
     uint32_t w = *(const uint32_t *)addr;
     for (int i = 0; i < (int)(sizeof(prologue_forms) / sizeof(prologue_forms[0])); i++) {
@@ -31,33 +31,33 @@ int np_looks_like_prologue(uintptr_t addr) {
 }
 
 // Result accumulator
-static void push(np_resolve_result_t *r, const char *name, uintptr_t addr) {
+static void push(lb_resolve_result_t *r, const char *name, uintptr_t addr) {
     if (r->used == r->cap) {
         int grown = r->cap ? r->cap * 2 : 32;
-        np_resolved_t *buf = realloc(r->items, (size_t)grown * sizeof(*buf));
+        lb_resolved_t *buf = realloc(r->items, (size_t)grown * sizeof(*buf));
         if (!buf) return;
         r->items = buf;
         r->cap   = grown;
     }
-    r->items[r->used++] = (np_resolved_t){ .name = name, .site = addr };
+    r->items[r->used++] = (lb_resolved_t){ .name = name, .site = addr };
 }
 
 static int usable_code_address(const char *name, uintptr_t addr,
                                uintptr_t text, size_t text_sz);
 
 // Single-signature resolution
-uintptr_t np_aob_site(const np_sig_entry_t *sig, uintptr_t text, size_t text_sz) {
+uintptr_t lb_aob_site(const lb_sig_entry_t *sig, uintptr_t text, size_t text_sz) {
     if (!sig || !sig->aob_hex[0]) return 0;
     if (text_sz < sizeof(uint32_t)) return 0;
 
-    np_byte_pattern_t pat;
-    if (np_compile_pattern(sig->aob_hex, &pat) != 0) {
-        NP_WARN("resolver: '%s' has an unparseable byte pattern", sig->name);
+    lb_byte_pattern_t pat;
+    if (lb_compile_pattern(sig->aob_hex, &pat) != 0) {
+        LB_WARN("resolver: '%s' has an unparseable byte pattern", sig->name);
         return 0;
     }
 
-    uintptr_t hit = np_scan_sole_match(text, text_sz, &pat);
-    np_release_pattern(&pat);
+    uintptr_t hit = lb_scan_sole_match(text, text_sz, &pat);
+    lb_release_pattern(&pat);
     if (!hit) return 0;
 
     uintptr_t site = hit - (uintptr_t)(intptr_t)sig->match_offset;
@@ -66,46 +66,46 @@ uintptr_t np_aob_site(const np_sig_entry_t *sig, uintptr_t text, size_t text_sz)
     return site;
 }
 
-static int anchor_targets_function_entry(np_match_kind_t kind) {
+static int anchor_targets_function_entry(lb_match_kind_t kind) {
     switch (kind) {
-        case NP_MATCH_STRING:
-        case NP_MATCH_VTABLE_SLOT:
-        case NP_MATCH_CALL_TARGET:
-        case NP_MATCH_CALLS:
+        case LB_MATCH_STRING:
+        case LB_MATCH_VTABLE_SLOT:
+        case LB_MATCH_CALL_TARGET:
+        case LB_MATCH_CALLS:
             return 1;
-        case NP_MATCH_NONE:
-        case NP_MATCH_INSN_AFTER_STRING:
-        case NP_MATCH_INSN_PAIR_IN_FN:
-        case NP_MATCH_AOB:
+        case LB_MATCH_NONE:
+        case LB_MATCH_INSN_AFTER_STRING:
+        case LB_MATCH_INSN_PAIR_IN_FN:
+        case LB_MATCH_AOB:
             return 0;
     }
     return 0;
 }
 
-static int aob_site_plausible(const np_sig_entry_t *sig,
+static int aob_site_plausible(const lb_sig_entry_t *sig,
                              const struct mach_header_64 *mh, intptr_t slide,
                              uintptr_t addr) {
     uintptr_t start = 0, end = 0;
-    int bounded = np_function_bounds(mh, slide, addr, &start, &end) == 0;
+    int bounded = lb_function_bounds(mh, slide, addr, &start, &end) == 0;
 
     if (!anchor_targets_function_entry(sig->anchor.kind)) {
         if (!bounded)
-            NP_WARN("resolver: '%s' byte pattern site 0x%lx is not inside any known "
+            LB_WARN("resolver: '%s' byte pattern site 0x%lx is not inside any known "
                     "function; rejecting", sig->name, (unsigned long)addr);
         return bounded;
     }
 
     if (bounded) {
         if (start != addr) {
-            NP_WARN("resolver: '%s' byte pattern hit 0x%lx is inside 0x%lx, not a "
+            LB_WARN("resolver: '%s' byte pattern hit 0x%lx is inside 0x%lx, not a "
                     "function start; rejecting", sig->name, (unsigned long)addr,
                     (unsigned long)start);
             return 0;
         }
         return 1;
     }
-    if (!np_looks_like_prologue(addr)) {
-        NP_WARN("resolver: '%s' byte pattern hit 0x%lx has no function bounds and "
+    if (!lb_looks_like_prologue(addr)) {
+        LB_WARN("resolver: '%s' byte pattern hit 0x%lx has no function bounds and "
                 "does not open with a prologue; rejecting", sig->name,
                 (unsigned long)addr);
         return 0;
@@ -113,38 +113,38 @@ static int aob_site_plausible(const np_sig_entry_t *sig,
     return 1;
 }
 
-static uintptr_t try_anchor(np_sig_entry_t *sig,
+static uintptr_t try_anchor(lb_sig_entry_t *sig,
                             const struct mach_header_64 *mh, intptr_t slide,
                             uintptr_t text, size_t text_sz) {
-    if (sig->anchor.kind == NP_MATCH_AOB) {
-        uintptr_t addr = np_aob_site(sig, text, text_sz);
+    if (sig->anchor.kind == LB_MATCH_AOB) {
+        uintptr_t addr = lb_aob_site(sig, text, text_sz);
         if (!addr) return 0;
         if (!aob_site_plausible(sig, mh, slide, addr)) return 0;
-        NP_LOG("resolver: '%s' -> 0x%lx [aob]", sig->name, (unsigned long)addr);
+        LB_LOG("resolver: '%s' -> 0x%lx [aob]", sig->name, (unsigned long)addr);
         return addr;
     }
 
     uintptr_t addr = 0;
-    if (sig->anchor.kind != NP_MATCH_NONE)
-        addr = np_locate_anchor(mh, slide, text, text_sz, &sig->anchor);
+    if (sig->anchor.kind != LB_MATCH_NONE)
+        addr = lb_locate_anchor(mh, slide, text, text_sz, &sig->anchor);
 
-    uintptr_t alt = np_aob_site(sig, text, text_sz);
+    uintptr_t alt = lb_aob_site(sig, text, text_sz);
 
     if (!addr) {
         if (!alt) return 0;
         if (!aob_site_plausible(sig, mh, slide, alt)) return 0;
 
-        NP_LOG("resolver: '%s' -> 0x%lx [aob, anchor did not resolve]",
+        LB_LOG("resolver: '%s' -> 0x%lx [aob, anchor did not resolve]",
                sig->name, (unsigned long)alt);
         return alt;
     }
 
     if (alt && alt != addr)
-        NP_WARN("resolver: '%s' anchor 0x%lx disagrees with byte pattern 0x%lx; "
+        LB_WARN("resolver: '%s' anchor 0x%lx disagrees with byte pattern 0x%lx; "
                 "keeping the anchor", sig->name, (unsigned long)addr,
                 (unsigned long)alt);
 
-    NP_LOG("resolver: '%s' -> 0x%lx [anchor]", sig->name, (unsigned long)addr);
+    LB_LOG("resolver: '%s' -> 0x%lx [anchor]", sig->name, (unsigned long)addr);
     return addr;
 }
 
@@ -153,12 +153,12 @@ static uintptr_t try_anchor(np_sig_entry_t *sig,
 static int usable_code_address(const char *name, uintptr_t addr,
                                uintptr_t text, size_t text_sz) {
     if (addr & 3u) {
-        NP_WARN("resolver: '%s' resolved to 0x%lx, not a 4-byte aligned "
+        LB_WARN("resolver: '%s' resolved to 0x%lx, not a 4-byte aligned "
                 "instruction address; rejecting", name, (unsigned long)addr);
         return 0;
     }
     if (addr < text || addr > text + text_sz - sizeof(uint32_t)) {
-        NP_WARN("resolver: '%s' resolved to 0x%lx, outside __TEXT "
+        LB_WARN("resolver: '%s' resolved to 0x%lx, outside __TEXT "
                 "0x%lx..0x%lx; rejecting", name, (unsigned long)addr,
                 (unsigned long)text, (unsigned long)(text + text_sz));
         return 0;
@@ -167,36 +167,36 @@ static int usable_code_address(const char *name, uintptr_t addr,
 }
 
 // Public API
-int np_required_for_module(const np_sigdb_t *sigdb, const char *module) {
+int lb_required_for_module(const lb_sigdb_t *sigdb, const char *module) {
     if (!sigdb || !module) return 0;
     int n = 0;
     for (int i = 0; i < sigdb->sig_count; i++) {
-        const np_sig_entry_t *sig = &sigdb->signatures[i];
+        const lb_sig_entry_t *sig = &sigdb->signatures[i];
         if (!sig->deprecated && strcmp(sig->module, module) == 0)
             n++;
     }
     return n;
 }
 
-int np_resolve_signatures(const struct mach_header_64 *mh, intptr_t slide,
-                      np_sigdb_t *sigdb, const char *module,
-                      np_resolve_result_t *out) {
+int lb_resolve_signatures(const struct mach_header_64 *mh, intptr_t slide,
+                      lb_sigdb_t *sigdb, const char *module,
+                      lb_resolve_result_t *out) {
     if (!mh || !sigdb || !module || !out) return 0;
     memset(out, 0, sizeof(*out));
 
     uintptr_t text;
     size_t text_sz;
-    if (np_find_segment(mh, slide, "__TEXT", &text, &text_sz) != 0) {
-        NP_ERR("resolver: __TEXT segment not found in %s, cannot scan", module);
+    if (lb_find_segment(mh, slide, "__TEXT", &text, &text_sz) != 0) {
+        LB_ERR("resolver: __TEXT segment not found in %s, cannot scan", module);
         return 0;
     }
 
-    NP_LOG("resolver: scanning %s __TEXT @ 0x%lx (%zu bytes)", module, text, text_sz);
+    LB_LOG("resolver: scanning %s __TEXT @ 0x%lx (%zu bytes)", module, text, text_sz);
 
     int resolved = 0;
 
     for (int i = 0; i < sigdb->sig_count; i++) {
-        np_sig_entry_t *sig = &sigdb->signatures[i];
+        lb_sig_entry_t *sig = &sigdb->signatures[i];
 
         if (strcmp(sig->module, module) != 0)
             continue;
@@ -217,12 +217,12 @@ int np_resolve_signatures(const struct mach_header_64 *mh, intptr_t slide,
         push(out, sig->name, addr);
     }
 
-    NP_LOG("resolver: %s %d/%d signatures resolved", module, resolved,
-           np_required_for_module(sigdb, module));
+    LB_LOG("resolver: %s %d/%d signatures resolved", module, resolved,
+           lb_required_for_module(sigdb, module));
     return resolved;
 }
 
-uintptr_t np_lookup_address(const np_resolve_result_t *result, const char *name) {
+uintptr_t lb_lookup_address(const lb_resolve_result_t *result, const char *name) {
     if (!result || !name) return 0;
     for (int i = 0; i < result->used; i++) {
         if (result->items[i].name && strcmp(result->items[i].name, name) == 0)
@@ -231,7 +231,7 @@ uintptr_t np_lookup_address(const np_resolve_result_t *result, const char *name)
     return 0;
 }
 
-void np_free_resolution(np_resolve_result_t *result) {
+void lb_free_resolution(lb_resolve_result_t *result) {
     if (!result) return;
     free(result->items);
     memset(result, 0, sizeof(*result));

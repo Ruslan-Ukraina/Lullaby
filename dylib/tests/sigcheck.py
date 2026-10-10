@@ -11,8 +11,8 @@ wanted = {}
 for path in sorted((root / "dylib").rglob("*.c")):
     text = path.read_text()
     for pattern in (r'\.signature\s*=\s*"([^"]+)"',
-                    r'np_resolve_find\s*\(\s*\w+\s*,\s*"([^"]+)"',
-                    r'np_lookup_address\s*\(\s*\w+\s*,\s*\n?\s*"([^"]+)"'):
+                    r'lb_resolve_find\s*\(\s*\w+\s*,\s*"([^"]+)"',
+                    r'lb_lookup_address\s*\(\s*\w+\s*,\s*\n?\s*"([^"]+)"'):
         for name in re.findall(pattern, text):
             wanted.setdefault(name, path.relative_to(root))
 

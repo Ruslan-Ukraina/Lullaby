@@ -59,9 +59,9 @@ struct EngineProviderTests {
         let values = Dictionary(
             ConfigMaterializer.parse(try String(contentsOf: written, encoding: .utf8)).map { ($0.key, $0.value) },
             uniquingKeysWith: { $1 })
-        #expect(values["NP_ENGINE_VERSION"] == "'dormison-b9'")
-        #expect(values["NP_ENGINE_WINESERVER"]?.contains("dormison-b9/wine/bin/wineserver") == true)
-        #expect(values["NP_ENGINE_DLLPATH_X86_64"]?.hasSuffix("x86_64-windows'") == true)
+        #expect(values["LB_ENGINE_VERSION"] == "'dormison-b9'")
+        #expect(values["LB_ENGINE_WINESERVER"]?.contains("dormison-b9/wine/bin/wineserver") == true)
+        #expect(values["LB_ENGINE_DLLPATH_X86_64"]?.hasSuffix("x86_64-windows'") == true)
     }
 
     @Test("Quoting survives an apostrophe")

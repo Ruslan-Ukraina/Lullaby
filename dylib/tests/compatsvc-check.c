@@ -24,29 +24,29 @@ static void *stub_registered_tool_val;
 static uint32_t last_map_appid;
 static const char *last_map_tool;
 
-void *np_compat_manager(void) { return fake_manager; }
+void *lb_compat_manager(void) { return fake_manager; }
 
-uint32_t np_compat_tool_off(uint32_t ref) {
+uint32_t lb_compat_tool_off(uint32_t ref) {
     if (ref < 0x58) return ref;
     return (uint32_t)((int32_t)ref + stub_tool_shift);
 }
 
-size_t np_compat_tool_stride(void) { return 0x130 + stub_tool_shift; }
+size_t lb_compat_tool_stride(void) { return 0x130 + stub_tool_shift; }
 
-uint32_t np_compat_enabled_off(void) { return stub_enabled_off_val; }
+uint32_t lb_compat_enabled_off(void) { return stub_enabled_off_val; }
 
-uint32_t np_compat_valid_platforms(void *mgr, uint32_t appid) {
+uint32_t lb_compat_valid_platforms(void *mgr, uint32_t appid) {
     (void)mgr; (void)appid;
     return stub_platforms_val;
 }
 
-bool np_compat_would_force(void *mgr, uint32_t appid) {
+bool lb_compat_would_force(void *mgr, uint32_t appid) {
     (void)mgr; (void)appid;
     return stub_would_force_val;
 }
 
 static uint8_t stub_tool_for_app_entry[0x200];
-void *np_compat_tool_for_app(void *mgr, uint32_t appid) {
+void *lb_compat_tool_for_app(void *mgr, uint32_t appid) {
     (void)mgr; (void)appid;
     if (!stub_tool_for_app_name) return NULL;
     memset(stub_tool_for_app_entry, 0, sizeof stub_tool_for_app_entry);
@@ -55,7 +55,7 @@ void *np_compat_tool_for_app(void *mgr, uint32_t appid) {
 }
 
 static uint8_t stub_chosen_entry[0x200];
-void *np_compat_chosen_tool(void *mgr, uint32_t appid) {
+void *lb_compat_chosen_tool(void *mgr, uint32_t appid) {
     (void)mgr; (void)appid;
     if (!stub_chosen_tool_name) return NULL;
     memset(stub_chosen_entry, 0, sizeof stub_chosen_entry);
@@ -63,39 +63,39 @@ void *np_compat_chosen_tool(void *mgr, uint32_t appid) {
     return stub_chosen_entry;
 }
 
-const char *np_compat_app_mapping(void *mgr, uint32_t appid) {
+const char *lb_compat_app_mapping(void *mgr, uint32_t appid) {
     (void)mgr; (void)appid;
     return stub_app_mapping_val;
 }
 
-const char *np_compat_wildcard_mapping(void *mgr, uint32_t appid) {
+const char *lb_compat_wildcard_mapping(void *mgr, uint32_t appid) {
     (void)mgr; (void)appid;
     return stub_wildcard_val;
 }
 
-void *np_compat_registered_tool(void *mgr) {
+void *lb_compat_registered_tool(void *mgr) {
     (void)mgr;
     return stub_registered_tool_val;
 }
 
-void np_compat_map_tool(void *mgr, uint32_t appid, const char *name) {
+void lb_compat_map_tool(void *mgr, uint32_t appid, const char *name) {
     (void)mgr;
     last_map_appid = appid;
     last_map_tool = name;
 }
 
-void np_compat_force_enable(void *mgr) { (void)mgr; }
+void lb_compat_force_enable(void *mgr) { (void)mgr; }
 
-const char *np_compat_tool_dir(void) { return "/fake/tool"; }
-const char *np_compat_tool_commandline(void) { return "/fake/run %verb%"; }
+const char *lb_compat_tool_dir(void) { return "/fake/tool"; }
+const char *lb_compat_tool_commandline(void) { return "/fake/run %verb%"; }
 
-// Stubs for the webui layer. np_webui_parse_into captures the protobuf bytes so the
+// Stubs for the webui layer. lb_webui_parse_into captures the protobuf bytes so the
 // test can decode them.
 static uint8_t captured_pb[8192];
 static uint32_t captured_pb_len;
 static int parse_into_ok = 1;
 
-int np_webui_parse_into(uintptr_t message, const void *bytes, uint32_t len) {
+int lb_webui_parse_into(uintptr_t message, const void *bytes, uint32_t len) {
     (void)message;
     if (len <= sizeof captured_pb) {
         memcpy(captured_pb, bytes, len);
@@ -104,20 +104,20 @@ int np_webui_parse_into(uintptr_t message, const void *bytes, uint32_t len) {
     return parse_into_ok;
 }
 
-uintptr_t np_webui_registry(void) { return 1; }
+uintptr_t lb_webui_registry(void) { return 1; }
 
-int np_webui_register_route(const char *name, uintptr_t req, uintptr_t resp,
+int lb_webui_register_route(const char *name, uintptr_t req, uintptr_t resp,
                             int (*handler)(uintptr_t, uintptr_t)) {
     (void)name; (void)req; (void)resp; (void)handler;
     return 1;
 }
 
-int np_webui_notify(const char *name, uintptr_t message) {
+int lb_webui_notify(const char *name, uintptr_t message) {
     (void)name; (void)message;
     return 1;
 }
 
-uintptr_t np_webui_new_message(uintptr_t vptr) {
+uintptr_t lb_webui_new_message(uintptr_t vptr) {
     (void)vptr;
     return 1;
 }
@@ -126,7 +126,7 @@ uintptr_t np_webui_new_message(uintptr_t vptr) {
 // here is how a test spells "this build has no such type".
 static const char *stub_absent_type;
 
-uintptr_t np_rtti_vptr(const struct mach_header_64 *mh, intptr_t slide,
+uintptr_t lb_rtti_vptr(const struct mach_header_64 *mh, intptr_t slide,
                        uintptr_t text_base, size_t text_size, const char *name) {
     (void)mh; (void)slide; (void)text_base; (void)text_size;
     if (stub_absent_type && strstr(name, stub_absent_type))
@@ -135,10 +135,10 @@ uintptr_t np_rtti_vptr(const struct mach_header_64 *mh, intptr_t slide,
 }
 
 // Log stubs.
-int   np_log_level = -1;
-FILE *np_log_file  = NULL;
+int   lb_log_level = -1;
+FILE *lb_log_file  = NULL;
 
-int np_log_first_hit(const void *anchor, unsigned long tag) {
+int lb_log_first_hit(const void *anchor, unsigned long tag) {
     (void)anchor; (void)tag;
     return 1;
 }
@@ -296,7 +296,7 @@ typedef struct {
 } tool_spec_t;
 
 static void build_tools(const tool_spec_t *specs, int count) {
-    size_t stride = np_compat_tool_stride();
+    size_t stride = lb_compat_tool_stride();
     *(uint8_t **)(fake_manager + COMPAT_MANAGER_TOOL_ARRAY_OFF) = fake_entries;
     *(uint32_t *)(fake_manager + COMPAT_MANAGER_TOOL_COUNT_OFF) = (uint32_t)count;
     memset(fake_entries, 0, sizeof fake_entries);
@@ -304,10 +304,10 @@ static void build_tools(const tool_spec_t *specs, int count) {
         uint8_t *e = fake_entries + (size_t)i * stride;
         *(const char **)(e + COMPAT_TOOL_NAME_OFF) = specs[i].name;
         *(const char **)(e + COMPAT_TOOL_DISPLAY_OFF) = specs[i].display;
-        *(uint32_t *)(e + np_compat_tool_off(COMPAT_TOOL_PLATFORM_OFF)) = specs[i].platform;
+        *(uint32_t *)(e + lb_compat_tool_off(COMPAT_TOOL_PLATFORM_OFF)) = specs[i].platform;
         *(int32_t *)(e + COMPAT_TOOL_PRIORITY_OFF) = specs[i].priority;
         *(uint32_t *)(e + COMPAT_TOOL_GATE_FLAGS_OFF) = specs[i].gate_flags;
-        *(uint32_t *)(e + np_compat_tool_off(COMPAT_TOOL_APPID_OFF)) = specs[i].appid;
+        *(uint32_t *)(e + lb_compat_tool_off(COMPAT_TOOL_APPID_OFF)) = specs[i].appid;
     }
 }
 
@@ -338,7 +338,7 @@ static uintptr_t build_specify_request(uint32_t has_bits, uint32_t appid,
     return (uintptr_t)request_buf;
 }
 
-// The response is not read by the handler, only passed to np_webui_parse_into.
+// The response is not read by the handler, only passed to lb_webui_parse_into.
 static uint8_t response_buf[64];
 
 static void offered_cases(void) {
@@ -430,7 +430,7 @@ static void none_entry_cases(void) {
     decode_reply(&r);
     int has_none = 0;
     for (int i = 0; i < r.count; i++)
-        if (strcmp(r.tools[i].name, NP_COMPAT_TOOL_NONE) == 0) has_none = 1;
+        if (strcmp(r.tools[i].name, LB_COMPAT_TOOL_NONE) == 0) has_none = 1;
     check(!has_none, "the none entry is absent when neither fallback nor mapping names it");
 
     // A wildcard mapping creates a fallback, so the none entry appears.
@@ -439,17 +439,17 @@ static void none_entry_cases(void) {
     decode_reply(&r);
     has_none = 0;
     for (int i = 0; i < r.count; i++)
-        if (strcmp(r.tools[i].name, NP_COMPAT_TOOL_NONE) == 0) has_none = 1;
+        if (strcmp(r.tools[i].name, LB_COMPAT_TOOL_NONE) == 0) has_none = 1;
     check(has_none, "the none entry appears when a wildcard mapping creates a fallback");
 
     // An app already holding the none name keeps the entry.
     stub_wildcard_val = NULL;
-    stub_app_mapping_val = NP_COMPAT_TOOL_NONE;
+    stub_app_mapping_val = LB_COMPAT_TOOL_NONE;
     rc = get_compat_tools(build_request(REQ_HAS_APPID, 7), (uintptr_t)response_buf);
     decode_reply(&r);
     has_none = 0;
     for (int i = 0; i < r.count; i++)
-        if (strcmp(r.tools[i].name, NP_COMPAT_TOOL_NONE) == 0) has_none = 1;
+        if (strcmp(r.tools[i].name, LB_COMPAT_TOOL_NONE) == 0) has_none = 1;
     check(has_none, "the none entry appears when the app already holds it");
 
     // The none entry never appears for the global scope (appid 0).
@@ -458,7 +458,7 @@ static void none_entry_cases(void) {
     decode_reply(&r);
     has_none = 0;
     for (int i = 0; i < r.count; i++)
-        if (strcmp(r.tools[i].name, NP_COMPAT_TOOL_NONE) == 0) has_none = 1;
+        if (strcmp(r.tools[i].name, LB_COMPAT_TOOL_NONE) == 0) has_none = 1;
     check(!has_none, "the none entry is absent for the global setting");
 }
 
@@ -611,7 +611,7 @@ static void specify_cases(void) {
 }
 
 static void no_manager_cases(void) {
-    // When np_compat_manager returns NULL the handlers must cope.
+    // When lb_compat_manager returns NULL the handlers must cope.
     reset();
     parse_into_ok = 0;
     tool_spec_t tools[] = {
@@ -627,38 +627,38 @@ static void no_manager_cases(void) {
 // hook_webpatch reads these to decide whether an absent service matters, so untried has to
 // stay apart from absent: folding them puts an error on a launch where nothing is wrong.
 static void routes_state_cases(void) {
-    g_routes = NP_COMPATSVC_UNTRIED;
+    g_routes = LB_COMPATSVC_UNTRIED;
     stub_absent_type = NULL;
-    check(np_compatsvc_routes() == NP_COMPATSVC_UNTRIED,
+    check(lb_compatsvc_routes() == LB_COMPATSVC_UNTRIED,
           "no route lookup yet reads as untried rather than absent");
 
-    np_compatsvc_register(NULL, 0, 0, 0);
-    check(np_compatsvc_routes() == NP_COMPATSVC_READY,
+    lb_compatsvc_register(NULL, 0, 0, 0);
+    check(lb_compatsvc_routes() == LB_COMPATSVC_READY,
           "a client carrying every message type registers and reads as ready");
 
     // The stable client: the page specifies the tool directly and the build carries no
     // CompatManager types at all.
-    g_routes = NP_COMPATSVC_UNTRIED;
+    g_routes = LB_COMPATSVC_UNTRIED;
     stub_absent_type = "CCompatManager_GetCompatTools";
-    np_compatsvc_register(NULL, 0, 0, 0);
-    check(np_compatsvc_routes() == NP_COMPATSVC_ABSENT,
+    lb_compatsvc_register(NULL, 0, 0, 0);
+    check(lb_compatsvc_routes() == LB_COMPATSVC_ABSENT,
           "a client with no GetCompatTools types reads as absent");
 
     // Half a CompatManager, which is the shape that stays an error.
-    g_routes = NP_COMPATSVC_UNTRIED;
+    g_routes = LB_COMPATSVC_UNTRIED;
     stub_absent_type = "CCompatManager_SpecifyCompatTool";
-    np_compatsvc_register(NULL, 0, 0, 0);
-    check(np_compatsvc_routes() == NP_COMPATSVC_ABSENT,
+    lb_compatsvc_register(NULL, 0, 0, 0);
+    check(lb_compatsvc_routes() == LB_COMPATSVC_ABSENT,
           "a client that can list but not specify reads as absent");
 
     // Settled state is also the once-only guard, so a second lookup is not a second
     // registration that could overwrite what the first one found.
     stub_absent_type = NULL;
-    np_compatsvc_register(NULL, 0, 0, 0);
-    check(np_compatsvc_routes() == NP_COMPATSVC_ABSENT,
+    lb_compatsvc_register(NULL, 0, 0, 0);
+    check(lb_compatsvc_routes() == LB_COMPATSVC_ABSENT,
           "a later route lookup does not re-register over a settled answer");
 
-    g_routes = NP_COMPATSVC_UNTRIED;
+    g_routes = LB_COMPATSVC_UNTRIED;
     stub_absent_type = NULL;
 }
 

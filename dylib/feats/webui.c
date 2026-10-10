@@ -47,19 +47,19 @@ static inline int32_t sign_extend(uint32_t val, int bits) {
 
 #define RESULT_FAIL 2
 
-typedef uintptr_t (*np_registry_accessor_fn)(void);
-typedef uintptr_t (*np_msg_new_fn)(void);
-typedef int (*np_notify_fn)(uintptr_t transport, const char *name, uintptr_t message);
-typedef int (*np_parse_fn)(uintptr_t message, const void *bytes, uint32_t len);
-typedef uintptr_t (*np_job_factory_fn)(uintptr_t dispatcher, uintptr_t arg);
-typedef void      (*np_send_response_fn)(uintptr_t job, uintptr_t ctx);
-typedef int       (*np_register_fn)(uintptr_t registry, void *record);
+typedef uintptr_t (*lb_registry_accessor_fn)(void);
+typedef uintptr_t (*lb_msg_new_fn)(void);
+typedef int (*lb_notify_fn)(uintptr_t transport, const char *name, uintptr_t message);
+typedef int (*lb_parse_fn)(uintptr_t message, const void *bytes, uint32_t len);
+typedef uintptr_t (*lb_job_factory_fn)(uintptr_t dispatcher, uintptr_t arg);
+typedef void      (*lb_send_response_fn)(uintptr_t job, uintptr_t ctx);
+typedef int       (*lb_register_fn)(uintptr_t registry, void *record);
 
 typedef struct {
     uintptr_t           descriptor[DESC_QWORDS];
     uintptr_t           request_vptr;
-    np_webui_handler_fn handler;
-} np_route_t;
+    lb_webui_handler_fn handler;
+} lb_route_t;
 
 static uintptr_t g_registry;
 static uintptr_t g_register_fn;
@@ -73,7 +73,7 @@ static size_t    g_text_seg_size;
 // A slot of 0 is a real slot
 static int g_notify_slot = -1;
 
-static np_route_t g_routes[MAX_ROUTES];
+static lb_route_t g_routes[MAX_ROUTES];
 static int        g_route_count;
 
 static uintptr_t g_stock_factory;
@@ -130,24 +130,24 @@ static uintptr_t find_accessor(uintptr_t register_fn, uintptr_t text_base,
     }
 
     if (disagree) {
-        NP_ERR("webui: %d registration sites reach the registry through 0x%lx but %d "
+        LB_ERR("webui: %d registration sites reach the registry through 0x%lx but %d "
                "use something else, so none of them can be trusted",
                agree, (unsigned long)winner, disagree);
         return 0;
     }
     if (agree < MIN_SITES) {
-        NP_WARN("webui: %d registration site(s) name an accessor, %d name none; "
+        LB_WARN("webui: %d registration site(s) name an accessor, %d name none; "
                 "need %d that agree", agree, silent, MIN_SITES);
         return 0;
     }
     if (winner < text_base || winner >= end) {
-        NP_ERR("webui: accessor 0x%lx sits outside the code it was read from",
+        LB_ERR("webui: accessor 0x%lx sits outside the code it was read from",
                (unsigned long)winner);
         return 0;
     }
 
     if (silent)
-        NP_DBG("webui: %d registration site(s) set up the registry outside the "
+        LB_DBG("webui: %d registration site(s) set up the registry outside the "
                "instructions this reads", silent);
     if (out_sites) *out_sites = agree;
     return winner;
@@ -168,21 +168,21 @@ static uintptr_t find_parse(uintptr_t dispatch_fn) {
     }
 
     if (hits != 1) {
-        NP_ERR("webui: the dispatcher tests %d of its calls a bit at a time, so "
+        LB_ERR("webui: the dispatcher tests %d of its calls a bit at a time, so "
                "none of them is certainly the parse", hits);
         return 0;
     }
     return found;
 }
 
-int np_webui_init(const struct mach_header_64 *mh, intptr_t slide,
+int lb_webui_init(const struct mach_header_64 *mh, intptr_t slide,
                   uintptr_t register_fn, uintptr_t dispatch_fn,
                   uintptr_t send_response) {
     if (!mh || !register_fn || !dispatch_fn || !send_response) return 0;
 
     size_t text_size = 0;
-    if (np_get_section_containing(mh, slide, register_fn, &g_text_base, &text_size) != 0) {
-        NP_ERR("webui: the register function at 0x%lx belongs to no section",
+    if (lb_get_section_containing(mh, slide, register_fn, &g_text_base, &text_size) != 0) {
+        LB_ERR("webui: the register function at 0x%lx belongs to no section",
                (unsigned long)register_fn);
         return 0;
     }
@@ -190,25 +190,25 @@ int np_webui_init(const struct mach_header_64 *mh, intptr_t slide,
 
     uintptr_t const_base = 0;
     size_t    const_size = 0;
-    if (np_find_segment(mh, slide, "__DATA_CONST", &const_base, &const_size) != 0) {
-        NP_ERR("webui: the image has no __DATA_CONST, so no vtable can be trusted");
+    if (lb_find_segment(mh, slide, "__DATA_CONST", &const_base, &const_size) != 0) {
+        LB_ERR("webui: the image has no __DATA_CONST, so no vtable can be trusted");
         return 0;
     }
     g_const_base = const_base;
     g_const_end  = const_base + const_size;
 
     // String literals are in in __TEXT
-    if (np_find_segment(mh, slide, "__TEXT", &g_text_seg_base, &g_text_seg_size) != 0)
-        NP_WARN("webui: the image has no __TEXT, so nothing can be told when the "
+    if (lb_find_segment(mh, slide, "__TEXT", &g_text_seg_base, &g_text_seg_size) != 0)
+        LB_WARN("webui: the image has no __TEXT, so nothing can be told when the "
                 "answer to a route stops holding");
 
     int sites = 0;
     uintptr_t accessor = find_accessor(register_fn, g_text_base, text_size, &sites);
     if (!accessor) return 0;
 
-    uintptr_t registry = ((np_registry_accessor_fn)accessor)();
-    if (!np_plausible_ptr(registry)) {
-        NP_ERR("webui: accessor 0x%lx returned 0x%lx, which is no registry",
+    uintptr_t registry = ((lb_registry_accessor_fn)accessor)();
+    if (!lb_plausible_ptr(registry)) {
+        LB_ERR("webui: accessor 0x%lx returned 0x%lx, which is no registry",
                (unsigned long)accessor, (unsigned long)registry);
         return 0;
     }
@@ -217,22 +217,22 @@ int np_webui_init(const struct mach_header_64 *mh, intptr_t slide,
     g_register_fn   = register_fn;
     g_send_response = send_response;
     g_parse         = find_parse(dispatch_fn);
-    NP_LOG("webui: registry 0x%lx via accessor 0x%lx, agreed by %d of the client's "
+    LB_LOG("webui: registry 0x%lx via accessor 0x%lx, agreed by %d of the client's "
            "own route registrations", (unsigned long)registry,
            (unsigned long)accessor, sites);
     return 1;
 }
 
-uintptr_t np_webui_registry(void) {
+uintptr_t lb_webui_registry(void) {
     return g_registry;
 }
 
-int np_webui_parse_into(uintptr_t message, const void *bytes, uint32_t len) {
+int lb_webui_parse_into(uintptr_t message, const void *bytes, uint32_t len) {
     if (!g_parse || !message || !bytes) return 0;
-    return (((np_parse_fn)g_parse)(message, bytes, len) & 1) ? 1 : 0;
+    return (((lb_parse_fn)g_parse)(message, bytes, len) & 1) ? 1 : 0;
 }
 
-uintptr_t np_webui_lookup_site(uintptr_t register_fn, uintptr_t dispatch_fn) {
+uintptr_t lb_webui_lookup_site(uintptr_t register_fn, uintptr_t dispatch_fn) {
     if (!register_fn || !dispatch_fn) return 0;
 
     uintptr_t lookup = 0;
@@ -240,7 +240,7 @@ uintptr_t np_webui_lookup_site(uintptr_t register_fn, uintptr_t dispatch_fn) {
         if (bl_target(*(const uint32_t *)pc, pc, &lookup)) break;
 
     if (!lookup) {
-        NP_ERR("webui: the register function at 0x%lx calls nothing, so the route "
+        LB_ERR("webui: the register function at 0x%lx calls nothing, so the route "
                "lookup has no name", (unsigned long)register_fn);
         return 0;
     }
@@ -256,13 +256,13 @@ uintptr_t np_webui_lookup_site(uintptr_t register_fn, uintptr_t dispatch_fn) {
     }
 
     if (hits != 1) {
-        NP_ERR("webui: the dispatcher at 0x%lx reaches the route lookup 0x%lx %d "
+        LB_ERR("webui: the dispatcher at 0x%lx reaches the route lookup 0x%lx %d "
                "times, where one call is the whole basis for trusting it",
                (unsigned long)dispatch_fn, (unsigned long)lookup, hits);
         return 0;
     }
 
-    NP_DBG("webui: route lookup 0x%lx called from 0x%lx",
+    LB_DBG("webui: route lookup 0x%lx called from 0x%lx",
            (unsigned long)lookup, (unsigned long)site);
     return site;
 }
@@ -286,8 +286,8 @@ static int walk_routes(uintptr_t *elements_out, int *bound_out) {
     uintptr_t map      = g_registry + REGISTRY_MAP_OFF;
     uintptr_t elements = *(const uintptr_t *)(map + MAP_ELEMENTS_OFF);
     int       bound    = *(const int32_t *)(map + MAP_BOUND_OFF);
-    if (!np_plausible_ptr(elements) || bound <= 0 || bound > 4096) {
-        NP_WARN("webui: route table at 0x%lx bound %d is not walkable",
+    if (!lb_plausible_ptr(elements) || bound <= 0 || bound > 4096) {
+        LB_WARN("webui: route table at 0x%lx bound %d is not walkable",
                 (unsigned long)elements, bound);
         return 0;
     }
@@ -296,7 +296,7 @@ static int walk_routes(uintptr_t *elements_out, int *bound_out) {
     return 1;
 }
 
-void np_webui_dump_routes(void) {
+void lb_webui_dump_routes(void) {
     uintptr_t elements;
     int bound;
     if (!getenv("LULLABY_WEBUI_ROUTES") || !walk_routes(&elements, &bound)) return;
@@ -306,9 +306,9 @@ void np_webui_dump_routes(void) {
         const char *name = route_at(elements, i);
         if (!name) continue;
         named++;
-        NP_LOG("webui: route[%d] %s", i, name);
+        LB_LOG("webui: route[%d] %s", i, name);
     }
-    NP_LOG("webui: %d of %d route slots named", named, bound);
+    LB_LOG("webui: %d of %d route slots named", named, bound);
 }
 
 // The target of a branch, with `cond` set when the branch is conditional
@@ -371,7 +371,7 @@ static int handler_slot(uintptr_t vptr, int run) {
         uintptr_t fn = *(const uintptr_t *)(vptr + 8 * (uintptr_t)i);
         if (!fn_calls(fn, g_send_response)) continue;
         if (found >= 0) {
-            NP_DBG("webui: job vtable 0x%lx sends a response from both slot %d and "
+            LB_DBG("webui: job vtable 0x%lx sends a response from both slot %d and "
                    "slot %d, so neither can be claimed",
                    (unsigned long)vptr, found, i);
             return -1;
@@ -388,7 +388,7 @@ static uintptr_t vtable_from_factory(uintptr_t factory, int *slot_out, int *run_
         if (bl_target(*(const uint32_t *)pc, pc, &ctor)) break;
 
     if (!in_text(ctor)) {
-        NP_DBG("webui: job factory 0x%lx calls nothing that could build the job",
+        LB_DBG("webui: job factory 0x%lx calls nothing that could build the job",
                (unsigned long)factory);
         return 0;
     }
@@ -410,7 +410,7 @@ static uintptr_t vtable_from_factory(uintptr_t factory, int *slot_out, int *run_
         return cand;
     }
 
-    NP_DBG("webui: nothing in the job builder at 0x%lx reads as a job class built on "
+    LB_DBG("webui: nothing in the job builder at 0x%lx reads as a job class built on "
            "a single base", (unsigned long)ctor);
     return 0;
 }
@@ -419,7 +419,7 @@ static uintptr_t vtable_from_factory(uintptr_t factory, int *slot_out, int *run_
 static int64_t job_handler(uintptr_t job, uintptr_t ctx) {
     uintptr_t request  = *(const uintptr_t *)(ctx + 8);
     uintptr_t response = *(const uintptr_t *)(ctx + 16);
-    uintptr_t vptr     = np_plausible_ptr(request) ? *(const uintptr_t *)request : 0;
+    uintptr_t vptr     = lb_plausible_ptr(request) ? *(const uintptr_t *)request : 0;
 
     int result = RESULT_FAIL;
     for (int i = 0; i < g_route_count; i++) {
@@ -429,7 +429,7 @@ static int64_t job_handler(uintptr_t job, uintptr_t ctx) {
     }
 
     *(uint32_t *)ctx = (uint32_t)result;
-    ((np_send_response_fn)g_send_response)(job, ctx);
+    ((lb_send_response_fn)g_send_response)(job, ctx);
     return 1;
 }
 
@@ -444,7 +444,7 @@ static int borrow_from_served_route(void) {
 
         uintptr_t elem = elements + (uintptr_t)i * ROUTE_STRIDE;
         uintptr_t desc = *(const uintptr_t *)(elem + ELEM_DESCRIPTOR_OFF);
-        if (!np_plausible_ptr(desc)) continue;
+        if (!lb_plausible_ptr(desc)) continue;
 
         uintptr_t factory = *(const uintptr_t *)(desc + 8 * DESC_FACTORY);
         if (!in_text(factory)) continue;
@@ -461,33 +461,33 @@ static int borrow_from_served_route(void) {
         g_stock_factory = factory;
         g_route_flags   = *(const uintptr_t *)(elem + ELEM_FLAGS_OFF);
 
-        NP_LOG("webui: job built like the client's own %s, vtable 0x%lx cloned over "
+        LB_LOG("webui: job built like the client's own %s, vtable 0x%lx cloned over "
                "%d virtuals with the handler in slot %d", route_at(elements, i),
                (unsigned long)vptr, run, slot);
         return 1;
     }
 
-    NP_ERR("webui: none of the %d routes the client serves gives up a job factory",
+    LB_ERR("webui: none of the %d routes the client serves gives up a job factory",
            bound);
     return 0;
 }
 
 static uintptr_t job_factory(uintptr_t dispatcher, uintptr_t arg) {
-    uintptr_t job = ((np_job_factory_fn)g_stock_factory)(dispatcher, arg);
+    uintptr_t job = ((lb_job_factory_fn)g_stock_factory)(dispatcher, arg);
     if (job && g_clone_vptr)
         *(uintptr_t *)job = g_clone_vptr;
     return job;
 }
 
-int np_webui_register_route(const char *name, uintptr_t request_vptr,
-                           uintptr_t response_vptr, np_webui_handler_fn handler) {
+int lb_webui_register_route(const char *name, uintptr_t request_vptr,
+                           uintptr_t response_vptr, lb_webui_handler_fn handler) {
     if (!g_registry || !g_register_fn || !name || !handler) return 0;
-    if (!np_plausible_ptr(request_vptr) || !np_plausible_ptr(response_vptr)) {
-        NP_ERR("webui: %s has no message types, so it cannot be served", name);
+    if (!lb_plausible_ptr(request_vptr) || !lb_plausible_ptr(response_vptr)) {
+        LB_ERR("webui: %s has no message types, so it cannot be served", name);
         return 0;
     }
     if (g_route_count >= MAX_ROUTES) {
-        NP_ERR("webui: no room left to serve %s", name);
+        LB_ERR("webui: no room left to serve %s", name);
         return 0;
     }
 
@@ -497,11 +497,11 @@ int np_webui_register_route(const char *name, uintptr_t request_vptr,
     uintptr_t request_new  = *(const uintptr_t *)(request_vptr + MSG_NEW_OFF);
     uintptr_t response_new = *(const uintptr_t *)(response_vptr + MSG_NEW_OFF);
     if (!in_text(request_new) || !in_text(response_new)) {
-        NP_ERR("webui: the message types for %s do not build their own messages", name);
+        LB_ERR("webui: the message types for %s do not build their own messages", name);
         return 0;
     }
 
-    np_route_t *route = &g_routes[g_route_count];
+    lb_route_t *route = &g_routes[g_route_count];
     route->descriptor[DESC_NAME]     = (uintptr_t)name;
     route->descriptor[DESC_CONSTANT] = DESC_CONSTANT_VALUE;
     route->descriptor[DESC_FACTORY]  = (uintptr_t)job_factory;
@@ -515,14 +515,14 @@ int np_webui_register_route(const char *name, uintptr_t request_vptr,
         response_new,
     };
 
-    int rc = ((np_register_fn)g_register_fn)(g_registry, record);
+    int rc = ((lb_register_fn)g_register_fn)(g_registry, record);
     if (rc != 1) {
-        NP_ERR("webui: the client refused to serve %s (rc=%d)", name, rc);
+        LB_ERR("webui: the client refused to serve %s (rc=%d)", name, rc);
         return 0;
     }
 
     g_route_count++;
-    NP_LOG("webui: serving %s", name);
+    LB_LOG("webui: serving %s", name);
     return 1;
 }
 
@@ -547,27 +547,27 @@ static int notify_slot(uintptr_t vtable, uintptr_t task_name) {
     return -1;
 }
 
-uintptr_t np_webui_new_message(uintptr_t vptr) {
-    if (!np_plausible_ptr(vptr)) return 0;
+uintptr_t lb_webui_new_message(uintptr_t vptr) {
+    if (!lb_plausible_ptr(vptr)) return 0;
 
     uintptr_t new_fn = *(const uintptr_t *)(vptr + MSG_NEW_OFF);
     if (!in_text(new_fn)) {
-        NP_ERR("webui: the message type at 0x%lx does not build its own messages",
+        LB_ERR("webui: the message type at 0x%lx does not build its own messages",
                (unsigned long)vptr);
         return 0;
     }
-    return ((np_msg_new_fn)new_fn)();
+    return ((lb_msg_new_fn)new_fn)();
 }
 
-int np_webui_notify(const char *name, uintptr_t message) {
+int lb_webui_notify(const char *name, uintptr_t message) {
     static int worked_out;
 
-    if (!g_registry || !name || !np_plausible_ptr(message)) return 0;
+    if (!g_registry || !name || !lb_plausible_ptr(message)) return 0;
 
     uintptr_t transport = *(const uintptr_t *)(g_registry + REGISTRY_BROADCASTER_OFF);
-    uintptr_t vtable    = np_plausible_ptr(transport) ? *(const uintptr_t *)transport : 0;
-    if (!np_plausible_ptr(vtable)) {
-        NP_DBG("webui: no transport is up, so %s reaches nobody", name);
+    uintptr_t vtable    = lb_plausible_ptr(transport) ? *(const uintptr_t *)transport : 0;
+    if (!lb_plausible_ptr(vtable)) {
+        LB_DBG("webui: no transport is up, so %s reaches nobody", name);
         return 0;
     }
 
@@ -578,16 +578,16 @@ int np_webui_notify(const char *name, uintptr_t message) {
         uintptr_t task = find_literal(BROADCAST_TASK_NAME);
         g_notify_slot  = task ? notify_slot(vtable, task) : -1;
         if (g_notify_slot < 0) {
-            NP_ERR("webui: the transport at 0x%lx sends nothing through a task, so "
+            LB_ERR("webui: the transport at 0x%lx sends nothing through a task, so "
                    "the page will not hear %s", (unsigned long)transport, name);
             return 0;
         }
-        NP_LOG("webui: notifications go out through slot %d of the transport at 0x%lx",
+        LB_LOG("webui: notifications go out through slot %d of the transport at 0x%lx",
                g_notify_slot, (unsigned long)transport);
     }
 
     uintptr_t send = *(const uintptr_t *)(vtable + 8 * (uintptr_t)g_notify_slot);
     if (!in_text(send)) return 0;
 
-    return ((np_notify_fn)send)(transport, name, message) == 1;
+    return ((lb_notify_fn)send)(transport, name, message) == 1;
 }

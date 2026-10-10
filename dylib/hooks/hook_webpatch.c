@@ -67,12 +67,12 @@ static char *drain_fd(int fd, size_t *out_len) {
 }
 
 static int spill_to_temp(const char *bytes, size_t len) {
-    const char *home = np_home_dir();
+    const char *home = lb_home_dir();
     if (!home)
         return -1;
 
     char dir[1024];
-    np_support_path(dir, sizeof(dir), home, NULL);
+    lb_support_path(dir, sizeof(dir), home, NULL);
     mkdir(dir, 0755);
 
     char tmpl[1100];
@@ -102,7 +102,7 @@ static int spill_to_temp(const char *bytes, size_t len) {
 // the patched bytes. -1 falls the caller through to the real file, which happens
 // when the read fails or the gates are absent/missing. Safety.
 static int open_patched(const char *path) {
-    np_log_attach();
+    lb_log_attach();
 
     int in = sys_open(path, O_RDONLY, 0);
     if (in < 0)
@@ -113,7 +113,7 @@ static int open_patched(const char *path) {
     if (!raw) {
         struct stat st;
         if (fstat(in, &st) == 0 && st.st_size > WEBPATCH_MAX_CHUNK)
-            NP_ERR("webpatch: %s holds %lld bytes, past the %d byte ceiling, so the "
+            LB_ERR("webpatch: %s holds %lld bytes, past the %d byte ceiling, so the "
                    "compat UI stays unpatched", path, (long long)st.st_size,
                    WEBPATCH_MAX_CHUNK);
         close(in);
@@ -123,19 +123,19 @@ static int open_patched(const char *path) {
 
     size_t patched_len = 0;
     const char *shape = NULL;
-    char *patched = np_webpatch_transform((const uint8_t *)raw, raw_len, &patched_len,
+    char *patched = lb_webpatch_transform((const uint8_t *)raw, raw_len, &patched_len,
                                           &shape);
 
     // Native Steam windows: Steam's TitleBar learns whether it is in the overlay.
-    if (np_steamwin_mode() >= NP_SW_NATIVE) {
+    if (lb_steamwin_mode() >= LB_SW_NATIVE) {
         size_t tagged_len = 0;
-        char *tagged = np_steamwin_js_transform(
+        char *tagged = lb_steamwin_js_transform(
             (const uint8_t *)(patched ? patched : raw), patched ? patched_len : raw_len, &tagged_len);
         if (tagged) {
             free(patched);
             patched = tagged;
             patched_len = tagged_len;
-            NP_LOG("steamwin: TitleBar in %s tagged NPDesktop outside the overlay", path);
+            LB_LOG("steamwin: TitleBar in %s tagged LBDesktop outside the overlay", path);
         }
     }
     free(raw);
@@ -144,7 +144,7 @@ static int open_patched(const char *path) {
 
     // The panel's requests carry this process's token (settingsbridge.h).
     size_t keyed_len = 0;
-    char *keyed = np_settings_inject_token(patched, patched_len, np_settings_token(), &keyed_len);
+    char *keyed = lb_settings_inject_token(patched, patched_len, lb_settings_token(), &keyed_len);
     if (keyed) {
         free(patched);
         patched = keyed;
@@ -153,20 +153,20 @@ static int open_patched(const char *path) {
 
     // Only this page pays for an unregistered service, and only here is it known that the
     // page arrived. UNTRIED is not a miss: the chunk can precede the first route lookup.
-    if (shape && strcmp(shape, NP_SHAPE_SELECTTOOL) == 0 &&
-        np_compatsvc_routes() == NP_COMPATSVC_ABSENT)
-        NP_ERR("webpatch: the compat page sources its tools from CompatManager and this "
+    if (shape && strcmp(shape, LB_SHAPE_SELECTTOOL) == 0 &&
+        lb_compatsvc_routes() == LB_COMPATSVC_ABSENT)
+        LB_ERR("webpatch: the compat page sources its tools from CompatManager and this "
                "client cannot answer, so the list will be empty");
 
     int fd = spill_to_temp(patched, patched_len);
     free(patched);
     if (fd < 0) {
-        NP_ERR("webpatch: patched %s but staging the bytes failed, so the client reads "
+        LB_ERR("webpatch: patched %s but staging the bytes failed, so the client reads "
                "the chunk Valve shipped", path);
         return -1;
     }
 
-    NP_LOG_FIRST("webpatch: served patched compat chunk (%s) to %s pid %d",
+    LB_LOG_FIRST("webpatch: served patched compat chunk (%s) to %s pid %d",
                  path, getprogname(), getpid());
     return fd;
 }
@@ -174,7 +174,7 @@ static int open_patched(const char *path) {
 // A steamui stylesheet with the rule that hides Valve's drawn window buttons, while
 // native Steam windows are switched on (steamwin_css.h). -1 serves the file as is.
 static int open_patched_css(const char *path) {
-    np_log_attach();
+    lb_log_attach();
 
     int in = sys_open(path, O_RDONLY, 0);
     if (in < 0)
@@ -186,7 +186,7 @@ static int open_patched_css(const char *path) {
         return -1;
 
     size_t patched_len = 0;
-    char *patched = np_steamwin_css_transform((const uint8_t *)raw, raw_len, &patched_len);
+    char *patched = lb_steamwin_css_transform((const uint8_t *)raw, raw_len, &patched_len);
     free(raw);
     if (!patched)
         return -1;
@@ -199,7 +199,7 @@ static int open_patched_css(const char *path) {
     unsigned long key = 5381;
     for (const char *c = path; *c; c++)
         key = key * 33 + (unsigned char)*c;
-    NP_LOG_FIRST_KEY(key, "steamwin: served %s with Valve's window buttons hidden to %s pid %d",
+    LB_LOG_FIRST_KEY(key, "steamwin: served %s with Valve's window buttons hidden to %s pid %d",
                      path, getprogname(), getpid());
     return fd;
 }
@@ -209,11 +209,11 @@ static const int WRITE_INTENT = O_WRONLY | O_RDWR | O_CREAT | O_TRUNC | O_APPEND
 static int try_serve(const char *path, int oflag) {
     if (oflag & WRITE_INTENT)
         return -1;
-    if (np_settings_should_serve(path))
-        return np_settings_serve(path);
-    if (np_webpatch_should_patch(path))
+    if (lb_settings_should_serve(path))
+        return lb_settings_serve(path);
+    if (lb_webpatch_should_patch(path))
         return open_patched(path);
-    if (np_steamwin_css_should_patch(path) && np_steamwin_mode() >= NP_SW_NATIVE)
+    if (lb_steamwin_css_should_patch(path) && lb_steamwin_mode() >= LB_SW_NATIVE)
         return open_patched_css(path);
     return -1;
 }
@@ -224,7 +224,7 @@ static mode_t creat_mode(int oflag, va_list ap) {
     return 0;
 }
 
-static int np_open(const char *path, int oflag, ...) {
+static int lb_open(const char *path, int oflag, ...) {
     va_list ap; va_start(ap, oflag);
     mode_t mode = creat_mode(oflag, ap);
     va_end(ap);
@@ -235,7 +235,7 @@ static int np_open(const char *path, int oflag, ...) {
     return sys_open(path, oflag, mode);
 }
 
-static int np_openat(int dirfd, const char *path, int oflag, ...) {
+static int lb_openat(int dirfd, const char *path, int oflag, ...) {
     va_list ap; va_start(ap, oflag);
     mode_t mode = creat_mode(oflag, ap);
     va_end(ap);
@@ -270,7 +270,7 @@ static int mode_string_flags(const char *mode) {
     return oflag;
 }
 
-static FILE *np_fopen(const char *path, const char *mode) {
+static FILE *lb_fopen(const char *path, const char *mode) {
     int oflag = mode_string_flags(mode);
     if (!path || oflag < 0) {
         errno = EINVAL;
@@ -297,6 +297,6 @@ static FILE *np_fopen(const char *path, const char *mode) {
     return fp;
 }
 
-DYLD_INTERPOSE(np_open, open);
-DYLD_INTERPOSE(np_openat, openat);
-DYLD_INTERPOSE(np_fopen, fopen);
+DYLD_INTERPOSE(lb_open, open);
+DYLD_INTERPOSE(lb_openat, openat);
+DYLD_INTERPOSE(lb_fopen, fopen);

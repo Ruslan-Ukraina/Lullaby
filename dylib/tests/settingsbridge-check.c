@@ -39,34 +39,34 @@ static char *ask(const char *token, const char *nonce, const char *request, cons
     char enc[4096], rest[8192];
     snprintf(rest, sizeof(rest), "lullaby-settings/%s/%s/%s.json", token, nonce, b64url(request, enc));
     size_t len = 0;
-    return np_settings_answer(rest, np_settings_token(), cli, &len);
+    return lb_settings_answer(rest, lb_settings_token(), cli, &len);
 }
 
 int main(void) {
-    const char *token = np_settings_token();
-    CHECK(strlen(token) == NP_SETTINGS_TOKEN_LEN, "token is 32 characters");
-    CHECK(strspn(token, "0123456789abcdef") == NP_SETTINGS_TOKEN_LEN, "token is hex");
-    CHECK(np_settings_token() == token, "one token per process");
+    const char *token = lb_settings_token();
+    CHECK(strlen(token) == LB_SETTINGS_TOKEN_LEN, "token is 32 characters");
+    CHECK(strspn(token, "0123456789abcdef") == LB_SETTINGS_TOKEN_LEN, "token is hex");
+    CHECK(lb_settings_token() == token, "one token per process");
 
-    CHECK(np_settings_should_serve("/S/Steam.AppBundle/Steam/Contents/MacOS/steamui/lullaby-settings/x/y/z.json"),
+    CHECK(lb_settings_should_serve("/S/Steam.AppBundle/Steam/Contents/MacOS/steamui/lullaby-settings/x/y/z.json"),
           "a steamui settings path is served");
-    CHECK(!np_settings_should_serve("/S/steamui/library.js"), "the chunk is not");
-    CHECK(!np_settings_should_serve("/tmp/lullaby-settings/x/y.json"), "a path outside steamui is not");
-    CHECK(!np_settings_should_serve(NULL), "no path is not");
+    CHECK(!lb_settings_should_serve("/S/steamui/library.js"), "the chunk is not");
+    CHECK(!lb_settings_should_serve("/tmp/lullaby-settings/x/y.json"), "a path outside steamui is not");
+    CHECK(!lb_settings_should_serve(NULL), "no path is not");
 
     size_t n = 0;
-    uint8_t *raw = np_base64url_decode("eyJvcCI6InN0YXRlIn0", 19, &n);
+    uint8_t *raw = lb_base64url_decode("eyJvcCI6InN0YXRlIn0", 19, &n);
     CHECK(raw && n == 14 && memcmp(raw, "{\"op\":\"state\"}", 14) == 0, "base64url decodes");
     free(raw);
-    CHECK(np_base64url_decode("ab+c", 4, &n) == NULL, "standard base64 characters are refused");
-    CHECK(np_base64url_decode("a", 1, &n) == NULL, "a truncated input is refused");
+    CHECK(lb_base64url_decode("ab+c", 4, &n) == NULL, "standard base64 characters are refused");
+    CHECK(lb_base64url_decode("a", 1, &n) == NULL, "a truncated input is refused");
 
     const char *chunk = "x=\"__NP_SETTINGS_TOKEN__\";y=\"__NP_SETTINGS_TOKEN__\"";
     size_t out_len = 0;
-    char *keyed = np_settings_inject_token(chunk, strlen(chunk), "abc", &out_len);
+    char *keyed = lb_settings_inject_token(chunk, strlen(chunk), "abc", &out_len);
     CHECK(keyed && strcmp(keyed, "x=\"abc\";y=\"abc\"") == 0 && out_len == 15, "the token replaces every placeholder");
     free(keyed);
-    CHECK(np_settings_inject_token("plain", 5, "abc", &out_len) == NULL, "a chunk without placeholder is left alone");
+    CHECK(lb_settings_inject_token("plain", 5, "abc", &out_len) == NULL, "a chunk without placeholder is left alone");
 
     char dir[] = "/tmp/settingsbridge.XXXXXX";
     if (!mkdtemp(dir)) { perror("mkdtemp"); return 1; }
@@ -89,17 +89,17 @@ int main(void) {
     free(answer);
 
     size_t len = 0;
-    answer = np_settings_answer("lullaby-settings/short/1/e30.json", token, echo_cli, &len);
+    answer = lb_settings_answer("lullaby-settings/short/1/e30.json", token, echo_cli, &len);
     CHECK(answer && strstr(answer, "\"refused\""), "a short token is refused");
     free(answer);
 
     char rest[256];
     snprintf(rest, sizeof(rest), "lullaby-settings/%s/1/e30.txt", token);
-    answer = np_settings_answer(rest, token, echo_cli, &len);
+    answer = lb_settings_answer(rest, token, echo_cli, &len);
     CHECK(answer && strstr(answer, "malformed"), "a request must end in .json");
     free(answer);
     snprintf(rest, sizeof(rest), "lullaby-settings/%s/1/AA.json", token);
-    answer = np_settings_answer(rest, token, echo_cli, &len);
+    answer = lb_settings_answer(rest, token, echo_cli, &len);
     CHECK(answer && strstr(answer, "malformed"), "a request with a NUL byte is refused");
     free(answer);
 
@@ -110,7 +110,7 @@ int main(void) {
     CHECK(answer && strstr(answer, "no answer"), "an answer that is not JSON is reported");
     free(answer);
 
-    np_settings_timeout_ms = 300;
+    lb_settings_timeout_ms = 300;
     answer = ask(token, "4", "{\"op\":\"state\"}", hang_cli);
     CHECK(answer && strstr(answer, "timed out"), "a CLI that hangs is stopped");
     free(answer);

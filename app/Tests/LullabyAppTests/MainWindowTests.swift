@@ -167,7 +167,7 @@ struct MainWindowStateTests {
         #expect(image.width == Int(MainView.size.width) * 2)
         #expect(image.height == Int(MainView.size.height) * 2)
         #expect(SetupSteps.downloaded(0, of: 10).isEmpty)
-        if let folder = ProcessInfo.processInfo.environment["NP_WINDOW_SNAPSHOTS"] {
+        if let folder = ProcessInfo.processInfo.environment["LB_WINDOW_SNAPSHOTS"] {
             let url = URL(filePath: folder).appending(path: "\(name).png")
             try NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])?.write(to: url)
         }

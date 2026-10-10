@@ -20,7 +20,7 @@ static const char *g_who = "?";
 static int g_lines;
 
 #define FOCUS_LOG(fmt, ...) do { \
-    if (g_lines++ < 2000) NP_LOG("focus[%s] " fmt, g_who, ##__VA_ARGS__); \
+    if (g_lines++ < 2000) LB_LOG("focus[%s] " fmt, g_who, ##__VA_ARGS__); \
 } while (0)
 
 // "Module:symbol" for a few frames above the traced call.
@@ -121,8 +121,8 @@ static BOOL one_icon_requested(void) {
 
 // MARK: Apple Event trace (steam_osx, one-icon diagnosis)
 
-typedef struct { AEEventHandlerUPP handler; SRefCon refcon; } np_ae_original_t;
-static np_ae_original_t g_quit_original, g_url_original;
+typedef struct { AEEventHandlerUPP handler; SRefCon refcon; } lb_ae_original_t;
+static lb_ae_original_t g_quit_original, g_url_original;
 
 static NSString *ae_sender(const AppleEvent *event) {
     pid_t pid = 0;
@@ -136,12 +136,12 @@ static NSString *ae_sender(const AppleEvent *event) {
     return [NSString stringWithFormat:@"pid %d %@ (%s)", pid, app.localizedName ?: @"?", path];
 }
 
-static OSErr np_quit_handler(const AppleEvent *event, AppleEvent *reply, SRefCon refcon) {
+static OSErr lb_quit_handler(const AppleEvent *event, AppleEvent *reply, SRefCon refcon) {
     FOCUS_LOG("Apple Event quit received from %s", ae_sender(event).UTF8String);
     return g_quit_original.handler ? g_quit_original.handler(event, reply, g_quit_original.refcon) : errAEEventNotHandled;
 }
 
-static OSErr np_url_handler(const AppleEvent *event, AppleEvent *reply, SRefCon refcon) {
+static OSErr lb_url_handler(const AppleEvent *event, AppleEvent *reply, SRefCon refcon) {
     char url[512] = {0};
     DescType type;
     Size size;
@@ -152,9 +152,9 @@ static OSErr np_url_handler(const AppleEvent *event, AppleEvent *reply, SRefCon 
 
 static void trace_apple_events(void) {
     if (AEGetEventHandler(kCoreEventClass, kAEQuitApplication, &g_quit_original.handler, &g_quit_original.refcon, false) == noErr)
-        AEInstallEventHandler(kCoreEventClass, kAEQuitApplication, NewAEEventHandlerUPP(np_quit_handler), 0, false);
+        AEInstallEventHandler(kCoreEventClass, kAEQuitApplication, NewAEEventHandlerUPP(lb_quit_handler), 0, false);
     if (AEGetEventHandler(kInternetEventClass, kAEGetURL, &g_url_original.handler, &g_url_original.refcon, false) == noErr)
-        AEInstallEventHandler(kInternetEventClass, kAEGetURL, NewAEEventHandlerUPP(np_url_handler), 0, false);
+        AEInstallEventHandler(kInternetEventClass, kAEGetURL, NewAEEventHandlerUPP(lb_url_handler), 0, false);
     FOCUS_LOG("tracing quit and open-URL Apple Events (originals %p %p)",
               g_quit_original.handler, g_url_original.handler);
 }
@@ -257,10 +257,10 @@ static void load_strings(void) {
     FOCUS_LOG("Dock menu strings (%s): %lu", lang.UTF8String, (unsigned long)found.count);
 }
 
-@interface NPSteamDock : NSObject
+@interface LBSteamDock : NSObject
 @end
 
-@implementation NPSteamDock {
+@implementation LBSteamDock {
     NSTimeInterval _lastQuit;
 }
 
@@ -304,9 +304,9 @@ static void load_strings(void) {
 }
 @end
 
-static NPSteamDock *g_dock;
+static LBSteamDock *g_dock;
 
-static NSMenu *np_dock_menu(id self, SEL _cmd, NSApplication *app) {
+static NSMenu *lb_dock_menu(id self, SEL _cmd, NSApplication *app) {
     return [g_dock menu];
 }
 
@@ -374,7 +374,7 @@ static void helper_tick(void) {
 
 static void start_helper_dock(void) {
     load_strings();
-    g_dock = [NPSteamDock new];
+    g_dock = [LBSteamDock new];
     NSAppleEventManager *events = NSAppleEventManager.sharedAppleEventManager;
     [events setEventHandler:g_dock andSelector:@selector(reopen:withReply:)
               forEventClass:kCoreEventClass andEventID:kAEReopenApplication];
@@ -384,9 +384,9 @@ static void start_helper_dock(void) {
     if (delegate) {
         Method m = class_getInstanceMethod(delegate, @selector(applicationDockMenu:));
         if (m)
-            method_setImplementation(m, (IMP)np_dock_menu);
+            method_setImplementation(m, (IMP)lb_dock_menu);
         else
-            class_addMethod(delegate, @selector(applicationDockMenu:), (IMP)np_dock_menu, "@@:@");
+            class_addMethod(delegate, @selector(applicationDockMenu:), (IMP)lb_dock_menu, "@@:@");
     }
     FOCUS_LOG("Dock: reopen, quit and menu handled (delegate %s)", delegate ? class_getName(delegate) : "none");
     helper_tick();
@@ -455,12 +455,12 @@ static void await_app(int attempt, void (^ready)(void)) {
     });
 }
 
-void np_steamfocus_start(const char *who, int make_regular) {
-    if (np_steamwin_mode() != NP_SW_NATIVE_APP)
+void lb_steamfocus_start(const char *who, int make_regular) {
+    if (lb_steamwin_mode() != LB_SW_NATIVE_APP)
         return;
     g_who = who;
     g_is_osx = strcmp(who, "osx") == 0;
-    np_log_attach();
+    lb_log_attach();
     trace_calls();
     dispatch_async(dispatch_get_main_queue(), ^{
         await_app(0, ^{

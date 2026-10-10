@@ -18,23 +18,23 @@
 
 extern char **environ;
 
-#define NP_SETTINGS_DIR        "lullaby-settings/"
-#define NP_SETTINGS_MAX_REQ    (64 * 1024)
-#define NP_SETTINGS_MAX_ANSWER (4 * 1024 * 1024)
+#define LB_SETTINGS_DIR        "lullaby-settings/"
+#define LB_SETTINGS_MAX_REQ    (64 * 1024)
+#define LB_SETTINGS_MAX_ANSWER (4 * 1024 * 1024)
 
-int np_settings_timeout_ms = 15000;
+int lb_settings_timeout_ms = 15000;
 
-static char g_token[NP_SETTINGS_TOKEN_LEN + 1];
+static char g_token[LB_SETTINGS_TOKEN_LEN + 1];
 static pthread_once_t g_token_once = PTHREAD_ONCE_INIT;
 
 static void make_token(void) {
-    uint8_t raw[NP_SETTINGS_TOKEN_LEN / 2];
+    uint8_t raw[LB_SETTINGS_TOKEN_LEN / 2];
     arc4random_buf(raw, sizeof(raw));
     for (size_t i = 0; i < sizeof(raw); i++)
         snprintf(g_token + 2 * i, 3, "%02x", raw[i]);
 }
 
-const char *np_settings_token(void) {
+const char *lb_settings_token(void) {
     pthread_once(&g_token_once, make_token);
     return g_token;
 }
@@ -48,11 +48,11 @@ static const char *steamui_rest(const char *path) {
     return NULL;
 }
 
-int np_settings_should_serve(const char *path) {
+int lb_settings_should_serve(const char *path) {
     if (!path)
         return 0;
     const char *rest = steamui_rest(path);
-    return rest && strncmp(rest, NP_SETTINGS_DIR, sizeof(NP_SETTINGS_DIR) - 1) == 0;
+    return rest && strncmp(rest, LB_SETTINGS_DIR, sizeof(LB_SETTINGS_DIR) - 1) == 0;
 }
 
 static int b64url_value(unsigned char c) {
@@ -64,7 +64,7 @@ static int b64url_value(unsigned char c) {
     return -1;
 }
 
-uint8_t *np_base64url_decode(const char *src, size_t len, size_t *out_len) {
+uint8_t *lb_base64url_decode(const char *src, size_t len, size_t *out_len) {
     if (len % 4 == 1)
         return NULL;
     uint8_t *out = malloc(len * 3 / 4 + 3);
@@ -142,7 +142,7 @@ static char *run_cli(const char *cli, const char *request, size_t *out_len) {
     close(pipefd[1]);
     if (rc != 0) {
         close(pipefd[0]);
-        NP_WARN("settings: cannot start %s (%s)", cli, strerror(rc));
+        LB_WARN("settings: cannot start %s (%s)", cli, strerror(rc));
         return error_answer(rc == ENOENT ? "lullaby-settings is not installed"
                                          : "lullaby-settings did not start", out_len);
     }
@@ -153,14 +153,14 @@ static char *run_cli(const char *cli, const char *request, size_t *out_len) {
     clock_gettime(CLOCK_MONOTONIC, &start);
     int timed_out = 0, too_big = 0;
     while (buf) {
-        long left = np_settings_timeout_ms - elapsed_ms(&start);
+        long left = lb_settings_timeout_ms - elapsed_ms(&start);
         if (left <= 0) { timed_out = 1; break; }
         struct pollfd pfd = { .fd = pipefd[0], .events = POLLIN };
         int ready = poll(&pfd, 1, (int)left);
         if (ready < 0 && errno == EINTR) continue;
         if (ready <= 0) { timed_out = ready == 0; break; }
         if (len + 4096 > cap) {
-            if (cap >= NP_SETTINGS_MAX_ANSWER) { too_big = 1; break; }
+            if (cap >= LB_SETTINGS_MAX_ANSWER) { too_big = 1; break; }
             char *grown = realloc(buf, cap * 2);
             if (!grown) { free(buf); buf = NULL; break; }
             buf = grown;
@@ -181,7 +181,7 @@ static char *run_cli(const char *cli, const char *request, size_t *out_len) {
         return error_answer("out of memory", out_len);
     if (timed_out || too_big) {
         free(buf);
-        NP_WARN("settings: lullaby-settings %s", timed_out ? "timed out" : "answered too much");
+        LB_WARN("settings: lullaby-settings %s", timed_out ? "timed out" : "answered too much");
         return error_answer(timed_out ? "lullaby-settings timed out" : "answer too large", out_len);
     }
     while (len && (buf[len - 1] == '\n' || buf[len - 1] == '\r'))
@@ -189,7 +189,7 @@ static char *run_cli(const char *cli, const char *request, size_t *out_len) {
     buf[len] = '\0';
     if (len == 0 || buf[0] != '{') {
         free(buf);
-        NP_WARN("settings: lullaby-settings exited %d without an answer",
+        LB_WARN("settings: lullaby-settings exited %d without an answer",
                 WIFEXITED(status) ? WEXITSTATUS(status) : -1);
         return error_answer("lullaby-settings gave no answer", out_len);
     }
@@ -197,15 +197,15 @@ static char *run_cli(const char *cli, const char *request, size_t *out_len) {
     return buf;
 }
 
-char *np_settings_answer(const char *rest, const char *token, const char *cli, size_t *out_len) {
-    if (strncmp(rest, NP_SETTINGS_DIR, sizeof(NP_SETTINGS_DIR) - 1) != 0)
+char *lb_settings_answer(const char *rest, const char *token, const char *cli, size_t *out_len) {
+    if (strncmp(rest, LB_SETTINGS_DIR, sizeof(LB_SETTINGS_DIR) - 1) != 0)
         return error_answer("not a settings request", out_len);
-    const char *p = rest + sizeof(NP_SETTINGS_DIR) - 1;
+    const char *p = rest + sizeof(LB_SETTINGS_DIR) - 1;
 
     // <token>/<nonce>/<payload>.json
     const char *slash = strchr(p, '/');
-    if (!slash || (size_t)(slash - p) != NP_SETTINGS_TOKEN_LEN
-        || !same_token(p, token, NP_SETTINGS_TOKEN_LEN))
+    if (!slash || (size_t)(slash - p) != LB_SETTINGS_TOKEN_LEN
+        || !same_token(p, token, LB_SETTINGS_TOKEN_LEN))
         return error_answer("refused", out_len);
     const char *nonce = slash + 1;
     slash = strchr(nonce, '/');
@@ -216,11 +216,11 @@ char *np_settings_answer(const char *rest, const char *token, const char *cli, s
     if (plen < 6 || strcmp(payload + plen - 5, ".json") != 0 || strchr(payload, '/'))
         return error_answer("malformed request", out_len);
     plen -= 5;
-    if (plen > NP_SETTINGS_MAX_REQ * 4 / 3 + 4)
+    if (plen > LB_SETTINGS_MAX_REQ * 4 / 3 + 4)
         return error_answer("request too large", out_len);
 
     size_t req_len = 0;
-    uint8_t *req = np_base64url_decode(payload, plen, &req_len);
+    uint8_t *req = lb_base64url_decode(payload, plen, &req_len);
     if (!req || req_len == 0 || !plain_text(req, req_len)) {
         free(req);
         return error_answer("malformed request", out_len);
@@ -236,24 +236,24 @@ char *np_settings_answer(const char *rest, const char *token, const char *cli, s
     return answer;
 }
 
-int np_settings_serve(const char *path) {
-    np_log_attach();
+int lb_settings_serve(const char *path) {
+    lb_log_attach();
     const char *rest = steamui_rest(path);
     if (!rest)
         return -1;
-    const char *home = np_home_dir();
+    const char *home = lb_home_dir();
     if (!home)
         return -1;
     char cli[1100];
-    np_support_path(cli, sizeof(cli), home, "lullaby-settings");
+    lb_support_path(cli, sizeof(cli), home, "lullaby-settings");
 
     size_t len = 0;
-    char *answer = np_settings_answer(rest, np_settings_token(), cli, &len);
+    char *answer = lb_settings_answer(rest, lb_settings_token(), cli, &len);
     if (!answer)
         return -1;
 
     char dir[1024];
-    np_support_path(dir, sizeof(dir), home, NULL);
+    lb_support_path(dir, sizeof(dir), home, NULL);
     char tmpl[1100];
     snprintf(tmpl, sizeof(tmpl), "%s/settings-answer.XXXXXX", dir);
     int fd = mkstemp(tmpl);
@@ -266,12 +266,12 @@ int np_settings_serve(const char *path) {
     }
     free(answer);
     if (lseek(fd, 0, SEEK_SET) != 0) { close(fd); return -1; }
-    NP_LOG_FIRST("settings: the Steam panel reached lullaby-settings (%s pid %d)", getprogname(), getpid());
+    LB_LOG_FIRST("settings: the Steam panel reached lullaby-settings (%s pid %d)", getprogname(), getpid());
     return fd;
 }
 
-char *np_settings_inject_token(const char *src, size_t len, const char *token, size_t *out_len) {
-    const char *ph = NP_SETTINGS_TOKEN_PLACEHOLDER;
+char *lb_settings_inject_token(const char *src, size_t len, const char *token, size_t *out_len) {
+    const char *ph = LB_SETTINGS_TOKEN_PLACEHOLDER;
     size_t phlen = strlen(ph), tlen = strlen(token);
     size_t count = 0;
     for (size_t i = 0; i + phlen <= len; i++)

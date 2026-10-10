@@ -7,8 +7,8 @@
 
 // Satisfies the log macros without pulling in log.c, which reaches for the
 // support directory this tool has no use for. Drift reasons land on stderr.
-int   np_log_level = NP_LVL_INFO;
-FILE *np_log_file;
+int   lb_log_level = LB_LVL_INFO;
+FILE *lb_log_file;
 
 static int g_wrong;
 
@@ -25,8 +25,8 @@ static void wrong(const char *fmt, ...) {
 // Invariants the transform relies on but cannot check at run time. A replacement still
 // holding its own anchor would be found again next pass, and an anchor inside another
 // anchor would make the result depend on table order rather than on the chunk.
-static void check_gate(const char *nm, size_t i, const np_gate_t *a,
-                       const np_gate_t *group, size_t group_n) {
+static void check_gate(const char *nm, size_t i, const lb_gate_t *a,
+                       const lb_gate_t *group, size_t group_n) {
     if (!a->find || !*a->find)       wrong("[%s] gate %zu has no anchor", nm, i);
     if (!a->replace || !*a->replace) wrong("[%s] gate %zu has no replacement", nm, i);
     if (a->expect < 1)               wrong("[%s] gate %zu expects %d hits", nm, i, a->expect);
@@ -67,23 +67,23 @@ static void check_paths(void) {
     };
     size_t n = sizeof(cases) / sizeof(cases[0]);
     for (size_t i = 0; i < n; i++) {
-        int got = np_webpatch_should_patch(cases[i].path);
+        int got = lb_webpatch_should_patch(cases[i].path);
         if (!got != !cases[i].want)
             wrong("should_patch(%s) answered %d, wanted %d",
                   cases[i].path, got, cases[i].want);
     }
-    if (np_webpatch_should_patch(NULL))
+    if (lb_webpatch_should_patch(NULL))
         wrong("should_patch(NULL) answered yes");
     printf("%zu chunk paths checked\n", n + 1);
 }
 
 static void selfcheck(void) {
     size_t total = 0;
-    for (size_t sh = 0; sh < NP_SHAPE_COUNT; sh++) {
-        const np_ui_shape_t *S = &g_shapes[sh];
+    for (size_t sh = 0; sh < LB_SHAPE_COUNT; sh++) {
+        const lb_ui_shape_t *S = &g_shapes[sh];
         const char *nm = S->name;
         if (!S->probe || !*S->probe) wrong("[%s] has no probe", nm);
-        for (size_t o = 0; o < NP_SHAPE_COUNT; o++) {
+        for (size_t o = 0; o < LB_SHAPE_COUNT; o++) {
             if (o == sh) continue;
             if (strcmp(S->probe, g_shapes[o].probe) == 0)
                 wrong("[%s] and [%s] share a probe", nm, g_shapes[o].name);
@@ -93,9 +93,9 @@ static void selfcheck(void) {
         total += S->count;
     }
 
-    for (size_t f = 0; f < NP_FIX_COUNT; f++) {
-        check_gate("fix", f, &g_fixes[f], g_fixes, NP_FIX_COUNT);
-        for (size_t sh = 0; sh < NP_SHAPE_COUNT; sh++)
+    for (size_t f = 0; f < LB_FIX_COUNT; f++) {
+        check_gate("fix", f, &g_fixes[f], g_fixes, LB_FIX_COUNT);
+        for (size_t sh = 0; sh < LB_SHAPE_COUNT; sh++)
             for (size_t g = 0; g < g_shapes[sh].count; g++)
                 if (strstr(g_fixes[f].find, g_shapes[sh].gates[g].find) ||
                     strstr(g_shapes[sh].gates[g].find, g_fixes[f].find))
@@ -104,7 +104,7 @@ static void selfcheck(void) {
     }
 
     printf("%zu shapes, %zu gates, %zu fixes checked\n",
-           NP_SHAPE_COUNT, total, NP_FIX_COUNT);
+           LB_SHAPE_COUNT, total, LB_FIX_COUNT);
     check_paths();
 }
 
@@ -127,14 +127,14 @@ static uint8_t *slurp(const char *path, size_t *len) {
 // A patched chunk has to carry every replacement, keep none of the anchors, and
 // be refused if it is fed back in, which is what stops a second read of the same
 // file from patching it twice.
-static const np_ui_shape_t *shape_of(const char *buf, size_t len) {
-    for (size_t i = 0; i < NP_SHAPE_COUNT; i++)
+static const lb_ui_shape_t *shape_of(const char *buf, size_t len) {
+    for (size_t i = 0; i < LB_SHAPE_COUNT; i++)
         if (count_matches(buf, len, g_shapes[i].probe) > 0) return &g_shapes[i];
     return NULL;
 }
 
 static void check_output(const char *out, size_t out_len) {
-    const np_ui_shape_t *S = shape_of(out, out_len);
+    const lb_ui_shape_t *S = shape_of(out, out_len);
     if (!S) { wrong("the patched chunk no longer matches any known compat UI"); return; }
     for (size_t g = 0; g < S->count; g++) {
         if (count_matches(out, out_len, S->gates[g].find) != 0)
@@ -143,7 +143,7 @@ static void check_output(const char *out, size_t out_len) {
             < (size_t)S->gates[g].expect)
             wrong("[%s] gate %zu replacement is missing from the patch", S->name, g);
     }
-    for (size_t f = 0; f < NP_FIX_COUNT; f++) {
+    for (size_t f = 0; f < LB_FIX_COUNT; f++) {
         size_t anchor = count_matches(out, out_len, g_fixes[f].find);
         size_t repl   = count_matches(out, out_len, g_fixes[f].replace);
         if (!anchor && !repl) continue;
@@ -155,10 +155,10 @@ static void check_output(const char *out, size_t out_len) {
 
     // This pass is meant to be refused, so its drift report is not a finding.
     size_t again_len = 0;
-    int saved = np_log_level;
-    np_log_level = -1;
-    char *again = np_webpatch_transform((const uint8_t *)out, out_len, &again_len, NULL);
-    np_log_level = saved;
+    int saved = lb_log_level;
+    lb_log_level = -1;
+    char *again = lb_webpatch_transform((const uint8_t *)out, out_len, &again_len, NULL);
+    lb_log_level = saved;
     if (again) { wrong("a patched chunk was patched a second time"); free(again); }
 }
 
@@ -173,7 +173,7 @@ static int extract(const char *chunk, const char *out_path) {
     FILE *o = fopen(out_path, "wb");
     if (!o) { fprintf(stderr, "cannot write %s\n", out_path); free(buf); return 1; }
 
-    const np_ui_shape_t *S = shape_of((const char *)buf, len);
+    const lb_ui_shape_t *S = shape_of((const char *)buf, len);
     if (!S) {
         fprintf(stderr, "%s carries no known compat UI\n", chunk);
         fclose(o); free(buf);
@@ -183,7 +183,7 @@ static int extract(const char *chunk, const char *out_path) {
     fprintf(o, "%s\n", S->probe);
 
     const size_t pad = 160;
-    np_cap_t caps[NP_CAP_MAX];
+    lb_cap_t caps[LB_CAP_MAX];
     for (size_t g = 0; g < S->count; g++) {
         size_t hits = 0;
         for (size_t i = 0; i < len; ) {
@@ -221,7 +221,7 @@ int main(int argc, char **argv) {
         if (!buf) { wrong("cannot read %s", argv[i]); continue; }
 
         size_t out_len = 0;
-        char *out = np_webpatch_transform(buf, len, &out_len, NULL);
+        char *out = lb_webpatch_transform(buf, len, &out_len, NULL);
         if (out) {
             check_output(out, out_len);
             printf("APPLIED  %s\n", argv[i]);

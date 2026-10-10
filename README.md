@@ -1,11 +1,10 @@
-# NotProton for Dormison
+# Lullaby
 
 Play Windows games from your Steam library on a Mac, inside the normal macOS Steam app,
 the way Steam Play (Proton) works on Linux.
 
-This is a fork of [NotProton](https://github.com/NotProtonNot/NotProton). The original runs
-games on CrossOver. This fork runs them on [Dormison](https://github.com/kageroumado/dormison),
-a free Wine engine for macOS, and keeps itself up to date.
+Lullaby runs games on [Dormison](https://github.com/kageroumado/dormison), a free Wine
+engine for macOS, and keeps itself up to date.
 
 ## What you get
 
@@ -16,20 +15,20 @@ a free Wine engine for macOS, and keeps itself up to date.
   Compatibility holds the defaults for all games. English, Ukrainian and Russian.
 - **Renderers.** D3DMetal, DXMT (Direct3D 10/11 on Metal, the default), DXVK, WineD3D.
   D3DMetal (needed for Direct3D 12) comes from Apple's Game Porting Toolkit, which you
-  download from Apple yourself and add in NotProton. NotProton never ships it.
+  download from Apple yourself and add in Lullaby. Lullaby never ships it.
 - **Game windows from Dormison.** Native macOS windows that resize, native full screen,
   upscaling (Lanczos, MetalFX), an FPS counter, raw mouse input and a held cursor; msync
   is always on.
-- **Recipes.** Games NotProton knows get the setup that worked best (marked "NotProton
+- **Recipes.** Games Lullaby knows get the setup that worked best (marked "Lullaby
   recipe"); your own choice always wins, and "Restore recipe" goes back.
 - **Updates.** The engine (signed by Dormison), the Steam bridge, the Steam signatures and
-  the app itself update from signed releases. Steam is held back from a build NotProton
+  the app itself update from signed releases. Steam is held back from a build Lullaby
   does not support yet.
 
 ## Install
 
 1. You need a Mac with Apple silicon, macOS 27, Rosetta, and Steam in `/Applications`.
-2. Open NotProton and press **Install**. It closes Steam gently, patches it, and downloads
+2. Open Lullaby and press **Install**. It closes Steam gently, patches it, and downloads
    the engine.
 3. Start Steam from `/Applications/Steam.app`. In a Windows game's Properties →
    Compatibility, turn on the compatibility tool, then press Play.
@@ -52,7 +51,7 @@ Security → "Open Anyway".
 
 | Part | From | License |
 |---|---|---|
-| NotProton (this repository) | [NotProton](https://github.com/NotProtonNot/NotProton) by NotProtonNot and contributors, and this fork | GPL-3.0 |
+| Lullaby (this repository) | based on [NotProton](https://github.com/NotProtonNot/NotProton) by NotProtonNot and contributors | GPL-3.0 |
 | Engine | [Dormison](https://github.com/kageroumado/dormison) (Wine + wine-staging + its own work) by kageroumado | LGPL-2.1-or-later |
 | Settings catalog, texts, graphics card identity | [Sevoflurane](https://github.com/kageroumado/sevoflurane) by kageroumado | MIT |
 | Two engine fixes (memory accounting, Retina screen size) | [Highball](https://github.com/gauthierpiarrette/highball-engine) by gauthierpiarrette | LGPL-2.1-or-later |

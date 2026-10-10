@@ -7,7 +7,7 @@ name: steam-signatures
 # Dry run (a dryrun-signatures-* tag, or "Run workflow" with dry_run): the TEST
 # keys, nothing published, no issues; the feed it would publish is an artifact.
 
-# The schedule is a parameter: repository variable NP_STEAM_CHECK_HOURS (default 3, 0 = never
+# The schedule is a parameter: repository variable LB_STEAM_CHECK_HOURS (default 3, 0 = never
 # by schedule, rounded up to a multiple of 3, how often the cron fires). The cron
 # starts only a short Linux gate; the macOS job runs when Valve offers a build without a database (DECISIONS P6-13).
 
@@ -46,10 +46,10 @@ jobs:
         id: gate
         env:
           GH_TOKEN: ${{ github.token }}
-          HOURS: ${{ vars.NP_STEAM_CHECK_HOURS }}
+          HOURS: ${{ vars.LB_STEAM_CHECK_HOURS }}
           DEFAULT_HOURS: "3"
           CRON_HOURS: "3"
-          NP_RELEASE_PRIVATE_KEY: ${{ secrets.NP_RELEASE_PRIVATE_KEY }}
+          LB_RELEASE_PRIVATE_KEY: ${{ secrets.LB_RELEASE_PRIVATE_KEY }}
         run: |
           release/ci-gate.sh steam | tee -a "$GITHUB_OUTPUT"
           grep '^reason=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2- >> "$GITHUB_STEP_SUMMARY"
@@ -74,9 +74,9 @@ jobs:
       - name: Keys
         id: keys
         env:
-          NP_RELEASE_PRIVATE_KEY: ${{ secrets.NP_RELEASE_PRIVATE_KEY }}
+          LB_RELEASE_PRIVATE_KEY: ${{ secrets.LB_RELEASE_PRIVATE_KEY }}
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
-          NP_RELEASE_PUBLIC_KEY: ${{ vars.NP_RELEASE_PUBLIC_KEY }}
+          LB_RELEASE_PUBLIC_KEY: ${{ vars.LB_RELEASE_PUBLIC_KEY }}
           SPARKLE_PUBLIC_KEY: ${{ vars.SPARKLE_PUBLIC_KEY }}
         run: |
           mode=release; [ "$DRY_RUN" = true ] && mode=dry-run
@@ -99,7 +99,7 @@ jobs:
         run: |
           cur="$RUNNER_TEMP/current"
           if release/gh-publish.sh fetch "$MANIFEST_TAG" signatures-manifest.json "$cur"; then
-            release/gh-publish.sh verify "$NP_RELEASE_KEY" "$cur/signatures-manifest.json"
+            release/gh-publish.sh verify "$LB_RELEASE_KEY" "$cur/signatures-manifest.json"
             echo "CURRENT=$cur/signatures-manifest.json" >> "$GITHUB_ENV"
             # Through the API, so a private repository reads the same way (ROADMAP §3).
             for name in $(python3 -I -c 'import json,sys; [print(d["file"]) for d in json.load(open(sys.argv[1]))["databases"]]' "$cur/signatures-manifest.json"); do
@@ -141,7 +141,7 @@ jobs:
         run: |
           swift release/sign.swift "$RUNNER_TEMP/keys/release.key" \
             "$RUNNER_TEMP/feed/manifest/signatures-manifest.json"
-          release/gh-publish.sh verify "$NP_RELEASE_KEY" "$RUNNER_TEMP/feed/manifest/signatures-manifest.json"
+          release/gh-publish.sh verify "$LB_RELEASE_KEY" "$RUNNER_TEMP/feed/manifest/signatures-manifest.json"
 
       - name: Keep the run's output
         if: always() && steps.keys.outputs.skip != 'true'
@@ -174,7 +174,7 @@ jobs:
           back="$RUNNER_TEMP/published"
           release/gh-publish.sh fetch "$MANIFEST_TAG" signatures-manifest.json "$back"
           cmp "$back/signatures-manifest.json" "$RUNNER_TEMP/feed/manifest/signatures-manifest.json"
-          release/gh-publish.sh verify "$NP_RELEASE_KEY" "$back/signatures-manifest.json"
+          release/gh-publish.sh verify "$LB_RELEASE_KEY" "$back/signatures-manifest.json"
           echo "The published manifest is the signed one." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Report builds that need a person

@@ -145,19 +145,19 @@ static int probe_oslist_offsets(uintptr_t oslist_gate, uint32_t base,
     return 2;
 }
 
-int np_compat_probe_tool_layout(uintptr_t appid_gate, uintptr_t oslist_gate) {
+int lb_compat_probe_tool_layout(uintptr_t appid_gate, uintptr_t oslist_gate) {
     if (!appid_gate) return 0;
 
     uint32_t appid_off, rt;
     if (!ldr32_from_x0(*(const uint32_t *)appid_gate, &appid_off, &rt)) {
-        NP_WARN("np_compat_probe_tool_layout: 0x%lx is not the appid load",
+        LB_WARN("lb_compat_probe_tool_layout: 0x%lx is not the appid load",
                 (unsigned long)appid_gate);
         return 0;
     }
 
     uintptr_t local_path;
     if (!cbz32(appid_gate + 4, *(const uint32_t *)(appid_gate + 4), rt, &local_path)) {
-        NP_WARN("np_compat_probe_tool_layout: no appid branch after 0x%lx",
+        LB_WARN("lb_compat_probe_tool_layout: no appid branch after 0x%lx",
                 (unsigned long)appid_gate);
         return 0;
     }
@@ -169,7 +169,7 @@ int np_compat_probe_tool_layout(uintptr_t appid_gate, uintptr_t oslist_gate) {
         if (ldr64_from_x0(*(const uint32_t *)pc, &install_off)) break;
     }
     if (!install_off) {
-        NP_WARN("np_compat_probe_tool_layout: no install load at 0x%lx",
+        LB_WARN("lb_compat_probe_tool_layout: no install load at 0x%lx",
                 (unsigned long)local_path);
         return 0;
     }
@@ -177,7 +177,7 @@ int np_compat_probe_tool_layout(uintptr_t appid_gate, uintptr_t oslist_gate) {
     int32_t by_appid   = (int32_t)appid_off   - COMPAT_TOOL_APPID_OFF;
     int32_t by_install = (int32_t)install_off - COMPAT_TOOL_INSTALL_OFF;
     if (by_appid != by_install) {
-        NP_ERR("np_compat_probe_tool_layout: appid moved %+d but install moved %+d; "
+        LB_ERR("lb_compat_probe_tool_layout: appid moved %+d but install moved %+d; "
                "the tool layout no longer shifts as one block",
                by_appid, by_install);
         return 0;
@@ -191,18 +191,18 @@ int np_compat_probe_tool_layout(uintptr_t appid_gate, uintptr_t oslist_gate) {
         int32_t by_from = (int32_t)from_off - COMPAT_TOOL_FROM_OSLIST_OFF;
         int32_t by_to   = (int32_t)to_off   - COMPAT_TOOL_TO_OSLIST_OFF;
         if (by_from != by_appid || by_to != by_appid) {
-            NP_ERR("np_compat_probe_tool_layout: near fields moved %+d but oslist "
+            LB_ERR("lb_compat_probe_tool_layout: near fields moved %+d but oslist "
                    "moved %+d/%+d; the tool layout no longer shifts as one block",
                    by_appid, by_from, by_to);
             return 0;
         }
-        NP_DBG("np_compat_probe_tool_layout: oslist offsets 0x%x/0x%x agree on %+d",
+        LB_DBG("lb_compat_probe_tool_layout: oslist offsets 0x%x/0x%x agree on %+d",
                from_off, to_off, by_appid);
     }
 
     g_tool_shift = by_appid;
     if (g_tool_shift)
-        NP_LOG("np_compat_probe_tool_layout: tool fields from install onward are "
+        LB_LOG("lb_compat_probe_tool_layout: tool fields from install onward are "
                "%+d from the baseline (appid 0x%x, install 0x%x)",
                g_tool_shift, appid_off, install_off);
     return 1;
@@ -215,7 +215,7 @@ int np_compat_probe_tool_layout(uintptr_t appid_gate, uintptr_t oslist_gate) {
 // the two independent.
 static uint32_t g_enabled_off = COMPAT_MANAGER_ENABLED_OFF;
 
-int np_compat_probe_enabled_off(uintptr_t bis_enabled) {
+int lb_compat_probe_enabled_off(uintptr_t bis_enabled) {
     if (!bis_enabled) return 0;
 
     // this arrives in X0 and is parked in a callee-saved register before the
@@ -226,7 +226,7 @@ int np_compat_probe_enabled_off(uintptr_t bis_enabled) {
         if (mov_from_x0(*(const uint32_t *)pc, &base)) { have_base = 1; break; }
     }
     if (!have_base) {
-        NP_WARN("np_compat_probe_enabled_off: this is never parked in a register "
+        LB_WARN("lb_compat_probe_enabled_off: this is never parked in a register "
                 "at 0x%lx", (unsigned long)bis_enabled);
         return 0;
     }
@@ -239,7 +239,7 @@ int np_compat_probe_enabled_off(uintptr_t bis_enabled) {
         if (ldrb_from(*(const uint32_t *)pc, base, &off)) { found = 1; break; }
     }
     if (!found) {
-        NP_WARN("np_compat_probe_enabled_off: no flag load through x%u at 0x%lx",
+        LB_WARN("lb_compat_probe_enabled_off: no flag load through x%u at 0x%lx",
                 base, (unsigned long)bis_enabled);
         return 0;
     }
@@ -247,28 +247,28 @@ int np_compat_probe_enabled_off(uintptr_t bis_enabled) {
     // A tiny offset would mean the match landed on some unrelated early byte
     // read rather than on the flag, which sits far into the object.
     if (off < 0x100) {
-        NP_ERR("np_compat_probe_enabled_off: 0x%x is too low to be the enabled "
+        LB_ERR("lb_compat_probe_enabled_off: 0x%x is too low to be the enabled "
                "flag; refusing to write it", off);
         return 0;
     }
 
     if (off != g_enabled_off)
-        NP_LOG("np_compat_probe_enabled_off: enabled flag at 0x%x, %+d from the "
+        LB_LOG("lb_compat_probe_enabled_off: enabled flag at 0x%x, %+d from the "
                "baseline", off, (int32_t)off - COMPAT_MANAGER_ENABLED_OFF);
     g_enabled_off = off;
     return 1;
 }
 
-uint32_t np_compat_enabled_off(void) {
+uint32_t lb_compat_enabled_off(void) {
     return g_enabled_off;
 }
 
-uint32_t np_compat_tool_off(uint32_t reference_off) {
+uint32_t lb_compat_tool_off(uint32_t reference_off) {
     if (reference_off < COMPAT_TOOL_INSTALL_OFF) return reference_off;
     return (uint32_t)((int32_t)reference_off + g_tool_shift);
 }
 
-size_t np_compat_tool_stride(void) {
+size_t lb_compat_tool_stride(void) {
     return (size_t)((int32_t)COMPAT_TOOL_STRIDE + g_tool_shift);
 }
 
@@ -276,8 +276,8 @@ size_t np_compat_tool_stride(void) {
 // scans for compatibility tools. So the tool is shoved into
 // ~/Library/Application Support/Steam/compatibilitytools.d and
 // STEAM_EXTRA_COMPAT_TOOLS_PATHS points there.
-void np_compat_export_tools_path(void) {
-    const char *home = np_home_dir();
+void lb_compat_export_tools_path(void) {
+    const char *home = lb_home_dir();
     if (!home) return;
     if (getenv("STEAM_EXTRA_COMPAT_TOOLS_PATHS")) return;
 
@@ -286,12 +286,12 @@ void np_compat_export_tools_path(void) {
              "%s/Library/Application Support/Steam/compatibilitytools.d", home);
 
     setenv("STEAM_EXTRA_COMPAT_TOOLS_PATHS", tools_dir, 1);
-    NP_LOG("np_compat_export_tools_path: set STEAM_EXTRA_COMPAT_TOOLS_PATHS=%s",
+    LB_LOG("lb_compat_export_tools_path: set STEAM_EXTRA_COMPAT_TOOLS_PATHS=%s",
            tools_dir);
 }
 
-int np_compat_ensure_tool_manifest(void) {
-    const char *home = np_home_dir();
+int lb_compat_ensure_tool_manifest(void) {
+    const char *home = lb_home_dir();
     if (!home) return -1;
 
     char tools_dir[512];
@@ -299,7 +299,7 @@ int np_compat_ensure_tool_manifest(void) {
              "%s/Library/Application Support/Steam/compatibilitytools.d", home);
 
     if (ensure_dir(tools_dir) != 0) {
-        NP_WARN("np_compat_ensure_tool_manifest: cannot create %s", tools_dir);
+        LB_WARN("lb_compat_ensure_tool_manifest: cannot create %s", tools_dir);
         return -1;
     }
 
@@ -307,7 +307,7 @@ int np_compat_ensure_tool_manifest(void) {
     snprintf(tool_dir, sizeof(tool_dir), "%s/%s", tools_dir, TOOL_DIR_NAME);
 
     if (ensure_dir(tool_dir) != 0) {
-        NP_WARN("np_compat_ensure_tool_manifest: cannot create %s", tool_dir);
+        LB_WARN("lb_compat_ensure_tool_manifest: cannot create %s", tool_dir);
         return -1;
     }
 
@@ -318,27 +318,27 @@ int np_compat_ensure_tool_manifest(void) {
     // place rather than adding a second copy.
     snprintf(path, sizeof(path), "%s/compatibilitytool.vdf", tool_dir);
     if (write_file(path, TOOL_DECLARATION, 0) == 0) wrote++;
-    else NP_WARN("np_compat_ensure_tool_manifest: failed to write %s", path);
+    else LB_WARN("lb_compat_ensure_tool_manifest: failed to write %s", path);
 
     snprintf(path, sizeof(path), "%s/toolmanifest.vdf", tool_dir);
     if (access(path, F_OK) != 0) {
         if (write_file(path, TOOL_MANIFEST, 0) == 0) wrote++;
-        else NP_WARN("np_compat_ensure_tool_manifest: failed to write %s", path);
+        else LB_WARN("lb_compat_ensure_tool_manifest: failed to write %s", path);
     }
 
     // The run script is the shim this project owns and updates, so rewrite it
     // every launch rather than leaving a stale copy behind.
     snprintf(path, sizeof(path), "%s/run", tool_dir);
     if (write_file(path, RUN_SCRIPT, 1) == 0) wrote++;
-    else NP_WARN("np_compat_ensure_tool_manifest: failed to write %s", path);
+    else LB_WARN("lb_compat_ensure_tool_manifest: failed to write %s", path);
 
     if (wrote > 0)
-        NP_LOG("np_compat_ensure_tool_manifest: wrote %d file(s) to %s", wrote, tool_dir);
+        LB_LOG("lb_compat_ensure_tool_manifest: wrote %d file(s) to %s", wrote, tool_dir);
 
     return 0;
 }
 
-const char *np_compat_tool_dir(void) {
+const char *lb_compat_tool_dir(void) {
     static char dir[512];
     static int resolved = 0;
 
@@ -347,7 +347,7 @@ const char *np_compat_tool_dir(void) {
 
     resolved = 1;
 
-    const char *home = np_home_dir();
+    const char *home = lb_home_dir();
     if (!home) {
         dir[0] = '\0';
         return NULL;
@@ -359,32 +359,32 @@ const char *np_compat_tool_dir(void) {
     return dir;
 }
 
-const char *np_compat_tool_commandline(void) {
+const char *lb_compat_tool_commandline(void) {
     return "/run %verb%";
 }
 
-void np_compat_force_enable(void *compat_mgr) {
+void lb_compat_force_enable(void *compat_mgr) {
     if (!compat_mgr) return;
 
     uint8_t *base = (uint8_t *)compat_mgr;
-    uint32_t off = np_compat_enabled_off();
+    uint32_t off = lb_compat_enabled_off();
     uint8_t prev = base[off];
     base[off] = 1;
 
     // Steam polls compat state frequently. Only log the one transition.
     if (!prev)
-        NP_LOG("np_compat_force_enable: compat layer force-enabled (this+0x%X: 0 -> 1)",
+        LB_LOG("lb_compat_force_enable: compat layer force-enabled (this+0x%X: 0 -> 1)",
                off);
 }
 
 typedef uint32_t (*fn_GetValidPlatforms)(void *compat_mgr, uint32_t appid);
 static fn_GetValidPlatforms g_get_valid_platforms;
 
-void np_compat_set_valid_platforms_fn(uintptr_t get_valid_platforms) {
+void lb_compat_set_valid_platforms_fn(uintptr_t get_valid_platforms) {
     g_get_valid_platforms = (fn_GetValidPlatforms)get_valid_platforms;
 }
 
-uint32_t np_compat_valid_platforms(void *compat_mgr, uint32_t appid) {
+uint32_t lb_compat_valid_platforms(void *compat_mgr, uint32_t appid) {
     if (!g_get_valid_platforms || !compat_mgr)
         return 0;
     return g_get_valid_platforms(compat_mgr, appid);
@@ -393,11 +393,11 @@ uint32_t np_compat_valid_platforms(void *compat_mgr, uint32_t appid) {
 typedef void *(*fn_FindToolForTargetApp)(void *compat_mgr, uint32_t appid);
 static fn_FindToolForTargetApp g_find_tool_for_app;
 
-void np_compat_set_find_tool_fn(uintptr_t find_tool_for_target_app) {
+void lb_compat_set_find_tool_fn(uintptr_t find_tool_for_target_app) {
     g_find_tool_for_app = (fn_FindToolForTargetApp)find_tool_for_target_app;
 }
 
-void *np_compat_tool_for_app(void *compat_mgr, uint32_t appid) {
+void *lb_compat_tool_for_app(void *compat_mgr, uint32_t appid) {
     if (!g_find_tool_for_app || !compat_mgr)
         return NULL;
     return g_find_tool_for_app(compat_mgr, appid);
@@ -412,7 +412,7 @@ static int is_name_char(char c, const char *extra) {
     return c && strchr(extra, c);
 }
 
-int np_compat_runs_tool(const char *cmd) {
+int lb_compat_runs_tool(const char *cmd) {
     static const char lead[]    = "/compatibilitytools.d/" TOOL_DIR_NAME;
     static const char run[]     = "'/run ";
     static const char run_dot[] = "/.'/run ";
@@ -428,8 +428,8 @@ int np_compat_runs_tool(const char *cmd) {
     return 0;
 }
 
-int np_compat_app_runs_tool(uint32_t appid) {
-    const uint8_t *tool = np_compat_tool_for_app(np_compat_manager(), appid);
+int lb_compat_app_runs_tool(uint32_t appid) {
+    const uint8_t *tool = lb_compat_tool_for_app(lb_compat_manager(), appid);
     const char *name = tool ? *(const char *const *)(tool + COMPAT_TOOL_NAME_OFF) : NULL;
 
     return name && strcmp(name, TOOL_DIR_NAME) == 0;
@@ -439,27 +439,27 @@ int np_compat_app_runs_tool(uint32_t appid) {
 // the client passes it empty from its own handler.
 static fn_FindToolForTargetApp g_chosen_tool;
 
-void np_compat_set_chosen_tool_fn(uintptr_t find_tool_for_target_app) {
+void lb_compat_set_chosen_tool_fn(uintptr_t find_tool_for_target_app) {
     g_chosen_tool = (fn_FindToolForTargetApp)find_tool_for_target_app;
 }
 
-void *np_compat_chosen_tool(void *compat_mgr, uint32_t appid) {
+void *lb_compat_chosen_tool(void *compat_mgr, uint32_t appid) {
     if (!g_chosen_tool || !compat_mgr)
         return NULL;
     return g_chosen_tool(compat_mgr, appid);
 }
 
-bool np_compat_would_force(void *compat_mgr, uint32_t appid) {
+bool lb_compat_would_force(void *compat_mgr, uint32_t appid) {
     if (!compat_mgr || !appid)
         return false;
-    uint32_t platforms = np_compat_valid_platforms(compat_mgr, appid);
+    uint32_t platforms = lb_compat_valid_platforms(compat_mgr, appid);
     return (platforms & COMPAT_PLATFORM_WINDOWS) && !(platforms & COMPAT_PLATFORM_MACOS);
 }
 
 typedef void *(*fn_FindMapping)(void *compat_mgr, uint32_t appid);
 static fn_FindMapping g_find_mapping;
 
-void np_compat_set_app_mapping_fn(uintptr_t find_mapping) {
+void lb_compat_set_app_mapping_fn(uintptr_t find_mapping) {
     g_find_mapping = (fn_FindMapping)find_mapping;
 }
 
@@ -471,7 +471,7 @@ static const char *mapping_name(const void *mapping) {
     return entry[0];
 }
 
-const char *np_compat_app_mapping(void *compat_mgr, uint32_t appid) {
+const char *lb_compat_app_mapping(void *compat_mgr, uint32_t appid) {
     if (!g_find_mapping || !compat_mgr || !appid)
         return NULL;
     return mapping_name(g_find_mapping(compat_mgr, appid));
@@ -479,11 +479,11 @@ const char *np_compat_app_mapping(void *compat_mgr, uint32_t appid) {
 
 static fn_FindMapping g_get_wildcard;
 
-void np_compat_set_wildcard_fn(uintptr_t get_wildcard_mapping) {
+void lb_compat_set_wildcard_fn(uintptr_t get_wildcard_mapping) {
     g_get_wildcard = (fn_FindMapping)get_wildcard_mapping;
 }
 
-const char *np_compat_wildcard_mapping(void *compat_mgr, uint32_t appid) {
+const char *lb_compat_wildcard_mapping(void *compat_mgr, uint32_t appid) {
     if (!g_get_wildcard || !compat_mgr || !appid)
         return NULL;
     return mapping_name(g_get_wildcard(compat_mgr, appid));
@@ -494,13 +494,13 @@ typedef void (*fn_SetCompatToolMapping)(void *compat_mgr, uint32_t appid,
                                         uint32_t priority);
 static fn_SetCompatToolMapping g_set_mapping;
 
-void np_compat_set_mapping_fn(uintptr_t set_compat_tool_mapping) {
+void lb_compat_set_mapping_fn(uintptr_t set_compat_tool_mapping) {
     g_set_mapping = (fn_SetCompatToolMapping)set_compat_tool_mapping;
 }
 
-void np_compat_map_tool(void *compat_mgr, uint32_t appid, const char *tool_name) {
+void lb_compat_map_tool(void *compat_mgr, uint32_t appid, const char *tool_name) {
     if (!g_set_mapping || !compat_mgr || !tool_name) {
-        NP_ERR("np_compat_map_tool: app %u cannot be mapped to %s", appid,
+        LB_ERR("lb_compat_map_tool: app %u cannot be mapped to %s", appid,
                tool_name ? tool_name : "no tool");
         return;
     }
@@ -512,17 +512,17 @@ void np_compat_map_tool(void *compat_mgr, uint32_t appid, const char *tool_name)
 typedef void (*fn_YldRegisterTool)(void *compat_mgr, void *tool);
 static fn_YldRegisterTool g_yld_register_tool;
 
-void np_compat_set_register_fn(uintptr_t yld_register_tool) {
+void lb_compat_set_register_fn(uintptr_t yld_register_tool) {
     g_yld_register_tool = (fn_YldRegisterTool)yld_register_tool;
 }
 
 static void *g_manager;
 
-void *np_compat_manager(void) {
+void *lb_compat_manager(void) {
     return g_manager;
 }
 
-void np_compat_register_tool(void *compat_mgr) {
+void lb_compat_register_tool(void *compat_mgr) {
     static int registered = 0;
 
     // Every compat query arrives on the instance the properties page reads, which is
@@ -537,9 +537,9 @@ void np_compat_register_tool(void *compat_mgr) {
     // so any session that found the manifest there already holds an entry and a
     // second one is a duplicate under the same name. Only the first session after an
     // install, when the manifest did not exist to be scanned, has nothing to find.
-    if (np_compat_registered_tool(compat_mgr)) {
+    if (lb_compat_registered_tool(compat_mgr)) {
         registered = 1;
-        NP_LOG("np_compat_register_tool: %s already registered from disk, "
+        LB_LOG("lb_compat_register_tool: %s already registered from disk, "
                "skipping the runtime entry", TOOL_DIR_NAME);
         return;
     }
@@ -561,19 +561,19 @@ void np_compat_register_tool(void *compat_mgr) {
     *(uint32_t *)(tool + COMPAT_TOOL_FLAGS_OFF)      = COMPAT_TOOL_FLAG_NO_APP;
     *(const char **)(tool + COMPAT_TOOL_NAME_OFF)    = name;
     *(const char **)(tool + COMPAT_TOOL_DISPLAY_OFF) = display;
-    *(const char **)(tool + np_compat_tool_off(COMPAT_TOOL_INSTALL_OFF)) =
-        np_compat_tool_dir();
-    *(uint32_t *)(tool + np_compat_tool_off(COMPAT_TOOL_APPID_OFF)) = 0;
-    *(const char **)(tool + np_compat_tool_off(COMPAT_TOOL_FROM_OSLIST_OFF)) = from_oslist;
-    *(const char **)(tool + np_compat_tool_off(COMPAT_TOOL_TO_OSLIST_OFF))   = to_oslist;
+    *(const char **)(tool + lb_compat_tool_off(COMPAT_TOOL_INSTALL_OFF)) =
+        lb_compat_tool_dir();
+    *(uint32_t *)(tool + lb_compat_tool_off(COMPAT_TOOL_APPID_OFF)) = 0;
+    *(const char **)(tool + lb_compat_tool_off(COMPAT_TOOL_FROM_OSLIST_OFF)) = from_oslist;
+    *(const char **)(tool + lb_compat_tool_off(COMPAT_TOOL_TO_OSLIST_OFF))   = to_oslist;
 
     registered = 1;
     g_yld_register_tool(compat_mgr, tool);
-    NP_LOG("np_compat_register_tool: registered %s into manager 0x%llx",
+    LB_LOG("lb_compat_register_tool: registered %s into manager 0x%llx",
            name, (unsigned long long)(uintptr_t)compat_mgr);
 }
 
-void *np_compat_registered_tool(void *compat_mgr) {
+void *lb_compat_registered_tool(void *compat_mgr) {
     if (!compat_mgr)
         return NULL;
 
@@ -584,14 +584,14 @@ void *np_compat_registered_tool(void *compat_mgr) {
         // Once, because Steam walks this for every windows-only app as the library
         // redraws and a count this wrong does not correct itself.
         static const char once = 0;
-        if (np_log_first_hit(&once, 0))
-            NP_ERR("np_compat_registered_tool: the manager reports %u tool(s) at %p, "
+        if (lb_log_first_hit(&once, 0))
+            LB_ERR("lb_compat_registered_tool: the manager reports %u tool(s) at %p, "
                    "which is not a list this reads", count, (const void *)array);
         return NULL;
     }
 
     for (uint32_t i = 0; i < count; i++) {
-        uint8_t *entry = array + (size_t)i * np_compat_tool_stride();
+        uint8_t *entry = array + (size_t)i * lb_compat_tool_stride();
         const char *name = *(const char **)(entry + COMPAT_TOOL_NAME_OFF);
         if (name && strcmp(name, TOOL_DIR_NAME) == 0)
             return entry;

@@ -1,7 +1,7 @@
 // Lullaby's own release feed (Phase 5): the signed bridge-manifest.json and
 // signatures-manifest.json in the releases of the fork, and the Ed25519 key that
 // signs them. Both come from Info.plist, as Sparkle's SUFeedURL and SUPublicEDKey
-// do: NPReleaseFeedURL and NPReleasePublicKey. The release key is created in
+// do: LBReleaseFeedURL and LBReleasePublicKey. The release key is created in
 // Phase 6 (docs/RELEASING.md); until then the key is empty, the feed is off, and
 // the app uses what it carries (bundled bridge and signatures).
 //
@@ -14,8 +14,8 @@ import CryptoKit
 import Foundation
 
 struct ReleaseFeed: Sendable {
-    static let urlKey = "NPReleaseFeedURL"
-    static let keyKey = "NPReleasePublicKey"
+    static let urlKey = "LBReleaseFeedURL"
+    static let keyKey = "LBReleasePublicKey"
     static let step = "Check Lullaby's releases"
 
     /// Ends with "/". Assets are <base><tag>/<file>, as GitHub serves release downloads.

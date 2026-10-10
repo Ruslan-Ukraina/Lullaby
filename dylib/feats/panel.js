@@ -111,12 +111,12 @@
 
   function help(ctx, s) {
     var h = s.help || {};
-    return el("div", { className: "NPHelp" },
+    return el("div", { className: "LBHelp" },
       el("div", null, L(ctx, h.summary)),
       (h.entries || []).length ? el("ul", null, h.entries.map(function (e, i) {
         return el("li", { key: i }, el("b", null, L(ctx, e.name)), " \u2014 ", L(ctx, e.text));
       })) : null,
-      h.footnote ? el("div", { className: "NPFoot" }, L(ctx, h.footnote)) : null);
+      h.footnote ? el("div", { className: "LBFoot" }, L(ctx, h.footnote)) : null);
   }
 
   // The line under a row names what the level above holds, and only where this level's
@@ -134,9 +134,9 @@
     } else if (!ctx.global && v.inheritedFrom === "recipe") {
       line = T(ctx, "recipe");
     }
-    return el("span", { className: "NPDesc" },
-      s.caption ? el("span", { className: "NPCaption" }, L(ctx, s.caption)) : null,
-      line ? el("span", { className: "NPInherit" }, line) : null,
+    return el("span", { className: "LBDesc" },
+      s.caption ? el("span", { className: "LBCaption" }, L(ctx, s.caption)) : null,
+      line ? el("span", { className: "LBInherit" }, line) : null,
       info ? help(ctx, s) : null);
   }
 
@@ -150,11 +150,11 @@
   }
 
   function label(ctx, s, info, setInfo) {
-    return el("span", { className: "NPLabel" },
+    return el("span", { className: "LBLabel" },
       L(ctx, s.title),
-      s.experimental ? el("span", { className: "NPExp" }, T(ctx, "experimental")) : null,
+      s.experimental ? el("span", { className: "LBExp" }, T(ctx, "experimental")) : null,
       el("span", {
-        className: "NPInfo" + (info ? " NPOn" : ""), role: "button", "aria-label": "i",
+        className: "LBInfo" + (info ? " LBOn" : ""), role: "button", "aria-label": "i",
         onClick: function (e) { stop(e); setInfo(!info); }
       }, "i"));
   }
@@ -169,7 +169,7 @@
       if (a === null || b === null) return;
       send({ preset: "custom", waitSpin: a, adaptive: v.adaptive, objectSpin: b });
     }
-    return el("div", { className: "NPSub" },
+    return el("div", { className: "LBSub" },
       el(B.FO, { label: T(ctx, "waitSpin"), value: w[0], onChange: function (e) { w[1](e.target.value); }, onBlur: apply }),
       el(B.FO, { label: T(ctx, "objectSpin"), value: o[0], onChange: function (e) { o[1](e.target.value); }, onBlur: apply }),
       el(B.y4, {
@@ -201,7 +201,7 @@
           return c.requires === "d3dmetal" && key(c.value) === key(eff);
         });
         return needsToolkit ? el("div", null, list,
-          el("div", { className: "NPStatus NPWarn" }, T(ctx, "toolkitInSettings"))) : list;
+          el("div", { className: "LBStatus LBWarn" }, T(ctx, "toolkitInSettings"))) : list;
       }
       case "tuning": {
         var preset = eff && eff.preset;
@@ -233,10 +233,10 @@
 
   function statusLine(ctx) {
     var st = ctx.state;
-    if (ctx.global) return el("div", { className: "NPStatus" }, T(ctx, "globalApplies"));
+    if (ctx.global) return el("div", { className: "LBStatus" }, T(ctx, "globalApplies"));
     var line = st.status === "restartGame" ? T(ctx, "restartGame")
       : st.status === "firstLaunch" ? T(ctx, "firstLaunch") : T(ctx, "nextLaunch");
-    return el("div", { className: "NPStatus" + (st.status === "restartGame" ? " NPWarn" : "") },
+    return el("div", { className: "LBStatus" + (st.status === "restartGame" ? " LBWarn" : "") },
       line,
       st.exes && st.exes.length ? el("div", null, T(ctx, "executables", st.exes.join(", "))) : null);
   }
@@ -252,26 +252,26 @@
   function view(ctx) {
     if (MISSING.length) {
       var lang = FALLBACK[ctx.lang] ? ctx.lang : "en";
-      return el("div", { className: "NPPanel" }, style(),
-        el("div", { className: "NPError" }, FALLBACK[lang].replace("%@", "Steam UI (" + MISSING.join(", ") + ")")));
+      return el("div", { className: "LBPanel" }, style(),
+        el("div", { className: "LBError" }, FALLBACK[lang].replace("%@", "Steam UI (" + MISSING.join(", ") + ")")));
     }
     if (ctx.error && !ctx.state) {
       var fb = FALLBACK[ctx.lang] || FALLBACK.en;
-      return el("div", { className: "NPPanel" }, style(), el("div", { className: "NPError" }, fb.replace("%@", ctx.error)));
+      return el("div", { className: "LBPanel" }, style(), el("div", { className: "LBError" }, fb.replace("%@", ctx.error)));
     }
-    if (!ctx.catalog || !ctx.state) return el("div", { className: "NPPanel" }, style());
+    if (!ctx.catalog || !ctx.state) return el("div", { className: "LBPanel" }, style());
     var title = ctx.global ? T(ctx, "globalSection") : T(ctx, "section");
-    return el("div", { className: "NPPanel", ref: ctx.hostRef },
+    return el("div", { className: "LBPanel", ref: ctx.hostRef },
       style(),
-      el("div", { className: "NPHeader" }, el("b", null, title)),
-      ctx.global ? el("div", { className: "NPCaption NPTop" }, T(ctx, "globalCaption")) : null,
+      el("div", { className: "LBHeader" }, el("b", null, title)),
+      ctx.global ? el("div", { className: "LBCaption LBTop" }, T(ctx, "globalCaption")) : null,
       rows(ctx, settingsAt(ctx, true)),
-      el("div", { className: "NPActions" },
+      el("div", { className: "LBActions" },
         el(B.$n, { onClick: function () { ctx.setAdvanced(true); } }, T(ctx, "advanced")),
-        el(B.$n, { className: "NPReset", onClick: function () { ctx.reset(); } },
+        el(B.$n, { className: "LBReset", onClick: function () { ctx.reset(); } },
           T(ctx, resetLabel(ctx)))),
       statusLine(ctx),
-      ctx.error ? el("div", { className: "NPError" }, T(ctx, "saveFailed", ctx.error)) : null,
+      ctx.error ? el("div", { className: "LBError" }, T(ctx, "saveFailed", ctx.error)) : null,
       ctx.advanced ? overlay(ctx) : null);
   }
 
@@ -282,61 +282,61 @@
     var title = ctx.global ? T(ctx, "advancedGlobalTitle") : T(ctx, "advancedTitle", ctx.state.name || ("App " + ctx.state.appID));
     var close = function () { ctx.setAdvanced(false); };
     return el("div", {
-      className: "NPOverlay", tabIndex: -1,
+      className: "LBOverlay", tabIndex: -1,
       ref: function (node) { if (node && !node.contains(node.ownerDocument.activeElement)) node.focus(); },
       onKeyDown: function (e) { if (e.key === "Escape") { stop(e); close(); } },
       onMouseDown: function (e) { if (e.target === e.currentTarget) close(); }
     },
       style(),
-      el("div", { className: "NPDialog DialogContent", role: "dialog", "aria-label": title },
-        el("div", { className: "NPDialogHead" }, title),
-        el("div", { className: "NPDialogBody" },
+      el("div", { className: "LBDialog DialogContent", role: "dialog", "aria-label": title },
+        el("div", { className: "LBDialogHead" }, title),
+        el("div", { className: "LBDialogBody" },
           ctx.catalog.groups.map(function (g) {
             var list = others.filter(function (s) { return s.group === g.id; });
             if (!list.length) return null;
-            return el("div", { key: g.id, className: "NPGroupBox" },
-              el("div", { className: "NPGroup" }, L(ctx, g.title)),
+            return el("div", { key: g.id, className: "LBGroupBox" },
+              el("div", { className: "LBGroup" }, L(ctx, g.title)),
               rows(ctx, list));
           })),
-        el("div", { className: "NPDialogFoot" },
+        el("div", { className: "LBDialogFoot" },
           el(B.$n, { onClick: function () { ctx.reset(); } }, T(ctx, resetLabel(ctx))),
-          ctx.error ? el("span", { className: "NPError" }, T(ctx, "saveFailed", ctx.error)) : null,
-          el(B.$n, { className: "NPPrimary", onClick: close }, T(ctx, "done")))));
+          ctx.error ? el("span", { className: "LBError" }, T(ctx, "saveFailed", ctx.error)) : null,
+          el(B.$n, { className: "LBPrimary", onClick: close }, T(ctx, "done")))));
   }
 
   var CSS =
-    ".NPPanel{margin-top:16px}" +
-    ".NPHeader{display:flex;justify-content:space-between;align-items:baseline;margin:8px 0 2px;color:#fff}" +
-    ".NPHeader b{font-size:13px;letter-spacing:.06em;text-transform:uppercase}" +
-    ".NPTop{display:block;margin-bottom:6px;font-size:13px}" +
-    ".NPLabel{display:inline-flex;align-items:center;gap:6px}" +
-    ".NPInfo{display:inline-block;width:14px;height:14px;border-radius:50%;border:1px solid #8b929a;color:#8b929a;" +
+    ".LBPanel{margin-top:16px}" +
+    ".LBHeader{display:flex;justify-content:space-between;align-items:baseline;margin:8px 0 2px;color:#fff}" +
+    ".LBHeader b{font-size:13px;letter-spacing:.06em;text-transform:uppercase}" +
+    ".LBTop{display:block;margin-bottom:6px;font-size:13px}" +
+    ".LBLabel{display:inline-flex;align-items:center;gap:6px}" +
+    ".LBInfo{display:inline-block;width:14px;height:14px;border-radius:50%;border:1px solid #8b929a;color:#8b929a;" +
     "font:italic 10px/13px serif;text-align:center;cursor:pointer;flex:none}" +
-    ".NPInfo.NPOn,.NPInfo:hover{border-color:#1a9fff;color:#1a9fff}" +
-    ".NPExp{font-size:11px;color:#e4c046}" +
-    ".NPDesc{display:flex;flex-direction:column;gap:2px}" +
-    ".NPCaption{color:#8b929a}" +
-    ".NPInherit{color:#8b929a}" +
-    ".NPLink{color:#1a9fff;cursor:pointer}" +
-    ".NPHelp{margin-top:6px;padding:8px 10px;background:rgba(0,0,0,.25);border-radius:3px;color:#c7d5e0;white-space:normal}" +
-    ".NPHelp ul{margin:6px 0 0;padding-left:16px}.NPHelp b{color:#fff}.NPFoot{margin-top:6px;color:#8b929a}" +
-    ".NPSub{padding:4px 0 8px 16px}" +
-    ".NPActions{margin-top:12px;display:flex;flex-direction:column;gap:8px}" +
-    ".NPStatus{color:#8b929a;font-size:12px;margin-top:8px}.NPStatus.NPWarn{color:#e4c046}" +
-    ".NPError{color:#ff7b7b;font-size:12px;margin-top:8px}" +
-    ".NPOverlay{position:fixed;left:0;top:0;right:0;bottom:0;z-index:1500;background:rgba(0,0,0,.65);" +
+    ".LBInfo.LBOn,.LBInfo:hover{border-color:#1a9fff;color:#1a9fff}" +
+    ".LBExp{font-size:11px;color:#e4c046}" +
+    ".LBDesc{display:flex;flex-direction:column;gap:2px}" +
+    ".LBCaption{color:#8b929a}" +
+    ".LBInherit{color:#8b929a}" +
+    ".LBLink{color:#1a9fff;cursor:pointer}" +
+    ".LBHelp{margin-top:6px;padding:8px 10px;background:rgba(0,0,0,.25);border-radius:3px;color:#c7d5e0;white-space:normal}" +
+    ".LBHelp ul{margin:6px 0 0;padding-left:16px}.LBHelp b{color:#fff}.LBFoot{margin-top:6px;color:#8b929a}" +
+    ".LBSub{padding:4px 0 8px 16px}" +
+    ".LBActions{margin-top:12px;display:flex;flex-direction:column;gap:8px}" +
+    ".LBStatus{color:#8b929a;font-size:12px;margin-top:8px}.LBStatus.LBWarn{color:#e4c046}" +
+    ".LBError{color:#ff7b7b;font-size:12px;margin-top:8px}" +
+    ".LBOverlay{position:fixed;left:0;top:0;right:0;bottom:0;z-index:1500;background:rgba(0,0,0,.65);" +
     "display:flex;align-items:center;justify-content:center;outline:none}" +
-    ".NPDialog{background:#23262e;width:min(660px,92vw);max-height:86vh;display:flex;flex-direction:column;" +
+    ".LBDialog{background:#23262e;width:min(660px,92vw);max-height:86vh;display:flex;flex-direction:column;" +
     "border-radius:4px;box-shadow:0 12px 40px rgba(0,0,0,.7)}" +
-    ".NPDialogHead{padding:20px 24px 12px;font-size:22px;color:#fff;border-bottom:1px solid rgba(255,255,255,.1)}" +
-    ".NPDialogBody{padding:0 24px 8px;overflow-y:auto}" +
-    ".NPDialogFoot{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 24px 18px;" +
+    ".LBDialogHead{padding:20px 24px 12px;font-size:22px;color:#fff;border-bottom:1px solid rgba(255,255,255,.1)}" +
+    ".LBDialogBody{padding:0 24px 8px;overflow-y:auto}" +
+    ".LBDialogFoot{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 24px 18px;" +
     "border-top:1px solid rgba(255,255,255,.1)}" +
-    ".NPGroup{margin:18px 0 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#fff}" +
+    ".LBGroup{margin:18px 0 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#fff}" +
     // Steam's .DialogContent draws lists larger (16px, 12px padding) than the Properties
     // page around the dialog does; the dialog's lists match the page's.
-    ".NPDialog .DialogDropDown{font-size:13px;padding:8px 14px;line-height:18px}" +
-    ".NPPrimary{background:linear-gradient(90deg,#1a9fff,#1474e0)!important;color:#fff!important}";
+    ".LBDialog .DialogDropDown{font-size:13px;padding:8px 14px;line-height:18px}" +
+    ".LBPrimary{background:linear-gradient(90deg,#1a9fff,#1474e0)!important;color:#fff!important}";
   function style() { return el("style", null, CSS); }
 
   // ---- the components the page renders --------------------------------------------

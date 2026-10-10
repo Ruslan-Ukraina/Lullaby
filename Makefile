@@ -395,8 +395,8 @@ $(OUT_DIR)/%.o: %.c
 
 OBJCFLAGS := $(filter-out -std=c17,$(CFLAGS)) -fobjc-arc -fobjc-weak
 # Steam Helper's debug command channel (lullaby/steam-windows-debug) is for
-# development only: `make NP_DEV=1 ...`. Never in a release (docs/BACKLOG.md 20).
-ifeq ($(NP_DEV),1)
+# development only: `make LB_DEV=1 ...`. Never in a release (docs/BACKLOG.md 20).
+ifeq ($(LB_DEV),1)
 OBJCFLAGS += -DNP_STEAMWIN_DEBUG=1
 endif
 
@@ -412,7 +412,7 @@ $(OUT_DIR)/dylib/feats/compat.o: $(RUN_SCRIPT_H)
 
 $(PANEL_JS_H): dylib/feats/panel.js dylib/embed_js.py
 	@mkdir -p $(GENERATED_DIR)
-	python3 dylib/embed_js.py $< $@ NP_PANEL_JS
+	python3 dylib/embed_js.py $< $@ LB_PANEL_JS
 
 $(OUT_DIR)/dylib/feats/webpatch.o: $(PANEL_JS_H)
 
@@ -613,12 +613,12 @@ APP_SIGN_ID ?= -
 # Where Lullaby publishes and how the app downloads come from one file,
 # release/feed.json (DECISIONS P6-11); the release workflows read the same file.
 feed_config = $(shell python3 -I release/feed.py config $(1))
-NP_RELEASE_FEED       ?= $(call feed_config,feed)
-NP_RELEASE_ACCESS     ?= $(call feed_config,access)
-NP_RELEASE_REPOSITORY ?= $(call feed_config,repository)
-NP_RELEASE_MANIFEST_TAG ?= $(call feed_config,manifestTag)
-NP_ENGINE_MANIFEST    ?= $(call feed_config,engineManifest)
-NP_RELEASE_KEY  ?=
+LB_RELEASE_FEED       ?= $(call feed_config,feed)
+LB_RELEASE_ACCESS     ?= $(call feed_config,access)
+LB_RELEASE_REPOSITORY ?= $(call feed_config,repository)
+LB_RELEASE_MANIFEST_TAG ?= $(call feed_config,manifestTag)
+LB_ENGINE_MANIFEST    ?= $(call feed_config,engineManifest)
+LB_RELEASE_KEY  ?=
 
 # Sparkle, for Lullaby.app's own updates (Phase 6): the appcast and its EdDSA
 # public key. Empty (the default) leaves the updater off. The appcast sits next to
@@ -628,8 +628,8 @@ SPARKLE_KEY  ?=
 
 # release (the release workflow), test (its dry run, TEST keys only) or dev.
 # release/check-release.sh holds each kind to its keys before and after the build.
-NP_BUILD_KIND ?= dev
-export NP_BUILD_KIND NP_DEV NP_RELEASE_KEY NP_RELEASE_FEED SPARKLE_KEY SPARKLE_FEED NP_RELEASE_ACCESS
+LB_BUILD_KIND ?= dev
+export LB_BUILD_KIND LB_DEV LB_RELEASE_KEY LB_RELEASE_FEED SPARKLE_KEY SPARKLE_FEED LB_RELEASE_ACCESS
 
 ICONGEN  := $(OUT_DIR)/icongen
 ICON_DOC := $(OUT_DIR)/Lullaby.icon
@@ -660,13 +660,13 @@ app: app-config app-payload $(ICON_CAR)
 	/usr/libexec/PlistBuddy -c \
 		"Set :CFBundleShortVersionString $(APP_VERSION)" -c \
 		"Set :CFBundleVersion $(APP_BUILD)" -c \
-		"Set :NPReleaseFeedURL $(NP_RELEASE_FEED)" -c \
-		"Set :NPReleasePublicKey $(NP_RELEASE_KEY)" -c \
-		"Set :NPBuildKind $(NP_BUILD_KIND)" -c \
-		"Set :NPReleaseAccess $(NP_RELEASE_ACCESS)" -c \
-		"Set :NPReleaseRepository $(NP_RELEASE_REPOSITORY)" -c \
-		"Set :NPReleaseManifestTag $(NP_RELEASE_MANIFEST_TAG)" -c \
-		"Set :NPEngineManifestURL $(NP_ENGINE_MANIFEST)" -c \
+		"Set :LBReleaseFeedURL $(LB_RELEASE_FEED)" -c \
+		"Set :LBReleasePublicKey $(LB_RELEASE_KEY)" -c \
+		"Set :LBBuildKind $(LB_BUILD_KIND)" -c \
+		"Set :LBReleaseAccess $(LB_RELEASE_ACCESS)" -c \
+		"Set :LBReleaseRepository $(LB_RELEASE_REPOSITORY)" -c \
+		"Set :LBReleaseManifestTag $(LB_RELEASE_MANIFEST_TAG)" -c \
+		"Set :LBEngineManifestURL $(LB_ENGINE_MANIFEST)" -c \
 		"Set :SUFeedURL $(if $(SPARKLE_KEY),$(SPARKLE_FEED))" -c \
 		"Set :SUPublicEDKey $(SPARKLE_KEY)" -c \
 		"Set :SUEnableAutomaticChecks false" \
@@ -702,7 +702,7 @@ app: app-config app-payload $(ICON_CAR)
 	codesign -f -s "$(APP_SIGN_ID)" "$(APP_BUNDLE)"
 	codesign --verify --strict "$(APP_BUNDLE)"
 	release/check-release.sh bundle "$(APP_BUNDLE)"
-	@echo "==> Built $(APP_BUNDLE) ($(APP_VERSION), build $(APP_BUILD), $(NP_BUILD_KIND))"
+	@echo "==> Built $(APP_BUNDLE) ($(APP_VERSION), build $(APP_BUILD), $(LB_BUILD_KIND))"
 
 # Stops a release or test build whose keys or switches are wrong before anything is built.
 app-config:

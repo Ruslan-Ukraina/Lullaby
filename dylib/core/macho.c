@@ -8,7 +8,7 @@
 
 static volatile sig_atomic_t g_await_stop;
 
-void np_await_stop(void) {
+void lb_await_stop(void) {
     g_await_stop = 1;
 }
 
@@ -22,7 +22,7 @@ static int image_index_by_name(const char *needle) {
     return -1;
 }
 
-int np_await_image(const char *name, int timeout_ms,
+int lb_await_image(const char *name, int timeout_ms,
                          const struct mach_header_64 **out_mh, intptr_t *out_slide,
                          char *out_path, size_t path_size) {
     for (int waited = 0; waited < timeout_ms; waited += 100) {
@@ -58,7 +58,7 @@ static const struct load_command *lc_at(const struct mach_header_64 *mh,
     return lc;
 }
 
-int np_find_segment(const struct mach_header_64 *mh, intptr_t slide,
+int lb_find_segment(const struct mach_header_64 *mh, intptr_t slide,
                    const char *segname, uintptr_t *out_base, size_t *out_size) {
     if (!mh || !segname) return -1;
 
@@ -120,7 +120,7 @@ static const uint8_t *fn_starts_table(const struct mach_header_64 *mh,
     return (const uint8_t *)(uintptr_t)(le_vmaddr + rel + (uint64_t)slide);
 }
 
-int np_function_bounds(const struct mach_header_64 *mh, intptr_t slide,
+int lb_function_bounds(const struct mach_header_64 *mh, intptr_t slide,
                        uintptr_t addr, uintptr_t *out_start, uintptr_t *out_end) {
     if (!mh || !out_start || !out_end) return -1;
 
@@ -160,7 +160,7 @@ int np_function_bounds(const struct mach_header_64 *mh, intptr_t slide,
     return -1;
 }
 
-int np_get_section_containing(const struct mach_header_64 *mh, intptr_t slide,
+int lb_get_section_containing(const struct mach_header_64 *mh, intptr_t slide,
                              uintptr_t addr, uintptr_t *out_base,
                              size_t *out_size) {
     if (!mh || !out_base || !out_size) return -1;
@@ -194,7 +194,7 @@ int np_get_section_containing(const struct mach_header_64 *mh, intptr_t slide,
     return -1;
 }
 
-int np_find_section(const struct mach_header_64 *mh, intptr_t slide,
+int lb_find_section(const struct mach_header_64 *mh, intptr_t slide,
                     const char *segname, const char *sectname,
                     uintptr_t *out_base, size_t *out_size) {
     if (!mh || !segname || !sectname || !out_base || !out_size) return -1;
@@ -314,7 +314,7 @@ static const struct section_64 *segment_sections(const struct load_command *lc,
     return (const struct section_64 *)(seg + 1);
 }
 
-const char *np_import_stub_symbol(const struct mach_header_64 *mh, intptr_t slide,
+const char *lb_import_stub_symbol(const struct mach_header_64 *mh, intptr_t slide,
                                   uintptr_t stub) {
     symbols_t syms;
     if (!mh || !stub || load_symbols(mh, slide, &syms) != 0) return NULL;
@@ -346,7 +346,7 @@ const char *np_import_stub_symbol(const struct mach_header_64 *mh, intptr_t slid
     return NULL;
 }
 
-uintptr_t np_import_stub_for_symbol(const struct mach_header_64 *mh, intptr_t slide,
+uintptr_t lb_import_stub_for_symbol(const struct mach_header_64 *mh, intptr_t slide,
                                     const char *symbol) {
     symbols_t syms;
     if (!mh || !symbol || !*symbol || load_symbols(mh, slide, &syms) != 0) return 0;
@@ -382,7 +382,7 @@ uintptr_t np_import_stub_for_symbol(const struct mach_header_64 *mh, intptr_t sl
 
 // Points every import slot of `symbol` in the image at `replacement` (upstream NotProton
 // 1.1.0, for hooks/hook_launch.c). Answers how many slots, or -1.
-int np_rebind_import(const struct mach_header_64 *mh, intptr_t slide,
+int lb_rebind_import(const struct mach_header_64 *mh, intptr_t slide,
                      const char *symbol, void *replacement) {
     if (!mh || !symbol || !replacement) return -1;
 

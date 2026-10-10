@@ -33,7 +33,7 @@ struct SteamInstallerTests {
         try FileManager.default.createDirectory(at: signatureDir, withIntermediateDirectories: true)
 
         let source = work.appending(path: "probe.c")
-        try Data("int np_probe(void) { return 1; }\n".utf8).write(to: source)
+        try Data("int lb_probe(void) { return 1; }\n".utf8).write(to: source)
 
         let dylib = root.appending(path: SupportPaths.dylibName)
         try Shell.check("/usr/bin/clang", [

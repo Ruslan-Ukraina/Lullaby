@@ -36,7 +36,7 @@ step=${CRON_HOURS:-1}
 every=$(( (hours + step - 1) / step ))
 now=$(( $(date -u +%s) / 3600 / step ))
 [ $(( now % every )) -eq 0 ] || say false "not this time (every $(( every * step )) h)"
-if [ -z "${NP_RELEASE_PRIVATE_KEY:-}" ]; then
+if [ -z "${LB_RELEASE_PRIVATE_KEY:-}" ]; then
 	say false "the release keys are not set up yet (docs/RELEASING.md)"
 fi
 

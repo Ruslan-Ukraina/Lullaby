@@ -8,16 +8,16 @@
 #include <pwd.h>
 #include <sys/stat.h>
 
-#define NP_READ_CEILING (16u * 1024u * 1024u)
+#define LB_READ_CEILING (16u * 1024u * 1024u)
 
-uint8_t *np_read_whole_file(const char *path, size_t *out_len) {
+uint8_t *lb_read_whole_file(const char *path, size_t *out_len) {
     int fd = open(path, O_RDONLY);
     if (fd < 0)
         return NULL;
 
     struct stat meta;
     if (fstat(fd, &meta) != 0 || !S_ISREG(meta.st_mode) ||
-        meta.st_size <= 0 || (uintmax_t)meta.st_size > NP_READ_CEILING) {
+        meta.st_size <= 0 || (uintmax_t)meta.st_size > LB_READ_CEILING) {
         close(fd);
         return NULL;
     }
@@ -45,7 +45,7 @@ uint8_t *np_read_whole_file(const char *path, size_t *out_len) {
     return data;
 }
 
-const char *np_home_dir(void) {
+const char *lb_home_dir(void) {
     const char *env = getenv("HOME");
     if (env && env[0])
         return env;
@@ -56,7 +56,7 @@ const char *np_home_dir(void) {
     return NULL;
 }
 
-void np_support_path(char *buf, size_t bufsz, const char *home, const char *rel) {
+void lb_support_path(char *buf, size_t bufsz, const char *home, const char *rel) {
     static const char base[] = "/Library/Application Support/lullaby";
     if (rel && rel[0])
         snprintf(buf, bufsz, "%s%s/%s", home, base, rel);

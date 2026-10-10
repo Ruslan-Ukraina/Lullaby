@@ -5,8 +5,8 @@
 
 #include <stdio.h>
 
-int   np_log_level = 0;
-FILE *np_log_file  = NULL;
+int   lb_log_level = 0;
+FILE *lb_log_file  = NULL;
 
 int DobbyHook(void *address, void *replace_call, void **origin_call) {
     (void)address; (void)replace_call; (void)origin_call;
@@ -18,7 +18,7 @@ void *DobbySymbolResolver(const char *image_name, const char *symbol_name) {
     return NULL;
 }
 
-int np_hooks_env_lists_label(const char *var, const char *label) {
+int lb_hooks_env_lists_label(const char *var, const char *label) {
     (void)var; (void)label;
     return 0;
 }
@@ -33,12 +33,12 @@ static void check(int ok, const char *what) {
 }
 
 static void keeps(const char *path, int want, const char *what) {
-    check(np_target_keeps_insert(path) == want, what);
+    check(lb_target_keeps_insert(path) == want, what);
 }
 
 // Entries of `got`, in order, against a NULL-terminated expectation.
 static void survives(char *const envp[], const char *const want[], const char *what) {
-    char **got = np_without_insert(envp);
+    char **got = lb_without_insert(envp);
     if (!want) {
         check(got == NULL, what);
         free(got);

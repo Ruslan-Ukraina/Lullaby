@@ -13,7 +13,7 @@
 // JSON helpers
 static cJSON *read_json_file(const char *path) {
     size_t n = 0;
-    uint8_t *raw = np_read_whole_file(path, &n);
+    uint8_t *raw = lb_read_whole_file(path, &n);
     if (!raw) return NULL;
     // cJSON_ParseWithLength needs a contiguous buffer, so guarantee NUL.
     uint8_t *buf = realloc(raw, n + 1);
@@ -59,7 +59,7 @@ static int int_field(cJSON *parent, const char *key, int fallback) {
 }
 
 // Empty masks match every instruction, so both are required.
-static int load_insn_pair(cJSON *anchor_obj, np_insn_pair_t *p) {
+static int load_insn_pair(cJSON *anchor_obj, lb_insn_pair_t *p) {
     cJSON *obj = cJSON_GetObjectItem(anchor_obj, "pair");
     if (!obj || !cJSON_IsObject(obj)) return -1;
 
@@ -77,12 +77,12 @@ static int load_insn_pair(cJSON *anchor_obj, np_insn_pair_t *p) {
     return 0;
 }
 
-static int load_call_path(cJSON *obj, np_anchor_t *a) {
+static int load_call_path(cJSON *obj, lb_anchor_t *a) {
     cJSON *arr = cJSON_GetObjectItem(obj, "call_path");
     if (!arr || !cJSON_IsArray(arr)) return -1;
 
     int n = cJSON_GetArraySize(arr);
-    if (n < 1 || n > NP_CALL_PATH_MAX) return -1;
+    if (n < 1 || n > LB_CALL_PATH_MAX) return -1;
 
     for (int i = 0; i < n; i++) {
         cJSON *e = cJSON_GetArrayItem(arr, i);
@@ -94,22 +94,22 @@ static int load_call_path(cJSON *obj, np_anchor_t *a) {
     return 0;
 }
 
-static int load_calls(cJSON *obj, np_anchor_t *a) {
+static int load_calls(cJSON *obj, lb_anchor_t *a) {
     cJSON *arr = cJSON_GetObjectItem(obj, "calls");
     if (!arr || !cJSON_IsArray(arr)) return -1;
 
     int n = cJSON_GetArraySize(arr);
-    if (n < 1 || n > NP_CALLS_MAX) return -1;
+    if (n < 1 || n > LB_CALLS_MAX) return -1;
 
     for (int i = 0; i < n; i++) {
         cJSON *e = cJSON_GetArrayItem(arr, i);
         if (!e || !cJSON_IsString(e) || !e->valuestring) return -1;
 
         size_t len = strlen(e->valuestring);
-        if (len == 0 || len >= NP_CALL_NAME_MAX) return -1;
-        if (len == 1 && e->valuestring[0] == NP_SELECTOR_MARK) return -1;
+        if (len == 0 || len >= LB_CALL_NAME_MAX) return -1;
+        if (len == 1 && e->valuestring[0] == LB_SELECTOR_MARK) return -1;
 
-        snprintf(a->calls[i], NP_CALL_NAME_MAX, "%s", e->valuestring);
+        snprintf(a->calls[i], LB_CALL_NAME_MAX, "%s", e->valuestring);
     }
     a->call_count = n;
 
@@ -121,7 +121,7 @@ static int load_calls(cJSON *obj, np_anchor_t *a) {
     return 0;
 }
 
-static void load_anchor(cJSON *sig_obj, np_anchor_t *a) {
+static void load_anchor(cJSON *sig_obj, lb_anchor_t *a) {
     cJSON *obj = cJSON_GetObjectItem(sig_obj, "anchor");
     if (!obj || !cJSON_IsObject(obj)) return;
 
@@ -130,48 +130,48 @@ static void load_anchor(cJSON *sig_obj, np_anchor_t *a) {
 
     const char *ks = kind->valuestring;
     if (strcmp(ks, "string") == 0) {
-        a->kind = NP_MATCH_STRING;
+        a->kind = LB_MATCH_STRING;
         str_field(obj, "value", a->str, sizeof(a->str));
     } else if (strcmp(ks, "insn_after_string") == 0) {
-        a->kind = NP_MATCH_INSN_AFTER_STRING;
+        a->kind = LB_MATCH_INSN_AFTER_STRING;
         str_field(obj, "value", a->str, sizeof(a->str));
         a->nth = int_field(obj, "n", 1);
     } else if (strcmp(ks, "insn_pair_in_fn") == 0) {
-        a->kind = NP_MATCH_INSN_PAIR_IN_FN;
+        a->kind = LB_MATCH_INSN_PAIR_IN_FN;
         str_field(obj, "value", a->str, sizeof(a->str));
         if (load_insn_pair(obj, &a->pair) != 0) {
-            NP_WARN("sigdb: anchor '%s' has no usable pair; ignoring it", a->str);
-            a->kind = NP_MATCH_NONE;
+            LB_WARN("sigdb: anchor '%s' has no usable pair; ignoring it", a->str);
+            a->kind = LB_MATCH_NONE;
             return;
         }
     } else if (strcmp(ks, "call_target") == 0) {
-        a->kind = NP_MATCH_CALL_TARGET;
+        a->kind = LB_MATCH_CALL_TARGET;
         str_field(obj, "value", a->str, sizeof(a->str));
         if (load_call_path(obj, a) != 0) {
-            NP_WARN("sigdb: anchor '%s' has no usable call_path; ignoring it", a->str);
-            a->kind = NP_MATCH_NONE;
+            LB_WARN("sigdb: anchor '%s' has no usable call_path; ignoring it", a->str);
+            a->kind = LB_MATCH_NONE;
             return;
         }
     } else if (strcmp(ks, "vtable_slot") == 0) {
         a->va = hex_field(obj, "va");
         // A missing or unparseable va reads as zero
         if (!a->va) {
-            NP_WARN("sigdb: vtable_slot anchor has no usable va; ignoring it");
-            a->kind = NP_MATCH_NONE;
+            LB_WARN("sigdb: vtable_slot anchor has no usable va; ignoring it");
+            a->kind = LB_MATCH_NONE;
             return;
         }
-        a->kind = NP_MATCH_VTABLE_SLOT;
+        a->kind = LB_MATCH_VTABLE_SLOT;
         return;                         // refinements below are string-only
     } else if (strcmp(ks, "calls") == 0) {
         if (load_calls(obj, a) != 0) {
-            NP_WARN("sigdb: a calls anchor has no usable call list; ignoring it");
-            a->kind = NP_MATCH_NONE;
+            LB_WARN("sigdb: a calls anchor has no usable call list; ignoring it");
+            a->kind = LB_MATCH_NONE;
             return;
         }
-        a->kind = NP_MATCH_CALLS;
+        a->kind = LB_MATCH_CALLS;
         return;
     } else if (strcmp(ks, "aob") == 0) {
-        a->kind = NP_MATCH_AOB;
+        a->kind = LB_MATCH_AOB;
         return;
     } else {
         return;
@@ -181,9 +181,9 @@ static void load_anchor(cJSON *sig_obj, np_anchor_t *a) {
     int nth_xref    = int_field(obj, "nth_xref", 0);
     int caller_hops = int_field(obj, "caller_hops", 0);
     if (nth_xref < 0 || caller_hops < 0) {
-        NP_WARN("sigdb: anchor '%s' has a negative nth_xref/caller_hops; ignoring it",
+        LB_WARN("sigdb: anchor '%s' has a negative nth_xref/caller_hops; ignoring it",
                 a->str);
-        a->kind = NP_MATCH_NONE;
+        a->kind = LB_MATCH_NONE;
         return;
     }
 
@@ -195,9 +195,9 @@ static void load_anchor(cJSON *sig_obj, np_anchor_t *a) {
 
     // caller_tail without hops is nonsensical
     if (a->caller_tail && !caller_hops) {
-        NP_WARN("sigdb: anchor '%s' sets caller_tail without caller_hops; ignoring it",
+        LB_WARN("sigdb: anchor '%s' sets caller_tail without caller_hops; ignoring it",
                 a->str);
-        a->kind = NP_MATCH_NONE;
+        a->kind = LB_MATCH_NONE;
         return;
     }
 
@@ -206,12 +206,12 @@ static void load_anchor(cJSON *sig_obj, np_anchor_t *a) {
 }
 
 // Public API
-int np_load_profile(const char *path, np_sigdb_t *out) {
+int lb_load_profile(const char *path, lb_sigdb_t *out) {
     if (!path || !out) return -1;
     memset(out, 0, sizeof(*out));
 
     cJSON *root = read_json_file(path);
-    if (!root) { NP_ERR("sigdb: cannot read or parse '%s'", path); return -1; }
+    if (!root) { LB_ERR("sigdb: cannot read or parse '%s'", path); return -1; }
 
     cJSON *v;
     if ((v = cJSON_GetObjectItem(root, "schema_version")))
@@ -225,7 +225,7 @@ int np_load_profile(const char *path, np_sigdb_t *out) {
     int total = (arr && cJSON_IsArray(arr)) ? cJSON_GetArraySize(arr) : 0;
 
     if (total > 0) {
-        out->signatures = calloc((size_t)total, sizeof(np_sig_entry_t));
+        out->signatures = calloc((size_t)total, sizeof(lb_sig_entry_t));
         if (!out->signatures) { cJSON_Delete(root); return -1; }
         out->sig_count = total;
 
@@ -233,7 +233,7 @@ int np_load_profile(const char *path, np_sigdb_t *out) {
         int i = 0;
         cJSON_ArrayForEach(elem, arr) {
             if (i >= total) break;
-            np_sig_entry_t *e = &out->signatures[i++];
+            lb_sig_entry_t *e = &out->signatures[i++];
 
             str_field(elem, "name",    e->name,    sizeof(e->name));
             str_field(elem, "module",  e->module,  sizeof(e->module));
@@ -241,7 +241,7 @@ int np_load_profile(const char *path, np_sigdb_t *out) {
             e->func_addr_this_build = hex_field(elem, "func_addr_this_build");
 
             if (!e->module[0])
-                memcpy(e->module, NP_MODULE_DEFAULT, sizeof(NP_MODULE_DEFAULT));
+                memcpy(e->module, LB_MODULE_DEFAULT, sizeof(LB_MODULE_DEFAULT));
 
             if ((v = cJSON_GetObjectItem(elem, "deprecated")))
                 e->deprecated = cJSON_IsTrue(v);
@@ -249,7 +249,7 @@ int np_load_profile(const char *path, np_sigdb_t *out) {
                 if (cJSON_IsNumber(v)) {
                     e->match_offset = (int32_t)v->valueint;
                 } else {
-                    NP_WARN("sigdb: '%s' has a non-numeric match_offset; dropping "
+                    LB_WARN("sigdb: '%s' has a non-numeric match_offset; dropping "
                             "its byte pattern", e->name);
                     e->aob_hex[0] = '\0';
                 }
@@ -257,23 +257,23 @@ int np_load_profile(const char *path, np_sigdb_t *out) {
 
             load_anchor(elem, &e->anchor);
 
-            if (e->anchor.kind == NP_MATCH_AOB && !e->aob_hex[0]) {
-                NP_WARN("sigdb: '%s' anchors on its byte pattern but carries none; "
+            if (e->anchor.kind == LB_MATCH_AOB && !e->aob_hex[0]) {
+                LB_WARN("sigdb: '%s' anchors on its byte pattern but carries none; "
                         "ignoring it", e->name);
-                e->anchor.kind = NP_MATCH_NONE;
+                e->anchor.kind = LB_MATCH_NONE;
             }
         }
     }
 
     cJSON_Delete(root);
-    NP_LOG("sigdb: loaded %d signatures from '%s' (schema=%d, profile=%d, steam_build=%llu %s)",
+    LB_LOG("sigdb: loaded %d signatures from '%s' (schema=%d, profile=%d, steam_build=%llu %s)",
            out->sig_count, path, out->schema_version, out->sigdb_version,
            (unsigned long long)out->steam_build,
            out->steam_build_date[0] ? out->steam_build_date : "");
     return 0;
 }
 
-void np_free_profile(np_sigdb_t *p) {
+void lb_free_profile(lb_sigdb_t *p) {
     if (!p) return;
     free(p->signatures);
     p->signatures   = NULL;
@@ -282,12 +282,12 @@ void np_free_profile(np_sigdb_t *p) {
 
 // Candidates for the loader: newest build first, so a database for a newer Steam
 // is tried before older ones, and the loader falls back when it does not resolve.
-int np_sigdb_candidates(const char *dir, char (*paths)[NP_SIGDB_PATH_MAX], int max) {
+int lb_sigdb_candidates(const char *dir, char (*paths)[LB_SIGDB_PATH_MAX], int max) {
     DIR *dh = opendir(dir);
     if (!dh) return -1;
-    uint64_t builds[NP_SIGDB_MAX_CANDIDATES];
+    uint64_t builds[LB_SIGDB_MAX_CANDIDATES];
     int count = 0;
-    if (max > NP_SIGDB_MAX_CANDIDATES) max = NP_SIGDB_MAX_CANDIDATES;
+    if (max > LB_SIGDB_MAX_CANDIDATES) max = LB_SIGDB_MAX_CANDIDATES;
     struct dirent *e;
     while ((e = readdir(dh)) != NULL) {
         size_t len = strlen(e->d_name);
@@ -302,10 +302,10 @@ int np_sigdb_candidates(const char *dir, char (*paths)[NP_SIGDB_PATH_MAX], int m
         int last = count < max ? count : max - 1;
         for (int i = last; i > at; i--) {
             builds[i] = builds[i - 1];
-            memcpy(paths[i], paths[i - 1], NP_SIGDB_PATH_MAX);
+            memcpy(paths[i], paths[i - 1], LB_SIGDB_PATH_MAX);
         }
         builds[at] = build;
-        snprintf(paths[at], NP_SIGDB_PATH_MAX, "%s/%s", dir, e->d_name);
+        snprintf(paths[at], LB_SIGDB_PATH_MAX, "%s/%s", dir, e->d_name);
         if (count < max) count++;
     }
     closedir(dh);

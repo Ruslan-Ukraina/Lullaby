@@ -175,7 +175,7 @@ static void expect_null(const char *dir, const char *name, const uint8_t *img,
     if (write_file(path, img, len) != 0) { fail("could not write fixture"); return; }
 
     size_t out = 12345;
-    void *ico = np_pe_icon_ico(path, &out);
+    void *ico = lb_pe_icon_ico(path, &out);
     if (ico) {
         fail("expected no icon");
         free(ico);
@@ -192,7 +192,7 @@ static void expect_bounded(const char *dir, const char *name, const uint8_t *img
     if (write_file(path, img, len) != 0) { fail("could not write fixture"); return; }
 
     size_t out = 0;
-    void *ico = np_pe_icon_ico(path, &out);
+    void *ico = lb_pe_icon_ico(path, &out);
     if (!ico) { fail("expected an icon"); return; }
     if (out > MAX_ICO) {
         fail("icon exceeds the output ceiling");
@@ -212,7 +212,7 @@ static void expect_valid_ico(const char *dir, const char *name, const uint8_t *i
     if (write_file(path, img, len) != 0) { fail("could not write fixture"); return; }
 
     size_t out = 0;
-    uint8_t *ico = np_pe_icon_ico(path, &out);
+    uint8_t *ico = lb_pe_icon_ico(path, &out);
     if (!ico) { fail("expected an icon"); return; }
 
     if (out < 22) { fail("icon is too short to hold one entry"); free(ico); return; }

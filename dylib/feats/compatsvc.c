@@ -71,14 +71,14 @@ typedef struct {
     size_t   cap;
     size_t   len;
     int      ok;
-} np_pb_t;
+} lb_pb_t;
 
-static void pb_byte(np_pb_t *w, uint8_t b) {
+static void pb_byte(lb_pb_t *w, uint8_t b) {
     if (w->len >= w->cap) { w->ok = 0; return; }
     w->buf[w->len++] = b;
 }
 
-static void pb_varint(np_pb_t *w, uint64_t v) {
+static void pb_varint(lb_pb_t *w, uint64_t v) {
     do {
         uint8_t b = (uint8_t)(v & 0x7f);
         v >>= 7;
@@ -86,32 +86,32 @@ static void pb_varint(np_pb_t *w, uint64_t v) {
     } while (v && w->ok);
 }
 
-static void pb_tag(np_pb_t *w, uint32_t field, uint32_t wire) {
+static void pb_tag(lb_pb_t *w, uint32_t field, uint32_t wire) {
     pb_varint(w, ((uint64_t)field << 3) | wire);
 }
 
-static void pb_blob(np_pb_t *w, uint32_t field, const uint8_t *bytes, size_t len) {
+static void pb_blob(lb_pb_t *w, uint32_t field, const uint8_t *bytes, size_t len) {
     pb_tag(w, field, WIRE_BYTES);
     pb_varint(w, len);
     for (size_t i = 0; i < len && w->ok; i++)
         pb_byte(w, bytes[i]);
 }
 
-static void pb_string(np_pb_t *w, uint32_t field, const char *str) {
+static void pb_string(lb_pb_t *w, uint32_t field, const char *str) {
     if (!str) return;
     pb_blob(w, field, (const uint8_t *)str, strlen(str));
 }
 
-static void pb_bool(np_pb_t *w, uint32_t field, int set) {
+static void pb_bool(lb_pb_t *w, uint32_t field, int set) {
     pb_tag(w, field, WIRE_VARINT);
     pb_varint(w, set ? 1 : 0);
 }
 
-static void pb_tool(np_pb_t *w, uint32_t resp_field,
+static void pb_tool(lb_pb_t *w, uint32_t resp_field,
                     const char *name, const char *display,
                     int is_active, int is_incompatible) {
     uint8_t item[TOOL_MAX];
-    np_pb_t t = { item, sizeof item, 0, 1 };
+    lb_pb_t t = { item, sizeof item, 0, 1 };
     pb_string(&t, TOOL_NAME, name);
     pb_string(&t, TOOL_DISPLAY_NAME, display);
     pb_bool(&t, TOOL_IS_DEFAULT, 0);
@@ -126,7 +126,7 @@ static void pb_tool(np_pb_t *w, uint32_t resp_field,
 
 static int offered(const uint8_t *tool, uint32_t platforms, int bypass) {
     uint32_t converts_from =
-        *(const uint32_t *)(tool + np_compat_tool_off(COMPAT_TOOL_PLATFORM_OFF));
+        *(const uint32_t *)(tool + lb_compat_tool_off(COMPAT_TOOL_PLATFORM_OFF));
     uint32_t gate = *(const uint32_t *)(tool + COMPAT_TOOL_GATE_FLAGS_OFF);
 
     if (!(platforms & converts_from)) return 0;
@@ -144,11 +144,11 @@ static int get_compat_tools(uintptr_t request, uintptr_t response) {
     uint32_t appid    = (has_bits & REQ_HAS_APPID)
                       ? *(const uint32_t *)(request + REQ_APPID_OFF) : 0;
 
-    uint8_t *mgr = (uint8_t *)np_compat_manager();
+    uint8_t *mgr = (uint8_t *)lb_compat_manager();
     if (!mgr) {
         // An empty list is a valid answer, and the page renders it as no dropdown
         // rather than as an error.
-        NP_WARN("compatsvc: app %u asked for tools before any manager was seen, so "
+        LB_WARN("compatsvc: app %u asked for tools before any manager was seen, so "
                 "the page gets an empty list", appid);
         return RESULT_OK;
     }
@@ -156,51 +156,51 @@ static int get_compat_tools(uintptr_t request, uintptr_t response) {
     const uint8_t *array = *(const uint8_t **)(mgr + COMPAT_MANAGER_TOOL_ARRAY_OFF);
     uint32_t count       = *(const uint32_t *)(mgr + COMPAT_MANAGER_TOOL_COUNT_OFF);
     if (!array || count > COMPAT_MANAGER_TOOLS_MAX) {
-        NP_ERR("compatsvc: the manager reports %u tool(s) at %p, which is not a list "
+        LB_ERR("compatsvc: the manager reports %u tool(s) at %p, which is not a list "
                "this reads", count, (const void *)array);
         return RESULT_FAIL;
     }
 
-    int bypass = mgr[np_compat_enabled_off() + 2] != 0;
+    int bypass = mgr[lb_compat_enabled_off() + 2] != 0;
     if (appid && !bypass) {
         for (uint32_t i = 0; i < count; i++) {
-            const uint8_t *tool = array + (size_t)i * np_compat_tool_stride();
-            if (*(const uint32_t *)(tool + np_compat_tool_off(COMPAT_TOOL_APPID_OFF)) != appid)
+            const uint8_t *tool = array + (size_t)i * lb_compat_tool_stride();
+            if (*(const uint32_t *)(tool + lb_compat_tool_off(COMPAT_TOOL_APPID_OFF)) != appid)
                 continue;
-            NP_LOG("compatsvc: app %u is itself a compatibility tool, so it is "
+            LB_LOG("compatsvc: app %u is itself a compatibility tool, so it is "
                    "offered none", appid);
             return RESULT_IS_A_TOOL;
         }
     }
 
-    uint32_t platforms = appid ? np_compat_valid_platforms(mgr, appid)
+    uint32_t platforms = appid ? lb_compat_valid_platforms(mgr, appid)
                                : PLATFORMS_UNSCOPED;
     // The resolved tool and the raw mapping.
-    const char *active = tool_name(np_compat_tool_for_app(mgr, appid));
+    const char *active = tool_name(lb_compat_tool_for_app(mgr, appid));
     // Raw mapping, including names that resolve to no installed tool.
-    const char *chosen = appid ? np_compat_app_mapping(mgr, appid)
-                               : tool_name(np_compat_chosen_tool(mgr, 0));
-    const bool  holds_none = chosen && strcmp(chosen, NP_COMPAT_TOOL_NONE) == 0;
+    const char *chosen = appid ? lb_compat_app_mapping(mgr, appid)
+                               : tool_name(lb_compat_chosen_tool(mgr, 0));
+    const bool  holds_none = chosen && strcmp(chosen, LB_COMPAT_TOOL_NONE) == 0;
     // The fallback tool for when no choice is made. The wildcard covers apps the
     // client will not run natively (Windows stuff). Left unset where nothing carries the app,
     // so the "Default" entry shows no name.
-    const char *fallback = np_compat_wildcard_mapping(mgr, appid);
-    if (!fallback && (appid == 0 || np_compat_would_force(mgr, appid)))
-        fallback = tool_name(np_compat_registered_tool(mgr));
+    const char *fallback = lb_compat_wildcard_mapping(mgr, appid);
+    if (!fallback && (appid == 0 || lb_compat_would_force(mgr, appid)))
+        fallback = tool_name(lb_compat_registered_tool(mgr));
 
     int32_t best = 0;
     for (uint32_t i = 0; i < count; i++) {
-        int32_t prio = *(const int32_t *)(array + (size_t)i * np_compat_tool_stride()
+        int32_t prio = *(const int32_t *)(array + (size_t)i * lb_compat_tool_stride()
                                           + COMPAT_TOOL_PRIORITY_OFF);
         if (prio > best) best = prio;
     }
 
     uint8_t  body[BODY_MAX];
-    np_pb_t  w      = { body, sizeof body, 0, 1 };
+    lb_pb_t  w      = { body, sizeof body, 0, 1 };
     uint32_t listed = 0;
 
     for (uint32_t i = 0; i < count; i++) {
-        const uint8_t *tool = array + (size_t)i * np_compat_tool_stride();
+        const uint8_t *tool = array + (size_t)i * lb_compat_tool_stride();
         if (!offered(tool, platforms, bypass)) continue;
 
         const char *name = tool_name(tool);
@@ -212,7 +212,7 @@ static int get_compat_tools(uintptr_t request, uintptr_t response) {
                 active && strcmp(active, name) == 0,
                 best != 0 && prio != best && prio > 0);
         if (!w.ok) {
-            NP_ERR("compatsvc: tool %s does not fit the reply", name);
+            LB_ERR("compatsvc: tool %s does not fit the reply", name);
             return RESULT_FAIL;
         }
         listed++;
@@ -220,10 +220,10 @@ static int get_compat_tools(uintptr_t request, uintptr_t response) {
 
     // "No tool" entry.
     if (appid && (fallback || holds_none)) {
-        pb_tool(&w, RESP_TOOLS, NP_COMPAT_TOOL_NONE, TOOL_NONE_LABEL,
+        pb_tool(&w, RESP_TOOLS, LB_COMPAT_TOOL_NONE, TOOL_NONE_LABEL,
                 holds_none, 0);
         if (!w.ok) {
-            NP_ERR("compatsvc: the entry for using no tool does not fit the reply");
+            LB_ERR("compatsvc: the entry for using no tool does not fit the reply");
             return RESULT_FAIL;
         }
         listed++;
@@ -236,16 +236,16 @@ static int get_compat_tools(uintptr_t request, uintptr_t response) {
         pb_string(&w, RESP_DEFAULT, fallback);
 
     if (!w.ok) {
-        NP_ERR("compatsvc: %u tool(s) do not fit the reply to app %u", listed, appid);
+        LB_ERR("compatsvc: %u tool(s) do not fit the reply to app %u", listed, appid);
         return RESULT_FAIL;
     }
-    if (!np_webui_parse_into(response, body, (uint32_t)w.len)) {
-        NP_ERR("compatsvc: the client rejected the %zu byte reply built for app %u",
+    if (!lb_webui_parse_into(response, body, (uint32_t)w.len)) {
+        LB_ERR("compatsvc: the client rejected the %zu byte reply built for app %u",
                w.len, appid);
         return RESULT_FAIL;
     }
 
-    NP_LOG("compatsvc: app %u is offered %u entr(ies) from %u tool(s) on platforms "
+    LB_LOG("compatsvc: app %u is offered %u entr(ies) from %u tool(s) on platforms "
            "0x%x, mapped to %s, running under %s, defaulting to %s", appid, listed,
            count, platforms, chosen ? chosen : "no tool",
            active ? active : "no tool", fallback ? fallback : "no tool");
@@ -269,70 +269,70 @@ static int specify_compat_tool(uintptr_t request, uintptr_t response) {
     const char *tool  = string_field(request + SPECIFY_TOOL_NAME_OFF);
     (void)response;
 
-    uint8_t *mgr = (uint8_t *)np_compat_manager();
+    uint8_t *mgr = (uint8_t *)lb_compat_manager();
     if (!mgr) {
-        NP_ERR("compatsvc: app %u cannot be mapped to %s before any manager was seen",
+        LB_ERR("compatsvc: app %u cannot be mapped to %s before any manager was seen",
                appid, *tool ? tool : "its default");
         return RESULT_FAIL;
     }
 
-    np_compat_map_tool(mgr, appid, tool);
-    NP_LOG("compatsvc: app %u now maps to %s", appid, *tool ? tool : "its default");
+    lb_compat_map_tool(mgr, appid, tool);
+    LB_LOG("compatsvc: app %u now maps to %s", appid, *tool ? tool : "its default");
     return RESULT_OK;
 }
 
 static uintptr_t g_state_changed;
-static int g_routes = NP_COMPATSVC_UNTRIED;
+static int g_routes = LB_COMPATSVC_UNTRIED;
 
-void np_compatsvc_state_changed(void) {
+void lb_compatsvc_state_changed(void) {
     if (!g_state_changed) return;
-    np_webui_notify(ROUTE_NOTIFY_STATE_CHANGED, g_state_changed);
+    lb_webui_notify(ROUTE_NOTIFY_STATE_CHANGED, g_state_changed);
 }
 
-void np_compatsvc_register(const struct mach_header_64 *mh, intptr_t slide,
+void lb_compatsvc_register(const struct mach_header_64 *mh, intptr_t slide,
                            uintptr_t text_base, size_t text_size) {
     // Every path below settles g_routes, so it doubles as the once-only guard. A registry
     // that is not up yet leaves it untried, which is what brings the next lookup back.
-    if (g_routes != NP_COMPATSVC_UNTRIED || !np_webui_registry()) return;
+    if (g_routes != LB_COMPATSVC_UNTRIED || !lb_webui_registry()) return;
 
-    uintptr_t request  = np_rtti_vptr(mh, slide, text_base, text_size, TYPE_GET_REQUEST);
-    uintptr_t response = np_rtti_vptr(mh, slide, text_base, text_size, TYPE_GET_RESPONSE);
+    uintptr_t request  = lb_rtti_vptr(mh, slide, text_base, text_size, TYPE_GET_REQUEST);
+    uintptr_t response = lb_rtti_vptr(mh, slide, text_base, text_size, TYPE_GET_RESPONSE);
     if (!request || !response) {
         // A fact about the build, not a fault: every client whose page specifies the tool
         // directly lands here. hook_webpatch owns the error, where the cost is known.
-        g_routes = NP_COMPATSVC_ABSENT;
-        NP_LOG("compatsvc: the client has no message types for %s",
+        g_routes = LB_COMPATSVC_ABSENT;
+        LB_LOG("compatsvc: the client has no message types for %s",
                ROUTE_GET_COMPAT_TOOLS);
         return;
     }
 
-    np_webui_register_route(ROUTE_GET_COMPAT_TOOLS, request, response, get_compat_tools);
+    lb_webui_register_route(ROUTE_GET_COMPAT_TOOLS, request, response, get_compat_tools);
 
-    uintptr_t specify_request  = np_rtti_vptr(mh, slide, text_base, text_size,
+    uintptr_t specify_request  = lb_rtti_vptr(mh, slide, text_base, text_size,
                                               TYPE_SPECIFY_REQUEST);
-    uintptr_t specify_response = np_rtti_vptr(mh, slide, text_base, text_size,
+    uintptr_t specify_response = lb_rtti_vptr(mh, slide, text_base, text_size,
                                               TYPE_SPECIFY_RESPONSE);
     if (!specify_request || !specify_response) {
         // Half a CompatManager. Unlike the case above this is not a shape any client
         // ships: the list can be read and nothing can be set from it.
-        g_routes = NP_COMPATSVC_ABSENT;
-        NP_ERR("compatsvc: the client answers %s but has no message types for %s",
+        g_routes = LB_COMPATSVC_ABSENT;
+        LB_ERR("compatsvc: the client answers %s but has no message types for %s",
                ROUTE_GET_COMPAT_TOOLS, ROUTE_SPECIFY_COMPAT_TOOL);
         return;
     }
 
-    np_webui_register_route(ROUTE_SPECIFY_COMPAT_TOOL, specify_request,
+    lb_webui_register_route(ROUTE_SPECIFY_COMPAT_TOOL, specify_request,
                             specify_response, specify_compat_tool);
 
-    g_routes = NP_COMPATSVC_READY;
+    g_routes = LB_COMPATSVC_READY;
 
-    uintptr_t notification = np_rtti_vptr(mh, slide, text_base, text_size,
+    uintptr_t notification = lb_rtti_vptr(mh, slide, text_base, text_size,
                                           TYPE_STATE_CHANGED);
-    g_state_changed = notification ? np_webui_new_message(notification) : 0;
+    g_state_changed = notification ? lb_webui_new_message(notification) : 0;
     if (!g_state_changed)
-        NP_WARN("compatsvc: the page will show a stale tool until it is reopened");
+        LB_WARN("compatsvc: the page will show a stale tool until it is reopened");
 }
 
-int np_compatsvc_routes(void) {
+int lb_compatsvc_routes(void) {
     return g_routes;
 }

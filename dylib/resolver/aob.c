@@ -10,7 +10,7 @@
 
 // Pattern compilation
 
-int np_compile_pattern(const char *hex_str, np_byte_pattern_t *out) {
+int lb_compile_pattern(const char *hex_str, lb_byte_pattern_t *out) {
     if (!hex_str || !out) return -1;
     memset(out, 0, sizeof(*out));
 
@@ -28,8 +28,8 @@ int np_compile_pattern(const char *hex_str, np_byte_pattern_t *out) {
             m[n] = 0x00;
             n++; c += 2;
         } else {
-            int hi = np_hex_val(c[0]);
-            int lo = np_hex_val(c[1]);
+            int hi = lb_hex_val(c[0]);
+            int lo = lb_hex_val(c[1]);
             if (hi < 0 || lo < 0) { free(b); free(m); return -1; }
             b[n] = (uint8_t)((hi << 4) | lo);
             m[n] = 0xFF;
@@ -44,7 +44,7 @@ int np_compile_pattern(const char *hex_str, np_byte_pattern_t *out) {
     return 0;
 }
 
-void np_release_pattern(np_byte_pattern_t *pat) {
+void lb_release_pattern(lb_byte_pattern_t *pat) {
     if (!pat) return;
     free(pat->bytes); pat->bytes = NULL;
     free(pat->mask);  pat->mask  = NULL;
@@ -52,7 +52,7 @@ void np_release_pattern(np_byte_pattern_t *pat) {
 }
 
 // In-memory scan
-static int concrete_byte(const np_byte_pattern_t *pat, uint8_t *val) {
+static int concrete_byte(const lb_byte_pattern_t *pat, uint8_t *val) {
     for (int k = 0; k < pat->length; k++) {
         if (pat->mask[k] == 0xFF) {
             *val = pat->bytes[k];
@@ -62,7 +62,7 @@ static int concrete_byte(const np_byte_pattern_t *pat, uint8_t *val) {
     return -1;
 }
 
-static int matches_at(const uint8_t *mem, const np_byte_pattern_t *pat) {
+static int matches_at(const uint8_t *mem, const lb_byte_pattern_t *pat) {
     const uint8_t *pb = pat->bytes, *pm = pat->mask;
     int rem = pat->length;
     int k = 0;
@@ -82,8 +82,8 @@ static int matches_at(const uint8_t *mem, const np_byte_pattern_t *pat) {
     return 1;
 }
 
-uintptr_t np_scan_sole_match(uintptr_t base, size_t size,
-                             const np_byte_pattern_t *pat) {
+uintptr_t lb_scan_sole_match(uintptr_t base, size_t size,
+                             const lb_byte_pattern_t *pat) {
     if (!pat || pat->length <= 0 || (size_t)pat->length > size)
         return 0;
 

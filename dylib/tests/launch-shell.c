@@ -5,19 +5,19 @@
 
 #include <stdio.h>
 
-int   np_log_level = 0;
-FILE *np_log_file  = NULL;
+int   lb_log_level = 0;
+FILE *lb_log_file  = NULL;
 
 static int rebind_rc = -1;
 
-int np_rebind_import(const struct mach_header_64 *mh, intptr_t slide,
+int lb_rebind_import(const struct mach_header_64 *mh, intptr_t slide,
                      const char *symbol, void *replacement) {
     (void)mh; (void)slide; (void)symbol; (void)replacement;
     return rebind_rc;
 }
 
 int fake_parse_shell(const char *cmd, void *argv, int max, const char **rest)
-    __asm__("_" NP_PARSE_SYM_POSIX);
+    __asm__("_" LB_PARSE_SYM_POSIX);
 
 int fake_parse_shell(const char *cmd, void *argv, int max, const char **rest) {
     (void)cmd; (void)argv; (void)max; (void)rest;
@@ -26,21 +26,21 @@ int fake_parse_shell(const char *cmd, void *argv, int max, const char **rest) {
 
 static int launch_disabled = 0;
 
-int np_hooks_env_lists_label(const char *var, const char *label) {
+int lb_hooks_env_lists_label(const char *var, const char *label) {
     (void)var;
     return launch_disabled && strcmp(label, "launch") == 0;
 }
 
 static int compat_tool = 1;
 
-int np_compat_runs_tool(const char *cmd) {
+int lb_compat_runs_tool(const char *cmd) {
     (void)cmd;
     return compat_tool;
 }
 
 static int app_tool = 1;
 
-int np_compat_app_runs_tool(uint32_t appid) {
+int lb_compat_app_runs_tool(uint32_t appid) {
     (void)appid;
     return app_tool;
 }
@@ -77,7 +77,7 @@ static char *sh_words(const char *args) {
 static void keeps(const char *in, const char *want, const char *words) {
     char *args = strdup(in);
     int   before = vr_calls;
-    uint64_t ret = np_hook_vr_support(NULL, 2290, &args);
+    uint64_t ret = lb_hook_vr_support(NULL, 2290, &args);
 
     if (ret != 7 || vr_calls != before + 1 || strcmp(args, want) != 0) {
         printf("FAIL %s\n  want: %s\n  got:  %s\n", in, want, args);
@@ -94,7 +94,7 @@ static void keeps(const char *in, const char *want, const char *words) {
 // `want` as upstream spells it, with the prologue put in after "/bin/sh -c '".
 static char *with_base(const char *want) {
     static const char lead[] = "/bin/sh -c '";
-    char  *out = malloc(strlen(want) + 4 * sizeof(NP_ENV_BASE) + 1);
+    char  *out = malloc(strlen(want) + 4 * sizeof(LB_ENV_BASE) + 1);
     size_t n   = 0;
 
     if (shell || strncmp(want, lead, sizeof(lead) - 1) != 0) {
@@ -103,7 +103,7 @@ static char *with_base(const char *want) {
     }
     memcpy(out, lead, sizeof(lead) - 1);
     n = sizeof(lead) - 1;
-    for (const char *s = NP_ENV_BASE; *s; s++) {
+    for (const char *s = LB_ENV_BASE; *s; s++) {
         if (*s == '\'') {
             memcpy(out + n, "'\\''", 4);
             n += 4;
@@ -116,7 +116,7 @@ static char *with_base(const char *want) {
 }
 
 static void wraps(const char *in, const char *upstream_want) {
-    char *got  = np_launch_shell(in, shell, -1, NULL);
+    char *got  = lb_launch_shell(in, shell, -1, NULL);
     char *want = with_base(upstream_want);
 
     if (!got || strcmp(got, want) != 0) {
@@ -132,18 +132,18 @@ static void wraps(const char *in, const char *upstream_want) {
 // The wrapped line run by /bin/sh: the variable the launch options set is not in
 // LULLABY_ENV_BASE, one the shell was handed is.
 static void base_leaves_out_launch_variables(void) {
-    char *line = np_launch_shell("NP_FROM_OPTIONS=1 /usr/bin/printenv LULLABY_ENV_BASE", NULL, -1, NULL);
+    char *line = lb_launch_shell("LB_FROM_OPTIONS=1 /usr/bin/printenv LULLABY_ENV_BASE", NULL, -1, NULL);
     char  out[65536];
     size_t n = 0;
 
-    setenv("NP_FROM_STEAM", "1", 1);
+    setenv("LB_FROM_STEAM", "1", 1);
     FILE *p = line ? popen(line, "r") : NULL;
     if (p) {
         n = fread(out, 1, sizeof(out) - 1, p);
         pclose(p);
     }
     out[n] = 0;
-    if (!strstr(out, " NP_FROM_STEAM ") || strstr(out, " NP_FROM_OPTIONS ")) {
+    if (!strstr(out, " LB_FROM_STEAM ") || strstr(out, " LB_FROM_OPTIONS ")) {
         printf("FAIL LULLABY_ENV_BASE: %s\n", out);
         failures++;
     } else {
@@ -209,7 +209,7 @@ int main(void) {
         "'/g/Game' > /tmp/log",
     };
     for (size_t i = 0; i < sizeof(native) / sizeof(native[0]); i++) {
-        char *kept = np_launch_shell(native[i], NULL, -1, NULL);
+        char *kept = lb_launch_shell(native[i], NULL, -1, NULL);
         if (kept) {
             printf("FAIL a native launch must not rewrite, but %s became: %s\n", native[i], kept);
             failures++;
@@ -219,7 +219,7 @@ int main(void) {
         free(kept);
     }
     shell = "/usr/bin/env";
-    char *kept = np_launch_shell("'/g/Game.app'", shell, -1, NULL);
+    char *kept = lb_launch_shell("'/g/Game.app'", shell, -1, NULL);
     if (kept) {
         printf("FAIL STEAM_GAME_LAUNCH_SHELL must not reach a native launch, but it became: %s\n", kept);
         failures++;
@@ -232,7 +232,7 @@ int main(void) {
 
     printf("== a capped argument count keeps the caller on its own buffer ==\n");
     const char *rest = NULL;
-    char       *got  = np_launch_shell("A=1 /g/game.exe", NULL, 2, NULL);
+    char       *got  = lb_launch_shell("A=1 /g/game.exe", NULL, 2, NULL);
 
     if (got) {
         printf("FAIL a capped count must not rewrite, but it became: %s\n", got);
@@ -242,7 +242,7 @@ int main(void) {
     }
     free(got);
 
-    got = np_launch_shell("A=1 /g/game.exe", NULL, -1, &rest);
+    got = lb_launch_shell("A=1 /g/game.exe", NULL, -1, &rest);
     if (got) {
         printf("FAIL a remainder request must not rewrite, but it became: %s\n", got);
         failures++;
@@ -253,7 +253,7 @@ int main(void) {
 
     printf("== an app's own arguments reach the game with their backslashes ==\n");
     orig_vr_support  = (void *)fake_vr_support;
-    np_shell_wrapped = 1;
+    lb_shell_wrapped = 1;
     plat_realloc     = Plat_Realloc;
     keeps("-conf .\\base\\plutoniam.conf -fullscreen -exit",
           "-conf .\\\\base\\\\plutoniam.conf -fullscreen -exit",
@@ -270,41 +270,41 @@ int main(void) {
     app_tool = 1;
 
     printf("== without the shell, the client's arguments stay as they are ==\n");
-    np_shell_wrapped = 0;
+    lb_shell_wrapped = 0;
     keeps("--cwd client_pc\\root\\bin\\pc", "--cwd client_pc\\root\\bin\\pc", NULL);
-    np_shell_wrapped = 1;
+    lb_shell_wrapped = 1;
 
     printf("== the shell is used only when an import slot was rebound ==\n");
     int rcs[] = { -1, 0, 1, 2 };
     for (size_t i = 0; i < sizeof(rcs) / sizeof(rcs[0]); i++) {
         rebind_rc        = rcs[i];
-        np_shell_wrapped = -1;
-        np_hooks_launch_install(NULL, 0);
-        if (np_shell_wrapped != (rcs[i] > 0)
-            || np_hooks_launch_count() != (rcs[i] > 0 ? 1 : 0)) {
-            printf("FAIL rebind rc=%d left np_shell_wrapped=%d, %d hook(s)\n",
-                   rcs[i], np_shell_wrapped, np_hooks_launch_count());
+        lb_shell_wrapped = -1;
+        lb_hooks_launch_install(NULL, 0);
+        if (lb_shell_wrapped != (rcs[i] > 0)
+            || lb_hooks_launch_count() != (rcs[i] > 0 ? 1 : 0)) {
+            printf("FAIL rebind rc=%d left lb_shell_wrapped=%d, %d hook(s)\n",
+                   rcs[i], lb_shell_wrapped, lb_hooks_launch_count());
             failures++;
         } else {
             printf("  ok    rebind rc=%d, wrapped=%d, %d hook(s)\n",
-                   rcs[i], np_shell_wrapped, np_hooks_launch_count());
+                   rcs[i], lb_shell_wrapped, lb_hooks_launch_count());
         }
     }
 
     printf("== LULLABY_DISABLE=launch turns off the shell and the backslash hook ==\n");
     rebind_rc        = 1;
-    np_shell_wrapped = 0;
+    lb_shell_wrapped = 0;
     launch_disabled  = 1;
-    np_hooks_launch_install(NULL, 0);
+    lb_hooks_launch_install(NULL, 0);
     launch_disabled  = 0;
-    if (np_shell_wrapped || np_hooks_launch_count() != 0) {
-        printf("FAIL disabled launch left np_shell_wrapped=%d, %d hook(s)\n",
-               np_shell_wrapped, np_hooks_launch_count());
+    if (lb_shell_wrapped || lb_hooks_launch_count() != 0) {
+        printf("FAIL disabled launch left lb_shell_wrapped=%d, %d hook(s)\n",
+               lb_shell_wrapped, lb_hooks_launch_count());
         failures++;
     } else {
         printf("  ok    disabled, wrapped=0, 0 hooks\n");
     }
-    np_shell_wrapped = 1;
+    lb_shell_wrapped = 1;
 
     if (failures) {
         printf("\n%d assertion(s) failed\n", failures);

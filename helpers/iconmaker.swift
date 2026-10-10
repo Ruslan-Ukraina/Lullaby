@@ -16,7 +16,7 @@ let outputPath = CommandLine.arguments[2]
 
 private func loadImage(_ path: String) -> NSImage? {
     var length = 0
-    if let raw = np_pe_icon_ico(path, &length) {
+    if let raw = lb_pe_icon_ico(path, &length) {
         let ico = Data(bytesNoCopy: raw, count: length, deallocator: .free)
         if !ico.isEmpty, let image = NSImage(data: ico), hasArea(image) {
             FileHandle.standardError.write(Data("iconmaker: using icon from PE resources\n".utf8))

@@ -3,8 +3,8 @@
 //     swift release/keygen.swift <private key file>
 //
 // Writes the base64 private key to the file (mode 0600, never over an existing
-// file) and prints the public key: that goes into NPReleasePublicKey of the app's
-// Info.plist (make app NP_RELEASE_KEY=…), the private key into a GitHub secret.
+// file) and prints the public key: that goes into LBReleasePublicKey of the app's
+// Info.plist (make app LB_RELEASE_KEY=…), the private key into a GitHub secret.
 // The production key is made once, by the owner, in Phase 6 (docs/RELEASING.md).
 // Tests make their own throwaway keys and never use this file.
 

@@ -5,7 +5,7 @@
 // Each key is derived from a fixed, public phrase, so anyone can rebuild it: it
 // proves nothing and is meant to prove nothing. A release build refuses both
 // public keys (release/test-public-keys.txt, TestKeys.swift and `make app
-// NP_BUILD_KIND=release`), so a dry run can never be mistaken for a release.
+// LB_BUILD_KIND=release`), so a dry run can never be mistaken for a release.
 //
 // With a file argument the private key goes there (mode 0600, never over an
 // existing file), as base64 of the 32-byte seed: the format release/sign.swift and

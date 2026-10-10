@@ -1,6 +1,6 @@
 // What kind of build this is and which keys it may never trust (Phase 6).
 //
-// NPBuildKind in Info.plist comes from `make app NP_BUILD_KIND=…`:
+// LBBuildKind in Info.plist comes from `make app LB_BUILD_KIND=…`:
 //   release  the release workflow, from a v* tag, with the owner's keys
 //   test     a dry run of the release workflows, with the TEST keys
 //   dev      anything else, a local `make app` included (the default)
@@ -13,7 +13,7 @@ import Foundation
 enum BuildKind: String, Sendable, CaseIterable {
     case release, test, dev
 
-    static let infoKey = "NPBuildKind"
+    static let infoKey = "LBBuildKind"
 
     static var current: BuildKind {
         BuildKind(rawValue: (Bundle.main.object(forInfoDictionaryKey: infoKey) as? String) ?? "") ?? .dev

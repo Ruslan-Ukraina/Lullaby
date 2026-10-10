@@ -3,9 +3,9 @@
 #define LULLABY_FEATS_STEAMWIN_H
 
 // Steam Helper without --type=: the CEF browser process that owns Steam's windows.
-int np_steamwin_is_browser_process(int argc, const char **argv);
+int lb_steamwin_is_browser_process(int argc, const char **argv);
 
 // Reads lullaby/steam-windows and, unless it is off, starts watching windows.
-void np_steamwin_start(void);
+void lb_steamwin_start(void);
 
 #endif

@@ -8,6 +8,6 @@
 
 #include <CoreGraphics/CoreGraphics.h>
 
-void np_input_access_check(void) {
-    NP_LOG("input access: %s", CGPreflightPostEventAccess() ? "granted" : "missing");
+void lb_input_access_check(void) {
+    LB_LOG("input access: %s", CGPreflightPostEventAccess() ? "granted" : "missing");
 }

@@ -12,7 +12,7 @@
 //                         every pc-relative instruction (and the page offset that
 //                         follows an ADRP) wildcarded, as short as stays unique.
 // Every pattern is then checked the way anchorcheck checks the fallback: anchors
-// forced to miss, np_resolve_signatures must land on the anchor's site.
+// forced to miss, lb_resolve_signatures must land on the anchor's site.
 //
 // Anchors are never rewritten: one that does not resolve, or a vtable_slot (a data
 // address of one build), needs a person, and the database is not written.
@@ -75,7 +75,7 @@ static int load_image(const char *module) {
         im->slide = _dyld_get_image_vmaddr_slide(i);
         break;
     }
-    if (!im->mh || np_find_segment(im->mh, im->slide, "__TEXT", &im->text, &im->text_sz) != 0) {
+    if (!im->mh || lb_find_segment(im->mh, im->slide, "__TEXT", &im->text, &im->text_sz) != 0) {
         fprintf(stderr, "%s: not found after dlopen, or no __TEXT\n", module);
         return -1;
     }
@@ -125,20 +125,20 @@ static void pattern_text(const uint8_t *code, int len, char *out, size_t cap) {
 }
 
 // The fallback path alone: anchor forced to miss, pattern only, as the dylib would run it.
-static uintptr_t fallback_site(const image_t *im, const np_sig_entry_t *sig, const char *aob) {
-    np_sig_entry_t copy = *sig;
+static uintptr_t fallback_site(const image_t *im, const lb_sig_entry_t *sig, const char *aob) {
+    lb_sig_entry_t copy = *sig;
     snprintf(copy.aob_hex, sizeof(copy.aob_hex), "%s", aob);
-    if (copy.anchor.kind != NP_MATCH_AOB) {
+    if (copy.anchor.kind != LB_MATCH_AOB) {
         copy.anchor.str[0] = '\001';
         copy.anchor.str[1] = '\0';
         copy.anchor.va = 0;
         copy.anchor.calls[0][0] = '\001';
     }
-    np_sigdb_t one = { .signatures = &copy, .sig_count = 1 };
-    np_resolve_result_t res = {0};
-    np_resolve_signatures(im->mh, im->slide, &one, im->module, &res);
-    uintptr_t got = np_lookup_address(&res, copy.name);
-    np_free_resolution(&res);
+    lb_sigdb_t one = { .signatures = &copy, .sig_count = 1 };
+    lb_resolve_result_t res = {0};
+    lb_resolve_signatures(im->mh, im->slide, &one, im->module, &res);
+    uintptr_t got = lb_lookup_address(&res, copy.name);
+    lb_free_resolution(&res);
     return got;
 }
 
@@ -174,10 +174,10 @@ int main(int argc, char **argv) {
     unsigned long long build = strtoull(argv[2], &end, 10);
     if (!build || !end || *end) { fprintf(stderr, "bad steam build '%s'\n", argv[2]); return 2; }
 
-    np_sigdb_t db = {0};
+    lb_sigdb_t db = {0};
     cJSON *doc = read_json(base);
     cJSON *sigs = doc ? cJSON_GetObjectItem(doc, "signatures") : NULL;
-    if (!doc || !cJSON_IsArray(sigs) || np_load_profile(base, &db) != 0) {
+    if (!doc || !cJSON_IsArray(sigs) || lb_load_profile(base, &db) != 0) {
         fprintf(stderr, "cannot read sigdb '%s'\n", base);
         return 2;
     }
@@ -186,13 +186,13 @@ int main(int argc, char **argv) {
                 cJSON_GetArraySize(sigs), db.sig_count);
         return 2;
     }
-    if (load_image(NP_MODULE_DEFAULT) != 0) return 3;
+    if (load_image(LB_MODULE_DEFAULT) != 0) return 3;
     printf("base   %s (build %llu) -> build %llu\n\n", base,
            (unsigned long long)db.steam_build, build);
 
     int failed = 0, regenerated = 0;
     for (int i = 0; i < db.sig_count; i++) {
-        np_sig_entry_t *sig = &db.signatures[i];
+        lb_sig_entry_t *sig = &db.signatures[i];
         cJSON *obj = cJSON_GetArrayItem(sigs, i);
         cJSON *name = cJSON_GetObjectItem(obj, "name");
         if (!cJSON_IsString(name) || strcmp(name->valuestring, sig->name) != 0) {
@@ -200,17 +200,17 @@ int main(int argc, char **argv) {
             return 2;
         }
         if (sig->deprecated) { printf("  %-56s deprecated, left as is\n", sig->name); continue; }
-        if (load_image(sig->module) != 0) return strcmp(sig->module, NP_MODULE_DEFAULT) ? 2 : 3;
+        if (load_image(sig->module) != 0) return strcmp(sig->module, LB_MODULE_DEFAULT) ? 2 : 3;
         const image_t *im = image_for(sig->module);
 
-        if (sig->anchor.kind == NP_MATCH_VTABLE_SLOT || sig->anchor.kind == NP_MATCH_NONE) {
+        if (sig->anchor.kind == LB_MATCH_VTABLE_SLOT || sig->anchor.kind == LB_MATCH_NONE) {
             printf("  %-56s NEEDS A PERSON: anchor kind cannot move to another build\n", sig->name);
             failed++;
             continue;
         }
-        uintptr_t site = sig->anchor.kind == NP_MATCH_AOB
+        uintptr_t site = sig->anchor.kind == LB_MATCH_AOB
             ? fallback_site(im, sig, sig->aob_hex)
-            : np_locate_anchor(im->mh, im->slide, im->text, im->text_sz, &sig->anchor);
+            : lb_locate_anchor(im->mh, im->slide, im->text, im->text_sz, &sig->anchor);
         if (!site) {
             printf("  %-56s NEEDS A PERSON: the anchor does not resolve in this build\n", sig->name);
             failed++;
@@ -222,18 +222,18 @@ int main(int argc, char **argv) {
         set_string(obj, "func_addr_this_build", addr);
 
         const char *verdict = "pattern kept";
-        if (sig->anchor.kind != NP_MATCH_AOB
+        if (sig->anchor.kind != LB_MATCH_AOB
             && (!sig->aob_hex[0] || fallback_site(im, sig, sig->aob_hex) != site)) {
             // A new pattern from this build's bytes at the site, as short as stays unique.
             uintptr_t fn_start = 0, fn_end = 0;
             size_t room = im->text + im->text_sz - site;
-            if (np_function_bounds(im->mh, im->slide, site, &fn_start, &fn_end) == 0 && fn_end > site)
+            if (lb_function_bounds(im->mh, im->slide, site, &fn_start, &fn_end) == 0 && fn_end > site)
                 room = fn_end - site;
             char text[PATTERN_MAX * 3 + 1];
             int found = 0;
             for (int len = PATTERN_MIN; len <= PATTERN_MAX && (size_t)len <= room; len += 8) {
                 pattern_text((const uint8_t *)site, len, text, sizeof(text));
-                np_sig_entry_t probe = *sig;
+                lb_sig_entry_t probe = *sig;
                 probe.match_offset = 0;
                 if (fallback_site(im, &probe, text) == site) { found = len; break; }
             }
@@ -267,6 +267,6 @@ int main(int argc, char **argv) {
     printf("written: %s\n", out_path);
     free(json);
     cJSON_Delete(doc);
-    np_free_profile(&db);
+    lb_free_profile(&db);
     return 0;
 }

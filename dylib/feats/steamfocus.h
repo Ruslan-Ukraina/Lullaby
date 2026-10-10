@@ -5,6 +5,6 @@
 
 // Does nothing unless lullaby/steam-windows is "native-app". `who` names the
 // process in the log; `make_regular` turns Steam Helper into a regular app.
-void np_steamfocus_start(const char *who, int make_regular);
+void lb_steamfocus_start(const char *who, int make_regular);
 
 #endif

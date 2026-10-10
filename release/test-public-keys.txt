@@ -1,5 +1,5 @@
 # Public halves of Lullaby's TEST keys. A release build refuses every key here:
-# `make app NP_BUILD_KIND=release` stops, and the app's TestKeys (BuildKind.swift)
+# `make app LB_BUILD_KIND=release` stops, and the app's TestKeys (BuildKind.swift)
 # turns the feed and Sparkle off. One key per line, base64; TestKeysTests checks
 # that this file and TestKeys.publicKeys list the same keys.
 #

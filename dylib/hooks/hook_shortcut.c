@@ -5,10 +5,10 @@
 #include <string.h>
 #include <strings.h>
 
-typedef int (*np_ext_matches_fn)(const char *const *path_slot,
+typedef int (*lb_ext_matches_fn)(const char *const *path_slot,
                                  const char *const *want_slot);
 
-static np_ext_matches_fn g_ext_matches_orig;
+static lb_ext_matches_fn g_ext_matches_orig;
 
 static const char *file_extension(const char *path) {
     if (!path) return NULL;
@@ -21,7 +21,7 @@ static const char *file_extension(const char *path) {
     return (dot && dot[1]) ? dot + 1 : NULL;
 }
 
-static int np_ext_matches(const char *const *path_slot, const char *const *want_slot) {
+static int lb_ext_matches(const char *const *path_slot, const char *const *want_slot) {
     if (g_ext_matches_orig && g_ext_matches_orig(path_slot, want_slot))
         return 1;
 
@@ -38,25 +38,25 @@ static int np_ext_matches(const char *const *path_slot, const char *const *want_
     if (strcasecmp(want, "app") != 0 || strcasecmp(ext, "exe") != 0)
         return 0;
 
-    NP_DBG("shortcut: treating '%s' as shortcut-able where only .app is asked for", path);
+    LB_DBG("shortcut: treating '%s' as shortcut-able where only .app is asked for", path);
     return 1;
 }
 
-static np_patch_entry_t g_hooks[] = {
+static lb_patch_entry_t g_hooks[] = {
     {
         .label            = "shortcut-exe",
         .signature        = "steamui::ShortcutExtensionMatches",
-        .entry            = (void *)np_ext_matches,
+        .entry            = (void *)lb_ext_matches,
         .trampoline       = (void **)&g_ext_matches_orig,
         .tolerate_missing = 0,
-        .mode             = NP_PATCH_REPLACE,
+        .mode             = LB_PATCH_REPLACE,
     },
 };
 
-int np_hooks_shortcut_count(void) {
+int lb_hooks_shortcut_count(void) {
     return (int)(sizeof(g_hooks) / sizeof(g_hooks[0]));
 }
 
-np_patch_entry_t *np_hooks_shortcut_defs(void) {
+lb_patch_entry_t *lb_hooks_shortcut_defs(void) {
     return g_hooks;
 }

@@ -1,7 +1,7 @@
 // Phase 5 pieces of the dylib, without Steam:
-//   - np_update_gate_rearm_paths writes Steam's update block back the way the app's
+//   - lb_update_gate_rearm_paths writes Steam's update block back the way the app's
 //     UpdateBlock does, only when lullaby/steam-update-gate says auto or manual;
-//   - np_sigdb_candidates lists <build>.json databases newest first, so the loader
+//   - lb_sigdb_candidates lists <build>.json databases newest first, so the loader
 //     falls back to an older one when the newest does not fit the installed Steam.
 // Usage: out/updategate-check
 
@@ -16,8 +16,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-int   np_log_level = NP_LVL_WARN;
-FILE *np_log_file;
+int   lb_log_level = LB_LVL_WARN;
+FILE *lb_log_file;
 
 static int g_failed;
 static char g_dir[512];
@@ -66,7 +66,7 @@ static int rearm(void) {
     snprintf(outer, sizeof(outer), "%s/steam.cfg", g_dir);
     snprintf(inner, sizeof(inner), "%s/inner/steam.cfg", g_dir);
     const char *cfgs[] = {outer, inner};
-    return np_update_gate_rearm_paths(gate, cfgs, 2);
+    return lb_update_gate_rearm_paths(gate, cfgs, 2);
 }
 
 #define BLOCK "BootStrapperInhibitUpdateOnLaunch=enable"
@@ -129,8 +129,8 @@ static void candidate_cases(void) {
         FILE *f = fopen(path, "w");
         if (f) { fputs("{}", f); fclose(f); }
     }
-    char paths[NP_SIGDB_MAX_CANDIDATES][NP_SIGDB_PATH_MAX];
-    int n = np_sigdb_candidates(dir, paths, NP_SIGDB_MAX_CANDIDATES);
+    char paths[LB_SIGDB_MAX_CANDIDATES][LB_SIGDB_PATH_MAX];
+    int n = lb_sigdb_candidates(dir, paths, LB_SIGDB_MAX_CANDIDATES);
     const char *want[] = {"1790904859.json", "1789086785.json", "1788400362.json"};
     if (n != 3) fail("candidates: %d, expected 3", n);
     for (int i = 0; i < n && i < 3; i++) {
@@ -138,10 +138,10 @@ static void candidate_cases(void) {
         if (!base || strcmp(base + 1, want[i]) != 0) fail("candidate %d is %s, expected %s", i, paths[i], want[i]);
     }
     // A short list keeps the newest.
-    n = np_sigdb_candidates(dir, paths, 2);
+    n = lb_sigdb_candidates(dir, paths, 2);
     if (n != 2 || !strstr(paths[0], "1790904859") || !strstr(paths[1], "1789086785"))
         fail("candidates capped at 2: got %d (%s, %s)", n, n > 0 ? paths[0] : "-", n > 1 ? paths[1] : "-");
-    if (np_sigdb_candidates("/nonexistent/lullaby", paths, 4) != -1) fail("missing folder: expected -1");
+    if (lb_sigdb_candidates("/nonexistent/lullaby", paths, 4) != -1) fail("missing folder: expected -1");
 }
 
 int main(void) {

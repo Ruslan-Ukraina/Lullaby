@@ -167,7 +167,7 @@ struct PatchComparisonTests {
 
         func build(_ name: String, body: String) throws -> URL {
             let source = work.appending(path: "\(name).c")
-            try Data("int np_probe(void) { return \(body); }\n".utf8).write(to: source)
+            try Data("int lb_probe(void) { return \(body); }\n".utf8).write(to: source)
             let out = work.appending(path: "\(name).dylib")
             try Shell.check("/usr/bin/clang", [
                 "-dynamiclib", "-arch", "arm64", "-arch", "x86_64",

@@ -71,7 +71,7 @@ fi
 
 say "package, sign with the TEST key"
 keys="$W/keys"
-pub=$("$here/ci-keys.sh" dry-run "$keys" | sed -n 's/^NP_RELEASE_KEY=//p')
+pub=$("$here/ci-keys.sh" dry-run "$keys" | sed -n 's/^LB_RELEASE_KEY=//p')
 [ -n "$pub" ] || die "no TEST release key"
 feed="$W/feed"
 id="bridge-$version-$REV"

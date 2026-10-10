@@ -10,7 +10,7 @@ name: dormison-bridge
 # nothing published, no issues; with nothing new it rebuilds the beta channel's
 # engine, so the whole path still runs. The feed it would publish is an artifact.
 
-# The schedule is a parameter: repository variable NP_DORMISON_CHECK_HOURS (default 24, 0 = never
+# The schedule is a parameter: repository variable LB_DORMISON_CHECK_HOURS (default 24, 0 = never
 # by schedule, rounded up to a multiple of 24, how often the cron fires). The cron
 # starts only a short Linux gate; the macOS job runs when a Dormison release has no bridge (DECISIONS P6-13).
 
@@ -61,10 +61,10 @@ jobs:
         id: gate
         env:
           GH_TOKEN: ${{ github.token }}
-          HOURS: ${{ vars.NP_DORMISON_CHECK_HOURS }}
+          HOURS: ${{ vars.LB_DORMISON_CHECK_HOURS }}
           DEFAULT_HOURS: "24"
           CRON_HOURS: "24"
-          NP_RELEASE_PRIVATE_KEY: ${{ secrets.NP_RELEASE_PRIVATE_KEY }}
+          LB_RELEASE_PRIVATE_KEY: ${{ secrets.LB_RELEASE_PRIVATE_KEY }}
         run: |
           release/ci-gate.sh dormison | tee -a "$GITHUB_OUTPUT"
           grep '^reason=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2- >> "$GITHUB_STEP_SUMMARY"
@@ -89,9 +89,9 @@ jobs:
       - name: Keys
         id: keys
         env:
-          NP_RELEASE_PRIVATE_KEY: ${{ secrets.NP_RELEASE_PRIVATE_KEY }}
+          LB_RELEASE_PRIVATE_KEY: ${{ secrets.LB_RELEASE_PRIVATE_KEY }}
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
-          NP_RELEASE_PUBLIC_KEY: ${{ vars.NP_RELEASE_PUBLIC_KEY }}
+          LB_RELEASE_PUBLIC_KEY: ${{ vars.LB_RELEASE_PUBLIC_KEY }}
           SPARKLE_PUBLIC_KEY: ${{ vars.SPARKLE_PUBLIC_KEY }}
         run: |
           mode=release; [ "$DRY_RUN" = true ] && mode=dry-run
@@ -116,7 +116,7 @@ jobs:
           "$RUNNER_TEMP/verify-ed25519" "$DORMISON_PUBKEY" "$d/engine.json" "$d/engine.json.sig"
           current=""
           if [ "$DRY_RUN" != true ] && release/gh-publish.sh fetch "$MANIFEST_TAG" bridge-manifest.json "$RUNNER_TEMP/current"; then
-            release/gh-publish.sh verify "$NP_RELEASE_KEY" "$RUNNER_TEMP/current/bridge-manifest.json"
+            release/gh-publish.sh verify "$LB_RELEASE_KEY" "$RUNNER_TEMP/current/bridge-manifest.json"
             current="$RUNNER_TEMP/current/bridge-manifest.json"
             echo "CURRENT=$current" >> "$GITHUB_ENV"
           fi
@@ -242,8 +242,8 @@ jobs:
           python3 -I release/feed.py publish-bridges --repo bridge/bridge-manifest.json \
             ${CURRENT:+--current "$CURRENT"} --out "$feed/manifest/bridge-manifest.json" "$feed/$id.entry.json"
           swift release/sign.swift "$RUNNER_TEMP/keys/release.key" "$feed/$id/$id.tar.xz" "$feed/manifest/bridge-manifest.json"
-          release/gh-publish.sh verify "$NP_RELEASE_KEY" "$feed/$id/$id.tar.xz"
-          release/gh-publish.sh verify "$NP_RELEASE_KEY" "$feed/manifest/bridge-manifest.json"
+          release/gh-publish.sh verify "$LB_RELEASE_KEY" "$feed/$id/$id.tar.xz"
+          release/gh-publish.sh verify "$LB_RELEASE_KEY" "$feed/manifest/bridge-manifest.json"
           echo "ID=$id" >> "$GITHUB_ENV"
           { echo "Packaged \`$id\`:"; echo '```json'; cat "$feed/$id.entry.json"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 

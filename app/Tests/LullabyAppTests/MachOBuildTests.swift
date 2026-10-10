@@ -28,7 +28,7 @@ struct MachOBuildTests {
         let work = try scratch()
         defer { try? FileManager.default.removeItem(at: work) }
 
-        let built = try dylib("int np_probe(void) { return 1; }\n", in: work, named: "probe")
+        let built = try dylib("int lb_probe(void) { return 1; }\n", in: work, named: "probe")
         let before = try #require(MachOBuild.identity(of: built))
 
         let copy = work.appending(path: "copy.dylib")
@@ -44,8 +44,8 @@ struct MachOBuildTests {
         let work = try scratch()
         defer { try? FileManager.default.removeItem(at: work) }
 
-        let one = try dylib("int np_probe(void) { return 1; }\n", in: work, named: "one")
-        let two = try dylib("int np_probe(void) { return 2; }\n", in: work, named: "two")
+        let one = try dylib("int lb_probe(void) { return 1; }\n", in: work, named: "one")
+        let two = try dylib("int lb_probe(void) { return 2; }\n", in: work, named: "two")
 
         #expect(MachOBuild.identity(of: one) != MachOBuild.identity(of: two))
     }
@@ -56,7 +56,7 @@ struct MachOBuildTests {
         defer { try? FileManager.default.removeItem(at: work) }
 
         let source = work.appending(path: "fat.c")
-        try Data("int np_probe(void) { return 1; }\n".utf8).write(to: source)
+        try Data("int lb_probe(void) { return 1; }\n".utf8).write(to: source)
         let built = work.appending(path: "fat.dylib")
         try Shell.check("/usr/bin/clang", [
             "-dynamiclib", "-arch", "arm64", "-arch", "x86_64",

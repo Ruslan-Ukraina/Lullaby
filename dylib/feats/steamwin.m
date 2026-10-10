@@ -26,9 +26,9 @@
 #include <string.h>
 #include <unistd.h>
 
-static np_steamwin_mode_t g_mode = NP_SW_OFF;
+static lb_steamwin_mode_t g_mode = LB_SW_OFF;
 
-int np_steamwin_is_browser_process(int argc, const char **argv) {
+int lb_steamwin_is_browser_process(int argc, const char **argv) {
     const char *pn = getprogname();
     if (!pn || strcmp(pn, "Steam Helper") != 0)
         return 0;
@@ -81,7 +81,7 @@ static const char *policy_name(NSApplicationActivationPolicy p) {
     return "?";
 }
 
-#ifdef NP_STEAMWIN_DEBUG
+#ifdef LB_STEAMWIN_DEBUG
 // What decides how a window behaves with Spaces, Stage Manager and the Dock.
 static NSString *describe_spaces(NSWindow *w) {
     return [NSString stringWithFormat:
@@ -135,17 +135,17 @@ static BOOL is_sdl_fullscreen(NSWindow *w) {
         && !(w.styleMask & NSWindowStyleMaskFullScreen);
 }
 
-static const NSWindowStyleMask NP_FRAME =
+static const NSWindowStyleMask LB_FRAME =
     NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskFullSizeContentView;
 
 // The bits this window gets on top of SDL's, kept with the window. A dialog
 // (About, sign-in, shutting down) is a window Steam made fixed-size (no
 // Resizable); Valve draws only a close button on those, so the native frame
 // shows only that one too.
-static const void *const NP_MANAGED = &NP_MANAGED;
+static const void *const LB_MANAGED = &LB_MANAGED;
 
 static NSWindowStyleMask added_bits(NSWindow *w) {
-    return [objc_getAssociatedObject(w, NP_MANAGED) unsignedIntegerValue];
+    return [objc_getAssociatedObject(w, LB_MANAGED) unsignedIntegerValue];
 }
 
 static BOOL is_managed(NSWindow *w) {
@@ -153,7 +153,7 @@ static BOOL is_managed(NSWindow *w) {
 }
 
 static void set_managed(NSWindow *w, NSWindowStyleMask bits) {
-    objc_setAssociatedObject(w, NP_MANAGED, bits ? @(bits) : nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(w, LB_MANAGED, bits ? @(bits) : nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
 static BOOL is_dialog(NSWindowStyleMask sdl_style) {
@@ -214,7 +214,7 @@ static void apply_chrome(NSWindow *w) {
     NSWindowStyleMask before = w.styleMask;
     BOOL dialog = is_dialog(before);
     // SDL marks its windows Miniaturizable already; a dialog keeps whatever it has.
-    NSWindowStyleMask bits = NP_FRAME | (dialog ? 0 : NSWindowStyleMaskMiniaturizable);
+    NSWindowStyleMask bits = LB_FRAME | (dialog ? 0 : NSWindowStyleMaskMiniaturizable);
     set_managed(w, bits);
     g_set_style(w, @selector(setStyleMask:), before | bits);
     w.titlebarAppearsTransparent = YES;
@@ -228,9 +228,9 @@ static void apply_chrome(NSWindow *w) {
     set_toolbar(w, !dialog);
     NSWindowCollectionBehavior was = w.collectionBehavior;
     g_set_behavior(w, @selector(setCollectionBehavior:), standard_behavior(was));
-    NP_LOG("steamwin: behavior of %p \"%s\": [%s] -> [%s]", w, w.title.UTF8String,
+    LB_LOG("steamwin: behavior of %p \"%s\": [%s] -> [%s]", w, w.title.UTF8String,
            behavior_names(was).UTF8String, behavior_names(w.collectionBehavior).UTF8String);
-    NP_LOG("steamwin: native frame on %p \"%s\"%s: style 0x%lx -> 0x%lx",
+    LB_LOG("steamwin: native frame on %p \"%s\"%s: style 0x%lx -> 0x%lx",
            w, w.title.UTF8String, dialog ? " (dialog, close button only)" : "",
            (unsigned long)before, (unsigned long)w.styleMask);
 }
@@ -240,7 +240,7 @@ static NSUInteger g_restores;
 // SDL sets the style again whenever it changes a window (resizable, bordered,
 // leaving full screen). For a window that carries the macOS frame, the frame bits
 // stay; a switch to SDL's own full screen releases the window instead.
-static void np_set_style(id self, SEL _cmd, NSWindowStyleMask mask) {
+static void lb_set_style(id self, SEL _cmd, NSWindowStyleMask mask) {
     NSWindow *w = self;
     NSWindowStyleMask bits = added_bits(w);
     if (bits) {
@@ -248,11 +248,11 @@ static void np_set_style(id self, SEL _cmd, NSWindowStyleMask mask) {
             set_managed(w, 0);
             w.toolbar = nil;
             w.titlebarAppearsTransparent = NO;
-            NP_LOG("steamwin: %p \"%s\" went to SDL full screen (style 0x%lx), frame released",
+            LB_LOG("steamwin: %p \"%s\" went to SDL full screen (style 0x%lx), frame released",
                    w, w.title.UTF8String, (unsigned long)mask);
         } else if ((mask & bits) != bits) {
             if (g_restores++ < 50)
-                NP_LOG("steamwin: Steam set style 0x%lx on %p, keeping the macOS frame (0x%lx)",
+                LB_LOG("steamwin: Steam set style 0x%lx on %p, keeping the macOS frame (0x%lx)",
                        (unsigned long)mask, w, (unsigned long)(mask | bits));
             mask |= bits;
         }
@@ -268,17 +268,17 @@ static void title_double_click(NSWindow *w) {
         [w performMiniaturize:nil];
     else if (![action isEqualToString:@"None"])
         [w performZoom:nil];
-    NP_LOG("steamwin: double click on the title area of %p: %s", w, action ? action.UTF8String : "Maximize");
+    LB_LOG("steamwin: double click on the title area of %p: %s", w, action ? action.UTF8String : "Maximize");
 }
 
 // SDL sets the collection behavior again when it changes a window (resizable, full
 // screen); a window with the macOS frame keeps a standard one.
-static void np_set_behavior(id self, SEL _cmd, NSWindowCollectionBehavior b) {
+static void lb_set_behavior(id self, SEL _cmd, NSWindowCollectionBehavior b) {
     NSWindow *w = self;
     if (is_managed(w)) {
         NSWindowCollectionBehavior fixed = standard_behavior(b);
         if (fixed != b && g_restores++ < 50)
-            NP_LOG("steamwin: Steam set behavior [%s] on %p, keeping [%s]",
+            LB_LOG("steamwin: Steam set behavior [%s] on %p, keeping [%s]",
                    behavior_names(b).UTF8String, w, behavior_names(fixed).UTF8String);
         b = fixed;
     }
@@ -303,7 +303,7 @@ static BOOL is_drag_area(NSView *view) {
     return [name containsString:@"Draggable"] && ![name containsString:@"NonDraggable"];
 }
 
-static void np_send_event(id self, SEL _cmd, NSEvent *event) {
+static void lb_send_event(id self, SEL _cmd, NSEvent *event) {
     NSWindow *w = self;
     if (is_managed(w) && event.type == NSEventTypeLeftMouseDown && event.clickCount == 2) {
         NSView *hit = hit_view(w, event.locationInWindow);
@@ -332,20 +332,20 @@ static NSMapTable<NSWindow *, NSString *> *g_seen;
 
 static void survey(NSString *why) {
     for (NSWindow *w in NSApp.windows) {
-        if (g_mode >= NP_SW_NATIVE)
+        if (g_mode >= LB_SW_NATIVE)
             apply_chrome(w);
         NSString *now = describe(w);
         NSString *before = [g_seen objectForKey:w];
         if ([before isEqualToString:now])
             continue;
         [g_seen setObject:now forKey:w];
-        NP_LOG("steamwin: %s %s %s", before ? "changed" : "new", why.UTF8String, now.UTF8String);
+        LB_LOG("steamwin: %s %s %s", before ? "changed" : "new", why.UTF8String, now.UTF8String);
     }
 }
 
 // MARK: Debug commands
 //
-// Built only with `make NP_DEV=1` (NP_STEAMWIN_DEBUG) and never in a release
+// Built only with `make LB_DEV=1` (LB_STEAMWIN_DEBUG) and never in a release
 // (docs/BACKLOG.md 20); without the native windows switch nothing here runs anyway.
 // lullaby/steam-windows-debug, one command per line, run once and deleted. For
 // checking the frame without a mouse: Steam Helper acts on its own windows, and
@@ -356,7 +356,7 @@ static void survey(NSString *why) {
 //   click X Y | dblclick X Y points from the window's top left corner
 //   key CODE                 a key press (53 is Escape)
 
-#ifdef NP_STEAMWIN_DEBUG
+#ifdef LB_STEAMWIN_DEBUG
 static NSWindow *debug_target(NSString *title) {
     NSWindow *fallback = nil;
     for (NSWindow *w in NSApp.windows) {
@@ -381,11 +381,11 @@ static void dump_hits(NSWindow *w) {
             [row addObject:[NSString stringWithFormat:@"%.0f:%@%@", x, hit ? NSStringFromClass([hit class]) : @"-",
                                                       hit.mouseDownCanMoveWindow ? @"(moves)" : @""]];
         }
-        NP_LOG("steamwin: debug hit y=%.0f %s", y, [row componentsJoinedByString:@" "].UTF8String);
+        LB_LOG("steamwin: debug hit y=%.0f %s", y, [row componentsJoinedByString:@" "].UTF8String);
     }
     NSButton *close = [w standardWindowButton:NSWindowCloseButton];
     NSRect cf = [close convertRect:close.bounds toView:nil];
-    NP_LOG("steamwin: debug close button at %.1f,%.1f %.0fx%.0f (from top %.1f), titlebar %.0f",
+    LB_LOG("steamwin: debug close button at %.1f,%.1f %.0fx%.0f (from top %.1f), titlebar %.0f",
            cf.origin.x, cf.origin.y, cf.size.width, cf.size.height,
            w.frame.size.height - NSMaxY(cf), w.frame.size.height - w.contentLayoutRect.size.height);
 }
@@ -394,14 +394,14 @@ static void dump_tree(NSView *view, int depth) {
     if (depth > 6)
         return;
     CALayer *layer = view.layer;
-    NP_LOG("steamwin: debug tree %*s%s frame=%.0fx%.0f@%.0f,%.0f hidden=%d layer=%s(%lu) contents=%d",
+    LB_LOG("steamwin: debug tree %*s%s frame=%.0fx%.0f@%.0f,%.0f hidden=%d layer=%s(%lu) contents=%d",
            depth * 2, "", class_getName([view class]), view.frame.size.width, view.frame.size.height,
            view.frame.origin.x, view.frame.origin.y, view.isHidden,
            layer ? class_getName([layer class]) : "-", (unsigned long)layer.sublayers.count,
            layer.contents != nil);
     for (CALayer *sub in layer.sublayers)
         if (depth < 3)
-            NP_LOG("steamwin: debug tree %*s  [layer %s %.0fx%.0f hidden=%d contents=%d]", depth * 2, "",
+            LB_LOG("steamwin: debug tree %*s  [layer %s %.0fx%.0f hidden=%d contents=%d]", depth * 2, "",
                    class_getName([sub class]), sub.bounds.size.width, sub.bounds.size.height,
                    sub.isHidden, sub.contents != nil);
     for (NSView *child in view.subviews)
@@ -438,7 +438,7 @@ static void run_debug(NSString *line) {
     }
     NSString *cmd = words.firstObject;
     NSWindow *w = debug_target(title);
-    NP_LOG("steamwin: debug '%s' on %p \"%s\"", line.UTF8String, w, w.title.UTF8String);
+    LB_LOG("steamwin: debug '%s' on %p \"%s\"", line.UTF8String, w, w.title.UTF8String);
     if (!w && ![cmd isEqualToString:@"dump"] && ![cmd isEqualToString:@"spaces"]
         && ![cmd isEqualToString:@"policy"])
         return;
@@ -455,9 +455,9 @@ static void run_debug(NSString *line) {
             for (unsigned int i = 0; i < n; i++)
                 [names addObject:NSStringFromSelector(method_getName(list[i]))];
             free(list);
-            NP_LOG("steamwin: debug %s methods: %s", class_getName(c), [names componentsJoinedByString:@" "].UTF8String);
+            LB_LOG("steamwin: debug %s methods: %s", class_getName(c), [names componentsJoinedByString:@" "].UTF8String);
         }
-        NP_LOG("steamwin: debug delegate %s", w.delegate ? class_getName([(id)w.delegate class]) : "none");
+        LB_LOG("steamwin: debug delegate %s", w.delegate ? class_getName([(id)w.delegate class]) : "none");
         if (w.delegate) {
             unsigned int n = 0;
             Method *list = class_copyMethodList([(id)w.delegate class], &n);
@@ -465,19 +465,19 @@ static void run_debug(NSString *line) {
             for (unsigned int i = 0; i < n; i++)
                 [names addObject:NSStringFromSelector(method_getName(list[i]))];
             free(list);
-            NP_LOG("steamwin: debug delegate methods: %s", [names componentsJoinedByString:@" "].UTF8String);
+            LB_LOG("steamwin: debug delegate methods: %s", [names componentsJoinedByString:@" "].UTF8String);
         }
     } else if ([cmd isEqualToString:@"spaces"]) {
-        NP_LOG("steamwin: debug app policy=%s active=%d hidden=%d", policy_name(NSApp.activationPolicy),
+        LB_LOG("steamwin: debug app policy=%s active=%d hidden=%d", policy_name(NSApp.activationPolicy),
                NSApp.isActive, NSApp.isHidden);
         for (NSWindow *each in NSApp.windows)
             if (is_sdl(each) && (each.isVisible || each.isMiniaturized))
-                NP_LOG("steamwin: debug spaces %s", describe_spaces(each).UTF8String);
+                LB_LOG("steamwin: debug spaces %s", describe_spaces(each).UTF8String);
     } else if ([cmd isEqualToString:@"policy"] && words.count >= 2) {
         NSApplicationActivationPolicy p = [words[1] isEqualToString:@"regular"]
             ? NSApplicationActivationPolicyRegular : NSApplicationActivationPolicyAccessory;
         BOOL ok = [NSApp setActivationPolicy:p];
-        NP_LOG("steamwin: debug setActivationPolicy(%s) -> %d, now %s", policy_name(p), ok,
+        LB_LOG("steamwin: debug setActivationPolicy(%s) -> %d, now %s", policy_name(p), ok,
                policy_name(NSApp.activationPolicy));
     } else if ([cmd isEqualToString:@"tree"]) {
         dump_tree(w.contentView.superview, 0);
@@ -492,10 +492,10 @@ static void run_debug(NSString *line) {
         [w toggleFullScreen:nil];
     } else if ([cmd isEqualToString:@"miniaturize"]) {
         [w performMiniaturize:nil];
-        NP_LOG("steamwin: debug after performMiniaturize: mini=%d", w.isMiniaturized);
+        LB_LOG("steamwin: debug after performMiniaturize: mini=%d", w.isMiniaturized);
         if (!w.isMiniaturized) {
             [w miniaturize:nil];
-            NP_LOG("steamwin: debug after miniaturize: mini=%d", w.isMiniaturized);
+            LB_LOG("steamwin: debug after miniaturize: mini=%d", w.isMiniaturized);
         }
     } else if ([cmd isEqualToString:@"deminiaturize"]) {
         [w deminiaturize:nil];
@@ -536,18 +536,18 @@ static void observe(void) {
     g_seen = [NSMapTable weakToStrongObjectsMapTable];
     g_sdl_window = NSClassFromString(@"SDL3Window");
     if (!g_sdl_window)
-        NP_WARN("steamwin: no SDL3Window class in Steam Helper, windows are left as they are");
+        LB_WARN("steamwin: no SDL3Window class in Steam Helper, windows are left as they are");
 
-    if (g_mode >= NP_SW_NATIVE && g_sdl_window) {
+    if (g_mode >= LB_SW_NATIVE && g_sdl_window) {
         g_set_style = (void (*)(id, SEL, NSWindowStyleMask))override(
-            g_sdl_window, @selector(setStyleMask:), (IMP)np_set_style);
+            g_sdl_window, @selector(setStyleMask:), (IMP)lb_set_style);
         g_send_event = (void (*)(id, SEL, NSEvent *))override(
-            g_sdl_window, @selector(sendEvent:), (IMP)np_send_event);
+            g_sdl_window, @selector(sendEvent:), (IMP)lb_send_event);
         g_set_behavior = (void (*)(id, SEL, NSWindowCollectionBehavior))override(
-            g_sdl_window, @selector(setCollectionBehavior:), (IMP)np_set_behavior);
+            g_sdl_window, @selector(setCollectionBehavior:), (IMP)lb_set_behavior);
         if (!g_set_style || !g_send_event || !g_set_behavior) {
-            NP_ERR("steamwin: could not wrap SDL3Window, falling back to log mode");
-            g_mode = NP_SW_LOG;
+            LB_ERR("steamwin: could not wrap SDL3Window, falling back to log mode");
+            g_mode = LB_SW_LOG;
         }
     }
 
@@ -562,7 +562,7 @@ static void observe(void) {
         [center addObserverForName:name object:nil queue:NSOperationQueue.mainQueue
                         usingBlock:^(NSNotification *note) { survey(note.name); }];
     }
-    if (g_mode >= NP_SW_NATIVE) {
+    if (g_mode >= LB_SW_NATIVE) {
         [center addObserverForName:NSWindowWillEnterFullScreenNotification object:nil
                              queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
             if (is_managed(note.object))
@@ -575,9 +575,9 @@ static void observe(void) {
         }];
     }
 
-#ifdef NP_STEAMWIN_DEBUG
+#ifdef LB_STEAMWIN_DEBUG
     char path[512];
-    np_support_path(path, sizeof(path), np_home_dir() ?: "/tmp", "steam-windows-debug");
+    lb_support_path(path, sizeof(path), lb_home_dir() ?: "/tmp", "steam-windows-debug");
     g_debug_path = @(path);
 #endif
 
@@ -585,13 +585,13 @@ static void observe(void) {
     // tooltips, which never become key.
     [NSTimer scheduledTimerWithTimeInterval:0.25 repeats:YES block:^(NSTimer *t) {
         survey(@"poll");
-#ifdef NP_STEAMWIN_DEBUG
+#ifdef LB_STEAMWIN_DEBUG
         poll_debug();
 #endif
     }];
     survey(@"start");
-    NP_LOG("steamwin: watching windows (mode %s), Steam Helper activation policy %s",
-           g_mode >= NP_SW_NATIVE ? "native" : "log", policy_name(NSApp.activationPolicy));
+    LB_LOG("steamwin: watching windows (mode %s), Steam Helper activation policy %s",
+           g_mode >= LB_SW_NATIVE ? "native" : "log", policy_name(NSApp.activationPolicy));
 }
 
 // NSApp exists once Chromium has started its application; until then, retry.
@@ -601,7 +601,7 @@ static void await_app(int attempt) {
         return;
     }
     if (attempt > 600) {
-        NP_WARN("steamwin: no running NSApplication after 60 s, leaving windows alone");
+        LB_WARN("steamwin: no running NSApplication after 60 s, leaving windows alone");
         return;
     }
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 100 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
@@ -609,11 +609,11 @@ static void await_app(int attempt) {
     });
 }
 
-void np_steamwin_start(void) {
-    g_mode = np_steamwin_mode();
-    if (g_mode == NP_SW_OFF)
+void lb_steamwin_start(void) {
+    g_mode = lb_steamwin_mode();
+    if (g_mode == LB_SW_OFF)
         return;
-    np_log_init();
-    NP_LOG("steamwin: Steam Helper pid %d, mode %s", getpid(), g_mode >= NP_SW_NATIVE ? "native" : "log");
+    lb_log_init();
+    LB_LOG("steamwin: Steam Helper pid %d, mode %s", getpid(), g_mode >= LB_SW_NATIVE ? "native" : "log");
     dispatch_async(dispatch_get_main_queue(), ^{ await_app(0); });
 }

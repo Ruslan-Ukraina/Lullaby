@@ -36,19 +36,19 @@
 	<true/>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
-	<key>NPReleaseFeedURL</key>
+	<key>LBReleaseFeedURL</key>
 	<string>https://github.com/Ruslan-Ukraina/Lullaby/releases/download/</string>
-	<key>NPReleasePublicKey</key>
+	<key>LBReleasePublicKey</key>
 	<string></string>
-	<key>NPReleaseAccess</key>
+	<key>LBReleaseAccess</key>
 	<string>public</string>
-	<key>NPReleaseRepository</key>
+	<key>LBReleaseRepository</key>
 	<string>Ruslan-Ukraina/Lullaby</string>
-	<key>NPReleaseManifestTag</key>
+	<key>LBReleaseManifestTag</key>
 	<string>manifest</string>
-	<key>NPEngineManifestURL</key>
+	<key>LBEngineManifestURL</key>
 	<string>https://github.com/kageroumado/dormison/releases/download/manifest/engine.json</string>
-	<key>NPBuildKind</key>
+	<key>LBBuildKind</key>
 	<string>dev</string>
 	<key>SUEnableAutomaticChecks</key>
 	<false/>

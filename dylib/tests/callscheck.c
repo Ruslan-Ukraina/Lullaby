@@ -97,12 +97,12 @@ static void split_prologue_at_400(void) {
 }
 
 static void check(const char *label, int exact, uintptr_t expected) {
-    np_anchor_t anchor = {.kind = NP_MATCH_CALLS, .call_count = 2,
+    lb_anchor_t anchor = {.kind = LB_MATCH_CALLS, .call_count = 2,
                           .calls_exact = exact, .no_data_refs = 1};
     strcpy(anchor.calls[0], "_first");
     strcpy(anchor.calls[1], "_second");
     uintptr_t base = (uintptr_t)image;
-    uintptr_t got = np_locate_anchor((void *)image, (intptr_t)base, base, 0x2000, &anchor);
+    uintptr_t got = lb_locate_anchor((void *)image, (intptr_t)base, base, 0x2000, &anchor);
     if (got) got -= base;
     cases++;
     if (got == expected) return;

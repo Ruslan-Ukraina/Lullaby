@@ -17,9 +17,9 @@ enum ReleaseAccess: Equatable, Sendable {
     case `public`
     case `private`(repository: String, token: String)
 
-    static let infoKey = "NPReleaseAccess"
-    static let repositoryKey = "NPReleaseRepository"
-    static let manifestTagKey = "NPReleaseManifestTag"
+    static let infoKey = "LBReleaseAccess"
+    static let repositoryKey = "LBReleaseRepository"
+    static let manifestTagKey = "LBReleaseManifestTag"
 
     var isPrivate: Bool { if case .private = self { true } else { false } }
 

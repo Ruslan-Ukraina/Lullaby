@@ -65,15 +65,15 @@ wine_unix="$engine_root/wine/lib/wine/x86_64-unix"
 WINELOADER="$engine_root/wine/bin/wine"
 WINESERVER="$engine_root/wine/bin/wineserver"
 # The app writes the engine's paths to lullaby-engine.env (DormisonEngine). It
-# is read as data, never sourced: one NP_ENGINE_NAME='value' per line.
+# is read as data, never sourced: one LB_ENGINE_NAME='value' per line.
 engine_env_get() {
   sed -n "s/^$1='\(.*\)'\$/\1/p" "$engine_root/lullaby-engine.env" 2>/dev/null | head -1 \
     | sed "s/'\\\\''/'/g"
 }
 if [ -f "$engine_root/lullaby-engine.env" ]; then
-  env_unix=$(engine_env_get NP_ENGINE_UNIX_DIR)
-  env_loader=$(engine_env_get NP_ENGINE_WINELOADER)
-  env_server=$(engine_env_get NP_ENGINE_WINESERVER)
+  env_unix=$(engine_env_get LB_ENGINE_UNIX_DIR)
+  env_loader=$(engine_env_get LB_ENGINE_WINELOADER)
+  env_server=$(engine_env_get LB_ENGINE_WINESERVER)
   [ -n "$env_unix" ] && wine_unix=$env_unix
   [ -n "$env_loader" ] && WINELOADER=$env_loader
   [ -n "$env_server" ] && WINESERVER=$env_server
@@ -1073,6 +1073,8 @@ if [ -n "\$STEAM_DYLD_INSERT_LIBRARIES" ]; then
   if [ -f "\$shim" ]; then
     export DYLD_INSERT_LIBRARIES="\$shim:\$STEAM_DYLD_INSERT_LIBRARIES"
     export LULLABY_OVERLAY_SHIM="\$shim"
+    # Bridges built before the rename (r5-1 and older) read the old name.
+    export NOTPROTON_OVERLAY_SHIM="\$shim"
   else
     export DYLD_INSERT_LIBRARIES="\$STEAM_DYLD_INSERT_LIBRARIES"
   fi

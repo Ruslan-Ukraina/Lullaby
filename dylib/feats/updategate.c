@@ -18,7 +18,7 @@
 
 static int gate_mode_on(const char *gate_file) {
     size_t n = 0;
-    uint8_t *raw = np_read_whole_file(gate_file, &n);
+    uint8_t *raw = lb_read_whole_file(gate_file, &n);
     if (!raw) return 0;
     size_t a = 0, b = n;
     while (a < b && (raw[a] == ' ' || raw[a] == '\t' || raw[a] == '\n' || raw[a] == '\r')) a++;
@@ -40,8 +40,8 @@ static int key_value(const char *line, const char *end, const char **vs, const c
     if (!eq) return 0;
     const char *ks = line, *ke = eq;
     trim(&ks, &ke);
-    size_t klen = strlen(NP_UPDATE_GATE_KEY);
-    if ((size_t)(ke - ks) != klen || memcmp(ks, NP_UPDATE_GATE_KEY, klen) != 0) return 0;
+    size_t klen = strlen(LB_UPDATE_GATE_KEY);
+    if ((size_t)(ke - ks) != klen || memcmp(ks, LB_UPDATE_GATE_KEY, klen) != 0) return 0;
     *vs = eq + 1;
     *ve = end;
     trim(vs, ve);
@@ -66,7 +66,7 @@ static int write_atomically(const char *path, const char *data, size_t len) {
 // 1 written, 0 already blocked (or skipped), -1 failed.
 static int ensure_block(const char *path, int create) {
     size_t n = 0;
-    uint8_t *raw = np_read_whole_file(path, &n);
+    uint8_t *raw = lb_read_whole_file(path, &n);
     if (!raw) {
         if (!create) {
             char copy[1024];
@@ -77,7 +77,7 @@ static int ensure_block(const char *path, int create) {
         n = 0;
     }
     const char *text = raw ? (const char *)raw : "";
-    size_t cap = n + strlen(NP_UPDATE_GATE_KEY) + 16;
+    size_t cap = n + strlen(LB_UPDATE_GATE_KEY) + 16;
     char *out = malloc(cap);
     if (!out) { free(raw); return -1; }
     size_t used = 0;
@@ -91,7 +91,7 @@ static int ensure_block(const char *path, int create) {
         if (key_value(p, le, &vs, &ve)) {
             blocked = (ve - vs == 6 && memcmp(vs, "enable", 6) == 0);
             if (!seen) {
-                used += (size_t)sprintf(out + used, "%s=enable", NP_UPDATE_GATE_KEY);
+                used += (size_t)sprintf(out + used, "%s=enable", LB_UPDATE_GATE_KEY);
                 seen = 1;
                 if (nl) out[used++] = '\n';
             }
@@ -110,7 +110,7 @@ static int ensure_block(const char *path, int create) {
     }
     if (!seen) {
         if (used > 0 && out[used - 1] != '\n') out[used++] = '\n';
-        used += (size_t)sprintf(out + used, "%s=enable\n", NP_UPDATE_GATE_KEY);
+        used += (size_t)sprintf(out + used, "%s=enable\n", LB_UPDATE_GATE_KEY);
     }
     int rc = write_atomically(path, out, used);
     free(out);
@@ -118,30 +118,30 @@ static int ensure_block(const char *path, int create) {
     return rc == 0 ? 1 : -1;
 }
 
-int np_update_gate_rearm_paths(const char *gate_file, const char *const *cfgs, int count) {
+int lb_update_gate_rearm_paths(const char *gate_file, const char *const *cfgs, int count) {
     if (!gate_mode_on(gate_file)) return -1;
     int written = 0;
     for (int i = 0; i < count; i++) {
         int rc = ensure_block(cfgs[i], i == 0);
         if (rc == 1) {
             written++;
-            NP_LOG("update gate: Steam's update block is back in %s", cfgs[i]);
+            LB_LOG("update gate: Steam's update block is back in %s", cfgs[i]);
         } else if (rc < 0) {
-            NP_WARN("update gate: could not write %s (%s)", cfgs[i], strerror(errno));
+            LB_WARN("update gate: could not write %s (%s)", cfgs[i], strerror(errno));
         }
     }
     return written;
 }
 
-void np_update_gate_rearm(void) {
-    const char *home = np_home_dir();
+void lb_update_gate_rearm(void) {
+    const char *home = lb_home_dir();
     if (!home) return;
     char gate[1024], outer[1024], inner[1024];
-    np_support_path(gate, sizeof(gate), home, NP_UPDATE_GATE_FILE);
+    lb_support_path(gate, sizeof(gate), home, LB_UPDATE_GATE_FILE);
     snprintf(outer, sizeof(outer), "%s/Library/Application Support/Steam/steam.cfg", home);
     snprintf(inner, sizeof(inner),
              "%s/Library/Application Support/Steam/Steam.AppBundle/Steam/Contents/MacOS/steam.cfg", home);
     const char *cfgs[] = {outer, inner};
-    int written = np_update_gate_rearm_paths(gate, cfgs, 2);
-    if (written == 0) NP_DBG("update gate: Steam's update block already in place");
+    int written = lb_update_gate_rearm_paths(gate, cfgs, 2);
+    if (written == 0) LB_DBG("update gate: Steam's update block already in place");
 }

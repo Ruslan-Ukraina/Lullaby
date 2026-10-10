@@ -1,9 +1,9 @@
-#ifndef NP_OVERLAY_TEST_CHECK_H
-#define NP_OVERLAY_TEST_CHECK_H
+#ifndef LB_OVERLAY_TEST_CHECK_H
+#define LB_OVERLAY_TEST_CHECK_H
 
 #include <stdio.h>
 
-#define NP_SKIP 3
+#define LB_SKIP 3
 
 #define CHECK(cond, ...)                     \
 	do {                                 \
@@ -21,7 +21,7 @@
 			printf("SKIP: ");    \
 			printf(__VA_ARGS__); \
 			printf("\n");        \
-			return NP_SKIP;      \
+			return LB_SKIP;      \
 		}                            \
 	} while (0)
 

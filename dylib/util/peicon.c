@@ -9,64 +9,64 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#define NP_PE_MAX_SECTIONS 96
-#define NP_PE_MAX_LEAVES   4096
-#define NP_PE_MAX_IMAGE    (16 * 1024 * 1024)
-#define NP_PE_MAX_DEPTH    3
-#define NP_PE_MAX_ENTRIES  512
-#define NP_PE_MAX_VISITS   65536
-#define NP_PE_MAX_ICO      (32 * 1024 * 1024)
-#define NP_PE_MAX_ICO_IMGS 64
+#define LB_PE_MAX_SECTIONS 96
+#define LB_PE_MAX_LEAVES   4096
+#define LB_PE_MAX_IMAGE    (16 * 1024 * 1024)
+#define LB_PE_MAX_DEPTH    3
+#define LB_PE_MAX_ENTRIES  512
+#define LB_PE_MAX_VISITS   65536
+#define LB_PE_MAX_ICO      (32 * 1024 * 1024)
+#define LB_PE_MAX_ICO_IMGS 64
 
-#define NP_RT_ICON         3
-#define NP_RT_GROUP_ICON   14
+#define LB_RT_ICON         3
+#define LB_RT_GROUP_ICON   14
 
 typedef struct {
     uint32_t va;
     uint32_t size;
     uint32_t raw;
     uint32_t raw_size;
-} np_sect_t;
+} lb_sect_t;
 
 typedef struct {
     uint32_t type;
     uint32_t id;
     uint32_t rva;
     uint32_t size;
-} np_leaf_t;
+} lb_leaf_t;
 
 typedef struct {
     const uint8_t *p;
     size_t         n;
-    np_sect_t      sects[NP_PE_MAX_SECTIONS];
+    lb_sect_t      sects[LB_PE_MAX_SECTIONS];
     int            nsects;
-    np_leaf_t     *leaves;
+    lb_leaf_t     *leaves;
     int            nleaves;
     uint32_t       visits;
-} np_pe_t;
+} lb_pe_t;
 
-static int rd_u8(const np_pe_t *pe, size_t off, uint8_t *out) {
+static int rd_u8(const lb_pe_t *pe, size_t off, uint8_t *out) {
     if (off >= pe->n) return 0;
     *out = pe->p[off];
     return 1;
 }
 
-static int rd_u16(const np_pe_t *pe, size_t off, uint16_t *out) {
+static int rd_u16(const lb_pe_t *pe, size_t off, uint16_t *out) {
     if (pe->n < 2 || off > pe->n - 2) return 0;
     *out = (uint16_t)((uint16_t)pe->p[off] | ((uint16_t)pe->p[off + 1] << 8));
     return 1;
 }
 
-static int rd_u32(const np_pe_t *pe, size_t off, uint32_t *out) {
+static int rd_u32(const lb_pe_t *pe, size_t off, uint32_t *out) {
     if (pe->n < 4 || off > pe->n - 4) return 0;
     *out = (uint32_t)pe->p[off]             | ((uint32_t)pe->p[off + 1] << 8) |
            ((uint32_t)pe->p[off + 2] << 16) | ((uint32_t)pe->p[off + 3] << 24);
     return 1;
 }
 
-static int rva_to_off(const np_pe_t *pe, uint32_t rva, size_t *out) {
+static int rva_to_off(const lb_pe_t *pe, uint32_t rva, size_t *out) {
     for (int i = 0; i < pe->nsects; i++) {
-        const np_sect_t *s = &pe->sects[i];
+        const lb_sect_t *s = &pe->sects[i];
         uint32_t span = s->size > s->raw_size ? s->size : s->raw_size;
         if (rva >= s->va && (uint64_t)rva < (uint64_t)s->va + span) {
             *out = (size_t)s->raw + (size_t)(rva - s->va);
@@ -76,12 +76,12 @@ static int rva_to_off(const np_pe_t *pe, uint32_t rva, size_t *out) {
     return 0;
 }
 
-static int read_sections(np_pe_t *pe, size_t peo, int count, size_t opt_size) {
-    if (count <= 0 || count > NP_PE_MAX_SECTIONS) return 0;
+static int read_sections(lb_pe_t *pe, size_t peo, int count, size_t opt_size) {
+    if (count <= 0 || count > LB_PE_MAX_SECTIONS) return 0;
 
     size_t cursor = peo + 24 + opt_size;
     for (int i = 0; i < count; i++) {
-        np_sect_t s;
+        lb_sect_t s;
         if (!rd_u32(pe, cursor + 8,  &s.size)     ||
             !rd_u32(pe, cursor + 12, &s.va)       ||
             !rd_u32(pe, cursor + 16, &s.raw_size) ||
@@ -92,14 +92,14 @@ static int read_sections(np_pe_t *pe, size_t peo, int count, size_t opt_size) {
     return 1;
 }
 
-static void walk(np_pe_t *pe, size_t base, size_t node, int depth,
+static void walk(lb_pe_t *pe, size_t base, size_t node, int depth,
                  uint32_t type, uint32_t id) {
     uint16_t named, ids;
-    if (depth >= NP_PE_MAX_DEPTH || pe->nleaves >= NP_PE_MAX_LEAVES) return;
+    if (depth >= LB_PE_MAX_DEPTH || pe->nleaves >= LB_PE_MAX_LEAVES) return;
     if (!rd_u16(pe, node + 12, &named) || !rd_u16(pe, node + 14, &ids)) return;
 
     int total = (int)named + (int)ids;
-    if (total > NP_PE_MAX_ENTRIES) total = NP_PE_MAX_ENTRIES;
+    if (total > LB_PE_MAX_ENTRIES) total = LB_PE_MAX_ENTRIES;
 
     for (int i = 0; i < total; i++) {
         if (pe->visits == 0) return;
@@ -114,34 +114,34 @@ static void walk(np_pe_t *pe, size_t base, size_t node, int depth,
 
         if (off_field & 0x80000000u) {
             walk(pe, base, base + (off_field & 0x7FFFFFFFu), depth + 1, rtype, rid);
-            if (pe->nleaves >= NP_PE_MAX_LEAVES) return;
+            if (pe->nleaves >= LB_PE_MAX_LEAVES) return;
             continue;
         }
 
         size_t   at = base + off_field;
-        np_leaf_t leaf;
+        lb_leaf_t leaf;
         if (!rd_u32(pe, at, &leaf.rva) || !rd_u32(pe, at + 4, &leaf.size)) return;
         leaf.type = rtype;
         leaf.id   = rid;
         pe->leaves[pe->nleaves++] = leaf;
-        if (pe->nleaves >= NP_PE_MAX_LEAVES) return;
+        if (pe->nleaves >= LB_PE_MAX_LEAVES) return;
     }
 }
 
-static const np_leaf_t *lowest_group(const np_pe_t *pe) {
-    const np_leaf_t *best = NULL;
+static const lb_leaf_t *lowest_group(const lb_pe_t *pe) {
+    const lb_leaf_t *best = NULL;
     for (int i = 0; i < pe->nleaves; i++) {
-        const np_leaf_t *l = &pe->leaves[i];
-        if (l->type != NP_RT_GROUP_ICON) continue;
+        const lb_leaf_t *l = &pe->leaves[i];
+        if (l->type != LB_RT_GROUP_ICON) continue;
         if (!best || l->id < best->id) best = l;
     }
     return best;
 }
 
-static const np_leaf_t *image_with_id(const np_pe_t *pe, uint32_t id) {
+static const lb_leaf_t *image_with_id(const lb_pe_t *pe, uint32_t id) {
     for (int i = 0; i < pe->nleaves; i++) {
-        const np_leaf_t *l = &pe->leaves[i];
-        if (l->type == NP_RT_ICON && l->id == id) return l;
+        const lb_leaf_t *l = &pe->leaves[i];
+        if (l->type == LB_RT_ICON && l->id == id) return l;
     }
     return NULL;
 }
@@ -158,13 +158,13 @@ static void put_u32(uint8_t *p, uint32_t v) {
     p[3] = (uint8_t)((v >> 24) & 0xFF);
 }
 
-static void *build_ico(np_pe_t *pe, uint32_t rsrc_rva, size_t *out_len) {
+static void *build_ico(lb_pe_t *pe, uint32_t rsrc_rva, size_t *out_len) {
     size_t base;
     if (!rva_to_off(pe, rsrc_rva, &base)) return NULL;
 
     walk(pe, base, base, 0, 0, 0);
 
-    const np_leaf_t *group = lowest_group(pe);
+    const lb_leaf_t *group = lowest_group(pe);
     if (!group) return NULL;
 
     size_t   group_at;
@@ -174,9 +174,9 @@ static void *build_ico(np_pe_t *pe, uint32_t rsrc_rva, size_t *out_len) {
     if (pe->n < group->size || group_at > pe->n - group->size) return NULL;
     if (!rd_u16(pe, group_at + 4, &count) || count == 0) return NULL;
     if (group->size < 6 + (uint32_t)count * 14) return NULL;
-    if (count > NP_PE_MAX_ICO_IMGS) count = NP_PE_MAX_ICO_IMGS;
+    if (count > LB_PE_MAX_ICO_IMGS) count = LB_PE_MAX_ICO_IMGS;
 
-    const np_leaf_t **picked = calloc(count, sizeof(*picked));
+    const lb_leaf_t **picked = calloc(count, sizeof(*picked));
     uint8_t          *records = calloc(count, 16);
     if (!picked || !records) {
         free(picked);
@@ -197,8 +197,8 @@ static void *build_ico(np_pe_t *pe, uint32_t rsrc_rva, size_t *out_len) {
             !rd_u16(pe, e + 4, &planes) || !rd_u16(pe, e + 6, &bits) ||
             !rd_u16(pe, e + 12, &id)) continue;
 
-        const np_leaf_t *img = image_with_id(pe, id);
-        if (!img || img->size == 0 || img->size > NP_PE_MAX_IMAGE) continue;
+        const lb_leaf_t *img = image_with_id(pe, id);
+        if (!img || img->size == 0 || img->size > LB_PE_MAX_IMAGE) continue;
         if (!rva_to_off(pe, img->rva, &at)) continue;
         if (pe->n < img->size || at > pe->n - img->size) continue;
 
@@ -207,7 +207,7 @@ static void *build_ico(np_pe_t *pe, uint32_t rsrc_rva, size_t *out_len) {
             if (picked[j] == img) { seen = 1; break; }
         }
         if (seen) continue;
-        if (img->size > NP_PE_MAX_ICO - payload) break;
+        if (img->size > LB_PE_MAX_ICO - payload) break;
 
         uint8_t *r = records + (size_t)written * 16;
         r[0] = w;
@@ -260,11 +260,11 @@ static void *build_ico(np_pe_t *pe, uint32_t rsrc_rva, size_t *out_len) {
 }
 
 static void *icon_from_map(const uint8_t *map, size_t len, size_t *out_len) {
-    np_pe_t pe;
+    lb_pe_t pe;
     memset(&pe, 0, sizeof(pe));
     pe.p = map;
     pe.n = len;
-    pe.visits = NP_PE_MAX_VISITS;
+    pe.visits = LB_PE_MAX_VISITS;
 
     uint16_t mz;
     uint32_t peo32, sig;
@@ -295,7 +295,7 @@ static void *icon_from_map(const uint8_t *map, size_t len, size_t *out_len) {
 
     if (!read_sections(&pe, peo, (int)nsects, opt_size)) return NULL;
 
-    pe.leaves = calloc(NP_PE_MAX_LEAVES, sizeof(*pe.leaves));
+    pe.leaves = calloc(LB_PE_MAX_LEAVES, sizeof(*pe.leaves));
     if (!pe.leaves) return NULL;
 
     void *ico = build_ico(&pe, rsrc_rva, out_len);
@@ -303,7 +303,7 @@ static void *icon_from_map(const uint8_t *map, size_t len, size_t *out_len) {
     return ico;
 }
 
-void *np_pe_icon_ico(const char *path, size_t *out_len) {
+void *lb_pe_icon_ico(const char *path, size_t *out_len) {
     if (!path || !*path || !out_len) return NULL;
 
     int fd = open(path, O_RDONLY | O_CLOEXEC);

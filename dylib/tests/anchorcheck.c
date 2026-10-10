@@ -80,7 +80,7 @@ static int load_image(const char *module) {
         fprintf(stderr, "%s not found after dlopen\n", module);
         return -1;
     }
-    if (np_find_segment(im->mh, im->slide, "__TEXT", &im->text, &im->text_sz) != 0) {
+    if (lb_find_segment(im->mh, im->slide, "__TEXT", &im->text, &im->text_sz) != 0) {
         fprintf(stderr, "%s has no __TEXT\n", module);
         return -1;
     }
@@ -95,20 +95,20 @@ static int load_image(const char *module) {
 
 // An independent read on the anchor result, meaningful only against the build the
 // pattern was recorded from.
-static uintptr_t resolve_by_aob(np_sig_entry_t *sig,
+static uintptr_t resolve_by_aob(lb_sig_entry_t *sig,
                                 uintptr_t text, size_t text_sz) {
-    return np_aob_site(sig, text, text_sz);
+    return lb_aob_site(sig, text, text_sz);
 }
 
-static const char *kind_name(np_match_kind_t k) {
+static const char *kind_name(lb_match_kind_t k) {
     switch (k) {
-        case NP_MATCH_STRING:            return "string";
-        case NP_MATCH_VTABLE_SLOT:       return "vtable_slot";
-        case NP_MATCH_INSN_AFTER_STRING: return "insn_after_string";
-        case NP_MATCH_INSN_PAIR_IN_FN:   return "insn_pair";
-        case NP_MATCH_AOB:               return "aob";
-        case NP_MATCH_CALL_TARGET:       return "call_target";
-        case NP_MATCH_CALLS:             return "calls";
+        case LB_MATCH_STRING:            return "string";
+        case LB_MATCH_VTABLE_SLOT:       return "vtable_slot";
+        case LB_MATCH_INSN_AFTER_STRING: return "insn_after_string";
+        case LB_MATCH_INSN_PAIR_IN_FN:   return "insn_pair";
+        case LB_MATCH_AOB:               return "aob";
+        case LB_MATCH_CALL_TARGET:       return "call_target";
+        case LB_MATCH_CALLS:             return "calls";
         default:                          return "none";
     }
 }
@@ -117,7 +117,7 @@ static const char *kind_name(np_match_kind_t k) {
 // disassembler.
 typedef struct {
     const char     *name;
-    np_match_kind_t kind;
+    lb_match_kind_t kind;
     uintptr_t       anchor;
     uintptr_t       recorded;
     uintptr_t       aob;
@@ -127,7 +127,7 @@ typedef struct {
 typedef struct {
     char      path[512];
     uint64_t  build;
-    np_sigdb_t sigdb;
+    lb_sigdb_t sigdb;
     row_t    *rows;
     int       count;
     int       unresolved;
@@ -170,7 +170,7 @@ static int run_rtti(const struct mach_header_64 *mh, intptr_t slide,
         checked++;
 
         const char *name = expected_vptr[i].type_name;
-        uintptr_t got = np_rtti_vptr(mh, slide, text, text_sz, name);
+        uintptr_t got = lb_rtti_vptr(mh, slide, text, text_sz, name);
         unsigned long got_u = got ? (unsigned long)(got - (uintptr_t)slide) : 0;
         unsigned long want  = (unsigned long)expected_vptr[i].vptr;
 
@@ -224,7 +224,7 @@ static int collect_dbs(char paths[][512], int max) {
 // One database against the live image: what its anchors found, and what its
 // recorded evidence claims.
 static int check_db(dbcheck_t *db) {
-    if (!db->loaded && np_load_profile(db->path, &db->sigdb) != 0) {
+    if (!db->loaded && lb_load_profile(db->path, &db->sigdb) != 0) {
         fprintf(stderr, "cannot load sigdb '%s'\n", db->path);
         return -1;
     }
@@ -234,7 +234,7 @@ static int check_db(dbcheck_t *db) {
     if (!db->rows) { fprintf(stderr, "out of memory\n"); return -1; }
 
     for (int i = 0; i < db->count; i++) {
-        np_sig_entry_t *sig = &db->sigdb.signatures[i];
+        lb_sig_entry_t *sig = &db->sigdb.signatures[i];
         row_t *r = &db->rows[i];
 
         r->name        = sig->name;
@@ -248,9 +248,9 @@ static int check_db(dbcheck_t *db) {
             return -1;
         }
 
-        uintptr_t anc = (sig->anchor.kind == NP_MATCH_NONE)
+        uintptr_t anc = (sig->anchor.kind == LB_MATCH_NONE)
                           ? 0
-                          : np_locate_anchor(im->mh, im->slide, im->text, im->text_sz,
+                          : lb_locate_anchor(im->mh, im->slide, im->text, im->text_sz,
                                              &sig->anchor);
         uintptr_t aob = resolve_by_aob(sig, im->text, im->text_sz);
 
@@ -267,8 +267,8 @@ static int check_db(dbcheck_t *db) {
 }
 
 static int check_aob_fallback(const char *path) {
-    np_sigdb_t db = {0};
-    if (np_load_profile(path, &db) != 0) {
+    lb_sigdb_t db = {0};
+    if (lb_load_profile(path, &db) != 0) {
         fprintf(stderr, "cannot reload sigdb '%s'\n", path);
         return 1;
     }
@@ -282,16 +282,16 @@ static int check_aob_fallback(const char *path) {
     int bad = 0, checked = 0;
     printf("byte-pattern fallback with every anchor forced to miss\n");
     for (int m = 0; m < g_image_count; m++) {
-        np_resolve_result_t res = {0};
-        np_resolve_signatures(g_images[m].mh, g_images[m].slide, &db,
+        lb_resolve_result_t res = {0};
+        lb_resolve_signatures(g_images[m].mh, g_images[m].slide, &db,
                               g_images[m].module, &res);
 
         for (int i = 0; i < db.sig_count; i++) {
-            np_sig_entry_t *sig = &db.signatures[i];
+            lb_sig_entry_t *sig = &db.signatures[i];
             if (strcmp(sig->module, g_images[m].module) != 0) continue;
             if (sig->deprecated || !sig->aob_hex[0] || !sig->func_addr_this_build) continue;
 
-            uintptr_t got  = np_lookup_address(&res, sig->name);
+            uintptr_t got  = lb_lookup_address(&res, sig->name);
             uintptr_t want = sig->func_addr_this_build + (uintptr_t)g_images[m].slide;
             checked++;
             if (!got) {
@@ -305,11 +305,11 @@ static int check_aob_fallback(const char *path) {
                 bad++;
             }
         }
-        np_free_resolution(&res);
+        lb_free_resolution(&res);
     }
     printf("  %d signatures with a pattern and a recorded address, %d wrong\n\n",
            checked, bad);
-    np_free_profile(&db);
+    lb_free_profile(&db);
     return bad;
 }
 
@@ -337,7 +337,7 @@ static int report_db(const dbcheck_t *db, int is_live, int misses_excused) {
         const row_t *r = &db->rows[i];
         const char *verdict;
 
-        if (r->kind == NP_MATCH_NONE)          { verdict = "NO ANCHOR";     bad++; }
+        if (r->kind == LB_MATCH_NONE)          { verdict = "NO ANCHOR";     bad++; }
         else if (!r->anchor)                   { verdict = (r->has_pattern && r->aob)
                                                              ? "ANCHOR FAILED (aob resolves)"
                                                              : "ANCHOR FAILED";
@@ -402,7 +402,7 @@ int main(int argc, char **argv) {
     const char *home = getenv("HOME");
     if (!home) { fprintf(stderr, "HOME unset\n"); return 3; }
 
-    if (load_image(NP_MODULE_DEFAULT) != 0) return 3;
+    if (load_image(LB_MODULE_DEFAULT) != 0) return 3;
 
     char paths[MAX_DBS][512];
     int n = 0;
@@ -414,7 +414,7 @@ int main(int argc, char **argv) {
     dbcheck_t dbs[MAX_DBS] = {0};
     for (int i = 0; i < n; i++) {
         snprintf(dbs[i].path, sizeof(dbs[i].path), "%s", paths[i]);
-        if (np_load_profile(dbs[i].path, &dbs[i].sigdb) != 0) {
+        if (lb_load_profile(dbs[i].path, &dbs[i].sigdb) != 0) {
             fprintf(stderr, "cannot load sigdb '%s'\n", dbs[i].path);
             return 2;
         }
@@ -424,7 +424,7 @@ int main(int argc, char **argv) {
             if (load_image(mod) == 0) continue;
             fprintf(stderr, "sigdb '%s' names module '%s', which will not load\n",
                     dbs[i].path, mod);
-            return strcmp(mod, NP_MODULE_DEFAULT) == 0 ? 3 : 2;
+            return strcmp(mod, LB_MODULE_DEFAULT) == 0 ? 3 : 2;
         }
     }
     for (int i = 0; i < n; i++) {
@@ -442,14 +442,14 @@ int main(int argc, char **argv) {
                "checked. Anchors are what the dylib resolves from, so this is not a "
                "failure.\n");
     } else {
-        const image_t *sc = image_for(NP_MODULE_DEFAULT);
+        const image_t *sc = image_for(LB_MODULE_DEFAULT);
         bad += run_rtti(sc->mh, sc->slide, sc->text, sc->text_sz, dbs[live].build);
         bad += check_aob_fallback(dbs[live].path);
     }
 
     for (int i = 0; i < n; i++) {
         free(dbs[i].rows);
-        np_free_profile(&dbs[i].sigdb);
+        lb_free_profile(&dbs[i].sigdb);
     }
     return bad ? 1 : 0;
 }

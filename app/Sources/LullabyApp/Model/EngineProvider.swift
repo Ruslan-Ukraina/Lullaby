@@ -86,13 +86,13 @@ struct DormisonEngine: EngineProvider {
             dllPaths(arch: arch).map { $0.path(percentEncoded: false) }.joined(separator: ":")
         }
         let pairs: [(String, String)] = [
-            ("NP_ENGINE_VERSION", version),
-            ("NP_ENGINE_COMMIT", capabilities.commit ?? ""),
-            ("NP_ENGINE_WINELOADER", wineloader.path(percentEncoded: false)),
-            ("NP_ENGINE_WINESERVER", wineserver.path(percentEncoded: false)),
-            ("NP_ENGINE_UNIX_DIR", unixDirectory.path(percentEncoded: false)),
-            ("NP_ENGINE_DLLPATH_X86_64", dllPath(.x86_64)),
-            ("NP_ENGINE_DLLPATH_I386", dllPath(.i386)),
+            ("LB_ENGINE_VERSION", version),
+            ("LB_ENGINE_COMMIT", capabilities.commit ?? ""),
+            ("LB_ENGINE_WINELOADER", wineloader.path(percentEncoded: false)),
+            ("LB_ENGINE_WINESERVER", wineserver.path(percentEncoded: false)),
+            ("LB_ENGINE_UNIX_DIR", unixDirectory.path(percentEncoded: false)),
+            ("LB_ENGINE_DLLPATH_X86_64", dllPath(.x86_64)),
+            ("LB_ENGINE_DLLPATH_I386", dllPath(.i386)),
         ]
         return "# Written by Lullaby for compat_run.sh. Do not edit.\n"
             + pairs.map { "\($0.0)=\(Self.quote($0.1))" }.joined(separator: "\n") + "\n"
