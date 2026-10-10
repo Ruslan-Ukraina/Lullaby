@@ -12,6 +12,7 @@ struct LullabyApp: App {
         HeadlessMigration.runIfRequested()
         AppLog.start()
         DormisonEngine().ensureEnvironmentFile()
+        HeadlessSetup.runIfRequested()
         HeadlessInstall.runIfRequested()
         HeadlessEngine.runIfRequested()
         HeadlessRelease.runIfRequested()
