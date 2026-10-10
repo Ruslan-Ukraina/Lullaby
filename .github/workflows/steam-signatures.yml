@@ -7,13 +7,17 @@ name: steam-signatures
 # Dry run (a dryrun-signatures-* tag, or "Run workflow" with dry_run): the TEST
 # keys, nothing published, no issues; the feed it would publish is an artifact.
 
-# The schedule is a parameter: repository variable LB_STEAM_CHECK_HOURS (default 3, 0 = never
-# by schedule, rounded up to a multiple of 3, how often the cron fires). The cron
+# The schedule is a parameter: repository variable LB_STEAM_CHECK_HOURS (default 6, 0 = never
+# by schedule, rounded up to a multiple of 6, how often the cron fires). The cron
 # starts only a short Linux gate; the macOS job runs when Valve offers a build without a database (DECISIONS P6-13).
+# Every 6 hours, not 3: a gate is a billed minute each time it fires (Phase 6, private repository).
+# Once a day (the 05:23 firing) the gate also checks that Valve's CDN still serves the
+# packages Install pins (release/valve-check.sh, INDEPENDENCE I5); a gone package opens an issue.
 
 on:
   schedule:
-    - cron: "23 */3 * * *"
+    - cron: "23 5 * * *"
+    - cron: "23 11,17,23 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -47,12 +51,33 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HOURS: ${{ vars.LB_STEAM_CHECK_HOURS }}
-          DEFAULT_HOURS: "3"
-          CRON_HOURS: "3"
+          DEFAULT_HOURS: "6"
+          CRON_HOURS: "6"
           LB_RELEASE_PRIVATE_KEY: ${{ secrets.LB_RELEASE_PRIVATE_KEY }}
         run: |
           release/ci-gate.sh steam | tee -a "$GITHUB_OUTPUT"
           grep '^reason=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2- >> "$GITHUB_STEP_SUMMARY"
+
+      # In the gate, on Linux: costs no macOS minute and no extra job.
+      - name: Valve still serves the pinned packages (daily, INDEPENDENCE I5)
+        if: github.event.schedule == '23 5 * * *' || github.event_name != 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rc=0; release/valve-check.sh > "$RUNNER_TEMP/valve.log" 2>&1 || rc=$?
+          { echo '### Valve packages (I5)'; echo '```'; cat "$RUNNER_TEMP/valve.log"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          [ "$rc" = 0 ] && exit 0
+          [ "$rc" = 1 ] || exit "$rc"
+          title="Valve no longer serves a package Lullaby's Install pins"
+          { echo "The steam-signatures workflow: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo; echo '```'; cat "$RUNNER_TEMP/valve.log"; echo '```'; echo
+            echo "A clean Install fails until valve-packages.manifest pins packages Valve serves (docs/INDEPENDENCE.md I5)."
+          } > "$RUNNER_TEMP/valve-issue.md"
+          if [ "$DRY_RUN" = true ] && [ "${{ github.event_name }}" != schedule ]; then
+            echo "Dry run, would open: **$title**" >> "$GITHUB_STEP_SUMMARY"
+          else
+            release/gh-publish.sh issue "$title" "$RUNNER_TEMP/valve-issue.md"
+          fi
 
   signatures:
     needs: gate

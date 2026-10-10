@@ -18,6 +18,8 @@ Phase 6 CI (.github/workflows, docs/RELEASING.md):
 
     feed.py valve-manifest <steam_client[_publicbeta]_osx>        version and packages, as JSON
     feed.py engine-versions <engine.json>                          "<channel> <version>" lines
+    feed.py pin-engine --engine E --out <pin.json> <bridge manifest>...
+                                                                   an engine.json naming E alone
     feed.py config <key>                                           a value of release/feed.json
     feed.py bridge-artifact --files-dir <dir> --b1-dir <dir> --engine E --commit C --rev N \
         --feed <base url> --out <feed dir>                         a bridge built from source
@@ -430,6 +432,31 @@ def engine_versions(args):
             print(channel, info["version"])
 
 
+def pin_engine(args):
+    """An engine.json (schema 2, one channel "pin") for a Dormison release its own manifest
+    no longer names: the url, sha256 and size a bridge entry recorded (engineRelease,
+    DECISIONS P8-17). engine/fetch-dormison.sh takes it as PIN_JSON and still checks the
+    tarball against Dormison's signature; bridge-artifact takes it as --engine-json."""
+    found = None
+    for path in args.manifests:
+        if not path or not os.path.exists(path):
+            continue
+        for entry in json.load(open(path))["bridges"]:
+            if entry["engine"] == args.engine and entry.get("engineRelease"):
+                release = entry["engineRelease"]
+                if found and found != release:
+                    raise SystemExit(f"{args.engine}: the manifests disagree on where it comes from")
+                found = release
+    if not found:
+        raise SystemExit(f"no bridge entry records where {args.engine} comes from (engineRelease)")
+    if not found["url"].startswith("https://github.com/kageroumado/dormison/releases/download/"):
+        raise SystemExit(f"{found['url']} is not a Dormison release asset")
+    write_json(args.out, {"schema": 2, "channels": {"pin": {
+        "version": args.engine, "url": found["url"], "sha256": found["sha256"],
+        "sizeBytes": found["sizeBytes"], "notes": "pinned from a bridge entry's engineRelease"}}})
+    print(f"==> {args.out}: {args.engine} from {found['url']}")
+
+
 CONFIG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "feed.json")
 
 
@@ -498,6 +525,10 @@ def main():
     s = sub.add_parser("engine-versions")
     s.add_argument("file")
     s.set_defaults(run=engine_versions)
+    s = sub.add_parser("pin-engine")
+    s.add_argument("--engine", required=True); s.add_argument("--out", required=True)
+    s.add_argument("manifests", nargs="+")
+    s.set_defaults(run=pin_engine)
     s = sub.add_parser("bridge-manifest")
     s.add_argument("--serial", type=int, required=True); s.add_argument("--out", required=True)
     s.add_argument("entries", nargs="+")

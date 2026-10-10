@@ -1,0 +1,3 @@
+# xcode-27: the GitHub-hosted macOS 27 image in public preview (docs/RISKS.md R51).
+self-hosted-runner:
+  labels: [xcode-27]

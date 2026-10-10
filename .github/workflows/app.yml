@@ -1,12 +1,16 @@
 name: app
 
-# Checks on every push to dormison and every pull request: the dylib, the shim and
-# the helpers build, the hermetic C suites and the Swift tests pass. The release
-# build itself (bundle, keys, Sparkle) is release.yml.
+# Checks on a pull request or "Run workflow" (and on a push to main only when the
+# repository variable LB_CI_ON_PUSH is true): the dylib, the shim and the helpers
+# build, the hermetic C suites and the Swift tests pass. The release build itself
+# (bundle, keys, Sparkle) is release.yml, which runs the same suites.
+# Off on push by default: ~4 macOS minutes a run are ~40 of the private repository's
+# 2000 a month (Phase 6); the same tests run locally before every commit.
 
 on:
   push:
-    branches: [dormison]
+    branches: [main]
+    paths-ignore: ["docs/**", "**/*.md"]
   pull_request:
   workflow_dispatch:
 
@@ -19,10 +23,10 @@ env:
 jobs:
   build:
     name: build and test
-    # Repository variable LB_CI_ON_PUSH=false turns the per-push run off (macOS
+    # Repository variable LB_CI_ON_PUSH=true turns the per-push run on (macOS
     # minutes in a private repository, DECISIONS P6-13); pull requests and
-    # "Run workflow" still run it.
-    if: github.event_name != 'push' || vars.LB_CI_ON_PUSH != 'false'
+    # "Run workflow" always run it.
+    if: github.event_name != 'push' || vars.LB_CI_ON_PUSH == 'true'
     runs-on: xcode-27
     timeout-minutes: 45
     steps:

@@ -16,6 +16,11 @@
 #             the published and the repository's signatures manifests list
 #   dormison  the versions Dormison's channels name, against the engines the
 #             published and the repository's bridge manifests have bridges for
+# A build or a version that already has an issue is not news: the macOS job would only
+# fail or build the same candidate again, every time the cron fires.
+#   steam     an open issue naming the build (it is retried once the issue is closed)
+#   dormison  any issue naming the version, open or closed: a candidate waits for the
+#             owner, and one he turned down is not built again (Run workflow still does)
 # Prints run=true|false and a reason, for $GITHUB_OUTPUT.
 set -eu
 
@@ -26,6 +31,12 @@ hours=${HOURS:-}
 [ -n "$hours" ] || hours=${DEFAULT_HOURS:-24}
 
 say() { echo "run=$1"; echo "reason=$2"; exit 0; }
+# has_issue <open|all> <text>: an issue whose title contains <text>
+has_issue() {
+	n=$(gh issue list --repo "$GITHUB_REPOSITORY" --state "$1" --search "\"$2\" in:title" \
+		--json title --jq "[.[] | select(.title | contains(\"$2\"))] | length" 2>/dev/null) || n=0
+	[ "${n:-0}" -gt 0 ]
+}
 
 if [ "${GITHUB_EVENT_NAME:-}" != schedule ]; then
 	say true "started by hand or by a tag"
@@ -58,6 +69,10 @@ steam)
 				continue 2
 			fi
 		done
+		if has_issue open "build $build "; then
+			echo "Steam build $build ($name) has an open issue; skipped" >&2
+			continue
+		fi
 		say true "Steam build $build ($name) has no database yet"
 	done
 	say false "every Steam build Valve offers has a database"
@@ -74,6 +89,10 @@ dormison)
 				continue 2
 			fi
 		done
+		if has_issue all "for $version "; then
+			echo "$version has an issue (a candidate or a failed build); skipped" >&2
+			continue
+		fi
 		say true "$version has no bridge yet"
 	done
 	say false "every Dormison release on a channel has a bridge"

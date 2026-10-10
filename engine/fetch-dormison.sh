@@ -14,7 +14,7 @@
 # runners/current is switched by an atomic rename and the release it pointed at
 # before stays on disk for rollback.
 #
-# Overridable: CHANNEL, RUNNERS, CACHE, MANIFEST_URL, DORMISON_PUBKEY
+# Overridable: CHANNEL, RUNNERS, CACHE, MANIFEST_URL, DORMISON_PUBKEY, PIN_JSON
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -48,14 +48,24 @@ if [ ! -x "$VERIFY" ] || [ "$here/verify-ed25519.swift" -nt "$VERIFY" ]; then
 	swiftc -O -o "$VERIFY" "$here/verify-ed25519.swift"
 fi
 
-# 1. The manifest, always fresh, and its signature.
-echo "==> fetching $MANIFEST_URL"
-curl -fsSL -o "$CACHE/engine.json.new" "$MANIFEST_URL"
-curl -fsSL -o "$CACHE/engine.json.sig.new" "$MANIFEST_URL.sig"
-"$VERIFY" "$DORMISON_PUBKEY" "$CACHE/engine.json.new" "$CACHE/engine.json.sig.new" \
-	|| die "engine.json does not carry Dormison's signature, refusing it"
-mv -f "$CACHE/engine.json.new" "$CACHE/engine.json"
-mv -f "$CACHE/engine.json.sig.new" "$CACHE/engine.json.sig"
+# 1. The manifest, always fresh, and its signature. PIN_JSON instead names a release
+# Dormison's manifest no longer lists (only the newest is there): a file in the same
+# schema that this repository wrote from bridge/bridge-manifest.json (engineRelease,
+# DECISIONS P8-17), so it is trusted as the repository is; the tarball below is still
+# checked against Dormison's own signature.
+if [ -n "${PIN_JSON:-}" ]; then
+	echo "==> pinned release from $PIN_JSON"
+	cp -f "$PIN_JSON" "$CACHE/engine.json"
+	rm -f "$CACHE/engine.json.sig"
+else
+	echo "==> fetching $MANIFEST_URL"
+	curl -fsSL -o "$CACHE/engine.json.new" "$MANIFEST_URL"
+	curl -fsSL -o "$CACHE/engine.json.sig.new" "$MANIFEST_URL.sig"
+	"$VERIFY" "$DORMISON_PUBKEY" "$CACHE/engine.json.new" "$CACHE/engine.json.sig.new" \
+		|| die "engine.json does not carry Dormison's signature, refusing it"
+	mv -f "$CACHE/engine.json.new" "$CACHE/engine.json"
+	mv -f "$CACHE/engine.json.sig.new" "$CACHE/engine.json.sig"
+fi
 
 # shellcheck disable=SC2046 # four whitespace-free fields, split on purpose
 set -- $(python3 - "$CACHE/engine.json" "$CHANNEL" <<'PY'

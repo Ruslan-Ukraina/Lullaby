@@ -53,6 +53,8 @@ cp "$WINE_BUILD/programs/steam.exe/x86_64-windows/steam.exe" "$files/steam.exe"
 cp "$WINE_BUILD/dlls/lsteamclient/x86_64-windows/lsteamclient.dll" "$files/x86_64-windows-lsteamclient.dll"
 cp "$WINE_BUILD/dlls/lsteamclient/lsteamclient.so" "$files/x86_64-unix-lsteamclient.so"
 cp "$WINE_BUILD/dlls/lsteamclient/i386-windows/lsteamclient.dll" "$files/i386-windows-lsteamclient.dll"
+# Shipped without debug information (OPTIMIZATION O1); the unstripped copies stay in $W/bridge-debug.
+"$repo/bridge/strip-debug.sh" "$files" "$W/bridge-debug"
 
 say "the hook in Wine, x86_64 and i386"
 t="$W/bridge-test"
