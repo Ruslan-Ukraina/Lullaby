@@ -187,8 +187,11 @@ private struct Rig {
     }
 
     /// The app's bundled bridge list: one bridge per version in `versions`, built
-    /// against `commit`, with its B1 files (i386 left out with `missingB1`).
-    func supporting(_ versions: [String], commit: String = commit, missingB1: Bool = false) throws {
+    /// against `commit`, with its B1 files (i386 left out with `missingB1`). Versions in
+    /// `downloadable` also say where their engine comes from (publish them first).
+    func supporting(
+        _ versions: [String], commit: String = commit, missingB1: Bool = false, downloadable: Set<String> = []
+    ) throws {
         let fm = FileManager.default
         try? fm.removeItem(at: supportDir)
         var bridges: [[String: Any]] = []
@@ -211,10 +214,18 @@ private struct Rig {
                     "b1": Digest.sha256(of: b1Ntdll(arch, version)),
                 ])
             }
-            bridges.append([
+            var entry: [String: Any] = [
                 "id": "bridge-\(version)-1", "engine": version, "engineCommit": commit, "rev": 1,
                 "files": files.map { ["name": $0, "path": "bridge/\($0)"] }, "ntdll": ntdll,
-            ])
+            ]
+            if downloadable.contains(version) {
+                let url = assetURL(version)
+                let bytes = try #require(transport.state.withLock { $0.files[url] })
+                entry["engineRelease"] = [
+                    "url": url.absoluteString, "sha256": Digest.sha256(of: bytes), "sizeBytes": bytes.count,
+                ] as [String: Any]
+            }
+            bridges.append(entry)
         }
         let table = try JSONSerialization.data(withJSONObject: [
             "schema": 1, "serial": 1, "bridges": bridges,
@@ -353,6 +364,92 @@ struct EngineUpdaterTests {
         }
         #expect(newer.version == "dormison-b2")
         #expect(reason.contains("bridge"))
+    }
+
+    @Test("Dormison's newest has no bridge: the newest engine that has one is installed, then the check waits")
+    func newestWithBridge() async throws {
+        let rig = Rig()
+        defer { rig.remove() }
+        try rig.publish("dormison-b1")
+        try rig.publish("dormison-b2")
+        try rig.publish("dormison-b3")
+        try rig.announce("dormison-b3")
+        try rig.supporting(["dormison-b1", "dormison-b2"], downloadable: ["dormison-b1", "dormison-b2"])
+
+        guard case .available(let release) = try await rig.updater.check(channel: .beta) else {
+            Issue.record("expected the newest engine with a bridge")
+            return
+        }
+        #expect(release.version == "dormison-b2")
+        #expect(release.url == rig.assetURL("dormison-b2"))
+        let outcome = try await rig.updater.install(release, mayQuitSteam: false)
+        #expect(outcome.version == "dormison-b2")
+        #expect(rig.current() == "dormison-b2")
+
+        // Installed is the newest with a bridge: nothing to take, b3 waits for its bridge.
+        guard case .waiting(let newer, _) = try await rig.updater.check(channel: .beta) else {
+            Issue.record("expected waiting for b3")
+            return
+        }
+        #expect(newer.version == "dormison-b3")
+
+        // A bridge that does not say where its engine comes from is not a way back to it.
+        let empty = Rig()
+        defer { empty.remove() }
+        try empty.publish("dormison-b3")
+        try empty.announce("dormison-b3")
+        try empty.supporting(["dormison-b2"])
+        guard case .waiting = try await empty.updater.check(channel: .beta) else {
+            Issue.record("expected waiting without a known download")
+            return
+        }
+    }
+
+    @Test("An older installed engine moves up to the newest with a bridge; a bad tarball is still refused")
+    func fallbackIsChecked() async throws {
+        let rig = Rig()
+        defer { rig.remove() }
+        try rig.publish("dormison-b1")
+        try rig.announce("dormison-b1")
+        try rig.supporting(["dormison-b1"])
+        _ = try await rig.install("dormison-b1")
+
+        try rig.publish("dormison-b2", signer: Curve25519.Signing.PrivateKey())
+        try rig.publish("dormison-b3")
+        try rig.announce("dormison-b3")
+        try rig.supporting(["dormison-b1", "dormison-b2"], downloadable: ["dormison-b2"])
+        guard case .available(let release) = try await rig.updater.check(channel: .beta) else {
+            Issue.record("expected b2")
+            return
+        }
+        #expect(release.version == "dormison-b2")
+        // b2's tarball carries another key's signature: refused, b1 stays.
+        let message = await failure { _ = try await rig.updater.install(release, mayQuitSteam: false) }
+        #expect(message != "no error")
+        #expect(rig.current() == "dormison-b1")
+    }
+
+    @Test("A bridge's engine download must be Dormison's own release asset")
+    func engineReleaseIsDormisons() throws {
+        let base: [String: Any] = [
+            "id": "bridge-dormison-b2-1", "engine": "dormison-b2",
+            "engineCommit": String(repeating: "a", count: 40), "rev": 1,
+            "files": BridgePayload.entries.map { ["name": $0.resource, "path": "bridge/\($0.resource)"] },
+            "ntdll": ["x86_64", "i386"].map {
+                ["arch": $0, "path": "wine/lib/wine/\($0)-windows/ntdll.dll", "file": "n/\($0).dll",
+                 "clean": String(repeating: "1", count: 64), "b1": String(repeating: "2", count: 64)]
+            },
+        ]
+        func parse(_ url: String) -> BridgeRelease? {
+            var item = base
+            item["engineRelease"] = ["url": url, "sha256": String(repeating: "3", count: 64), "sizeBytes": 10]
+            return try? BridgeRelease.parse(item, remote: nil, root: URL(filePath: "/tmp"), bundled: true)
+        }
+        let good = parse("https://github.com/kageroumado/dormison/releases/download/b2/dormison-b2.tar.xz")
+        #expect(good?.engineRelease?.sizeBytes == 10)
+        #expect(parse("https://example.com/kageroumado/dormison/releases/download/b2/dormison-b2.tar.xz") == nil)
+        #expect(parse("https://github.com/someone/dormison/releases/download/b2/dormison-b2.tar.xz") == nil)
+        #expect(parse("https://github.com/kageroumado/dormison/releases/download/b3/dormison-b3.tar.xz") == nil)
     }
 
     // MARK: Install
@@ -729,16 +826,20 @@ struct EngineUpdaterTests {
         #expect(store.state == .init(current: "bridge-dormison-b1-1", previous: "bridge-dormison-b2-1"))
     }
 
-    @Test("The shipped bridge list names dormison-b1 with its commit and both B1 files")
+    @Test("The shipped bridge list names dormison-b2 with its commit, both B1 files and its Dormison download")
     func shippedTable() throws {
         let repo = URL(filePath: #filePath).deletingLastPathComponent().appending(path: "../../..").standardizedFileURL
         let data = try Data(contentsOf: repo.appending(path: "bridge/bridge-manifest.json"))
         let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
         let releases = BridgeRelease.list(json, remote: nil, root: repo, bundled: true)
-        let entry = try #require(releases.first { $0.engine == "dormison-b1" })
-        #expect(entry.engineCommit == "52c2a4b918d6ec5f469ed4e5f58777598c9378ff")
+        let entry = try #require(releases.first { $0.engine == "dormison-b2" })
+        #expect(entry.engineCommit == "768e85ab0393025b463f5f371810a12a34d0466d")
         // Any revision: a release bundles the one dormison-bridge published (DECISIONS P6-2).
-        #expect(entry.id == "bridge-dormison-b1-\(entry.rev)")
+        #expect(entry.id == "bridge-dormison-b2-\(entry.rev)")
+        // Install falls back to it while Dormison's newest has no bridge (DECISIONS P8-17).
+        let download = try #require(entry.engineRelease)
+        #expect(download.url.absoluteString == "https://github.com/kageroumado/dormison/releases/download/b2/dormison-b2.tar.xz")
+        #expect(download.sizeBytes == 232_970_284)
         #expect(Set(entry.ntdll.map(\.arch)) == ["x86_64", "i386"])
         #expect(Set(entry.files.map(\.name)) == BridgeRelease.fileNames)
         _ = EngineSignature.dormisonKey

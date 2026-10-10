@@ -559,8 +559,9 @@ WINE_BUILD := scratch/dormison-build
 
 # A release bundles the bridges the bridge workflow published (DECISIONS P6-2):
 # BRIDGE_FEED_DIR holds <id>/<id>.tar.xz for each entry of bridge/bridge-manifest.json.
+# A local build takes scratch/bridge-feed when it is there (DECISIONS P8-17).
 # Empty, the bridge comes from the local wine tree and scratch/ntdll-b1.
-BRIDGE_FEED_DIR ?=
+BRIDGE_FEED_DIR ?= $(wildcard scratch/bridge-feed)
 
 BRIDGE_FILES := \
 	$(WINE_BUILD)/programs/steam.exe/x86_64-windows/steam.exe:steam.exe \

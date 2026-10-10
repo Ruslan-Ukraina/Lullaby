@@ -175,9 +175,18 @@ struct EngineUpdater: Sendable {
     }
 
     func evaluate(_ manifest: EngineManifest, channel: EngineChannel) throws -> EngineUpdateCheck {
-        guard let release = manifest.release(for: channel) else { return .nothingOnChannel(channel) }
-        let verdict = try support().verdict(for: release.version)
-        if let installed = installedVersion {
+        let catalog = try support()
+        let installed = installedVersion
+        // Dormison's newest release may have no bridge yet; meanwhile the newest engine
+        // that has one is taken, when it is newer than what is installed (DECISIONS P8-17).
+        let fallback = catalog.newestDownloadableEngine(on: channel).flatMap { found in
+            installed.map { EngineManifest.isOlder($0, than: found.version) } ?? true ? found : nil
+        }
+        guard let release = manifest.release(for: channel) else {
+            return fallback.map(EngineUpdateCheck.available) ?? .nothingOnChannel(channel)
+        }
+        let verdict = catalog.verdict(for: release.version)
+        if let installed {
             if installed == release.version {
                 if case .supported = verdict { return .upToDate(release, supported: true) }
                 return .upToDate(release, supported: false)
@@ -186,7 +195,12 @@ struct EngineUpdater: Sendable {
         }
         switch verdict {
         case .supported: return .available(release)
-        case .waiting(let reason): return .waiting(release, reason: reason)
+        case .waiting(let reason):
+            if let fallback, EngineManifest.isOlder(fallback.version, than: release.version) {
+                AppLog.note("engine: \(release.version) has no Steam bridge yet, taking \(fallback.version), the newest that has")
+                return .available(fallback)
+            }
+            return .waiting(release, reason: reason)
         }
     }
 
@@ -254,12 +268,18 @@ struct EngineUpdater: Sendable {
 
         let tarball = try await obtainTarball(release, report: report)
 
-        if case .remote = bridgeRelease.origin {
+        switch bridgeRelease.origin {
+        case .remote:
             guard case .ready(let feed) = feed else {
                 throw StepFailure(step: step, detail: ReleaseFeed.noKey)
             }
             bridgeRelease = try await bridgeStore.obtain(
                 bridgeRelease, key: feed.key, transport: transport, report: { report(.bridge($0)) })
+        case .packed:
+            bridgeRelease = try await bridgeStore.obtain(
+                bridgeRelease, key: nil, transport: transport, report: { report(.bridge($0)) })
+        case .bundled, .installed:
+            break
         }
         let entry = bridgeRelease
 

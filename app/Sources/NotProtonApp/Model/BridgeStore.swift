@@ -93,20 +93,39 @@ struct BridgeStore: Sendable {
 
     // MARK: Download
 
-    /// A remote build downloaded, verified and unpacked into bridges/<id>; a local one as it is.
+    /// A remote build downloaded, verified and unpacked into bridges/<id>; one packed in
+    /// the app checked and unpacked the same way; a local one as it is. `key` checks a
+    /// download's signature (nil: NotProton's releases are off, so only packed ones go).
     func obtain(
-        _ release: BridgeRelease, key: Curve25519.Signing.PublicKey, transport: any EngineTransport,
+        _ release: BridgeRelease, key: Curve25519.Signing.PublicKey?, transport: any EngineTransport,
         report: @escaping @Sendable (BridgePhase) -> Void = { _ in }
     ) async throws -> BridgeRelease {
-        guard case .remote(let url, let sha, let total) = release.origin else { return release }
         let step = Self.step
         let fm = FileManager.default
+        switch release.origin {
+        case .bundled, .installed:
+            return release
+        case .remote, .packed:
+            break
+        }
         if let installed = Self.installedReleases(in: store).first(where: { $0.id == release.id }),
            installed.files == release.files, installed.ntdll == release.ntdll,
            installed.engineFiles == release.engineFiles
         {
             return installed
         }
+        if case .packed(let archive, let sha, let total) = release.origin {
+            report(.verifying)
+            guard size(of: archive) == total, Digest.sha256IfPresent(archive) == sha else {
+                AppLog.note("bridge: the packed \(archive.lastPathComponent) does not match its entry")
+                throw StepFailure(
+                    step: step, detail: "The Steam bridge inside NotProton is damaged. Download NotProton again.")
+            }
+            AppLog.note("bridge: packed \(archive.lastPathComponent) verified (size, sha256)")
+            return try unpack(release, archive: archive, report: report)
+        }
+        guard case .remote(let url, let sha, let total) = release.origin else { return release }
+        guard let key else { throw StepFailure(step: step, detail: ReleaseFeed.noKey) }
         try fm.createDirectory(at: downloads, withIntermediateDirectories: true)
         try fm.createDirectory(at: store, withIntermediateDirectories: true)
         let name = url.lastPathComponent
@@ -158,7 +177,17 @@ struct BridgeStore: Sendable {
                 detail: "The downloaded Steam bridge does not carry NotProton's release signature, so NotProton deleted it.")
         }
         AppLog.note("bridge: \(name) verified (size, sha256, signature)")
+        let installed = try unpack(release, archive: part, report: report)
+        try? fm.removeItem(at: part)
+        return installed
+    }
 
+    /// A checked tarball into bridges/<id>, every file against the entry.
+    private func unpack(
+        _ release: BridgeRelease, archive part: URL, report: @escaping @Sendable (BridgePhase) -> Void
+    ) throws -> BridgeRelease {
+        let fm = FileManager.default
+        try fm.createDirectory(at: store, withIntermediateDirectories: true)
         report(.unpacking)
         let partial = store.appending(path: ".\(release.id).partial")
         try? fm.removeItem(at: partial)
@@ -182,7 +211,6 @@ struct BridgeStore: Sendable {
             } else {
                 try fm.moveItem(at: partial, to: destination)
             }
-            try? fm.removeItem(at: part)
             AppLog.note("bridge: \(release.id) installed in bridges/")
             var installed = release
             installed.origin = .installed(destination)
@@ -525,9 +553,14 @@ struct BridgeUpdater: Sendable {
         }
         report(.checking)
         var local = release
-        if case .remote = release.origin {
+        switch release.origin {
+        case .remote:
             guard case .ready(let feed) = feed else { throw StepFailure(step: step, detail: ReleaseFeed.noKey) }
             local = try await store.obtain(release, key: feed.key, transport: feed.transport(over: transport), report: report)
+        case .packed:
+            local = try await store.obtain(release, key: nil, transport: transport, report: report)
+        case .bundled, .installed:
+            break
         }
         report(.switching)
         // An install from before Phase 5 has no state.json yet: the build already in

@@ -235,6 +235,7 @@ jobs:
           python3 -I release/feed.py bridge-artifact --files-dir "$RUNNER_TEMP/bridge-files" \
             --b1-dir "scratch/ntdll-b1/${{ steps.detect.outputs.engine }}" \
             --fixes-dir "scratch/engine-fixes/${{ steps.detect.outputs.engine }}" \
+            --engine-json "$RUNNER_TEMP/dormison/engine.json" \
             --engine "${{ steps.detect.outputs.engine }}" --commit "${{ steps.engine.outputs.commit }}" \
             --rev "${{ steps.detect.outputs.rev }}" --feed "$FEED" --out "$feed"
           id="bridge-${{ steps.detect.outputs.engine }}-${{ steps.detect.outputs.rev }}"

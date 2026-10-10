@@ -13,14 +13,23 @@
 //                    "file": "ntdll/x86_64-ntdll.dll", "clean": "…", "b1": "…" }, … ],
 //       "engineFiles": [ { "path": "wine/lib/wine/x86_64-unix/winemac.so",
 //                          "file": "engine/winemac.so", "clean": "…", "patched": "…" } ],
+//       "engineRelease": { "url": "https://github.com/kageroumado/dormison/releases/download/b1/dormison-b1.tar.xz",
+//                          "sha256": "…", "sizeBytes": 123 },
 //       "url": "<feed>/bridge-dormison-b1-2/bridge-dormison-b1-2.tar.xz",
 //       "sha256": "…", "sizeBytes": 123 } ] }
+//
+// engineRelease (optional) is the Dormison tarball the bridge was built for. Dormison's
+// engine.json names only its newest release; with this, Install can still take the
+// newest engine that has a bridge (DECISIONS P8-17). The tarball is checked the same
+// way: this sha256 and size, and Dormison's own signature.
 //
 // Three places feed the catalog, the higher wins for one id:
 //   installed  notproton/bridges/<id>/bridge.json, files verified when installed;
 //   bundled    the app's payload (engine-support/bridge-manifest.json), no url and
 //              no file digests: SwiftPM strips Mach-O resources (R27), the app's
-//              own signature covers them;
+//              own signature covers them. A bridge with engine fixes (Mach-O .so
+//              files) is bundled as its published tarball instead ("archive", every
+//              file with its digest) and unpacked into bridges/ when it is needed;
 //   remote     the signed manifest from NotProton's releases (ReleaseFeed), every
 //              file with its digest.
 // An engine is supported when some bridge names its version: the commit and the
@@ -61,8 +70,17 @@ struct BridgeRelease: Sendable, Equatable {
         let patched: String
     }
 
+    /// Where the engine this bridge was built for is downloaded from.
+    struct EngineDownload: Sendable, Equatable {
+        let url: URL
+        let sha256: String
+        let sizeBytes: Int64
+    }
+
     enum Origin: Sendable, Equatable {
         case bundled(URL)
+        /// The published tarball inside the app, unpacked into bridges/ before use.
+        case packed(archive: URL, sha256: String, sizeBytes: Int64)
         case installed(URL)
         case remote(url: URL, sha256: String, sizeBytes: Int64)
     }
@@ -74,16 +92,22 @@ struct BridgeRelease: Sendable, Equatable {
     let files: [File]
     let ntdll: [Ntdll]
     var engineFiles: [EngineFile] = []
+    var engineRelease: EngineDownload?
     var origin: Origin
 
     var root: URL? {
         switch origin {
         case .bundled(let root), .installed(let root): root
-        case .remote: nil
+        case .remote, .packed: nil
         }
     }
 
-    var isBundled: Bool { if case .bundled = origin { true } else { false } }
+    var isBundled: Bool {
+        switch origin {
+        case .bundled, .packed: true
+        case .installed, .remote: false
+        }
+    }
 
     /// "revision 2 for Dormison b1"
     var label: String { "revision \(rev) for \(EngineStore.displayName(engine))" }
@@ -115,6 +139,12 @@ struct BridgeRelease: Sendable, Equatable {
             out["engineFiles"] = engineFiles.map {
                 ["path": $0.path, "file": $0.file, "clean": $0.clean, "patched": $0.patched]
             }
+        }
+        if let engineRelease {
+            out["engineRelease"] = [
+                "url": engineRelease.url.absoluteString, "sha256": engineRelease.sha256,
+                "sizeBytes": engineRelease.sizeBytes,
+            ] as [String: Any]
         }
         if case .remote(let url, let sha, let size) = origin {
             out["url"] = url.absoluteString
@@ -149,7 +179,7 @@ struct BridgeRelease: Sendable, Equatable {
             else { throw bad("a file entry is unusable") }
             let sha = (raw["sha256"] as? String)?.lowercased()
             if let sha, !EngineManifest.isSHA256(sha) { throw bad("\(name) has no valid sha256") }
-            if !bundled, sha == nil { throw bad("\(name) has no sha256") }
+            if !bundled || item["archive"] != nil, sha == nil { throw bad("\(name) has no sha256") }
             files.append(File(name: name, path: path, sha256: sha))
         }
         guard Set(files.map(\.name)) == fileNames, files.count == fileNames.count else {
@@ -183,6 +213,17 @@ struct BridgeRelease: Sendable, Equatable {
             throw bad("an engine file is listed twice")
         }
 
+        var engineRelease: EngineDownload?
+        if let raw = item["engineRelease"] {
+            guard let raw = raw as? [String: Any],
+                  let text = raw["url"] as? String, let url = URL(string: text),
+                  EngineSignature.isDormisonAsset(url), url.lastPathComponent == "\(engine).tar.xz",
+                  let sha = (raw["sha256"] as? String)?.lowercased(), EngineManifest.isSHA256(sha),
+                  let size = (raw["sizeBytes"] as? NSNumber)?.int64Value, size > 0
+            else { throw bad("its engine download is not a Dormison release asset with a sha256 and size") }
+            engineRelease = EngineDownload(url: url, sha256: sha, sizeBytes: size)
+        }
+
         let origin: Origin
         if let feed {
             guard let text = item["url"] as? String, let url = URL(string: text), feed.allows(url),
@@ -193,6 +234,13 @@ struct BridgeRelease: Sendable, Equatable {
             }
             guard let size = (item["sizeBytes"] as? NSNumber)?.int64Value, size > 0 else { throw bad("no size") }
             origin = .remote(url: url, sha256: sha, sizeBytes: size)
+        } else if let root, bundled, let raw = item["archive"] {
+            guard let raw = raw as? [String: Any],
+                  let path = raw["path"] as? String, EngineSupport.isSafeRelative(path),
+                  let sha = (raw["sha256"] as? String)?.lowercased(), EngineManifest.isSHA256(sha),
+                  let size = (raw["sizeBytes"] as? NSNumber)?.int64Value, size > 0
+            else { throw bad("its bundled archive is unusable") }
+            origin = .packed(archive: root.appending(path: path), sha256: sha, sizeBytes: size)
         } else if let root {
             origin = bundled ? .bundled(root) : .installed(root)
         } else {
@@ -200,7 +248,7 @@ struct BridgeRelease: Sendable, Equatable {
         }
         return BridgeRelease(
             id: id, engine: engine, engineCommit: commit.lowercased(), rev: rev, files: files, ntdll: ntdll,
-            engineFiles: engineFiles, origin: origin)
+            engineFiles: engineFiles, engineRelease: engineRelease, origin: origin)
     }
 
     /// The bridge list of a manifest. Unusable entries are left out and logged, so
@@ -231,7 +279,7 @@ struct BridgeCatalog: Sendable {
         func rank(_ release: BridgeRelease) -> Int {
             switch release.origin {
             case .installed: 2
-            case .bundled: 1
+            case .bundled, .packed: 1
             case .remote: 0
             }
         }
@@ -301,6 +349,23 @@ struct BridgeCatalog: Sendable {
     }
 
     func release(id: String) -> BridgeRelease? { releases.first { $0.id == id } }
+
+    /// The newest engine NotProton can download by itself, from the bridges that say
+    /// where their engine comes from, and only when that bridge is usable (verdict).
+    /// What Install falls back to while Dormison's newest release has no bridge.
+    func newestDownloadableEngine(on channel: EngineChannel) -> EngineRelease? {
+        let engines = Set(releases.filter { $0.engineRelease != nil }.map(\.engine))
+        let newestFirst = engines.sorted { EngineManifest.isOlder($1, than: $0) }
+        for engine in newestFirst {
+            guard case .supported = verdict(for: engine),
+                  let download = candidates(for: engine).lazy.compactMap(\.engineRelease).first
+            else { continue }
+            return EngineRelease(
+                channel: channel, version: engine, url: download.url, sha256: download.sha256,
+                sizeBytes: download.sizeBytes, notes: "the newest engine with a Steam bridge", minAppVersion: nil)
+        }
+        return nil
+    }
 }
 
 /// Helpers shared with the engine side.

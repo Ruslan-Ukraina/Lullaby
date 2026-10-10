@@ -189,6 +189,52 @@ struct BridgeUpdaterTests {
         #expect(rig.engineFile(fix) == BridgeRig.fixed("dormison-b1", rev: 2))
     }
 
+    @Test("A bridge with engine fixes packed in the app: unpacked and checked without a feed; a damaged one refused")
+    func packedBridge() async throws {
+        let rig = BridgeRig()
+        defer { rig.remove() }
+        let fm = FileManager.default
+        try rig.engine()
+        let entry = try rig.artifact(rev: 2, engineFix: true)
+        let id = "bridge-dormison-b1-2"
+        let built = try #require(fm.enumerator(at: rig.root, includingPropertiesForKeys: nil)?
+            .compactMap { $0 as? URL }.first { $0.lastPathComponent == "\(id).tar.xz" })
+        let archive = rig.payload.appending(path: "engine-support/\(id).tar.xz")
+        try fm.createDirectory(at: archive.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try fm.copyItem(at: built, to: archive)
+        var packed = entry.filter { !["url", "sha256", "sizeBytes"].contains($0.key) }
+        packed["archive"] = ["path": "engine-support/\(id).tar.xz", "sha256": entry["sha256"]!, "sizeBytes": entry["sizeBytes"]!]
+        try JSONSerialization.data(withJSONObject: ["schema": 1, "serial": 1, "bridges": [packed]] as [String: Any])
+            .write(to: rig.payload.appending(path: "engine-support/bridge-manifest.json"))
+
+        var updater = rig.updater
+        updater.feed = .off("test")
+        guard case .available(let offered, nil) = try await updater.check() else {
+            Issue.record("the packed bridge should be offered")
+            return
+        }
+        #expect(offered.isBundled)
+        #expect(offered.root == nil)
+        #expect(BridgeCatalog.load(bundledRoot: rig.payload, store: rig.store, feed: .off("test"), manifests: rig.manifests)
+            .verdict(for: "dormison-b1") == .supported(offered))
+        _ = try await updater.install(offered)
+        #expect(updater.active?.id == id)
+        #expect(rig.engineFile(BridgeRig.fixPath) == BridgeRig.fixed("dormison-b1", rev: 2))
+        #expect(rig.liveFile("steam.exe") == BridgeRig.file("steam.exe", rev: 2))
+        #expect(fm.fileExists(atPath: archive.path(percentEncoded: false)), "the app's own copy stays")
+        #expect(rig.feed.transport.fetched.withLock { $0 }.isEmpty)
+
+        // Gone from bridges/ (Delete) and damaged in the app: refused, nothing unpacked.
+        try fm.removeItem(at: rig.store)
+        let handle = try FileHandle(forWritingTo: archive)
+        try handle.seek(toOffset: 40)
+        try handle.write(contentsOf: Data("x".utf8))
+        try handle.close()
+        let message = await failureMessage { _ = try await updater.install(offered) }
+        #expect(message.contains("damaged"))
+        #expect(BridgeStore.installedReleases(in: rig.store).isEmpty)
+    }
+
     @Test("An engine fix for a file that is not the release's is refused, the engine untouched")
     func engineFixRefusesForeignFile() async throws {
         let rig = BridgeRig()
