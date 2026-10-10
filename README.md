@@ -1,77 +1,84 @@
 # Lullaby
 
-Play Windows games from your Steam library on a Mac, inside the normal macOS Steam app,
-the way Steam Play (Proton) works on Linux.
+Грайте у віндовські ігри зі своєї бібліотеки Steam просто на Mac — у звичайному Steam для
+macOS, так само як Steam Play (Proton) працює на Linux.
 
-Lullaby runs games on [Dormison](https://github.com/kageroumado/dormison), a free Wine
-engine for macOS, and keeps itself up to date.
+Ігри запускаються на [Dormison](https://github.com/kageroumado/dormison) — вільному
+рушії Wine для macOS, а Lullaby сама стежить, щоб усе було свіже.
 
-## What you get
+## Що ви отримуєте
 
-- **Steam Play in macOS Steam.** A Windows game gets a Play button. Steam's overlay,
-  achievements, friends and cloud saves work through a Mac port of Valve's `lsteamclient`.
-- **Game settings inside Steam.** Properties → Compatibility shows the renderer, Retina,
-  upscaler and FPS counter, with more under "Advanced settings…". Steam Settings →
-  Compatibility holds the defaults for all games. English, Ukrainian and Russian.
-- **Renderers.** D3DMetal, DXMT (Direct3D 10/11 on Metal, the default), DXVK, WineD3D.
-  D3DMetal (needed for Direct3D 12) comes from Apple's Game Porting Toolkit, which you
-  download from Apple yourself and add in Lullaby. Lullaby never ships it.
-- **Game windows from Dormison.** Native macOS windows that resize, native full screen,
-  upscaling (Lanczos, MetalFX), an FPS counter, raw mouse input and a held cursor; msync
-  is always on.
-- **Recipes.** Games Lullaby knows get the setup that worked best (marked "Lullaby
-  recipe"); your own choice always wins, and "Restore recipe" goes back.
-- **Updates.** The engine (signed by Dormison), the Steam bridge, the Steam signatures and
-  the app itself update from signed releases. Steam is held back from a build Lullaby
-  does not support yet.
+- **Steam Play у Steam для macOS.** У віндовської гри з'являється кнопка «Грати».
+  Оверлей Steam, досягнення, друзі й хмарні збереження працюють через макову версію
+  `lsteamclient` від Valve.
+- **Налаштування гри просто в Steam.** У «Властивості → Сумісність» — рендерер, Retina,
+  апскейлер і лічильник FPS, а решта схована під «Додаткові налаштування…». У налаштуваннях
+  Steam («Сумісність») задаються типові значення для всіх ігор. Мови — українська,
+  англійська й російська.
+- **Рендерери.** D3DMetal, DXMT (Direct3D 10/11 на Metal, він стоїть за замовчуванням),
+  DXVK, WineD3D. D3DMetal потрібен для Direct3D 12 — він входить до Game Porting Toolkit
+  від Apple: ви самі завантажуєте його в Apple й додаєте в Lullaby. Сама Lullaby його не
+  поширює.
+- **Вікна ігор від Dormison.** Справжні вікна macOS, які можна розтягувати, нативний
+  повноекранний режим, масштабування (Lanczos, MetalFX), лічильник FPS, «сирий» рух миші
+  та курсор, що не тікає з вікна. msync увімкнено завжди.
+- **Рецепти.** Ігри, які Lullaby вже знає, одразу дістають налаштування, з якими вони
+  йдуть найкраще (позначка «Рецепт Lullaby»). Ваш власний вибір завжди важливіший, а
+  кнопка «Повернути рецепт» поверне все як було.
+- **Оновлення.** Рушій (підписаний Dormison), міст Steam, сигнатури Steam і сам застосунок
+  оновлюються з підписаних релізів. Якщо новий білд Steam Lullaby ще не підтримує, Steam
+  на нього не оновиться, поки підтримка не з'явиться.
 
-## Install
+## Установлення
 
-1. You need a Mac with Apple silicon, macOS 27, Rosetta, and Steam in `/Applications`.
-2. Open Lullaby and press **Install**. It closes Steam gently, patches it, and downloads
-   the engine.
-3. Start Steam from `/Applications/Steam.app`. In a Windows game's Properties →
-   Compatibility, turn on the compatibility tool, then press Play.
+1. Потрібен Mac на Apple silicon, macOS 26 або новіша, Rosetta і Steam у
+   `/Applications`.
+2. Відкрийте Lullaby й натисніть **Встановити**. Вона акуратно закриє Steam, пропатчить
+   його й завантажить рушій.
+3. Запускайте Steam з `/Applications/Steam.app`. У віндовської гри відкрийте
+   «Властивості → Сумісність», увімкніть інструмент сумісності — і тисніть «Грати».
 
-The app is not notarized yet: the first time, open it from System Settings → Privacy &
-Security → "Open Anyway".
+Застосунок поки не завірений Apple (немає нотаризації), тому першого разу відкрийте його
+через «Системні параметри → Приватність і безпека → Усе одно відкрити».
 
-## What is not there
+## Чого поки немає
 
-- **Online games with anti-cheat** (VAC, EasyAntiCheat, BattlEye): not tested, do not play
-  them online.
-- **32-bit games** are not checked on a live game yet.
-- **Direct3D 12** needs D3DMetal (your own copy from Apple).
-- **Native full screen** (the green button) scales a fixed-size game window; use the game's
-  borderless mode for full resolution. A rework is planned.
-- Some Steam client builds are not supported until their signatures are published; Steam
-  waits for them instead of updating.
+- **Онлайн-ігри з античитом** (VAC, EasyAntiCheat, BattlEye) не перевіряли — в онлайні в
+  них краще не грати.
+- **32-бітні ігри** на живій грі ще не перевірені.
+- **Direct3D 12** працює тільки з D3DMetal (вашою власною копією від Apple).
+- **Нативний повноекранний режим** (зелена кнопка) просто розтягує вікно гри
+  фіксованого розміру. Щоб мати повну роздільність, вмикайте в самій грі режим «вікно без
+  рамки». Це планують переробити.
+- Деякі білди Steam підтримуються лише після того, як для них вийдуть сигнатури. Доти
+  Steam чекає, а не оновлюється.
 
-## Where things come from
+## Звідки що взялося
 
-| Part | From | License |
+| Частина | Звідки | Ліцензія |
 |---|---|---|
-| Lullaby (this repository) | based on [NotProton](https://github.com/NotProtonNot/NotProton) by NotProtonNot and contributors | GPL-3.0 |
-| Engine | [Dormison](https://github.com/kageroumado/dormison) (Wine + wine-staging + its own work) by kageroumado | LGPL-2.1-or-later |
-| Settings catalog, texts, graphics card identity | [Sevoflurane](https://github.com/kageroumado/sevoflurane) by kageroumado | MIT |
-| Two engine fixes (memory accounting, Retina screen size) | [Highball](https://github.com/gauthierpiarrette/highball-engine) by gauthierpiarrette | LGPL-2.1-or-later |
-| `lsteamclient` | Valve's [Proton](https://github.com/ValveSoftware/Proton) | Steamworks SDK License |
-| `steam-shim` | Valve's Proton `steam_helper` | BSD-3-Clause |
-| DXMT, DXVK, MoltenVK | inside Dormison's release, unchanged | LGPL-2.1-or-later, zlib, Apache-2.0 |
-| Function hooks inside Steam | [Dobby](https://github.com/jmpews/Dobby) by Jmpews | Apache-2.0 |
-| App updates | [Sparkle](https://sparkle-project.org) | MIT |
-| D3DMetal (yours) | Apple Game Porting Toolkit | Apple's license, not distributed |
+| Lullaby (цей репозиторій) | на основі [NotProton](https://github.com/NotProtonNot/NotProton) від NotProtonNot і співавторів | GPL-3.0 |
+| Рушій | [Dormison](https://github.com/kageroumado/dormison) (Wine + wine-staging + власні напрацювання) від kageroumado | LGPL-2.1-or-later |
+| Каталог налаштувань, тексти, ідентифікація відеокарти | [Sevoflurane](https://github.com/kageroumado/sevoflurane) від kageroumado | MIT |
+| Два виправлення рушія (облік пам'яті, розмір екрана Retina) | [Highball](https://github.com/gauthierpiarrette/highball-engine) від gauthierpiarrette | LGPL-2.1-or-later |
+| `lsteamclient` | [Proton](https://github.com/ValveSoftware/Proton) від Valve | Steamworks SDK License |
+| `steam-shim` | `steam_helper` з Proton від Valve | BSD-3-Clause |
+| DXMT, DXVK, MoltenVK | усередині релізу Dormison, без змін | LGPL-2.1-or-later, zlib, Apache-2.0 |
+| Перехоплення функцій усередині Steam | [Dobby](https://github.com/jmpews/Dobby) від Jmpews | Apache-2.0 |
+| Оновлення застосунку | [Sparkle](https://sparkle-project.org) | MIT |
+| D3DMetal (ваш) | Apple Game Porting Toolkit | ліцензія Apple, не поширюється |
 
-The details, and which files each part covers, are in [NOTICE](NOTICE).
+Подробиці й те, які файли до якої частини належать, — у [NOTICE](NOTICE).
 
-## For developers
+## Для розробників
 
-- `app/` — the macOS app and the settings CLI (Swift); `dylib/` — the library loaded into
-  Steam; `lsteamclient/`, `steam-shim/` — the Steam bridge; `ntdll-patch/b1/` — the loader
-  hook built from Dormison's source; `engine-fixes/` — single engine files rebuilt with
-  fixes, each first proven equal to the release.
-- `make app` builds the app, `make app-tests` runs the Swift tests; the C and script
-  checks are the other targets in the `Makefile`.
-- Plans, decisions and progress: `docs/` (in Russian).
+- `app/` — застосунок для macOS і консольна утиліта налаштувань (Swift); `dylib/` —
+  бібліотека, яка завантажується в Steam; `lsteamclient/`, `steam-shim/` — міст Steam;
+  `ntdll-patch/b1/` — хук завантажувача, зібраний з вихідного коду Dormison;
+  `engine-fixes/` — окремі файли рушія, перезібрані з виправленнями (кожен спершу
+  перевірено на збіг із релізом).
+- `make app` збирає застосунок, `make app-tests` запускає тести Swift; перевірки C і
+  скриптів — це інші цілі в `Makefile`.
+- Плани, рішення й журнал роботи — у `docs/` (російською).
 
-Issues and pull requests are welcome.
+Issues і pull requests — завжди раді.
