@@ -1,6 +1,6 @@
-// The NotProton window (Phase 8, ROADMAP §9, with the owner's edit): icon, name, a line
-// of state, one button (Install, Update or Delete), ⚙︎ at the bottom left and the
-// credits signature at the bottom right. A failure is a system alert; the same button
+// The NotProton window (Phase 8, ROADMAP §9, with the owner's edits): icon, name, a line
+// of state, one button (Install, Update or Delete), the credits signature at the bottom
+// left and ⚙︎ at the bottom right; the title bar is part of the background. A failure is a system alert; the same button
 // tries again. System controls only.
 
 import AppKit
@@ -98,8 +98,22 @@ struct MainView: View {
         }
     }
 
+    /// The signature at the bottom left, ⚙︎ at the bottom right (owner, 10.10).
     private func footer(_ screen: MainScreen) -> some View {
         HStack(alignment: .bottom) {
+            Button { showsCredits = true } label: {
+                Text(verbatim: "Ruslan_Ukraina")
+                    .font(.caption2.weight(.light))
+                    .foregroundStyle(.tertiary)
+                    .underline(hoveringCredits)
+            }
+            .buttonStyle(.plain)
+            .onHover { hoveringCredits = $0 }
+            .help(tr("Credits and licenses"))
+            .accessibilityLabel(tr("Credits and licenses"))
+
+            Spacer()
+
             Button {
                 model.gearOpened()
                 showsGear = true
@@ -121,19 +135,6 @@ struct MainView: View {
                 GearPanel(close: { showsGear = false })
                     .environment(model)
             }
-
-            Spacer()
-
-            Button { showsCredits = true } label: {
-                Text(verbatim: "Ruslan_Ukraina")
-                    .font(.caption2.weight(.light))
-                    .foregroundStyle(.tertiary)
-                    .underline(hoveringCredits)
-            }
-            .buttonStyle(.plain)
-            .onHover { hoveringCredits = $0 }
-            .help(tr("Credits and licenses"))
-            .accessibilityLabel(tr("Credits and licenses"))
         }
     }
 

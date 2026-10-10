@@ -22,6 +22,9 @@ struct NotProtonApp: App {
                 .environment(main)
                 .task { await main.opened() }
         }
+        // The title bar is part of the window's background, traffic lights over it (owner, 10.10).
+        .windowStyle(.hiddenTitleBar)
+        .windowBackgroundDragBehavior(.enabled)
         .windowResizability(.contentSize)
         .defaultSize(MainView.size)
         .commands {
