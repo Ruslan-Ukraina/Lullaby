@@ -6,7 +6,7 @@
 
 ## Переименование в Lullaby (сейчас) — ждёт тебя
 
-1. **«можно» на перенос на твоём Mac** — SPIKE_TEST §18 (папка → `lullaby`, Repair + новый патч Steam, 5 игр в `config.vdf` с копией). Код и проверка на копии — готовы (P9-11…P9-14), ветка `lullaby-rename`.
+1. ~~**«можно» на перенос на твоём Mac**~~ — сделано 10.10 ~21:42 (P9-16). **Сейчас:** запусти PEAK из `/Applications/Steam.app` (или напиши «ушёл» — запущу сам) и скажи, как прошло. Было: — SPIKE_TEST §18 (папка → `lullaby`, Repair + новый патч Steam, 5 игр в `config.vdf` с копией). Код и проверка на копии — готовы (P9-11…P9-14), ветка `lullaby-rename`.
 2. **I7:** git bundle лежит в `~/Projects/NotProton/scratch/backups/` (имя и sha256 — в `INDEPENDENCE.md` §I7). Перенеси в iCloud Drive сам.
 3. **CLAUDE.md:** предложение правки — `RENAME_LULLABY.md`, «Состояние». Без твоего «ок» не меняю.
 4. Влить `lullaby-rename` в `phase-8` — после переноса и твоей проверки (или скажи — волью сразу).
