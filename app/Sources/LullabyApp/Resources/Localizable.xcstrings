@@ -3024,6 +3024,102 @@
         }
       },
       "generatesSymbol": false
+    },
+    "Lullaby is updated": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lullaby is updated"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lullaby обновлена"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lullaby оновлено"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Restart Lullaby to finish. Steam and your games keep running.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restart Lullaby to finish. Steam and your games keep running."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перезапустите Lullaby, чтобы завершить. Steam и игры продолжают работать."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перезапустіть Lullaby, щоб завершити. Steam та ігри працюють далі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Restart": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restart"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перезапустить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перезапустити"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Later": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Later"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Позже"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пізніше"
+          }
+        }
+      },
+      "generatesSymbol": false
     }
   },
   "version": "1.0"

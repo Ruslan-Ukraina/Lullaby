@@ -10,6 +10,9 @@ struct UpdatePlan: Equatable, Sendable {
     var engine: EngineRelease?
     var bridge: BridgeRelease?
     var steamPatch = false
+    /// The dylib inside Steam differs: putting it in place closes Steam. Only the recorded
+    /// version differing (an app update with the same dylib) is written with Steam open.
+    var steamPatchQuits = true
     /// Lullaby.app's newer version, as Sparkle names it.
     var app: String?
 
@@ -26,7 +29,7 @@ struct UpdatePlan: Equatable, Sendable {
     }
 
     /// Engine switches and the Steam patch close Steam.
-    var closesSteam: Bool { engine != nil || steamPatch }
+    var closesSteam: Bool { engine != nil || (steamPatch && steamPatchQuits) }
 }
 
 /// The updaters the steps use. The window uses the real ones; `--release update` and
@@ -163,9 +166,12 @@ enum SetupSteps {
     }
 
     static func app() -> FlowStep {
-        FlowStep(.app, tr("Updating Lullaby")) { _ in
-            // Sparkle shows its own window, downloads, and asks to relaunch.
-            await MainActor.run { AppUpdater.shared.check() }
+        FlowStep(.app, tr("Updating Lullaby")) { detail in
+            // Sparkle without its windows: the progress is this step's, and when the new
+            // version is ready MainModel asks to restart (one system alert).
+            _ = try await AppUpdater.shared.install { received, total in
+                detail(downloaded(received, of: total ?? 0))
+            }
         }
     }
 

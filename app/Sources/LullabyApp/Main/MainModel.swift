@@ -188,7 +188,10 @@ final class MainModel {
         }
         await status.checkReleases(quiet: true)
         if case .available(let release, _)? = status.bridgeCheck { plan.bridge = release }
-        if case .outdated? = status.snapshot?.steam { plan.steamPatch = true }
+        if case .outdated(_, _, let stale)? = status.snapshot?.steam {
+            plan.steamPatch = true
+            plan.steamPatchQuits = stale.contains(.dylib)
+        }
         plan.app = await AppUpdater.shared.probe()
         return plan
     }
@@ -241,7 +244,16 @@ final class MainModel {
 
     func confirmCloseSteam(_ kind: FlowKind) async {
         question = nil
+        reopenSteam = true
         await run(kind)
+    }
+
+    /// The owner agreed to close Steam for a flow: it opens again when the flow is done
+    /// (owner, 11.10: "agreed to restart Steam, but it did not restart").
+    private var reopenSteam = false
+    @ObservationIgnored var openSteam: @MainActor () -> Void = {
+        AppLog.note("main: opening Steam again")
+        NSWorkspace.shared.openApplication(at: SupportPaths.Steam.app, configuration: .init())
     }
 
     func retry() async {
@@ -294,6 +306,10 @@ final class MainModel {
     }
 
     private func finished(succeeded: Bool) async {
+        if reopenSteam, !runner.canRetry {
+            reopenSteam = false
+            if !(await probe().steam) { openSteam() }
+        }
         guard succeeded, case .finished(let kind)? = runner.state else {
             alertShown = runner.canRetry
             await status.refresh()
@@ -305,11 +321,27 @@ final class MainModel {
         }
         await status.refresh()
         runner.dismiss()
+        if AppUpdater.pendingRelaunch {
+            askToRelaunch()
+            return
+        }
         if kind == .delete {
             plan = nil
         } else if kind != .steamUpdates, kind != .addToolkit {
             await checkForUpdates()
         }
+    }
+
+    /// The new Lullaby.app is downloaded and verified: one system alert, then Sparkle
+    /// quits and relaunches it (owner, 11.10: no Sparkle windows).
+    private func askToRelaunch() {
+        let alert = NSAlert()
+        alert.messageText = tr("Lullaby is updated")
+        alert.informativeText = tr("Restart Lullaby to finish. Steam and your games keep running.")
+        alert.addButton(withTitle: tr("Restart"))
+        alert.addButton(withTitle: tr("Later"))
+        let now = alert.runModal() == .alertFirstButtonReturn
+        AppUpdater.shared.relaunch(now: now)
     }
 
     static func realSteps(_ kind: FlowKind, _ model: MainModel) -> [FlowStep] {

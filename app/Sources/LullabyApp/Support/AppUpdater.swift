@@ -12,6 +12,9 @@ import Sparkle
 // Pre-release versions (tags like v1.1.0-pre.1) are published on Sparkle's "beta"
 // channel and offered only after "Pre-release versions" in Status is turned on.
 //
+// No Sparkle window (owner, 11.10): QuietUserDriver; the main window's Update installs
+// the new version and one system alert asks to restart.
+//
 // A private release repository (release/feed.json "access": "private", ROADMAP §3):
 // Sparkle sends the Keychain token through SPUUpdater.httpHeaders with
 // Accept: application/octet-stream, and the appcast's address is resolved through
@@ -33,7 +36,11 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
     }
 
     private(set) var setup: Setup
-    private var controller: SPUStandardUpdaterController?
+    private var updater: SPUUpdater?
+    private let driver = QuietUserDriver()
+    private var started = false
+    /// The window's Update downloaded a new version that waits for the restart alert.
+    static var pendingRelaunch = false
     /// Private mode: the feed's transport and the appcast's API address once resolved.
     private var privateFeed: GitHubAssetTransport?
     private var resolvedAppcast: URL?
@@ -88,27 +95,26 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
         }
         if case .off(let reason) = setup {
             // A token removed in ⚙︎ must not stay in Sparkle's headers.
-            controller?.updater.httpHeaders = nil
+            updater?.httpHeaders = nil
             AppLog.note("app updates: off, \(reason)")
             return
         }
-        if controller == nil {
-            controller = SPUStandardUpdaterController(
-                startingUpdater: privateFeed == nil, updaterDelegate: self, userDriverDelegate: nil)
+        if updater == nil {
+            // Sparkle without its windows (QuietUserDriver): the main window shows the update.
+            let made = SPUUpdater(hostBundle: .main, applicationBundle: .main, userDriver: driver, delegate: self)
             // No background checks (ROADMAP §9.5): the window looks when it opens.
-            controller?.updater.automaticallyChecksForUpdates = false
-            controller?.updater.automaticallyDownloadsUpdates = false
+            made.automaticallyChecksForUpdates = false
+            made.automaticallyDownloadsUpdates = false
+            updater = made
+            if privateFeed == nil { startSparkle() }
         }
         if let privateFeed {
-            controller?.updater.httpHeaders = [
+            updater?.httpHeaders = [
                 "Authorization": "Bearer \(privateFeed.token)",
                 "Accept": "application/octet-stream",
                 "X-GitHub-Api-Version": "2022-11-28",
             ]
-            Task { await resolveAppcast(then: { [weak self] in
-                guard let self, let controller = self.controller else { return }
-                if !controller.updater.sessionInProgress { controller.startUpdater() }
-            }) }
+            Task { await resolveAppcast(then: { [weak self] in self?.startSparkle() }) }
         }
         AppLog.note("app updates: on, \(version), \(privateFeed == nil ? "public" : "private") releases, "
             + "pre-releases \(Self.prereleases ? "on" : "off")")
@@ -136,21 +142,48 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
     func setPrereleases(_ wanted: Bool) {
         UserDefaults.standard.set(wanted, forKey: Self.prereleaseDefault)
         AppLog.note("app updates: pre-releases \(wanted ? "on" : "off")")
-        controller?.updater.resetUpdateCycleAfterShortDelay()
+        updater?.resetUpdateCycleAfterShortDelay()
     }
 
-    func check() {
-        guard let controller else { return }
-        AppLog.note("app updates: check requested")
-        if privateFeed != nil {
-            Task { await resolveAppcast(then: { [weak self] in
-                guard let controller = self?.controller else { return }
-                if !controller.updater.canCheckForUpdates { controller.startUpdater() }
-                controller.checkForUpdates(nil)
-            }) }
-            return
+    private func startSparkle() {
+        guard !started, let updater else { return }
+        do {
+            try updater.start()
+            started = true
+        } catch {
+            AppLog.note("app updates: Sparkle did not start: \(error.localizedDescription)")
         }
-        controller.checkForUpdates(nil)
+    }
+
+    /// The window's Update: Sparkle finds, downloads and verifies the new version without a
+    /// window of its own. true when it waits for the restart (relaunch(now:)), false when
+    /// there was nothing newer.
+    func install(progress: @escaping @MainActor (Int64, Int64?) -> Void) async throws -> Bool {
+        guard let updater, isAvailable else {
+            throw StepFailure(step: "Update Lullaby", detail: "Updates of Lullaby are off in this build.")
+        }
+        AppLog.note("app updates: install requested")
+        if privateFeed != nil {
+            await resolveAppcast(then: {})
+            guard resolvedAppcast != nil else {
+                throw StepFailure(step: "Update Lullaby", detail: EngineUpdater.offline)
+            }
+        }
+        startSparkle()
+        let ready = try await withCheckedThrowingContinuation { waiter in
+            driver.begin(progress: progress, waiter: waiter)
+            updater.checkForUpdates()
+        }
+        Self.pendingRelaunch = ready
+        return ready
+    }
+
+    /// The restart alert's answer: now quits and relaunches through Sparkle's installer.
+    func relaunch(now: Bool) {
+        Self.pendingRelaunch = false
+        AppLog.note("app updates: restart \(now ? "now" : "later")")
+        AppLog.flush()
+        driver.finish(now ? .install : .dismiss)
     }
 
     var isPrivate: Bool {
@@ -166,15 +199,15 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
     /// The newer version Sparkle finds, without showing anything (the window's Update).
     /// nil when there is none, when updates are off, or when the check does not answer.
     func probe(timeout: Duration = .seconds(20)) async -> String? {
-        guard let controller, isAvailable, probeWaiter == nil else { return nil }
+        guard let updater, isAvailable, probeWaiter == nil else { return nil }
         if privateFeed != nil {
             await resolveAppcast(then: {})
             guard resolvedAppcast != nil else { return nil }
-            if !controller.updater.canCheckForUpdates { controller.startUpdater() }
+            startSparkle()
         }
         return await withCheckedContinuation { waiter in
             probeWaiter = waiter
-            controller.updater.checkForUpdateInformation()
+            updater.checkForUpdateInformation()
             Task { [weak self] in
                 try? await Task.sleep(for: timeout)
                 self?.answerProbe(nil, why: "no answer in time")
@@ -193,7 +226,7 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
         resolvedAppcast?.absoluteString
     }
 
-    var lastCheck: Date? { controller?.updater.lastUpdateCheckDate }
+    var lastCheck: Date? { updater?.lastUpdateCheckDate }
 
     func allowedChannels(for updater: SPUUpdater) -> Set<String> {
         UserDefaults.standard.bool(forKey: Self.prereleaseDefault) ? [Self.prereleaseChannel] : []
