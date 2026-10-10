@@ -1142,3 +1142,5 @@ PEAK, DXMT, меню; `perf/peak-ab.sh` чередует «исходно → и
 3. Состояние машины: движок `runners/current` = dormison-b2, мост `bridge-dormison-b2-3` (ТЕСТОВЫЙ ключ, локальный фид `scratch/local-bridge/dormison-b2/feed`), Mullion v0.1-pre1 в `notproton/mullion`, D3DMetal 4.0 beta 2 в `notproton/d3dmetal`, `/Applications/NotProton.app` = обычная сборка `out/`.
 4. Правила, появившиеся в Фазе 7: конфиги игр не меняем (CLAUDE.md §8); игры — по «играю»/«ушёл» (память агента); замеры — чередованием, с цифрами до и после; тексты en/uk/ru простые.
 5. Фазу 8 начинать с плана по ROADMAP §9 и показать его владельцу до кода.
+
+- 10.10: две правки upstream (Dock для служебных процессов, инструмент по умолчанию) — **не нужны**, проверено (DECISIONS A1010-5).
