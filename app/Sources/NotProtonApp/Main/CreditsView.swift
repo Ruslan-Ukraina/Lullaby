@@ -62,6 +62,9 @@ enum Credits {
             Credit(name: "Sparkle", authors: "Sparkle Project",
                    license: "MIT", role: tr("Updates NotProton itself."),
                    link: "https://sparkle-project.org", noticeMarker: "Sparkle"),
+            Credit(name: "Dobby", authors: "Jmpews",
+                   license: "Apache-2.0", role: tr("Hooks functions inside Steam, so Steam shows Steam Play."),
+                   link: "https://github.com/jmpews/Dobby", noticeMarker: "Dobby"),
             Credit(name: "JsonCpp", authors: "Baptiste Lepilleur and contributors",
                    license: "Public domain / MIT", role: tr("Reads JSON in steam-shim."),
                    link: nil, noticeMarker: "JsonCpp"),
@@ -76,7 +79,8 @@ enum Credits {
 }
 
 struct CreditsView: View {
-    @Environment(\.dismiss) private var dismiss
+    static let windowID = "credits"
+    @Environment(\.dismissWindow) private var dismissWindow
 
     var body: some View {
         VStack(spacing: 0) {
@@ -92,7 +96,7 @@ struct CreditsView: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
-            .padding(.top, 18)
+            .padding(.top, 30)
             .padding(.bottom, 12)
             .padding(.horizontal, 20)
 
@@ -109,17 +113,45 @@ struct CreditsView: View {
 
             Divider()
 
-            HStack {
-                Text(tr("Full license texts are in the NOTICE file."))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Button(tr("Done")) { dismiss() }
-                    .keyboardShortcut(.defaultAction)
-            }
-            .padding(14)
+            Text(tr("Full license texts are in the NOTICE file."))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity)
+                .padding(12)
         }
-        .frame(width: 320, height: 400)
+        .frame(width: 320, height: 420)
+        .background(CreditsWindowSetup())
+        .onExitCommand { dismissWindow(id: Self.windowID) }
+    }
+}
+
+/// The credits window keeps only its close button and opens beside the main window.
+private struct CreditsWindowSetup: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { WindowHook() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    final class WindowHook: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard let window else { return }
+            window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+            window.standardWindowButton(.zoomButton)?.isHidden = true
+            window.isMovableByWindowBackground = true
+            DispatchQueue.main.async { Self.placeBesideMain(window) }
+        }
+
+        static func placeBesideMain(_ window: NSWindow) {
+            guard let main = NSApp.windows.first(where: { $0 !== window && $0.identifier?.rawValue.hasPrefix("main") == true }),
+                  let screen = main.screen ?? NSScreen.main
+            else { return }
+            let gap: CGFloat = 12
+            let area = screen.visibleFrame
+            var x = main.frame.maxX + gap
+            if x + window.frame.width > area.maxX { x = main.frame.minX - gap - window.frame.width }
+            x = min(max(x, area.minX), area.maxX - window.frame.width)
+            let top = min(main.frame.maxY, area.maxY)
+            window.setFrameTopLeftPoint(NSPoint(x: x, y: top))
+        }
     }
 }
 

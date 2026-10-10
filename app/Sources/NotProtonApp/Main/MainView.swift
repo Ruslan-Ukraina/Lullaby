@@ -9,7 +9,7 @@ import SwiftUI
 struct MainView: View {
     @Environment(MainModel.self) private var model
     @State private var showsGear = false
-    @State private var showsCredits = false
+    @Environment(\.openWindow) private var openWindow
     @State private var hoveringCredits = false
 
     static let size = CGSize(width: 360, height: 220)
@@ -36,7 +36,7 @@ struct MainView: View {
                 .padding(.top, 12)
             progress(screen)
                 .frame(height: 10)
-                .padding(.top, 6)
+                .padding(.top, 10)
             Spacer(minLength: 0)
             footer(screen)
         }
@@ -59,7 +59,6 @@ struct MainView: View {
         } message: { problem in
             Text(problem.message)
         }
-        .sheet(isPresented: $showsCredits) { CreditsView() }
     }
 
     // MARK: Parts
@@ -101,7 +100,7 @@ struct MainView: View {
     /// The signature at the bottom left, ⚙︎ at the bottom right (owner, 10.10).
     private func footer(_ screen: MainScreen) -> some View {
         HStack(alignment: .bottom) {
-            Button { showsCredits = true } label: {
+            Button { openWindow(id: CreditsView.windowID) } label: {
                 Text(verbatim: "Ruslan_Ukraina")
                     .font(.caption2.weight(.light))
                     .foregroundStyle(.tertiary)

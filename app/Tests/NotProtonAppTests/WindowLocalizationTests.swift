@@ -123,9 +123,23 @@ struct CreditsTests {
             #expect(!credit.license.isEmpty && !credit.authors.isEmpty && !credit.role.isEmpty)
         }
         let parts = ["lsteamclient", "steam-shim", "Sparkle", "JsonCpp", "cJSON", "OpenVR", "Sevoflurane",
-                     "NotProtonNot", "Dormison", "Highball", "Mullion", "D3DMetal", "DXMT", "DXVK", "MoltenVK"]
+                     "NotProtonNot", "Dormison", "Highball", "Mullion", "D3DMetal", "DXMT", "DXVK", "MoltenVK",
+                     "Dobby"]
         for part in parts where text.contains(part) {
             #expect(credits.contains { $0.noticeMarker == part || $0.name.contains(part) }, "no credit for \(part)")
+        }
+    }
+
+    @Test("Every library in vendor/ (vendor/README.md) has a credit and a NOTICE line")
+    func vendoredLibraries() throws {
+        let repo = Self.notice.deletingLastPathComponent()
+        let readme = try String(contentsOf: repo.appending(path: "vendor/README.md"), encoding: .utf8)
+        let notice = try String(contentsOf: Self.notice, encoding: .utf8)
+        let names = readme.split(separator: "\n").filter { $0.hasPrefix("## ") }.map { String($0.dropFirst(3)) }
+        #expect(!names.isEmpty)
+        for name in names {
+            #expect(Credits.all.contains { $0.name == name }, "no credit for \(name)")
+            #expect(notice.contains(name), "\(name) is not in NOTICE")
         }
     }
 

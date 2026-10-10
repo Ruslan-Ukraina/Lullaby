@@ -11,6 +11,20 @@ protocol EngineTransport: Sendable {
     /// HTTP Range request. `progress` gets the size of `part` as it grows. Throws
     /// when the transfer stops early; what arrived stays in `part` for next time.
     func download(_ url: URL, to part: URL, progress: @escaping @Sendable (Int64) -> Void) async throws
+
+    /// The same for a file whose size is known: several ranges at once where the
+    /// server allows it (SegmentedDownload). `part` ends up the same either way.
+    func download(
+        _ url: URL, to part: URL, size: Int64, progress: @escaping @Sendable (Int64) -> Void
+    ) async throws
+}
+
+extension EngineTransport {
+    func download(
+        _ url: URL, to part: URL, size: Int64, progress: @escaping @Sendable (Int64) -> Void
+    ) async throws {
+        try await download(url, to: part, progress: progress)
+    }
 }
 
 struct TransportFailure: LocalizedError, Equatable {
@@ -46,7 +60,40 @@ struct URLSessionEngineTransport: EngineTransport, RequestTransport {
         try await download(URLRequest(url: url), to: part, progress: progress)
     }
 
+    func download(
+        _ url: URL, to part: URL, size: Int64, progress: @escaping @Sendable (Int64) -> Void
+    ) async throws {
+        let pieces = SegmentedDownload.piecesDirectory(for: part)
+        do {
+            try await SegmentedDownload().run(part: part, total: size, fetch: { range, file, grew in
+                try await self.fetchRange(URLRequest(url: url), range: range, into: file, progress: grew)
+            }, progress: progress)
+        } catch is RangeUnsupported {
+            AppLog.note("download: \(url.lastPathComponent): the server ignores ranges, one stream instead")
+            try? FileManager.default.removeItem(at: pieces)
+            try await download(URLRequest(url: url), to: part, progress: progress)
+        }
+    }
+
+    /// Bytes `range` appended to `file` (one piece of a SegmentedDownload).
+    func fetchRange(
+        _ original: URLRequest, range: ClosedRange<Int64>, into file: URL,
+        progress: @escaping @Sendable (Int64) -> Void
+    ) async throws {
+        var request = original
+        request.setValue("bytes=\(range.lowerBound)-\(range.upperBound)", forHTTPHeaderField: "Range")
+        try await transfer(request, to: file, ranged: true, progress: progress)
+    }
+
     func download(_ original: URLRequest, to part: URL, progress: @escaping @Sendable (Int64) -> Void) async throws {
+        try await transfer(original, to: part, ranged: false, progress: progress)
+    }
+
+    /// `ranged`: the request carries its own Range and only 206 is accepted; otherwise
+    /// the file continues from its end, and a 200 starts it over.
+    private func transfer(
+        _ original: URLRequest, to part: URL, ranged: Bool, progress: @escaping @Sendable (Int64) -> Void
+    ) async throws {
         let fm = FileManager.default
         if !fm.fileExists(atPath: part.path(percentEncoded: false)) {
             fm.createFile(atPath: part.path(percentEncoded: false), contents: nil)
@@ -58,9 +105,9 @@ struct URLSessionEngineTransport: EngineTransport, RequestTransport {
         var request = original
         request.cachePolicy = .reloadIgnoringLocalCacheData
         request.timeoutInterval = 60
-        if offset > 0 { request.setValue("bytes=\(offset)-", forHTTPHeaderField: "Range") }
+        if !ranged, offset > 0 { request.setValue("bytes=\(offset)-", forHTTPHeaderField: "Range") }
 
-        let receiver = Receiver(handle: handle, offset: Int64(offset), progress: progress)
+        let receiver = Receiver(handle: handle, offset: Int64(offset), ranged: ranged, progress: progress)
         let queue = OperationQueue()
         queue.maxConcurrentOperationCount = 1
         let session = URLSession(configuration: .ephemeral, delegate: receiver, delegateQueue: queue)
@@ -80,13 +127,15 @@ struct URLSessionEngineTransport: EngineTransport, RequestTransport {
     private final class Receiver: NSObject, URLSessionDataDelegate, @unchecked Sendable {
         let handle: FileHandle
         var written: Int64
+        let ranged: Bool
         let progress: @Sendable (Int64) -> Void
         var continuation: CheckedContinuation<Void, Error>?
         var failure: Error?
 
-        init(handle: FileHandle, offset: Int64, progress: @escaping @Sendable (Int64) -> Void) {
+        init(handle: FileHandle, offset: Int64, ranged: Bool, progress: @escaping @Sendable (Int64) -> Void) {
             self.handle = handle
             self.written = offset
+            self.ranged = ranged
             self.progress = progress
         }
 
@@ -96,6 +145,16 @@ struct URLSessionEngineTransport: EngineTransport, RequestTransport {
         ) {
             // A file: URL (a local test feed) has no HTTP status; it is the whole file.
             let status = (response as? HTTPURLResponse)?.statusCode ?? (response.url?.isFileURL == true ? 200 : 0)
+            if ranged {
+                if status == 206 {
+                    completionHandler(.allow)
+                } else {
+                    failure = status == 200
+                        ? RangeUnsupported() : TransportFailure(detail: "The download server answered \(status).")
+                    completionHandler(.cancel)
+                }
+                return
+            }
             switch status {
             case 206 where written > 0:
                 AppLog.note("engine: server resumed the download at byte \(written) (206)")
@@ -143,7 +202,7 @@ struct URLSessionEngineTransport: EngineTransport, RequestTransport {
             let status = (task.response as? HTTPURLResponse)?.statusCode
             if let failure {
                 continuation?.resume(throwing: failure)
-            } else if status == 416 {
+            } else if status == 416, !ranged {
                 continuation?.resume()
             } else if let error {
                 continuation?.resume(throwing: error)

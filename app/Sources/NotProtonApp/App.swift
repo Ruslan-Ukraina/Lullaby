@@ -30,5 +30,13 @@ struct NotProtonApp: App {
         .commands {
             CommandGroup(replacing: .newItem) {}
         }
+
+        // Credits: a window of its own beside the main one, only the close button (owner, 10.10).
+        Window(Text(verbatim: "NotProton"), id: CreditsView.windowID) {
+            CreditsView()
+        }
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
+        .restorationBehavior(.disabled)
     }
 }

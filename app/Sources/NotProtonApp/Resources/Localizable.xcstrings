@@ -937,30 +937,6 @@
       },
       "generatesSymbol": false
     },
-    "Done": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Done"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Готово"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Готово"
-          }
-        }
-      },
-      "generatesSymbol": false
-    },
     "Downloaded %@": {
       "extractionState": "manual",
       "localizations": {
@@ -2654,13 +2630,13 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "macOS не разрешила NotProton изменить Steam. Разрешите NotProton в Системных настройках → «Управление приложениями» и попробуйте ещё раз."
+            "value": "macOS не разрешила NotProton вносить изменения в Steam. Разрешите NotProton в Системных настройках → «Управление приложениями» и попробуйте ещё раз."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "macOS не дозволила NotProton змінити Steam. Дозвольте NotProton у Системних параметрах → «Керування програмами» й спробуйте ще раз."
+            "value": "macOS не дозволила NotProton робити зміни в Steam. Дозвольте NotProton у Системних параметрах → «Керування програмами» й спробуйте ще раз."
           }
         }
       }
@@ -2685,6 +2661,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "не перевірена"
+          }
+        }
+      }
+    },
+    "Hooks functions inside Steam, so Steam shows Steam Play.": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooks functions inside Steam, so Steam shows Steam Play."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перехоплює функції всередині Steam, щоб у ньому з'явився Steam Play."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перехватывает функции внутри Steam, чтобы в нём появился Steam Play."
           }
         }
       }

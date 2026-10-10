@@ -401,7 +401,7 @@ struct EngineUpdater: Sendable {
                 let reported = Mutex<Int64>(already)
                 let stride = max(total / 100, 1 << 20)
                 do {
-                    try await transport.download(release.url, to: part) { received in
+                    try await transport.download(release.url, to: part, size: total) { received in
                         let due = reported.withLock { last in
                             guard received - last >= stride || received == total else { return false }
                             last = received
