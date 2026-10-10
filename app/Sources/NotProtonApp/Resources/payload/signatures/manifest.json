@@ -1,0 +1,40 @@
+{
+  "builds": [
+    {
+      "build": 1788400362,
+      "checked": "upstream",
+      "database": "1788400362.json"
+    },
+    {
+      "build": 1789086785,
+      "checked": "upstream",
+      "database": "1789086785.json"
+    },
+    {
+      "build": 1790904859,
+      "checked": "upstream",
+      "database": "1790904859.json"
+    },
+    {
+      "build": 1788652215,
+      "checked": "2026-10-06 make anchorcheck: 17 anchors resolved, 0 unresolved",
+      "database": "1790904859.json"
+    }
+  ],
+  "databases": [
+    {
+      "file": "1788400362.json",
+      "sha256": "e845128f9c9df505c571c1675ba92d333c4d7245f44981bee31cfcc9ee4a0e35"
+    },
+    {
+      "file": "1789086785.json",
+      "sha256": "1b2cbc2e91e5f52311dbfdba5839ffe331240968dc796c7f1e78226515422499"
+    },
+    {
+      "file": "1790904859.json",
+      "sha256": "bba3d3bee778323592e71353f02f2edd44955458da1b5900b4b2d81de643102b"
+    }
+  ],
+  "schema": 1,
+  "serial": 2
+}

@@ -4,7 +4,18 @@
 
 Обновлено: 2026-10-10, ~21:40 CEST.
 
-## Переименование в Lullaby (сейчас) — ждёт тебя
+## Чистка GitHub — нужна твоя команда (10.10 ~22:00)
+
+Автоматический режим не дал мне удалять ветки, теги и файлы релиза на GitHub. Резервная копия всего — `scratch/backups/lullaby-before-cleanup-2026-10-10.bundle`. Либо разреши мне (напиши «разрешаю удалять на GitHub» и подтверди запрос), либо выполни сам в терминале Claude Code (префикс `!`):
+
+```
+! cd ~/Projects/NotProton && git push origin --delete dev dormison phase-7 phase-8 lullaby-rename spike/dormison wip/7b-d3dmetal
+! cd ~/Projects/NotProton && git push origin --delete dryrun-app-1 dryrun-app-2 dryrun-app-3 dryrun-bridge-1 dryrun-bridge-2 dryrun-bridge-3 dryrun-signatures-1 dryrun-signatures-2 v1.0.0 v1.0.1 v1.0.2
+! gh release delete-asset sources-dormison dormison-b1-src.tar.xz -R Ruslan-Ukraina/Lullaby -y && gh release delete-asset sources-dormison dormison-b2-src.tar.xz -R Ruslan-Ukraina/Lullaby -y
+```
+После этого я поправлю `SHA256SUMS` и описание релиза (только r5) и запишу в INDEPENDENCE.
+
+## Переименование в Lullaby — сделано
 
 1. ~~**«можно» на перенос на твоём Mac**~~ — сделано 10.10 ~21:42 (P9-16). **Сейчас:** запусти PEAK из `/Applications/Steam.app` (или напиши «ушёл» — запущу сам) и скажи, как прошло. Было: — SPIKE_TEST §18 (папка → `lullaby`, Repair + новый патч Steam, 5 игр в `config.vdf` с копией). Код и проверка на копии — готовы (P9-11…P9-14), ветка `lullaby-rename`.
 2. **I7:** git bundle лежит в `~/Projects/NotProton/scratch/backups/` (имя и sha256 — в `INDEPENDENCE.md` §I7). Перенеси в iCloud Drive сам.
