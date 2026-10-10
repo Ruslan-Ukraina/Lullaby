@@ -82,11 +82,11 @@ static void *hook_FindToolForTargetApp(void *self, uint32_t appid) {
     if (!np_compat_would_force(self, appid))
         return NULL;
 
-    void *tool = np_compat_registered_tool(self);
-    if (tool)
+    void *ours = np_compat_registered_tool(self);
+    if (ours)
         NP_DBG("hook_FindToolForTargetApp: appID %u is windows-only, defaulting to the NotProton tool",
                appid);
-    return tool;
+    return ours;
 }
 
 static void *orig_InternalSpecifyCompatTool = NULL;
