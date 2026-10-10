@@ -123,16 +123,25 @@
   // value differs from it (a value equal to it is stored as inherit): "For all games" on a
   // game's page, NotProton's default for all games and for a game's own rows (the
   // renderer, msync+). One button under the block resets them all.
+  // A value NotProton's recipe supplies (DECISIONS A1010-3) is named as the recipe's, both
+  // when the game follows it and when its own choice differs from it.
   function describe(ctx, s, v, info) {
     var line = null;
     if (v.own !== null) {
       var shared = !ctx.global && s.levels.indexOf("global") >= 0;
-      line = T(ctx, shared ? "inherited" : "defaultValue", L(ctx, v.inheritedLabel));
+      line = v.inheritedFrom === "recipe" ? T(ctx, "recipeValue", L(ctx, v.inheritedLabel))
+        : T(ctx, shared ? "inherited" : "defaultValue", L(ctx, v.inheritedLabel));
+    } else if (!ctx.global && v.inheritedFrom === "recipe") {
+      line = T(ctx, "recipe");
     }
     return el("span", { className: "NPDesc" },
       s.caption ? el("span", { className: "NPCaption" }, L(ctx, s.caption)) : null,
       line ? el("span", { className: "NPInherit" }, line) : null,
       info ? help(ctx, s) : null);
+  }
+
+  function resetLabel(ctx) {
+    return ctx.global ? "resetGlobal" : (ctx.state && ctx.state.recipe ? "resetRecipe" : "resetGame");
   }
 
   function stop(e) {
@@ -258,7 +267,7 @@
       el("div", { className: "NPActions" },
         el(B.$n, { onClick: function () { ctx.setAdvanced(true); } }, T(ctx, "advanced")),
         el(B.$n, { className: "NPReset", onClick: function () { ctx.reset(); } },
-          T(ctx, ctx.global ? "resetGlobal" : "resetGame"))),
+          T(ctx, resetLabel(ctx)))),
       statusLine(ctx),
       ctx.error ? el("div", { className: "NPError" }, T(ctx, "saveFailed", ctx.error)) : null,
       ctx.advanced ? overlay(ctx) : null);
@@ -314,7 +323,7 @@
               rows(ctx, list));
           })),
         el("div", { className: "NPDialogFoot" },
-          el(B.$n, { onClick: function () { ctx.reset(); } }, T(ctx, ctx.global ? "resetGlobal" : "resetGame")),
+          el(B.$n, { onClick: function () { ctx.reset(); } }, T(ctx, resetLabel(ctx))),
           ctx.error ? el("span", { className: "NPError" }, T(ctx, "saveFailed", ctx.error)) : null,
           el(B.$n, { className: "NPPrimary", onClick: close }, T(ctx, "done")))));
   }

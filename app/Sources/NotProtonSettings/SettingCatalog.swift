@@ -231,12 +231,15 @@ public enum SettingCatalog {
     /// value is no choice of the level's own, and the panel shows no line for it
     /// (Amendment 09.10, §13.3 и). A game inherits from `global`, the global level and a
     /// game-only setting from NotProton's defaults.
-    public static func withoutInherited(_ values: ConfigValues, level: SettingLevel, global: ConfigValues) -> ConfigValues {
+    public static func withoutInherited(
+        _ values: ConfigValues, level: SettingLevel, global: ConfigValues, recipe: ConfigValues = .empty
+    ) -> ConfigValues {
         var result = values
         for setting in all where setting.levels.contains(level) {
             guard let own = setting.read(result) else { continue }
-            let parent = level == .game && setting.levels.contains(.global)
-                ? ConfigStack(global: global) : ConfigStack(global: .empty)
+            let parent = level == .game
+                ? ConfigStack(global: setting.levels.contains(.global) ? global : .empty, recipe: recipe)
+                : ConfigStack(global: .empty)
             if own == setting.resolved(parent) { try? setting.write(&result, nil) }
         }
         return result

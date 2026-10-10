@@ -64,7 +64,7 @@ public enum ConfigMaterializer {
 
     /// A program's file: only what the game sets itself.
     public static func gameLines(appID: Int, stack: ConfigStack) -> [String] {
-        let game = stack.game
+        let game = stack.gameWithRecipe
         var lines = ["# app \(appID)" + (game.name.map { " \($0)" } ?? "")]
         if let renderer = game.renderer { lines.append("NOTPROTON_RENDERER=\(renderer.rawValue)") }
         if let windows = game.windows { lines.append("SEVO_RESIZABLE_WINDOWS=\(windows.rawValue)") }
@@ -107,7 +107,8 @@ public enum ConfigMaterializer {
 
     static func tuningLines(_ stack: ConfigStack) -> [String] {
         let preset = stack[\.tuning]
-        let custom = stack.game.tuning != nil ? stack.game.tuningParameters : stack.global.tuningParameters
+        let game = stack.gameWithRecipe
+        let custom = game.tuning != nil ? game.tuningParameters : stack.global.tuningParameters
         return preset.parameters(custom: custom).environment.map { "\($0.key)=\($0.value)" }
     }
 

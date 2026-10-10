@@ -30,7 +30,9 @@ public struct SettingsStore: Sendable {
     public func game(_ appID: Int) -> ConfigValues { read(gameURL(appID)) }
 
     public func stack(for appID: Int?) -> ConfigStack {
-        ConfigStack(global: global(), game: appID.map(game) ?? .empty)
+        let own = appID.map(game) ?? .empty
+        let recipe = appID == nil ? nil : GameRecipes.recipe(appID: appID, exes: own.exes)
+        return ConfigStack(global: global(), recipe: recipe?.values ?? .empty, game: own)
     }
 
     /// Every game with a file, by app id.

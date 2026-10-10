@@ -101,16 +101,19 @@ public struct SettingsService: Sendable {
     public func stateJSON(appID: Int?) -> JSONValue {
         let global = store.global()
         let game = appID.map(store.game) ?? .empty
-        let stack = ConfigStack(global: global, game: game)
+        let stack = appID.map { store.stack(for: $0) } ?? ConfigStack(global: global)
         var values: [String: JSONValue] = [:]
         for setting in SettingCatalog.all {
             let level: SettingLevel = appID == nil ? .global : .game
             guard setting.levels.contains(level) else { continue }
             let own = setting.read(appID == nil ? global : game)
-            let parent = appID == nil ? ConfigStack(global: .empty) : stack.globalOnly
+            let shared = setting.levels.contains(.global) ? stack.inheritedByGame
+                : ConfigStack(global: .empty, recipe: stack.recipe)
+            let parent = appID == nil ? ConfigStack(global: .empty) : shared
             let inherited = setting.resolved(parent)
             let inheritedFrom: ConfigLevel =
-                appID != nil && setting.read(global) != nil ? .global : .defaults
+                appID != nil && setting.read(stack.recipe) != nil ? .recipe
+                : appID != nil && setting.levels.contains(.global) && setting.read(global) != nil ? .global : .defaults
             values[setting.id.rawValue] = .object([
                 "own": own ?? .null,
                 "inherited": inherited,
@@ -135,6 +138,7 @@ public struct SettingsService: Sendable {
             object["prefix"] = .bool(hasPrefix)
             object["status"] = .string(running ? "restartGame" : (exes.isEmpty || !hasPrefix) ? "firstLaunch" : "nextLaunch")
             if let name = game.name ?? library.installed(appID)?.name { object["name"] = .string(name) }
+            if let recipe = GameRecipes.recipe(appID: appID, exes: game.exes) { object["recipe"] = .string(recipe.id) }
         }
         return .object(object)
     }
@@ -151,9 +155,10 @@ public struct SettingsService: Sendable {
         // A value equal to what the level inherits is stored as inherit (§13.3 и).
         if let appID {
             let global = store.global()
+            let recipe = store.stack(for: appID).recipe
             try store.updateGame(appID) { values in
                 try setting.write(&values, value)
-                values = SettingCatalog.withoutInherited(values, level: .game, global: global)
+                values = SettingCatalog.withoutInherited(values, level: .game, global: global, recipe: recipe)
                 if values.name == nil, let name = library.installed(appID)?.name { values.name = name }
             }
             log("set app \(appID) \(setting.id.rawValue)=\(value?.text ?? "inherit")")

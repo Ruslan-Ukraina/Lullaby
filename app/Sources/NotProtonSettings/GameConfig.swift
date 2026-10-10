@@ -184,21 +184,25 @@ public enum ConfigDefaults {
 
 /// A setting's value together with the level that supplied it.
 public enum ConfigLevel: String, Codable, Sendable {
-    case defaults, global, game
+    case defaults, global, recipe, game
 }
 
 /// The two levels a game resolves through, read once.
 public struct ConfigStack: Sendable, Equatable {
     public var global: ConfigValues
+    /// NotProton's recipe for the game (GameRecipes), between its own values and global.
+    public var recipe: ConfigValues
     public var game: ConfigValues
 
-    public init(global: ConfigValues, game: ConfigValues = .empty) {
+    public init(global: ConfigValues, recipe: ConfigValues = .empty, game: ConfigValues = .empty) {
         self.global = global
+        self.recipe = recipe
         self.game = game
     }
 
     public func value<T>(_ key: KeyPath<ConfigValues, T?>) -> (value: T, level: ConfigLevel) {
         if let own = game[keyPath: key] { return (own, .game) }
+        if let suggested = recipe[keyPath: key] { return (suggested, .recipe) }
         if let shared = global[keyPath: key] { return (shared, .global) }
         return (ConfigDefaults.values[keyPath: key]!, .defaults)
     }
@@ -207,4 +211,17 @@ public struct ConfigStack: Sendable, Equatable {
 
     /// The global level alone, as bottle.env carries it.
     public var globalOnly: ConfigStack { ConfigStack(global: global) }
+
+    /// What a game's own value is measured against: the recipe over global.
+    public var inheritedByGame: ConfigStack { ConfigStack(global: global, recipe: recipe) }
+
+    /// The game level as its programs' files carry it: its own values over the recipe's.
+    public var gameWithRecipe: ConfigValues {
+        var merged = game
+        for setting in SettingCatalog.all where setting.read(merged) == nil {
+            if let suggested = setting.read(recipe) { try? setting.write(&merged, suggested) }
+        }
+        if merged.tuningParameters == nil { merged.tuningParameters = recipe.tuningParameters }
+        return merged
+    }
 }
