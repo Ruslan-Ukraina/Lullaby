@@ -67,4 +67,11 @@
 
 ## Журнал переноса
 
-(заполняется после «готово»)
+**10.10.2026 ~19:00 CEST** — ответ владельца: репозиторий `https://github.com/Ruslan-Ukraina/Lullaby` («хочу переименовать весь проект в Lullaby» — отдельная задача, см. PROGRESS).
+1. Проверено: `private: true`, `fork: false`, пустой (`size 0`, `ls-remote` пуст).
+2. **Actions выключены**: `PUT /actions/permissions enabled=false` → ответ `{"enabled":false}`. Включить — Фаза 6, шаг 1.
+3. `git clone --mirror` старого форка (7 веток, 11 тегов) → `git push` `refs/heads/*`, `refs/tags/*` в `Lullaby`.
+4. **Сверка:** `git ls-remote` старого и нового — 21 строка в каждом (7 веток, 11 тегов, 3 разыменованных аннотированных тега), `diff` пуст — **совпадают побайтно**. Ветки: `dev 1141fc7`, `dormison cd6725c`, `main 6ba74eb`, `phase-7 c6642b8`, `phase-8 be4a671`, `spike/dormison 2259474`, `wip/7b-d3dmetal a8448c3`.
+5. Remote в `~/Projects/NotProton` (общий `.git` с `NotProton-phase8`): `origin` → `Lullaby`; `old-public` → старый форк, **push отключён** (`DISABLED`), чтобы ничего не ушло туда случайно; `upstream` → `NotProtonNot/NotProton`, только fetch. Все локальные ветки отслеживают `origin/*`.
+6. Ветка по умолчанию в новом — `main` (как в старом). Смена — D1 Фазы 6.
+7. **Старый форк не тронут** — удаляете вы, когда сочтёте сверку достаточной (Settings → General → Danger Zone → Delete this repository).
