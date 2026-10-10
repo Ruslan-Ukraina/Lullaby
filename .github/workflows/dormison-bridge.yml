@@ -53,6 +53,8 @@ on:
 permissions:
   contents: write
   issues: write
+  # promote reads the tested candidate's run and artifact
+  actions: read
 
 concurrency:
   group: release-feed
