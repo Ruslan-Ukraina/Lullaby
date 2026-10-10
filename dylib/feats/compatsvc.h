@@ -1,6 +1,6 @@
 // CompatManager WebUI service.
-#ifndef NOTPROTON_FEATS_COMPATSVC_H
-#define NOTPROTON_FEATS_COMPATSVC_H
+#ifndef LULLABY_FEATS_COMPATSVC_H
+#define LULLABY_FEATS_COMPATSVC_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -26,4 +26,4 @@ int np_compatsvc_routes(void);
 // Tells the page the mapping changed.
 void np_compatsvc_state_changed(void);
 
-#endif // NOTPROTON_FEATS_COMPATSVC_H
+#endif // LULLABY_FEATS_COMPATSVC_H

@@ -48,7 +48,7 @@ jobs:
 
       - name: Version
         run: |
-          base=$(sed -n 's/^#define NOTPROTON_VERSION "\(.*\)"/\1/p' dylib/version.h)
+          base=$(sed -n 's/^#define LULLABY_VERSION "\(.*\)"/\1/p' dylib/version.h)
           if [ "$DRY_RUN" = true ]; then
             version="$base-dryrun.$GITHUB_RUN_NUMBER"; kind=test; pre=true
           else

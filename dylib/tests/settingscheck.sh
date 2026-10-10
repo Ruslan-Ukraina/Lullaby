@@ -77,12 +77,12 @@ launch() {
 	run_in "$1" "$2"
 }
 run_in() {
-	env WINEPREFIX="$case_dir/pfx" WINELOADER="$work/wine" NOTPROTON_RETINA="$1" \
-		NOTPROTON_EMULATE_MODESET="${MODESET-}" \
+	env WINEPREFIX="$case_dir/pfx" WINELOADER="$work/wine" LULLABY_RETINA="$1" \
+		LULLABY_EMULATE_MODESET="${MODESET-}" \
 		WINESERVER="$work/wineserver" STEAM_COMPAT_DATA_PATH="$case_dir" \
 		SDL_GAMECONTROLLER_IGNORE_DEVICES="${IGNORE-}" \
 		SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT="${EXCEPT-}" \
-		NOTPROTON_RAW_CONTROLLERS="${RAW-}" verb="${VERB-waitforexitandrun}" \
+		LULLABY_RAW_CONTROLLERS="${RAW-}" verb="${VERB-waitforexitandrun}" \
 		FAKE_STATUS="$2" FAKE_CALLS="$case_dir/calls" FAKE_IMPORTED="$case_dir/imported" \
 		log="$case_dir/log" body="$body" \
 		sh -ec 'eval "$body"; import_prefix_settings; echo returned' \
@@ -176,9 +176,9 @@ in_registry 054c/0ce6 057e/2006 057e/2007 057e/2009
 IGNORE='0x054c/0x0ce6' EXCEPT='' RAW='1'
 again "" 0
 { cat "$work/retina-off"; shown 054c/0ce6; shown 057e/2006; shown 057e/2007; shown 057e/2009; } > "$work/expected"
-same_file "NOTPROTON_RAW_CONTROLLERS=1 removes every key NotProton wrote" "$work/expected" "$case_dir/imported"
-is "NOTPROTON_RAW_CONTROLLERS=1 tracks nothing" "" "$(owned)"
-is "NOTPROTON_RAW_CONTROLLERS=1 is logged" "controllers: games read them directly (NOTPROTON_RAW_CONTROLLERS=1)" "$(logged)"
+same_file "LULLABY_RAW_CONTROLLERS=1 removes every key NotProton wrote" "$work/expected" "$case_dir/imported"
+is "LULLABY_RAW_CONTROLLERS=1 tracks nothing" "" "$(owned)"
+is "LULLABY_RAW_CONTROLLERS=1 is logged" "controllers: games read them directly (LULLABY_RAW_CONTROLLERS=1)" "$(logged)"
 
 new_case
 in_registry 28de/1304 057e/2009
@@ -191,7 +191,7 @@ in_registry 28de/1304 054c/0ce6 057e/2006 057e/2007 057e/2009
 IGNORE='0x28de/0x1304,0x054c/0x0ce6' EXCEPT='' RAW='1'
 again "" 0
 { cat "$work/retina-off"; shown 054c/0ce6; shown 057e/2006; shown 057e/2007; } > "$work/expected"
-same_file "NOTPROTON_RAW_CONTROLLERS=1 keeps a key the user wrote" "$work/expected" "$case_dir/imported"
+same_file "LULLABY_RAW_CONTROLLERS=1 keeps a key the user wrote" "$work/expected" "$case_dir/imported"
 
 new_case
 IGNORE='0x054c/0x09cc,0x054c/0x0ce6,0x057e/0x2009' EXCEPT='0x054C/0x0CE6,0x057e/0x2009' RAW=''
@@ -221,7 +221,7 @@ is "a helper keeps them tracked" "054c/0ce6 057e/2006 057e/2007 057e/2009" "$(ow
 IGNORE='' EXCEPT='' RAW='1' VERB=run
 again "" 0
 { cat "$work/retina-off"; shown 054c/0ce6; shown 057e/2006; shown 057e/2007; shown 057e/2009; } > "$work/expected"
-same_file "NOTPROTON_RAW_CONTROLLERS=1 still clears them in a helper" "$work/expected" "$case_dir/imported"
+same_file "LULLABY_RAW_CONTROLLERS=1 still clears them in a helper" "$work/expected" "$case_dir/imported"
 in_registry 054c/0ce6 057e/2006 057e/2007 057e/2009
 printf '%s\n' 054c/0ce6 057e/2006 057e/2007 057e/2009 > "$case_dir/lullaby-hidden-controllers"
 IGNORE='' EXCEPT='' RAW='' VERB=waitforexitandrun

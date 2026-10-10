@@ -119,8 +119,10 @@ public enum ConfigMigration {
             case "SEVO_FORCE_UMA": values.unifiedMemory = flag(value)
             case "SEVO_LARGE_ADDRESS_AWARE": values.largeAddressAware = flag(value)
             case "ROSETTA_ADVERTISE_AVX": values.avx = flag(value)
-            case "NOTPROTON_RETINA": values.retina = flag(value)
-            case "NOTPROTON_RENDERER": values.renderer = RendererChoice(rawValue: value.lowercased()) ?? values.renderer
+            // Files from before the catalog carry the project's old name (NotProton until
+            // 10.10.2026, docs/RENAME_LULLABY.md).
+            case "LULLABY_RETINA", "NOTPROTON_RETINA": values.retina = flag(value)
+            case "LULLABY_RENDERER", "NOTPROTON_RENDERER": values.renderer = RendererChoice(rawValue: value.lowercased()) ?? values.renderer
             default: break
             }
         }

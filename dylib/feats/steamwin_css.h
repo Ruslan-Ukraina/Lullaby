@@ -1,7 +1,7 @@
 // Native Steam windows: the switch file and the stylesheet that hides Valve's
 // drawn window buttons. The windows themselves are steamwin.m.
-#ifndef NOTPROTON_FEATS_STEAMWIN_CSS_H
-#define NOTPROTON_FEATS_STEAMWIN_CSS_H
+#ifndef LULLABY_FEATS_STEAMWIN_CSS_H
+#define LULLABY_FEATS_STEAMWIN_CSS_H
 
 #include <stddef.h>
 #include <stdint.h>

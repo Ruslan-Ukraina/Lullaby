@@ -4,7 +4,7 @@ in its windowed mode showed 2294x1496 with a black strip and bars. Its program i
 full-screen size, as a resizable window's is; RE9 re-renders at 3024x1898 (checked live with a
 SetWindowPos probe), and the scaler, left on, presents it 1:1. A first version that also turned
 the scaler off showed the picture zoomed into the top-left corner (owner's check, 10.10).
-NOTPROTON_FULLSCREEN_SCALES=1 keeps the scaling only.
+LULLABY_FULLSCREEN_SCALES=1 keeps the scaling only.
 
 diff --git a/dlls/winemac.drv/cocoa_window.m b/dlls/winemac.drv/cocoa_window.m
 index bdd9e261b2..62c68f548e 100644
@@ -15,13 +15,13 @@ index bdd9e261b2..62c68f548e 100644
      }
  
 +    /* NotProton: whether native full screen tells a scaled window's program the
-+       full-screen size (NOTPROTON_FULLSCREEN_SCALES=1 keeps Dormison's scaling only). */
++       full-screen size (LULLABY_FULLSCREEN_SCALES=1 keeps Dormison's scaling only). */
 +    static BOOL fullscreen_offers_size(void)
 +    {
 +        static int on = -1;
 +        if (on < 0)
 +        {
-+            const char* env = getenv("NOTPROTON_FULLSCREEN_SCALES");
++            const char* env = getenv("LULLABY_FULLSCREEN_SCALES");
 +            on = !(env && env[0] == '1');
 +        }
 +        return on;

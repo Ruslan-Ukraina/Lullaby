@@ -54,9 +54,9 @@ static void clear_relaunch_markers(void) {
     drop_marker_file(dir, ".forceupdate");
 }
 
-// The databases to try, newest first: NOTPROTON_SIG alone when set.
+// The databases to try, newest first: LULLABY_SIG alone when set.
 static int sigdb_candidates(char (*paths)[NP_SIGDB_PATH_MAX], int max) {
-    const char *env = getenv("NOTPROTON_SIG");
+    const char *env = getenv("LULLABY_SIG");
     if (env && env[0]) {
         snprintf(paths[0], NP_SIGDB_PATH_MAX, "%s", env);
         return 1;
@@ -253,7 +253,7 @@ static void np_init(int argc, const char **argv) {
     clear_relaunch_markers();
 
     NP_LOG("np_init: loaded into %s (pid %d) version %s",
-           pn, getpid(), NOTPROTON_VERSION);
+           pn, getpid(), LULLABY_VERSION);
 
     np_log_platform_overrides();
     np_steamfocus_start("osx", 0);

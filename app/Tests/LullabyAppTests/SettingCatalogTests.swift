@@ -37,8 +37,8 @@ struct SettingCatalogTests {
 
     /// A value other than the default for each setting, and a key it must reach.
     static let samples: [(SettingID, JSONValue, String)] = [
-        (.renderer, .string("dxvk"), "NOTPROTON_RENDERER=dxvk"),
-        (.retina, .bool(true), "NOTPROTON_RETINA=1"),
+        (.renderer, .string("dxvk"), "LULLABY_RENDERER=dxvk"),
+        (.retina, .bool(true), "LULLABY_RETINA=1"),
         (.upscaler, .string("metalfx"), "SEVO_UPSCALER=metalfx"),
         (.fps, .bool(true), "MTL_HUD_ENABLED=1"),
         (.windows, .string("all"), "SEVO_RESIZABLE_WINDOWS=all"),
@@ -48,7 +48,7 @@ struct SettingCatalogTests {
         (.tuning, .string("experimental"), "SEVO_WAIT_SPIN=5200"),
         (.unifiedMemory, .bool(true), "SEVO_FORCE_UMA=1"),
         (.avx, .bool(true), "ROSETTA_ADVERTISE_AVX=1"),
-        (.emulateModeset, .bool(true), "NOTPROTON_EMULATE_MODESET=1"),
+        (.emulateModeset, .bool(true), "LULLABY_EMULATE_MODESET=1"),
         (.largeAddressAware, .bool(true), "SEVO_LARGE_ADDRESS_AWARE=1"),
     ]
 
@@ -96,7 +96,7 @@ struct SettingCatalogTests {
         #expect(bottle.contains("SEVO_FPS=0"), "Dormison's own counter stays off")
         #expect(bottle.contains("SEVO_FPS_GRAPH=0"))
         #expect(bottle.contains("SEVO_CLI=/x/sevo"))
-        #expect(bottle.contains("NOTPROTON_MSYNC=1"))
+        #expect(bottle.contains("LULLABY_MSYNC=1"))
         let env = ConfigMaterializer.effectiveEnvironment(bottle: bottle, program: lines)
         #expect(env["SEVO_LARGE_ADDRESS_AWARE"] == "0")
         #expect(env["MTL_HUD_ENABLED"] == "1")

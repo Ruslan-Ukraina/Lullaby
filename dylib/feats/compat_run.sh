@@ -9,18 +9,18 @@ shift || true
 # Steam's launch options. hook_launch.c (from upstream NotProton 1.1.0) runs the launch
 # through /bin/sh as Linux Steam does: NAME=value ahead of %command% is a variable, what
 # follows %command% an argument of the game. The shell first notes the names it was handed
-# in NOTPROTON_ENV_BASE, so the variables the options set are the rest; they go on to the
+# in LULLABY_ENV_BASE, so the variables the options set are the rest; they go on to the
 # game below, which LaunchServices starts with an environment of its own.
 launch_env=""
 launch_shell=0
-if [ -n "${NOTPROTON_ENV_BASE+x}" ]; then
+if [ -n "${LULLABY_ENV_BASE+x}" ]; then
   launch_shell=1
   for name in $(env | sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p'); do
-    case " $NOTPROTON_ENV_BASE " in *" $name "*) continue ;; esac
-    case "$name" in NOTPROTON_ENV_BASE|DYLD_*) continue ;; esac
+    case " $LULLABY_ENV_BASE " in *" $name "*) continue ;; esac
+    case "$name" in LULLABY_ENV_BASE|DYLD_*) continue ;; esac
     launch_env="$launch_env $name"
   done
-  unset NOTPROTON_ENV_BASE
+  unset LULLABY_ENV_BASE
 fi
 # Only NotProton's renderer list on Steam's newer Compatibility page (webpatch.c) still
 # writes its choice after the command; without the shell (an older dylib, or the hook
@@ -31,8 +31,8 @@ while [ "$argi" -lt "$argc" ]; do
   arg="$1"
   shift
   case "$arg" in
-    NOTPROTON_RENDERER=*|CX_GRAPHICS_BACKEND=*) take=1 ;;
-    CX_GRAPHICS*=*|D3DM_*=*|DXMT_*=*|DXVK_*=*|MTL_*=*|NOTPROTON_*=*|ROSETTA_*=*|SEVO_*=*|WINE*=*)
+    LULLABY_RENDERER=*|CX_GRAPHICS_BACKEND=*) take=1 ;;
+    CX_GRAPHICS*=*|D3DM_*=*|DXMT_*=*|DXVK_*=*|MTL_*=*|LULLABY_*=*|ROSETTA_*=*|SEVO_*=*|WINE*=*)
       [ "$launch_shell" = 1 ] && take=0 || take=1 ;;
     *) take=0 ;;
   esac
@@ -463,7 +463,7 @@ write_owned_controllers() {
 # directly (DualSense, DualShock 4, Switch 1 Pro Controller and Joy-Cons: is_hidraw_enabled in
 # dlls/winebus.sys/main.c, the same in Dormison), so Hidraw=0 hides those too. The Switch
 # controllers get Hidraw=0 even when Steam Input is off, to avoid silently breaking
-# controller support in most games. NOTPROTON_RAW_CONTROLLERS=1 in the launch options
+# controller support in most games. LULLABY_RAW_CONTROLLERS=1 in the launch options
 # hands every controller back to the game.
 plan_hidden_controllers() {
   controllers_file="$STEAM_COMPAT_DATA_PATH/lullaby-hidden-controllers"
@@ -477,7 +477,7 @@ plan_hidden_controllers() {
   [ ! -f "$WINEPREFIX/system.reg" ] || in_registry=$(tr '[:upper:]' '[:lower:]' < "$WINEPREFIX/system.reg" \
     | sed -n 's/^\[system\\\\controlset001\\\\services\\\\winebus\\\\devices\\\\\([0-9a-f]\{4\}\/[0-9a-f]\{4\}\)\].*/\1/p' \
     | sort -u)
-  if [ "$NOTPROTON_RAW_CONTROLLERS" != "1" ]; then
+  if [ "$LULLABY_RAW_CONTROLLERS" != "1" ]; then
     controllers_wanted=$(ids_without "$(controller_ids "$SDL_GAMECONTROLLER_IGNORE_DEVICES")" \
       "$(controller_ids "$SDL_GAMECONTROLLER_IGNORE_DEVICES_EXCEPT")")
     controllers_wanted=$(printf '%s\n' "$controllers_wanted" 057e/2006 057e/2007 057e/2009 | sed '/^$/d' | sort -u)
@@ -505,7 +505,7 @@ import_prefix_settings() {
   if [ ! -d "$WINEPREFIX/drive_c" ]; then
     "$WINELOADER" wineboot --init >> "$log" 2>&1 || true
   fi
-  echo "video: RetinaMode=${NOTPROTON_RETINA:-0} EmulateModeset=${NOTPROTON_EMULATE_MODESET:-0}" >> "$log" 2>&1 || true
+  echo "video: RetinaMode=${LULLABY_RETINA:-0} EmulateModeset=${LULLABY_EMULATE_MODESET:-0}" >> "$log" 2>&1 || true
   echo "keyboard: Command is Control, Option is Alt" >> "$log" 2>&1 || true
   controllers_planned=0
   if plan_hidden_controllers 2>/dev/null; then
@@ -522,10 +522,10 @@ import_prefix_settings() {
       '[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\AeDebug]' '"Auto"="0"' '' \
       '[HKEY_LOCAL_MACHINE\Software\Wow6432Node\Microsoft\Windows NT\CurrentVersion\AeDebug]' '"Auto"="0"' '' \
       '[HKEY_CURRENT_USER\Software\Wine\WineDbg]' '"ShowCrashDialog"=dword:00000000' '' \
-      '[HKEY_CURRENT_USER\Software\Wine\Mac Driver]' "$(reg_switch_line RetinaMode "$NOTPROTON_RETINA")" \
+      '[HKEY_CURRENT_USER\Software\Wine\Mac Driver]' "$(reg_switch_line RetinaMode "$LULLABY_RETINA")" \
       '"LeftCommandIsCtrl"="y"' '"RightCommandIsCtrl"="y"' '"LeftOptionIsAlt"="y"' '"RightOptionIsAlt"="y"' '' \
       '[HKEY_CURRENT_USER\Software\Wine\X11 Driver]' \
-      "$(reg_switch_line EmulateModeset "$NOTPROTON_EMULATE_MODESET")" '' \
+      "$(reg_switch_line EmulateModeset "$LULLABY_EMULATE_MODESET")" '' \
       '[HKEY_LOCAL_MACHINE\Software\Classes\steam]' '"URL Protocol"=""' '' \
       '[HKEY_LOCAL_MACHINE\Software\Classes\steam\shell\open\command]' \
       '@="\"C:\\Program Files (x86)\\Steam\\steam.exe\" \"%1\""' '' \
@@ -547,8 +547,8 @@ import_prefix_settings() {
       "$WINESERVER" -k >> "$log" 2>&1 || true
       "$WINESERVER" -w >> "$log" 2>&1 || true
     fi
-    if [ "$NOTPROTON_RAW_CONTROLLERS" = "1" ]; then
-      echo "controllers: games read them directly (NOTPROTON_RAW_CONTROLLERS=1)" >> "$log" 2>&1 || true
+    if [ "$LULLABY_RAW_CONTROLLERS" = "1" ]; then
+      echo "controllers: games read them directly (LULLABY_RAW_CONTROLLERS=1)" >> "$log" 2>&1 || true
     elif [ -n "$controllers_wanted" ]; then
       echo "controllers: $(printf '%s\n' "$controllers_wanted" | grep -c .) kept off hidraw" \
         >> "$log" 2>&1 || true
@@ -578,15 +578,15 @@ if [ -n "$STEAM_COMPAT_DATA_PATH" ]; then
   fi
   # NotProton's own keys: a launch option first, then the program's file, then
   # bottle.env (the engine reads its SEVO_* keys from those files itself).
-  [ -n "$NOTPROTON_RETINA" ] || NOTPROTON_RETINA=$(env_value NOTPROTON_RETINA)
-  [ -n "$NOTPROTON_EMULATE_MODESET" ] || NOTPROTON_EMULATE_MODESET=$(env_value NOTPROTON_EMULATE_MODESET)
-  [ -n "$NOTPROTON_DLSS" ] || NOTPROTON_DLSS=$(env_value NOTPROTON_DLSS)
+  [ -n "$LULLABY_RETINA" ] || LULLABY_RETINA=$(env_value LULLABY_RETINA)
+  [ -n "$LULLABY_EMULATE_MODESET" ] || LULLABY_EMULATE_MODESET=$(env_value LULLABY_EMULATE_MODESET)
+  [ -n "$LULLABY_DLSS" ] || LULLABY_DLSS=$(env_value LULLABY_DLSS)
   msync_from=launch-options
   # msync+ is Dormison's sync and stays on; the catalog's per-game debugging switch
-  # (NOTPROTON_MSYNC in bottle.env) can turn it off. A prefix from before the
+  # (LULLABY_MSYNC in bottle.env) can turn it off. A prefix from before the
   # catalog carries the old marker instead.
   if [ -z "$WINEMSYNC" ]; then
-    WINEMSYNC=$(sed -n 's/^NOTPROTON_MSYNC=//p' "$WINEPREFIX/.sevo/bottle.env" 2>/dev/null | head -1)
+    WINEMSYNC=$(sed -n 's/^LULLABY_MSYNC=//p' "$WINEPREFIX/.sevo/bottle.env" 2>/dev/null | head -1)
     [ -n "$WINEMSYNC" ] && msync_from=settings
   fi
   if [ -z "$WINEMSYNC" ] && [ -r "$STEAM_COMPAT_DATA_PATH/lullaby-msync" ] \
@@ -766,12 +766,12 @@ stage_renderer() {
       ;;
     d3dmetal)
       # Apple's D3DMetal from the player's Game Porting Toolkit (lullaby/d3dmetal/<version>,
-      # named by NOTPROTON_D3DMETAL in bottle.env). Its macOS half goes into the running
+      # named by LULLABY_D3DMETAL in bottle.env). Its macOS half goes into the running
       # engine's wine/lib/external, where the engine's x86_64-unix/{d3d11,d3d12,dxgi,...}.so
       # links lead (Apple's layout); doing it at every D3DMetal launch is what carries it into
       # a new engine after an update or a roll-back. The Windows DLLs reach this game alone
       # from the renderer directory, their unix halves beside them.
-      tk="$NOTPROTON_D3DMETAL"
+      tk="$LULLABY_D3DMETAL"
       [ -n "$tk" ] && [ -f "$tk/lib/external/libd3dshared.dylib" ] || {
         echo "=== D3DMetal is not installed: add Apple's Game Porting Toolkit in Steam ===" >> "$log" 2>&1 || true
         return 1; }
@@ -805,9 +805,9 @@ stage_renderer() {
 }
 # Launch option first (the Steam page's renderer list, or the old CX_GRAPHICS_BACKEND
 # some games still carry), then the game's Game Settings.
-renderer="${NOTPROTON_RENDERER:-${CX_GRAPHICS_BACKEND:-$(env_value NOTPROTON_RENDERER)}}"
+renderer="${LULLABY_RENDERER:-${CX_GRAPHICS_BACKEND:-$(env_value LULLABY_RENDERER)}}"
 renderer="${renderer:-dxmt}"
-[ -n "$NOTPROTON_D3DMETAL" ] || NOTPROTON_D3DMETAL=$(env_value NOTPROTON_D3DMETAL)
+[ -n "$LULLABY_D3DMETAL" ] || LULLABY_D3DMETAL=$(env_value LULLABY_D3DMETAL)
 case "$renderer" in
   dxmt|dxvk|wined3d|d3dmetal) ;;
   *)
@@ -816,7 +816,7 @@ case "$renderer" in
 esac
 unset WINEDLLPATH_PREPEND
 renderer_dir="$renderer"
-if [ "$renderer" = dxmt ] && [ "$NOTPROTON_DLSS" = 1 ]; then
+if [ "$renderer" = dxmt ] && [ "$LULLABY_DLSS" = 1 ]; then
   renderer_dir=dxmt-nvext
   echo "renderer: DLSS -> MetalFX through DXMT (experimental)" >> "$log" 2>&1 || true
 fi
@@ -1001,9 +1001,9 @@ resolve_icon || true
 [ -n "$icon_arg" ] || echo "no icon resolved, launching without one" >> "$log" 2>&1 || true
 
 uielement_arg=""
-if [ "${NOTPROTON_HIDE_LAUNCHER_TILE:-0}" = "1" ]; then
+if [ "${LULLABY_HIDE_LAUNCHER_TILE:-0}" = "1" ]; then
   uielement_arg="  <key>LSUIElement</key><true/>"
-  echo "launcher tile hidden by NOTPROTON_HIDE_LAUNCHER_TILE" >> "$log" 2>&1 || true
+  echo "launcher tile hidden by LULLABY_HIDE_LAUNCHER_TILE" >> "$log" 2>&1 || true
 fi
 cat > "$loader_contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -1072,12 +1072,12 @@ shim="$HOME/Library/Application Support/lullaby/overlay-shim.dylib"
 if [ -n "\$STEAM_DYLD_INSERT_LIBRARIES" ]; then
   if [ -f "\$shim" ]; then
     export DYLD_INSERT_LIBRARIES="\$shim:\$STEAM_DYLD_INSERT_LIBRARIES"
-    export NOTPROTON_OVERLAY_SHIM="\$shim"
+    export LULLABY_OVERLAY_SHIM="\$shim"
   else
     export DYLD_INSERT_LIBRARIES="\$STEAM_DYLD_INSERT_LIBRARIES"
   fi
 fi
-[ -n "\$NOTPROTON_GAME_CWD" ] && cd "\$NOTPROTON_GAME_CWD"
+[ -n "\$LULLABY_GAME_CWD" ] && cd "\$LULLABY_GAME_CWD"
 "$WINELOADER" "\$@"
 exit \$?
 LAUNCHER
@@ -1135,11 +1135,11 @@ kill_wine_prefix() {
   fi
 }
 
-# Test runs only: NOTPROTON_WATCHDOG=<seconds> in the launch options ends a game
+# Test runs only: LULLABY_WATCHDOG=<seconds> in the launch options ends a game
 # that has drawn no frame by then, which is how a modal error box or a hang looks
 # from outside. A player's run never sets it, so a dialog stays on screen for them.
 start_watchdog() {
-  limit=${NOTPROTON_WATCHDOG:-0}
+  limit=${LULLABY_WATCHDOG:-0}
   case "$limit" in ''|*[!0-9]*|0) return 0 ;; esac
   parent=$$
   (
@@ -1196,7 +1196,7 @@ for name in $launch_env; do
     # CX_GRAPHICS*: launch options left from CrossOver days; Dormison reads none of them.
     Steam*|CX_GRAPHICS*|D3DM_*|DXMT_*|DXVK_*|MTL_*|ROSETTA_*|SEVO_*) continue ;;
     WINESERVER|WINEDLLPATH|WINEDLLPATH_PREPEND|WINEDLLOVERRIDES|WINEMSYNC|WINEPREFIX|WINEDEBUG) continue ;;
-    PATH|STEAM_COMPAT_*|STEAM_DYLD_INSERT_LIBRARIES|NOTPROTON_GAME_CWD) continue ;;
+    PATH|STEAM_COMPAT_*|STEAM_DYLD_INSERT_LIBRARIES|LULLABY_GAME_CWD) continue ;;
   esac
   eval "value=\${$name-}"
   set -- --env "$name=$value" "$@"
@@ -1215,7 +1215,7 @@ set -- \
   --env STEAM_COMPAT_CLIENT_INSTALL_PATH="$STEAM_COMPAT_CLIENT_INSTALL_PATH" \
   --env STEAM_COMPAT_APP_ID="$STEAM_COMPAT_APP_ID" \
   --env STEAM_DYLD_INSERT_LIBRARIES="$STEAM_DYLD_INSERT_LIBRARIES" \
-  --env NOTPROTON_GAME_CWD="$game_cwd" "$@"
+  --env LULLABY_GAME_CWD="$game_cwd" "$@"
 lsregister="/System/Library/Frameworks/CoreServices.framework/Versions/A"
 lsregister="$lsregister/Frameworks/LaunchServices.framework/Support/lsregister"
 [ -x "$lsregister" ] && "$lsregister" -f "$loader_app" >> "$log" 2>&1 || true

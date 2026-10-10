@@ -1,6 +1,6 @@
 // Steam's update block, put back inside the client (Phase 5, docs/DECISIONS.md P5-4).
-#ifndef NOTPROTON_FEATS_UPDATEGATE_H
-#define NOTPROTON_FEATS_UPDATEGATE_H
+#ifndef LULLABY_FEATS_UPDATEGATE_H
+#define LULLABY_FEATS_UPDATEGATE_H
 
 #define NP_UPDATE_GATE_FILE "steam-update-gate"
 #define NP_UPDATE_GATE_KEY  "BootStrapperInhibitUpdateOnLaunch"
@@ -17,4 +17,4 @@ void np_update_gate_rearm(void);
 // when the gate file names no mode (nothing to do).
 int np_update_gate_rearm_paths(const char *gate_file, const char *const *cfgs, int count);
 
-#endif // NOTPROTON_FEATS_UPDATEGATE_H
+#endif // LULLABY_FEATS_UPDATEGATE_H

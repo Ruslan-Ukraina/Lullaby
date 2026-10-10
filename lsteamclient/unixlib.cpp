@@ -744,7 +744,7 @@ static void sync_env_var( const char *name, bool unset, const char *val )
 static void load_overlay_libraries( void )
 {
     const char *inserts = getenv( "STEAM_DYLD_INSERT_LIBRARIES" );
-    const char *shim = getenv( "NOTPROTON_OVERLAY_SHIM" );
+    const char *shim = getenv( "LULLABY_OVERLAY_SHIM" );
     void *handle, *shim_handle = NULL;
     void (*install)( void );
     char *list, *cursor, *path;

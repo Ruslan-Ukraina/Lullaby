@@ -10,8 +10,8 @@
 // and the answer is what `lullaby-settings panel <request>` prints, handed back as an
 // anonymous file. The token is random per Steam Helper process and reaches the page only
 // inside the patched chunk, so no other page or program can drive the CLI through it.
-#ifndef NOTPROTON_FEATS_SETTINGSBRIDGE_H
-#define NOTPROTON_FEATS_SETTINGSBRIDGE_H
+#ifndef LULLABY_FEATS_SETTINGSBRIDGE_H
+#define LULLABY_FEATS_SETTINGSBRIDGE_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -44,4 +44,4 @@ char *np_settings_inject_token(const char *src, size_t len, const char *token, s
 // base64url (no padding) into bytes; NULL on a malformed input. Caller frees.
 uint8_t *np_base64url_decode(const char *src, size_t len, size_t *out_len);
 
-#endif // NOTPROTON_FEATS_SETTINGSBRIDGE_H
+#endif // LULLABY_FEATS_SETTINGSBRIDGE_H

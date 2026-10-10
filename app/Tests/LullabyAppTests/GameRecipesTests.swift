@@ -25,10 +25,10 @@ struct GameRecipesTests {
     func gameLines() {
         var recipe = ConfigValues(); recipe.renderer = .dxmt
         let lines = ConfigMaterializer.gameLines(appID: 3527290, stack: ConfigStack(global: .empty, recipe: recipe))
-        #expect(lines.contains("NOTPROTON_RENDERER=dxmt"))
+        #expect(lines.contains("LULLABY_RENDERER=dxmt"))
         var own = ConfigValues(); own.renderer = .dxvk
         let mine = ConfigMaterializer.gameLines(appID: 3527290, stack: ConfigStack(global: .empty, recipe: recipe, game: own))
-        #expect(mine.contains("NOTPROTON_RENDERER=dxvk") && !mine.contains("NOTPROTON_RENDERER=dxmt"))
+        #expect(mine.contains("LULLABY_RENDERER=dxvk") && !mine.contains("LULLABY_RENDERER=dxmt"))
     }
 
     @Test("A game's own value equal to its recipe is stored as inherit")

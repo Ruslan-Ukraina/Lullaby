@@ -1,6 +1,6 @@
 // Signature database loader
-#ifndef NOTPROTON_RESOLVER_SIGDB_H
-#define NOTPROTON_RESOLVER_SIGDB_H
+#ifndef LULLABY_RESOLVER_SIGDB_H
+#define LULLABY_RESOLVER_SIGDB_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -38,4 +38,4 @@ int  np_sigdb_candidates(const char *dir, char (*paths)[NP_SIGDB_PATH_MAX], int 
 int  np_load_profile(const char *path, np_sigdb_t *out);
 void np_free_profile(np_sigdb_t *p);
 
-#endif // NOTPROTON_RESOLVER_SIGDB_H
+#endif // LULLABY_RESOLVER_SIGDB_H

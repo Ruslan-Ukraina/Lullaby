@@ -1,6 +1,6 @@
 // Native macOS chrome for Steam's windows, in Steam Helper's browser process.
-#ifndef NOTPROTON_FEATS_STEAMWIN_H
-#define NOTPROTON_FEATS_STEAMWIN_H
+#ifndef LULLABY_FEATS_STEAMWIN_H
+#define LULLABY_FEATS_STEAMWIN_H
 
 // Steam Helper without --type=: the CEF browser process that owns Steam's windows.
 int np_steamwin_is_browser_process(int argc, const char **argv);

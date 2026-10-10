@@ -109,7 +109,7 @@ static int out_expand(np_out_t *o, const char *replace, const np_cap_t *caps) {
 // React, so the catalog panel cannot be built there (DECISIONS P7A-7): the one setting that
 // has to be reachable from the game's own Steam page. Everything else about a game lives in NotProton's Game Settings,
 // whose .sevo/apps/<exe>.env is the single source of truth (docs/DECISIONS.md V3).
-// The choice is a launch option, NOTPROTON_RENDERER=<name>, which compat_run.sh
+// The choice is a launch option, LULLABY_RENDERER=<name>, which compat_run.sh
 // reads ahead of the game's env file.
 //
 // Launch options left from CrossOver days are rewritten the first time the panel
@@ -117,7 +117,7 @@ static int out_expand(np_out_t *o, const char *replace, const np_cap_t *caps) {
 // CX_GRAPHICS_BACKEND=<name> would outvote Game Settings while the list shows
 // "Automatic", and WINEMSYNC=1 (msync+ is on anyway) would undo Game Settings'
 // msync debugging switch at every start. A known renderer moves over to
-// NOTPROTON_RENDERER unless that is already set; WINEMSYNC=0 is a deliberate
+// LULLABY_RENDERER unless that is already set; WINEMSYNC=0 is a deliberate
 // debugging choice and stays. Options without either are not written.
 #define NP_CX_OPTIONS_CSS \
     "\".MSCXPanel{margin-top:10px}\""
@@ -127,8 +127,8 @@ static int out_expand(np_out_t *o, const char *replace, const np_cap_t *caps) {
     "if(!c&&a.indexOf(\"WINEMSYNC=1\")<0)return x;" \
     "const k=a.filter(p=>p&&p.indexOf(\"CX_GRAPHICS_BACKEND=\")!==0&&p!==\"WINEMSYNC=1\")," \
     "v=c?c.slice(20):\"\";" \
-    "if(!k.some(p=>p.indexOf(\"NOTPROTON_RENDERER=\")===0)" \
-    "&&[\"dxmt\",\"dxvk\",\"wined3d\"].indexOf(v)>=0)k.unshift(\"NOTPROTON_RENDERER=\"+v);" \
+    "if(!k.some(p=>p.indexOf(\"LULLABY_RENDERER=\")===0)" \
+    "&&[\"dxmt\",\"dxvk\",\"wined3d\"].indexOf(v)>=0)k.unshift(\"LULLABY_RENDERER=\"+v);" \
     "return k.join(\" \")}"
 
 #define NP_CX_OPTIONS_BODY(ARG, RT, BARREL) \
@@ -138,7 +138,7 @@ static int out_expand(np_out_t *o, const char *replace, const np_cap_t *caps) {
     "s=ps=>{const a=o.split(\" \").filter(x=>x&&!ps.some(p=>x.indexOf(p[0]+\"=\")===0));" \
     "ps.forEach(p=>{if(p[1])a.unshift(p[0]+\"=\"+p[1])});" \
     "SteamClient.Apps.SetAppLaunchOptions(t.unAppID,a.join(\" \"))}," \
-    "b=g(\"NOTPROTON_RENDERER\")," \
+    "b=g(\"LULLABY_RENDERER\")," \
     "B=[{data:\"\",label:\"Automatic (DXMT)\"}," \
     "{data:\"dxmt\",label:\"DXMT\"}," \
     "{data:\"dxvk\",label:\"DXVK\"}," \
@@ -150,7 +150,7 @@ static int out_expand(np_out_t *o, const char *replace, const np_cap_t *caps) {
     "(0," RT ".jsx)(\"style\",{children:" NP_CX_OPTIONS_CSS "})," \
     "(0," RT ".jsx)(" BARREL ".XY,{label:\"Graphics\",children:" \
     "(0," RT ".jsx)(" BARREL ".m,{rgOptions:B,selectedOption:b," \
-    "onChange:v=>s([[\"NOTPROTON_RENDERER\",v.data],[\"CX_GRAPHICS_BACKEND\",\"\"]])})},\"gfx\")" \
+    "onChange:v=>s([[\"LULLABY_RENDERER\",v.data],[\"CX_GRAPHICS_BACKEND\",\"\"]])})},\"gfx\")" \
     "]})})}"
 
 // NotProton's settings panel (feats/panel.js, docs/ROADMAP.md section 5): one function

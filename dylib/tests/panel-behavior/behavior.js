@@ -31,20 +31,20 @@ for (const form of Object.keys(FORMS)) {
   t.ok(backends.map(o => o.data).join(',') === ',dxmt,dxvk,wined3d',
        'the renderer values stay as the run script reads them');
 
-  t.ok(nodes('NOTPROTON_RENDERER=dxvk').find(x => x.type === 'Dropdown').props.selectedOption === 'dxvk',
+  t.ok(nodes('LULLABY_RENDERER=dxvk').find(x => x.type === 'Dropdown').props.selectedOption === 'dxvk',
        'the dropdown reflects the current value');
   t.ok(nodes('').find(x => x.type === 'Dropdown').props.selectedOption === '',
        'nothing set reads as automatic');
 
   written.length = 0;
   nodes('').find(x => x.type === 'Dropdown').props.onChange({ data: 'dxvk' });
-  t.ok(last() === 'NOTPROTON_RENDERER=dxvk', `choosing writes the launch option (${last()})`);
-  nodes('NOTPROTON_RENDERER=dxvk').find(x => x.type === 'Dropdown').props.onChange({ data: '' });
+  t.ok(last() === 'LULLABY_RENDERER=dxvk', `choosing writes the launch option (${last()})`);
+  nodes('LULLABY_RENDERER=dxvk').find(x => x.type === 'Dropdown').props.onChange({ data: '' });
   t.ok(last() === '', `automatic removes it (${last()})`);
 
   // The old name is taken out when the renderer is chosen again.
   nodes('CX_GRAPHICS_BACKEND=dxvk -novid').find(x => x.type === 'Dropdown').props.onChange({ data: 'dxmt' });
-  t.ok(last() === 'NOTPROTON_RENDERER=dxmt -novid', `the old argument goes, others stay (${last()})`);
+  t.ok(last() === 'LULLABY_RENDERER=dxmt -novid', `the old argument goes, others stay (${last()})`);
 
   const root = P({ details: details('') });
   t.ok(root.props.className === 'MSCXPanel', 'the panel root carries its own class');

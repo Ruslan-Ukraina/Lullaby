@@ -1,4 +1,4 @@
-// From upstream NotProton 1.1.0, with NotProton's NOTPROTON_ENV_BASE prologue: the
+// From upstream NotProton 1.1.0, with NotProton's LULLABY_ENV_BASE prologue: the
 // expected /bin/sh -c lines carry it ahead of the command line, and a real shell shows it
 // leaves out what the launch options set.
 #include "../hooks/hook_launch.c"
@@ -130,9 +130,9 @@ static void wraps(const char *in, const char *upstream_want) {
 }
 
 // The wrapped line run by /bin/sh: the variable the launch options set is not in
-// NOTPROTON_ENV_BASE, one the shell was handed is.
+// LULLABY_ENV_BASE, one the shell was handed is.
 static void base_leaves_out_launch_variables(void) {
-    char *line = np_launch_shell("NP_FROM_OPTIONS=1 /usr/bin/printenv NOTPROTON_ENV_BASE", NULL, -1, NULL);
+    char *line = np_launch_shell("NP_FROM_OPTIONS=1 /usr/bin/printenv LULLABY_ENV_BASE", NULL, -1, NULL);
     char  out[65536];
     size_t n = 0;
 
@@ -144,10 +144,10 @@ static void base_leaves_out_launch_variables(void) {
     }
     out[n] = 0;
     if (!strstr(out, " NP_FROM_STEAM ") || strstr(out, " NP_FROM_OPTIONS ")) {
-        printf("FAIL NOTPROTON_ENV_BASE: %s\n", out);
+        printf("FAIL LULLABY_ENV_BASE: %s\n", out);
         failures++;
     } else {
-        printf("  ok    NOTPROTON_ENV_BASE names what Steam handed the shell, not the options\n");
+        printf("  ok    LULLABY_ENV_BASE names what Steam handed the shell, not the options\n");
     }
     free(line);
 }
@@ -291,7 +291,7 @@ int main(void) {
         }
     }
 
-    printf("== NOTPROTON_DISABLE=launch turns off the shell and the backslash hook ==\n");
+    printf("== LULLABY_DISABLE=launch turns off the shell and the backslash hook ==\n");
     rebind_rc        = 1;
     np_shell_wrapped = 0;
     launch_disabled  = 1;

@@ -1,6 +1,6 @@
 // Logs
-#ifndef NOTPROTON_UTIL_LOG_H
-#define NOTPROTON_UTIL_LOG_H
+#ifndef LULLABY_UTIL_LOG_H
+#define LULLABY_UTIL_LOG_H
 
 #include <stdio.h>
 #include <time.h>
@@ -49,4 +49,4 @@ int np_log_first_hit(const void *anchor, unsigned long tag);
 
 #define NP_LOG_FIRST(fmt, ...) NP_LOG_FIRST_KEY(0, fmt, ##__VA_ARGS__)
 
-#endif // NOTPROTON_UTIL_LOG_H
+#endif // LULLABY_UTIL_LOG_H

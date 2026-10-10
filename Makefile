@@ -458,7 +458,7 @@ overlay-shim-tests: $(OVERLAY_SHIM)
 		for a in arm64 x86_64; do \
 			$(CC) -arch $$a $(OVERLAY_SHIM_TEST_FLAGS) -o $(OUT_DIR)/$$t.$$a \
 				$(OVERLAY_SHIM_TESTS)/$$t.m || exit 1; \
-			out=$$(NOTPROTON_OVERLAY_SHIM=$(OVERLAY_SHIM) $(OUT_DIR)/$$t.$$a 2>&1); rc=$$?; \
+			out=$$(LULLABY_OVERLAY_SHIM=$(OVERLAY_SHIM) $(OUT_DIR)/$$t.$$a 2>&1); rc=$$?; \
 			case "$$rc" in \
 			0) ran=$$((ran+1)); echo "$$out" | sed "s/^/  $$t.$$a /" ;; \
 			3|126) skipped=$$((skipped+1)); \
@@ -600,7 +600,7 @@ APP_BUNDLE  := $(OUT_DIR)/Lullaby.app
 ROSETTA_CHECK := $(APP_BUNDLE)/Contents/Helpers/Lullaby Rosetta Check.app
 APP_BUNDLE_PAYLOAD := $(APP_BUNDLE)/Contents/Resources/LullabyApp_LullabyApp.bundle/Contents/Resources/payload
 APP_ZIP     := $(OUT_DIR)/Lullaby.zip
-APP_VERSION ?= $(shell sed -n 's/^\#define NOTPROTON_VERSION "\(.*\)"/\1/p' dylib/version.h)
+APP_VERSION ?= $(shell sed -n 's/^\#define LULLABY_VERSION "\(.*\)"/\1/p' dylib/version.h)
 # CFBundleVersion, what Sparkle compares. The release workflow passes a number that
 # only grows (the commit count); a local build keeps the marketing version.
 APP_BUILD   ?= $(APP_VERSION)

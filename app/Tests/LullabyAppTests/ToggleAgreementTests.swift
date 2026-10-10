@@ -46,7 +46,7 @@ struct ToggleAgreementTests {
         let names = try Self.toggleNames(in: try Self.source("dylib/feats/webpatch.c"))
         let patterns = try Self.allowedPatterns(in: try Self.source("dylib/feats/compat_run.sh"))
 
-        #expect(names.contains("NOTPROTON_RENDERER"), "found \(names.sorted()), the parse looks wrong")
+        #expect(names.contains("LULLABY_RENDERER"), "found \(names.sorted()), the parse looks wrong")
         #expect(!patterns.isEmpty)
 
         for name in names.sorted() {

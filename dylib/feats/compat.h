@@ -1,6 +1,6 @@
 // Compatibility tool support
-#ifndef NOTPROTON_FEATS_COMPAT_H
-#define NOTPROTON_FEATS_COMPAT_H
+#ifndef LULLABY_FEATS_COMPAT_H
+#define LULLABY_FEATS_COMPAT_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -126,4 +126,4 @@ const char *np_compat_tool_dir(void);
 // Command line template for the tool's toolmanifest.vdf commandline value.
 const char *np_compat_tool_commandline(void);
 
-#endif // NOTPROTON_FEATS_COMPAT_H
+#endif // LULLABY_FEATS_COMPAT_H

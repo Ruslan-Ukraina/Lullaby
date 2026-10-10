@@ -54,10 +54,10 @@ public enum ConfigMaterializer {
         // A directory's URL path ends in "/"; the run script joins its own parts to it.
         if let d3dmetal {
             let path = d3dmetal.hasSuffix("/") ? String(d3dmetal.dropLast()) : d3dmetal
-            lines.append("NOTPROTON_D3DMETAL=\(path)")
+            lines.append("LULLABY_D3DMETAL=\(path)")
         }
         lines += markers.map { "\($0.key)=\(stack[$0.path] ? "1" : "0")" }
-        lines.append("NOTPROTON_MSYNC=\(msync ? "1" : "0")")
+        lines.append("LULLABY_MSYNC=\(msync ? "1" : "0")")
         if let cli { lines.append("SEVO_CLI=\(cli)") }
         return lines
     }
@@ -66,7 +66,7 @@ public enum ConfigMaterializer {
     public static func gameLines(appID: Int, stack: ConfigStack) -> [String] {
         let game = stack.gameWithRecipe
         var lines = ["# app \(appID)" + (game.name.map { " \($0)" } ?? "")]
-        if let renderer = game.renderer { lines.append("NOTPROTON_RENDERER=\(renderer.rawValue)") }
+        if let renderer = game.renderer { lines.append("LULLABY_RENDERER=\(renderer.rawValue)") }
         if let windows = game.windows { lines.append("SEVO_RESIZABLE_WINDOWS=\(windows.rawValue)") }
         if let upscaler = game.upscaler { lines.append("SEVO_UPSCALER=\(upscaler.rawValue)") }
         if let filter = game.filter { lines.append("SEVO_FINAL_FILTER=\(filter.rawValue)") }
@@ -100,9 +100,9 @@ public enum ConfigMaterializer {
     /// Switches compat_run.sh reads and acts on at launch: Wine registry values, and
     /// the DLL overrides DLSS needs next to the renderer's.
     static let markers: [(key: String, path: KeyPath<ConfigValues, Bool?> & Sendable)] = [
-        ("NOTPROTON_RETINA", \.retina),
-        ("NOTPROTON_EMULATE_MODESET", \.emulateModeset),
-        ("NOTPROTON_DLSS", \.dlss),
+        ("LULLABY_RETINA", \.retina),
+        ("LULLABY_EMULATE_MODESET", \.emulateModeset),
+        ("LULLABY_DLSS", \.dlss),
     ]
 
     static func tuningLines(_ stack: ConfigStack) -> [String] {

@@ -141,11 +141,11 @@ struct D3DMetalStoreTests {
         try service.set("dlss", .bool(true), appID: 4022369388)
 
         let bottle = try #require(fixture.read(".sevo/bottle.env", in: 4022369388))
-        #expect(bottle.contains("NOTPROTON_D3DMETAL=") && bottle.contains("/d3dmetal/\(toolkit.version)\n"), "\(bottle)")
+        #expect(bottle.contains("LULLABY_D3DMETAL=") && bottle.contains("/d3dmetal/\(toolkit.version)\n"), "\(bottle)")
         try service.store.updateGame(4022369388) { $0.exes = ["re9.exe"] }
         try service.materialize(appID: 4022369388)
         let game = try #require(fixture.read(".sevo/apps/re9.exe.env", in: 4022369388))
-        #expect(game.contains("NOTPROTON_RENDERER=d3dmetal"))
+        #expect(game.contains("LULLABY_RENDERER=d3dmetal"))
         // The card follows DLSS (Amendment 09.10): with it on, D3DMetal names the NVIDIA card
         // and answers DLSS through MetalFX.
         #expect(game.contains("D3DM_VENDOR_ID=0x10DE"))

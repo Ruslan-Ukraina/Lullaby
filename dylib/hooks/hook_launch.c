@@ -2,7 +2,7 @@
 //
 // From upstream NotProton 1.1.0 (e9f97f7, e7758ba; GPL-3.0, same project). NotProton's own
 // addition: the shell first records the names of the variables it was handed in
-// NOTPROTON_ENV_BASE, so compat_run.sh can tell the ones the player's launch options set
+// LULLABY_ENV_BASE, so compat_run.sh can tell the ones the player's launch options set
 // (NAME=value ahead of %command%) and hand them to the game, which starts through
 // LaunchServices with an environment of its own (Amendment 09.10, docs/ROADMAP.md §13).
 #include "hooks.h"
@@ -40,7 +40,7 @@ static size_t np_quote(char *out, const char *s) {
 }
 
 // Ahead of the command line in /bin/sh: the names of the variables the shell was handed.
-#define NP_ENV_BASE "export NOTPROTON_ENV_BASE=\" $(env | cut -d= -f1 | tr '\\n' ' ')\"; "
+#define NP_ENV_BASE "export LULLABY_ENV_BASE=\" $(env | cut -d= -f1 | tr '\\n' ' ')\"; "
 
 // Shell, followed by the command line as one argument. A shell of the player's own
 // (STEAM_GAME_LAUNCH_SHELL) gets the command line alone, as upstream hands it.
@@ -162,8 +162,8 @@ np_patch_entry_t *np_hooks_launch_defs(void) {
 }
 
 void np_hooks_launch_install(const struct mach_header_64 *mh, intptr_t slide) {
-    if (np_hooks_env_lists_label("NOTPROTON_DISABLE", "launch")) {
-        NP_WARN("[launch] DISABLED via NOTPROTON_DISABLE, launches keep running "
+    if (np_hooks_env_lists_label("LULLABY_DISABLE", "launch")) {
+        NP_WARN("[launch] DISABLED via LULLABY_DISABLE, launches keep running "
                 "without a shell");
         return;
     }

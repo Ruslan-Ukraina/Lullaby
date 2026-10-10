@@ -1,7 +1,7 @@
 // Build version string
-#ifndef NOTPROTON_VERSION_H
-#define NOTPROTON_VERSION_H
+#ifndef LULLABY_VERSION_H
+#define LULLABY_VERSION_H
 
-#define NOTPROTON_VERSION "1.1.0"
+#define LULLABY_VERSION "1.1.0"
 
-#endif // NOTPROTON_VERSION_H
+#endif // LULLABY_VERSION_H

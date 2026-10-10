@@ -160,9 +160,9 @@ public enum SettingCatalog {
             .renderer, in: .picture, levels: [.game], quick: 1, key: \.renderer,
             labels: [(.d3dmetal, .same("D3DMetal")), (.dxmt, .same("DXMT")), (.dxvk, .same("DXVK")),
                      (.wined3d, .same("WineD3D"))],
-            copy: .renderer, carrier: .runScript("NOTPROTON_RENDERER")),
+            copy: .renderer, carrier: .runScript("LULLABY_RENDERER")),
         .flag(.retina, in: .picture, quick: 2, key: \.retina, copy: .retina,
-              carrier: .registry(values: ["RetinaMode"], marker: "NOTPROTON_RETINA")),
+              carrier: .registry(values: ["RetinaMode"], marker: "LULLABY_RETINA")),
         .choice(
             .upscaler, in: .picture, quick: 3, key: \.upscaler,
             labels: [
@@ -192,7 +192,7 @@ public enum SettingCatalog {
             copy: .filter, carrier: .environment(["SEVO_FINAL_FILTER"])),
         // The card a game is told of follows this switch (GPUIdentity.forGame).
         .flag(.dlss, in: .picture, experimental: true, key: \.dlss, copy: .dlss,
-              carrier: .environment(["DXMT_ENABLE_NVEXT", "D3DM_ENABLE_METALFX", "NOTPROTON_DLSS"] + ConfigMaterializer.gpuKeys)),
+              carrier: .environment(["DXMT_ENABLE_NVEXT", "D3DM_ENABLE_METALFX", "LULLABY_DLSS"] + ConfigMaterializer.gpuKeys)),
         .choice(
             .mouse, in: .mouse, key: \.mouse,
             labels: [
@@ -205,7 +205,7 @@ public enum SettingCatalog {
               carrier: .environment(["SEVO_FORCE_UMA"])),
         .flag(.avx, in: .performance, key: \.avx, copy: .avx, carrier: .environment(["ROSETTA_ADVERTISE_AVX"])),
         .flag(.emulateModeset, in: .oldGames, key: \.emulateModeset, copy: .emulateModeset,
-              carrier: .registry(values: ["EmulateModeset"], marker: "NOTPROTON_EMULATE_MODESET")),
+              carrier: .registry(values: ["EmulateModeset"], marker: "LULLABY_EMULATE_MODESET")),
         .flag(.largeAddressAware, in: .oldGames, key: \.largeAddressAware, copy: .largeAddressAware,
               carrier: .environment(["SEVO_LARGE_ADDRESS_AWARE"])),
         .flag(.msync, in: .diagnostics, levels: [.game], key: \.msync, copy: .msync,

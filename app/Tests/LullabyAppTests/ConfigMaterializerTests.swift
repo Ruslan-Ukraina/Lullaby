@@ -96,7 +96,7 @@ struct ConfigMaterializerTests {
         try FileManager.default.createDirectory(at: fixture.prefix(5), withIntermediateDirectories: true)
         try fixture.service.set("msync", .bool(false), appID: 5)
         var bottle = try #require(fixture.read(".sevo/bottle.env", in: 5))
-        #expect(bottle.contains("NOTPROTON_MSYNC=0"))
+        #expect(bottle.contains("LULLABY_MSYNC=0"))
         #expect(bottle.contains("WINEMSYNC=0"), "a new bottle.env starts with the setting")
         #expect(bottle.contains("SEVO_CLI=/support/lullaby-sevo"))
 
@@ -189,8 +189,8 @@ struct ConfigMaterializerTests {
         #expect(fixture.service.store.game(3).exes == ["game.exe"])
         #expect(fixture.service.store.game(3).hasSettings == false)
         let file = try #require(fixture.read(".sevo/apps/game.exe.env", in: 3))
-        #expect(!file.contains("NOTPROTON_RETINA"))
-        #expect(!file.contains("NOTPROTON_RENDERER"))
+        #expect(!file.contains("LULLABY_RETINA"))
+        #expect(!file.contains("LULLABY_RENDERER"))
     }
 }
 
@@ -262,7 +262,7 @@ struct ConfigMigrationTests {
         let fixture = try SettingsFixture()
         defer { fixture.cleanUp() }
         try fixture.write(Self.oldBottle, ".sevo/bottle.env", in: 3527290)
-        try fixture.write("SEVO_FPS=1\nNOTPROTON_RETINA=1\n", ".sevo/apps/peak.exe.env", in: 3527290)
+        try fixture.write("SEVO_FPS=1\nLULLABY_RETINA=1\n", ".sevo/apps/peak.exe.env", in: 3527290)
         try fixture.service.store.updateGame(3527290) { $0.fps = false }
         let migrated = try fixture.service.migrateAll()
         #expect(migrated == [3527290])

@@ -18,7 +18,7 @@ def main() -> int:
             continue  # comments stay in the source, not in Steam's page
         body = line.replace("\\", "\\\\").replace('"', '\\"')
         pieces.append(f'    "{body}\\n"')
-    guard = f"NOTPROTON_GENERATED_{macro.upper()}_H"
+    guard = f"LULLABY_GENERATED_{macro.upper()}_H"
     header = (
         f"// Generated from {src.as_posix()} by dylib/embed_js.py. Edit that file.\n"
         f"#ifndef {guard}\n"
