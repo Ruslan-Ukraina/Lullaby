@@ -1,7 +1,7 @@
 name: steam-signatures
 
 # New macOS Steam builds (stable and beta) -> signature databases -> the signed
-# signatures-manifest.json NotProton.app reads (docs/RELEASING.md, BACKLOG 22).
+# signatures-manifest.json Lullaby.app reads (docs/RELEASING.md, BACKLOG 22).
 # A build no database slices cleanly gets an issue instead.
 #
 # Dry run (a dryrun-signatures-* tag, or "Run workflow" with dry_run): the TEST

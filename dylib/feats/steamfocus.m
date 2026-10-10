@@ -313,7 +313,7 @@ static NSMenu *np_dock_menu(id self, SEL _cmd, NSApplication *app) {
 // Steam Helper.app's Info.plist says "Steam Helper" and has no icon, and it cannot be
 // changed: Steam's bootstrapper checks that file at every start and reinstalls its
 // package when it differs, which turned an edit at start into a relaunch loop
-// (DECISIONS W15). The name "Steam" and the bundle icon come from files NotProton.app
+// (DECISIONS W15). The name "Steam" and the bundle icon come from files Lullaby.app
 // adds next to it (SteamHelperFiles.swift, W17). At run time Steam Helper also takes
 // Steam.app's icon before it becomes regular, so the Dock tile is created with it,
 // and asks LaunchServices for the name "Steam" the way Chromium does (base/mac

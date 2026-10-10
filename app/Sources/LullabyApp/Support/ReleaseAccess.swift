@@ -29,7 +29,7 @@ enum ReleaseAccess: Equatable, Sendable {
 
 /// The read-only token for a private release repository, in the login Keychain.
 enum ReleaseToken {
-    static let service = "com.notproton.NotProton.release-token"
+    static let service = "com.ruslanukraina.Lullaby.release-token"
 
     static func read(repository: String) -> String? {
         let query: [String: Any] = [

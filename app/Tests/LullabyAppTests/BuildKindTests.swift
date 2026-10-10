@@ -22,7 +22,7 @@ struct BuildKindTests {
     }
 
     private static let ownerKey = Curve25519.Signing.PrivateKey().publicKey.rawRepresentation.base64EncodedString()
-    private static let feed = "https://github.com/Ruslan-Ukraina/NotProton/releases/download/"
+    private static let feed = "https://github.com/Ruslan-Ukraina/Lullaby/releases/download/"
     private static let appcast = feed + "manifest/appcast.xml"
 
     @Test("test-public-keys.txt, TestKeys and testkeys.swift name the same keys")

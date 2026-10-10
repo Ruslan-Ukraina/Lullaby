@@ -1,7 +1,7 @@
 import AppKit
 import Sparkle
 
-// Updates of NotProton.app itself, through Sparkle (Phase 6, docs/RELEASING.md).
+// Updates of Lullaby.app itself, through Sparkle (Phase 6, docs/RELEASING.md).
 //
 // The feed and the EdDSA key come from Info.plist (SUFeedURL, SUPublicEDKey), which
 // `make app SPARKLE_FEED=… SPARKLE_KEY=…` fills; the release workflow passes the

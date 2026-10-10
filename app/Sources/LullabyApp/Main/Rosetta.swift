@@ -10,9 +10,9 @@ enum Rosetta {
     /// Present once Rosetta is installed (the same file `arch -x86_64` needs).
     static let runtime = URL(filePath: "/Library/Apple/usr/libexec/oah/libRosettaRuntime")
 
-    /// The Intel-only helper make puts inside NotProton.app.
+    /// The Intel-only helper make puts inside Lullaby.app.
     static var helper: URL {
-        Bundle.main.bundleURL.appending(path: "Contents/Helpers/NotProton Rosetta Check.app")
+        Bundle.main.bundleURL.appending(path: "Contents/Helpers/Lullaby Rosetta Check.app")
     }
 
     static func isInstalled(runtime: URL = runtime) -> Bool {

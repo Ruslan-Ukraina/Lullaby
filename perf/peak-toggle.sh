@@ -20,6 +20,6 @@ sleep 30
 step 1-start
 osascript -e 'tell application "System Events" to key code 36 using option down'; step 2-toggled
 osascript -e 'tell application "System Events" to key code 36 using option down'; step 3-back
-osascript -e 'tell application id "com.notproton.launcher.3527290" to quit'
+osascript -e 'tell application id "com.ruslanukraina.lullaby.launcher.3527290" to quit'
 i=0; while [ $i -lt 60 ]; do i=$((i+1)); tail -3 "$C/notproton-run.log" | grep -q 'session ending' && break; sleep 1; done
 echo "$label saved: $(reg)"; sleep 12

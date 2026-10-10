@@ -1,8 +1,8 @@
 name: release
 
-# A v* tag -> NotProton.app built as a release (the owner's keys, never a TEST key,
+# A v* tag -> Lullaby.app built as a release (the owner's keys, never a TEST key,
 # no development switches), with the bridge the bridge workflow published, signed
-# for Sparkle -> a GitHub release and the appcast NotProton.app updates itself from
+# for Sparkle -> a GitHub release and the appcast Lullaby.app updates itself from
 # (docs/RELEASING.md). vX.Y.Z-pre.N is a pre-release, offered only to apps with
 # "Pre-release versions" on (Sparkle's beta channel).
 #
@@ -133,14 +133,14 @@ jobs:
       - name: Build the dylib, the shim and the helpers
         run: make all overlay-shim iconmaker appinfo
 
-      - name: Build NotProton.app
+      - name: Build Lullaby.app
         run: |
           make app NP_BUILD_KIND="$KIND" NP_RELEASE_KEY="$NP_RELEASE_KEY" SPARKLE_KEY="$SPARKLE_KEY" \
             APP_VERSION="$VERSION" APP_BUILD="$APP_BUILD" BRIDGE_FEED_DIR="$BRIDGE_FEED_DIR"
 
       - name: Release checks
         run: |
-          NP_BUILD_KIND="$KIND" release/check-release.sh bundle out/NotProton.app
+          NP_BUILD_KIND="$KIND" release/check-release.sh bundle out/Lullaby.app
           # The same bundle with a TEST key in a release build must be refused (BuildKind.swift).
           if [ "$KIND" = release ]; then
             if NP_BUILD_KIND=release NP_RELEASE_KEY="$(swift release/testkeys.swift release)" SPARKLE_KEY="$SPARKLE_KEY" \
@@ -148,7 +148,7 @@ jobs:
               echo "a release configuration with the TEST key passed the check"; exit 1
             fi
           fi
-          plist() { /usr/libexec/PlistBuddy -c "Print :$1" out/NotProton.app/Contents/Info.plist; }
+          plist() { /usr/libexec/PlistBuddy -c "Print :$1" out/Lullaby.app/Contents/Info.plist; }
           {
             echo '```'
             for k in CFBundleShortVersionString CFBundleVersion NPBuildKind NPReleaseFeedURL NPReleaseAccess NPReleaseRepository NPReleaseManifestTag NPEngineManifestURL NPReleasePublicKey SUFeedURL SUPublicEDKey SUEnableAutomaticChecks SURequireSignedFeed; do
@@ -176,7 +176,7 @@ jobs:
           support="$RUNNER_TEMP/np-support"; mkdir -p "$support" "$RUNNER_TEMP/np-steam"
           private=""; [ "$ACCESS" = private ] && private="--repository $GITHUB_REPOSITORY"
           # shellcheck disable=SC2086
-          out/NotProton.app/Contents/MacOS/LullabyApp --release check --support "$support" \
+          out/Lullaby.app/Contents/MacOS/LullabyApp --release check --support "$support" \
             --steam "$RUNNER_TEMP/np-steam" --feed "$FEED" --key "$NP_RELEASE_KEY" \
             --manifest-tag "$MANIFEST_TAG" $private | tee "$RUNNER_TEMP/feed-check.log"
           grep -q "release: bridge" "$RUNNER_TEMP/feed-check.log"
@@ -185,7 +185,7 @@ jobs:
         run: |
           arch="$RUNNER_TEMP/archives"; mkdir -p "$arch"
           zip="NotProton-$VERSION.zip"
-          ditto -c -k --keepParent out/NotProton.app "$arch/$zip"
+          ditto -c -k --keepParent out/Lullaby.app "$arch/$zip"
           notes=$(git tag -l --format='%(contents)' "$GITHUB_REF_NAME" | sed '/^-----BEGIN PGP/,$d')
           [ -n "$notes" ] || notes="NotProton $VERSION."
           printf '%s\n' "$notes" > "$arch/NotProton-$VERSION.md"

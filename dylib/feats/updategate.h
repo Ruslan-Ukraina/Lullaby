@@ -8,7 +8,7 @@
 // When notproton/steam-update-gate says auto or manual, writes
 // BootStrapperInhibitUpdateOnLaunch=enable into Steam's steam.cfg files, the way
 // the app's UpdateBlock does. Called once the client is up (steamclient.dylib is
-// loaded), after the bootstrapper's own update check, so a lift NotProton.app made
+// loaded), after the bootstrapper's own update check, so a lift Lullaby.app made
 // for a supported build lasts exactly one Steam start.
 void np_update_gate_rearm(void);
 

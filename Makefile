@@ -530,7 +530,7 @@ sigdb-install:
 	cp -f signatures/macos.arm64/*.json "$(SUPPORT_DIR)/signatures/macos.arm64/"
 	@echo "==> Installed: $(SUPPORT_DIR)/signatures/macos.arm64"
 
-LAUNCHABLE_BUNDLES := $(HOME)/Desktop/NotProton.app /Applications/NotProton.app
+LAUNCHABLE_BUNDLES := $(HOME)/Desktop/Lullaby.app /Applications/Lullaby.app
 
 deploy: $(TARGET) dylib-install sigdb-install helpers-install
 	@if [ ! -d "$(STEAM_APP)" ]; then \
@@ -594,10 +594,10 @@ endif
 	python3 -I release/feed.py stage-signatures signatures/manifest.json signatures/macos.arm64 "$(APP_PAYLOAD)"
 	@echo "==> Staged app payload in $(APP_PAYLOAD)"
 
-APP_BUNDLE  := $(OUT_DIR)/NotProton.app
-ROSETTA_CHECK := $(APP_BUNDLE)/Contents/Helpers/NotProton Rosetta Check.app
+APP_BUNDLE  := $(OUT_DIR)/Lullaby.app
+ROSETTA_CHECK := $(APP_BUNDLE)/Contents/Helpers/Lullaby Rosetta Check.app
 APP_BUNDLE_PAYLOAD := $(APP_BUNDLE)/Contents/Resources/LullabyApp_LullabyApp.bundle/Contents/Resources/payload
-APP_ZIP     := $(OUT_DIR)/NotProton.zip
+APP_ZIP     := $(OUT_DIR)/Lullaby.zip
 APP_VERSION ?= $(shell sed -n 's/^\#define NOTPROTON_VERSION "\(.*\)"/\1/p' dylib/version.h)
 # CFBundleVersion, what Sparkle compares. The release workflow passes a number that
 # only grows (the commit count); a local build keeps the marketing version.
@@ -618,7 +618,7 @@ NP_RELEASE_MANIFEST_TAG ?= $(call feed_config,manifestTag)
 NP_ENGINE_MANIFEST    ?= $(call feed_config,engineManifest)
 NP_RELEASE_KEY  ?=
 
-# Sparkle, for NotProton.app's own updates (Phase 6): the appcast and its EdDSA
+# Sparkle, for Lullaby.app's own updates (Phase 6): the appcast and its EdDSA
 # public key. Empty (the default) leaves the updater off. The appcast sits next to
 # the signed manifests, in the release tagged `manifest`.
 SPARKLE_FEED ?= $(call feed_config,appcastURL)
@@ -630,7 +630,7 @@ NP_BUILD_KIND ?= dev
 export NP_BUILD_KIND NP_DEV NP_RELEASE_KEY NP_RELEASE_FEED SPARKLE_KEY SPARKLE_FEED NP_RELEASE_ACCESS
 
 ICONGEN  := $(OUT_DIR)/icongen
-ICON_DOC := $(OUT_DIR)/NotProton.icon
+ICON_DOC := $(OUT_DIR)/Lullaby.icon
 ICON_DIR := $(OUT_DIR)/icon
 ICON_CAR := $(ICON_DIR)/Assets.car
 
@@ -646,7 +646,7 @@ $(ICON_CAR): $(ICONGEN)
 	$(ICONGEN) "$(ICON_DOC)"
 	@mkdir -p "$(ICON_DIR)"
 	xcrun actool "$(ICON_DOC)" --compile "$(ICON_DIR)" --platform macosx \
-		--minimum-deployment-target 26.0 --app-icon NotProton \
+		--minimum-deployment-target 26.0 --app-icon Lullaby \
 		--output-partial-info-plist "$(ICON_DIR)/partial.plist" >/dev/null
 	@echo "==> Built $@"
 
@@ -678,7 +678,7 @@ app: app-config app-payload $(ICON_CAR)
 		"$(APP_BUNDLE)/Contents/MacOS/LullabyApp"
 	cp -R "$$(swift build --package-path app -c release --show-bin-path)/LullabyApp_LullabyApp.bundle" \
 		"$(APP_BUNDLE)/Contents/Resources/"
-	cp "$(ICON_DIR)/Assets.car" "$(ICON_DIR)/NotProton.icns" \
+	cp "$(ICON_DIR)/Assets.car" "$(ICON_DIR)/Lullaby.icns" \
 		"$(APP_BUNDLE)/Contents/Resources/"
 	@missing=$$(cd "$(APP_PAYLOAD)" && find . -type f ! -name '.DS_Store' | sed 's|^\./||' \
 		| while read -r rel; do \

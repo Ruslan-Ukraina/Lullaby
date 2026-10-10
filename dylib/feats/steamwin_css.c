@@ -13,7 +13,7 @@ static np_steamwin_mode_t g_mode = NP_SW_OFF;
 static pthread_once_t g_mode_once = PTHREAD_ONCE_INIT;
 
 // The first word only, whole: "native", "native-app" or "log"; anything else is off, as
-// NotProton.app's SteamWindows.mode reads it.
+// Lullaby.app's SteamWindows.mode reads it.
 static int is_word(const char *text, const char *word) {
     size_t n = strlen(word);
     if (strncmp(text, word, n) != 0)

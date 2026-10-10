@@ -10,7 +10,7 @@ struct UpdatePlan: Equatable, Sendable {
     var engine: EngineRelease?
     var bridge: BridgeRelease?
     var steamPatch = false
-    /// NotProton.app's newer version, as Sparkle names it.
+    /// Lullaby.app's newer version, as Sparkle names it.
     var app: String?
 
     var isEmpty: Bool { engine == nil && bridge == nil && !steamPatch && app == nil }

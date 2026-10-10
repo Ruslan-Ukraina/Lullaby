@@ -13,15 +13,15 @@
 	<key>CFBundleExecutable</key>
 	<string>LullabyApp</string>
 	<key>CFBundleIconFile</key>
-	<string>NotProton</string>
+	<string>Lullaby</string>
 	<key>CFBundleIconName</key>
-	<string>NotProton</string>
+	<string>Lullaby</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.notproton.NotProton</string>
+	<string>com.ruslanukraina.Lullaby</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>NotProton</string>
+	<string>Lullaby</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -37,13 +37,13 @@
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NPReleaseFeedURL</key>
-	<string>https://github.com/Ruslan-Ukraina/NotProton/releases/download/</string>
+	<string>https://github.com/Ruslan-Ukraina/Lullaby/releases/download/</string>
 	<key>NPReleasePublicKey</key>
 	<string></string>
 	<key>NPReleaseAccess</key>
 	<string>public</string>
 	<key>NPReleaseRepository</key>
-	<string>Ruslan-Ukraina/NotProton</string>
+	<string>Ruslan-Ukraina/Lullaby</string>
 	<key>NPReleaseManifestTag</key>
 	<string>manifest</string>
 	<key>NPEngineManifestURL</key>

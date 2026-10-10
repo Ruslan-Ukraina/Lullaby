@@ -1,4 +1,4 @@
-// Steam's update block, put back inside the client. NotProton.app lifts the block
+// Steam's update block, put back inside the client. Lullaby.app lifts the block
 // only while Valve offers a Steam build it has signatures for (SteamUpdateGate);
 // the bootstrapper reads steam.cfg when Steam starts, updates, and starts the
 // client, where this runs and writes the block back. The next build then waits

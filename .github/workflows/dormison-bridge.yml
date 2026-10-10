@@ -3,7 +3,7 @@ name: dormison-bridge
 # A Dormison release without a bridge -> the B1 ntdll.dll pair and the bridge
 # (lsteamclient, steam.exe), built from Dormison's source at the commit that
 # release was built from -> tests in Wine -> the signed bridge-<engine>-<rev> and
-# bridge-manifest.json NotProton.app reads (docs/RELEASING.md, DECISIONS P5-1).
+# bridge-manifest.json Lullaby.app reads (docs/RELEASING.md, DECISIONS P5-1).
 # A build that fails gets an issue.
 #
 # Dry run (a dryrun-bridge-* tag, or "Run workflow" with dry_run): the TEST keys,

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Guards for a release build of NotProton.app (Phase 6, docs/RELEASING.md).
+# Guards for a release build of Lullaby.app (Phase 6, docs/RELEASING.md).
 #
 #   check-release.sh config        before the build: the make variables a build of
 #                                  kind NP_BUILD_KIND is about to bake in
@@ -58,7 +58,7 @@ config)
 	echo "==> release check: $KIND build configuration ok"
 	;;
 bundle)
-	app=${2:?usage: check-release.sh bundle <NotProton.app>}
+	app=${2:?usage: check-release.sh bundle <Lullaby.app>}
 	kind=$(plist "$app" NPBuildKind)
 	[ "$kind" = "$KIND" ] || die "$app says NPBuildKind '$kind', expected '$KIND'"
 	check_keys "$kind" "$(plist "$app" NPReleasePublicKey)" "$(plist "$app" SUPublicEDKey)" \
@@ -81,7 +81,7 @@ bundle)
 	echo "==> release check: $app is a sound $KIND build ($(plist "$app" CFBundleShortVersionString), build $(plist "$app" CFBundleVersion))"
 	;;
 *)
-	echo "usage: $0 config | bundle <NotProton.app>" >&2
+	echo "usage: $0 config | bundle <Lullaby.app>" >&2
 	exit 2
 	;;
 esac

@@ -5,9 +5,9 @@
 	<key>CFBundleExecutable</key>
 	<string>rosetta-check</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.notproton.NotProton.rosetta-check</string>
+	<string>com.ruslanukraina.Lullaby.rosetta-check</string>
 	<key>CFBundleName</key>
-	<string>NotProton Rosetta Check</string>
+	<string>Lullaby Rosetta Check</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

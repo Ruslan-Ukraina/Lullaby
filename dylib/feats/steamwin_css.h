@@ -8,7 +8,7 @@
 
 // notproton/steam-windows: absent or "off", "log" (describe windows, change
 // nothing), "native", "native-app" (native, and Steam Helper runs as a regular
-// app: experiment, DECISIONS W10 option B). NotProton.app writes it; it is read
+// app: experiment, DECISIONS W10 option B). Lullaby.app writes it; it is read
 // once per process. Everything native applies to native-app too.
 #define NP_STEAMWIN_SWITCH_FILE "steam-windows"
 

@@ -47,7 +47,7 @@ upload)
 	shift 3
 	if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
 		gh release create "$tag" --repo "$GITHUB_REPOSITORY" --prerelease --latest=false \
-			--title "$title" --notes "Files NotProton.app downloads and checks against NotProton's release key. Published by CI; see docs/RELEASING.md." \
+			--title "$title" --notes "Files Lullaby.app downloads and checks against NotProton's release key. Published by CI; see docs/RELEASING.md." \
 			|| die "cannot create the release $tag"
 	fi
 	gh release upload "$tag" --repo "$GITHUB_REPOSITORY" --clobber "$@" || die "cannot upload to $tag"
