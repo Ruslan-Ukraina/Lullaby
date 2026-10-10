@@ -39,7 +39,7 @@ public enum FinalFilter: String, Codable, CaseIterable, Sendable {
 /// What draws Direct3D. D3DMetal (Direct3D 11 and 12) is offered once the player has
 /// added Apple's Game Porting Toolkit (D3DMetalStore); Mullion joins in Phase 7C.
 public enum RendererChoice: String, Codable, CaseIterable, Sendable {
-    case dxmt, dxvk, wined3d, d3dmetal
+    case dxmt, dxvk, wined3d, d3dmetal, mullion
 }
 
 /// Dormison's `LinearMouse`.

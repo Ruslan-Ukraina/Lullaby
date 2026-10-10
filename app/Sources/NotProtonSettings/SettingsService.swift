@@ -9,6 +9,8 @@ public struct SettingsService: Sendable {
     public var library: GameLibrary
     /// Apple's D3DMetal, added by the player (D3DMetalStore).
     public var d3dmetal: D3DMetalStore = .standard
+    /// Mullion, the experimental renderer, downloaded when a game first picks it (MullionStore).
+    public var mullion: MullionStore = .standard
     /// What SEVO_CLI names in bottle.env.
     public var cli: String?
     /// Whether the game runs now (its bundle's wine is a process).
@@ -126,6 +128,7 @@ public struct SettingsService: Sendable {
             "level": .string(appID == nil ? "global" : "game"),
             "values": .object(values),
             "d3dmetal": d3dmetal.stateJSON(),
+            "mullion": mullionState(appID: appID),
         ]
         if let engine = engineVersion() { object["engine"] = .string(engine) }
         if let appID {
@@ -143,6 +146,29 @@ public struct SettingsService: Sendable {
         return .object(object)
     }
 
+    /// Mullion's state, and whether this game is offered it: an M3 or later on macOS 15,
+    /// and no 32-bit executable among the game's.
+    func mullionState(appID: Int?) -> JSONValue {
+        guard case var .object(object) = mullion.stateJSON() else { return .null }
+        let eligible = mullion.unsupportedReason == nil
+        object["offered"] = .bool(eligible && !(appID.map(is32Bit) ?? false))
+        return .object(object)
+    }
+
+    /// Whether one of the game's recorded executables in its install directory is 32-bit.
+    public func is32Bit(appID: Int) -> Bool {
+        let names = Set((store.game(appID).exes ?? []).map { $0.lowercased() })
+        guard !names.isEmpty, let directory = library.installed(appID)?.directory else { return false }
+        let walker = FileManager.default.enumerator(
+            at: directory, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles, .skipsPackageDescendants])
+        while let url = walker?.nextObject() as? URL {
+            if (walker?.level ?? 0) > 3 { walker?.skipDescendants(); continue }
+            guard names.contains(url.lastPathComponent.lowercased()) else { continue }
+            if PEMachine.of(url) == 0x14c { return true }
+        }
+        return false
+    }
+
     // MARK: - Changing
 
     /// Sets one setting at a level (`appID` nil: for all games); nil or JSON null inherits.
@@ -151,6 +177,18 @@ public struct SettingsService: Sendable {
         guard setting.levels.contains(appID == nil ? .global : .game) else { throw SettingsError.wrongLevel(id) }
         if setting.id == .renderer, value?.string == RendererChoice.d3dmetal.rawValue, d3dmetal.active() == nil {
             throw SettingsError.d3dmetalMissing
+        }
+        if setting.id == .renderer, value?.string == RendererChoice.mullion.rawValue, let appID {
+            if let reason = mullion.unsupportedReason {
+                throw SettingsError.mullionUnavailable("Mullion needs an M3 or later and macOS 15 or later: \(reason)")
+            }
+            if is32Bit(appID: appID) { throw SettingsError.mullionUnavailable("Mullion runs 64-bit games only") }
+            do {
+                try mullion.install(log: log)
+            } catch {
+                log("mullion: \(error)")
+                throw SettingsError.mullionUnavailable("\(error)")
+            }
         }
         // A value equal to what the level inherits is stored as inherit (§13.3 и).
         if let appID {

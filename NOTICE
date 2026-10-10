@@ -73,5 +73,29 @@ names in NOTPROTON_ENV_BASE.
 
 Dormison, the engine NotProton runs games on, is Wine with wine-staging and its own
 changes, LGPL-2.1-or-later (https://github.com/kageroumado/dormison). NotProton downloads
-it from Dormison's own signed releases and does not change its sources outside the
-ntdll.dll loader hook described in docs/DECISIONS.md (P3-1).
+it from Dormison's own signed releases. NotProton rebuilds single files of it from the
+same commit and puts them in place, the release's file kept beside each: the ntdll.dll
+loader hook (docs/DECISIONS.md P3-1) and the fixes in engine-fixes/patches (A0910-9 and
+later). Each rebuilt file is first proven equal to the release's, instruction for
+instruction, without the patches. These files stay LGPL-2.1-or-later; their sources are
+Dormison's commit plus the patches in this repository.
+
+Two of those engine fixes are Highball's (https://github.com/gauthierpiarrette/highball-engine,
+patches to Wine, LGPL-2.1-or-later): 0018 (commit charge is the footprint) and 0020 (Retina
+HORZRES, itself from athei/wine fa43d6db2). Their headers name the source.
+
+The run script's routing by verb (EA, Ubisoft and other launchers), the Steam Input
+controller handling, the batched prefix registry import, steam.exe's std handles and
+Ubisoft Connect's install path values come from upstream NotProton 1.1.x (GPL-3.0),
+adapted to Dormison.
+
+Mullion (https://github.com/dttdrv/mullion), the experimental Direct3D 10/11/12 renderer
+on Metal, is LGPL-2.1-or-later (its LICENSE; LICENSE.OLD covers the DXMT code from before
+April 2026; LICENSE-LLVM.txt the LLVM it carries). NotProton does not ship it: it downloads
+the release Mullion published, v0.1-pre1 (mullion-v0.1-pre1.tar.gz, sha256
+f5c9256164be2e11fd3c83da7927b61627c62111392c808974245ae96a5be43f), only when a player picks
+it, and keeps it unchanged with its licences and a SOURCE.txt naming the release and its
+source tree, in notproton/mullion/. Mullion's install.sh is not run.
+
+D3DMetal is Apple's, from the Game Porting Toolkit each player downloads from Apple and
+adds; NotProton neither ships nor downloads it.

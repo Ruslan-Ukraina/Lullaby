@@ -47,6 +47,9 @@ public struct SettingsCLI {
             let root = URL(filePath: support)
             service.store = SettingsStore(root: root.appending(path: "settings"))
             service.d3dmetal = D3DMetalStore(root: root.appending(path: "d3dmetal"))
+            service.mullion = MullionStore(
+                root: root.appending(path: "mullion"),
+                engineUnix: root.appending(path: "runners/current/wine/lib/wine/x86_64-unix"))
             service.cli = root.appending(path: "notproton-sevo").path(percentEncoded: false)
             service.log = { _ in }
             service.engineVersion = { nil }

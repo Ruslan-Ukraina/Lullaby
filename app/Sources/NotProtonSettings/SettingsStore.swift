@@ -151,6 +151,7 @@ public enum SettingsError: Error, Equatable, CustomStringConvertible {
     case invalidValue(String, String)
     case reservedVariable(String)
     case d3dmetalMissing
+    case mullionUnavailable(String)
     case storage(String)
     case usage(String)
 
@@ -161,6 +162,7 @@ public enum SettingsError: Error, Equatable, CustomStringConvertible {
         case let .invalidValue(id, value): "\(value) is not a value of \(id)"
         case let .reservedVariable(key): "\(key) is set by NotProton and cannot be set here"
         case .d3dmetalMissing: "D3DMetal is not installed: add Apple's Game Porting Toolkit first"
+        case let .mullionUnavailable(why): why
         case let .storage(what): what
         case let .usage(what): what
         }
