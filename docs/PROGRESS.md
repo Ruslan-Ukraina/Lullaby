@@ -1320,3 +1320,11 @@ PEAK, DXMT, меню; `perf/peak-ab.sh` чередует «исходно → и
 - **Минуты:** по длительности задач — macOS 18, Linux 6 → **≈186 из 2000** (API расхода по запускам пустой).
 - `make app-tests` — 0 (430), C-проверки — 0.
 - **Ждёт владельца:** (1) ключи — `RELEASING.md` §1, «ключи готовы»; (2) «можно» на установку r5-2 и игру PEAK/RE9 (§19).
+
+## 2026-10-10 ~23:28–23:45 CEST — Шаг 2 закрыт; мост r5-2 на Mac владельца; публикация ждёт подтверждения
+
+- **Ключи** (владелец, «ключи готовы»): Secrets `LB_RELEASE_PRIVATE_KEY`, `SPARKLE_PRIVATE_KEY` (21:28 UTC); Variables — оба открытых ключа не тестовые и разные. Закрытые ключи я не видел.
+- `release/feed.json` и `Info.plist` → `access: private` (`2243cce`), тесты 430 — 0.
+- **Мост r5-2 на Mac** (владелец: «тести игры»): игр не было (висел только старый `winedevice.exe` 20 ч, без wineserver — не трогал). Копия `bridges/state.json` и `app.log` — `scratch/backups/before-r5-2-*`. `test-app … --setup` — код 0: `bridges/current` = `bridge-dormison-r5-2`, `previous` = r5-1; B1 `ntdll.dll` и исправленные `ntdll.so`/`winemac.so` из r5-2; патч Steam `352AABE2` (сборка с исправлением steamwin). **Шаг Steam закрыл Steam** (`steam://exit`, 3 с) — мой `--release plan` на копии этого не предсказал (сравнивал без нового dylib); Steam открыт снова, хуки и регистрация `lullaby` в журнале. `runners/current` не менялся (r5).
+- **Публикация сигнатур боевым ключом** заблокирована автоматическим режимом Claude Code («Production Deploy») — нужно явное подтверждение владельца. Ничего не опубликовано.
+- Ждёт: «PEAK ок, RE9 ок» (SPIKE_TEST §19); «публикуй сигнатуры» / «публикуй мост».
