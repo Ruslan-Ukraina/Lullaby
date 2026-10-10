@@ -1,7 +1,7 @@
 // D3DMetal from the player's own copy of Apple's Game Porting Toolkit (docs/ROADMAP.md
 // section 6). Apple's evaluation environment is not ours to redistribute: the player
-// downloads the disk image from Apple and points NotProton at it; nothing of it is in this
-// repository or in NotProton's releases.
+// downloads the disk image from Apple and points Lullaby at it; nothing of it is in this
+// repository or in Lullaby's releases.
 //
 // What lands on disk is what Apple's Read Me says to install, `redist/lib/` with its own
 // shape: `d3dmetal/<version>/lib/{external, wine/x86_64-unix, wine/x86_64-windows}` in one

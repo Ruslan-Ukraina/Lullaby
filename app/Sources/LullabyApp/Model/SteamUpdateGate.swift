@@ -1,4 +1,4 @@
-// Keeps the Steam client off builds NotProton has no signatures for (Phase 5,
+// Keeps the Steam client off builds Lullaby has no signatures for (Phase 5,
 // DECISIONS P5-4). The lever is Valve's own: BootStrapperInhibitUpdateOnLaunch in
 // steam.cfg (UpdateBlock), which the bootstrapper reads when Steam starts.
 //

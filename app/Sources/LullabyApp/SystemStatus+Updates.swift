@@ -1,8 +1,8 @@
 // Phase 5 in Status: the Steam bridge (BridgeUpdater), Steam signatures
 // (SignatureUpdater) and the Steam update gate (SteamUpdateGate).
 //
-// When Status opens and every three hours while NotProton runs, it reads the signed
-// lists from NotProton's releases, writes new signature databases, and lets Steam
+// When Status opens and every three hours while Lullaby runs, it reads the signed
+// lists from Lullaby's releases, writes new signature databases, and lets Steam
 // update only to a build that has them. Bridge revisions are offered, not
 // installed on their own: a bridge change touches the engine's ntdll.dll.
 
@@ -105,11 +105,11 @@ extension SystemStatus {
         case .current(let current, let supported):
             supported
                 ? "Steam \(current) is current and supported."
-                : "Steam \(current) has no NotProton signatures yet."
+                : "Steam \(current) has no Lullaby signatures yet."
         case .updateAllowed(_, let to):
             "Steam \(to) is supported. Steam updates to it the next time it starts."
         case .waiting(let offered, _):
-            "Steam \(offered) is out. Waiting for NotProton support."
+            "Steam \(offered) is out. Waiting for Lullaby support."
         case .unknown:
             "Steam's latest version could not be checked, so its updates stay on hold."
         }

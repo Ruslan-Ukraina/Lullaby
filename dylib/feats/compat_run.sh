@@ -1,6 +1,6 @@
 #!/bin/sh
 # lullaby compatibility tool shim: runs Windows games from Steam on the
-# Dormison engine NotProton unpacked into runners/current
+# Dormison engine Lullaby unpacked into runners/current
 set -e
 
 verb="$1"
@@ -22,7 +22,7 @@ if [ -n "${LULLABY_ENV_BASE+x}" ]; then
   done
   unset LULLABY_ENV_BASE
 fi
-# Only NotProton's renderer list on Steam's newer Compatibility page (webpatch.c) still
+# Only Lullaby's renderer list on Steam's newer Compatibility page (webpatch.c) still
 # writes its choice after the command; without the shell (an older dylib, or the hook
 # off) every option arrives after it, and the known prefixes are taken as before.
 argc=$#
@@ -45,7 +45,7 @@ while [ "$argi" -lt "$argc" ]; do
   fi
   argi=$((argi+1))
 done
-# The player's own DLL overrides follow NotProton's (the bridge's and the renderer's).
+# The player's own DLL overrides follow Lullaby's (the bridge's and the renderer's).
 launch_dll_overrides=""
 case " $launch_env " in *" WINEDLLOVERRIDES "*) launch_dll_overrides="$WINEDLLOVERRIDES" ;; esac
 
@@ -85,7 +85,7 @@ bridge_src="$support/bridge"
 export WINEDLLPATH="$bridge_src"
 export PATH="$engine_root/wine/bin:$PATH"
 # Dormison's View menu saves a setting through $SEVO_CLI and falls back to
-# Sevoflurane's /usr/local/bin/sevo when that is unset. NotProton never calls
+# Sevoflurane's /usr/local/bin/sevo when that is unset. Lullaby never calls
 # Sevoflurane (docs/DECISIONS.md S1), so it always names this stand-in.
 sevo_cli="$support/lullaby-sevo"
 export SEVO_CLI="$sevo_cli"
@@ -112,7 +112,7 @@ run_started=$(date +%s)
 
 stage_step="startup"
 [ -x "$WINELOADER" ] && [ -x "$WINESERVER" ] || {
-  echo "=== no Dormison engine at $engine_root, set it up in NotProton ===" >> "$log" 2>&1 || true
+  echo "=== no Dormison engine at $engine_root, set it up in Lullaby ===" >> "$log" 2>&1 || true
   exit 1; }
 echo "engine: $(readlink "$engine_root" 2>/dev/null || echo "$engine_root")" \
   >> "$log" 2>&1 || true
@@ -123,7 +123,7 @@ echo "engine: $(readlink "$engine_root" 2>/dev/null || echo "$engine_root")" \
 # settings and rewrites its env files, so the choice holds on the next launch.
 sevo_stub=$(cat <<'STUB'
 #!/bin/sh
-# NotProton's stand-in for Sevoflurane's sevo CLI (docs/DECISIONS.md S1, P7A-5).
+# Lullaby's stand-in for Sevoflurane's sevo CLI (docs/DECISIONS.md S1, P7A-5).
 log="$HOME/Library/Application Support/lullaby/lullaby-sevo.log"
 printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$log" 2>/dev/null
 cli="$HOME/Library/Application Support/lullaby/lullaby-settings"
@@ -194,11 +194,11 @@ refuse_foreign_prefix() {
   want=8664
   have=$(prefix_machine) || return 0
   [ "$have" = "$want" ] && return 0
-  echo "=== prefix ntdll is $have and this compatibility tool wants $want, rebuild the prefix in NotProton ===" >> "$log" 2>&1 || true
+  echo "=== prefix ntdll is $have and this compatibility tool wants $want, rebuild the prefix in Lullaby ===" >> "$log" 2>&1 || true
 
   if [ "$verb" != run ]; then
     osascript >/dev/null 2>&1 <<APPLESCRIPT || true
-display alert "This game needs its prefix rebuilt" message "This game originally ran under $(tool_name "$have"), but $(tool_name "$want") is present now. The prefix needs to be rebuilt in NotProton in order to run the game. You will not lose game saves by rebuilding the prefix." as critical
+display alert "This game needs its prefix rebuilt" message "This game originally ran under $(tool_name "$have"), but $(tool_name "$want") is present now. The prefix needs to be rebuilt in Lullaby in order to run the game. You will not lose game saves by rebuilding the prefix." as critical
 APPLESCRIPT
   fi
   exit 1
@@ -386,7 +386,7 @@ env_file_set() {
 
 # Dormison applies <prefix>/.sevo/bottle.env at the start of every process in
 # the prefix, then .sevo/apps/<program>.env (load_sevo_env). A new prefix gets
-# NotProton's defaults; after that the keys are the user's and stay, except the
+# Lullaby's defaults; after that the keys are the user's and stay, except the
 # two this script owns: WINEMSYNC, which only the bottle file may set and the
 # server has to share, and SEVO_CLI (S1).
 write_bottle_env() {
@@ -395,7 +395,7 @@ write_bottle_env() {
   mkdir -p "$sevo/apps" || return 0
   if [ ! -f "$bottle" ]; then
     cat > "$bottle" <<'BOTTLE'
-# Dormison settings for every program in this prefix, first written by NotProton.
+# Dormison settings for every program in this prefix, first written by Lullaby.
 # One KEY=VALUE per line; .sevo/apps/<program>.env overrides them per program.
 SEVO_RESIZABLE_WINDOWS=1
 SEVO_UPSCALER=off
@@ -412,7 +412,7 @@ BOTTLE
 }
 
 # A value the game's own env file (then the prefix's) sets, for the keys that are
-# NotProton's rather than the engine's: the engine reads those files itself.
+# Lullaby's rather than the engine's: the engine reads those files itself.
 exe_lc=$(basename "$1" | tr '[:upper:]' '[:lower:]')
 env_value() {
   for f in "$WINEPREFIX/.sevo/apps/$exe_lc.env" "$WINEPREFIX/.sevo/bottle.env"; do
@@ -576,7 +576,7 @@ if [ -n "$STEAM_COMPAT_DATA_PATH" ]; then
       echo "=== lullaby-settings failed, the prefix keeps its files ===" >> "$log" 2>&1 || true
     fi
   fi
-  # NotProton's own keys: a launch option first, then the program's file, then
+  # Lullaby's own keys: a launch option first, then the program's file, then
   # bottle.env (the engine reads its SEVO_* keys from those files itself).
   [ -n "$LULLABY_RETINA" ] || LULLABY_RETINA=$(env_value LULLABY_RETINA)
   [ -n "$LULLABY_EMULATE_MODESET" ] || LULLABY_EMULATE_MODESET=$(env_value LULLABY_EMULATE_MODESET)
@@ -1189,7 +1189,7 @@ done
 if [ -n "$WINEDLLPATH_PREPEND" ]; then
   set -- --env WINEDLLPATH_PREPEND="$WINEDLLPATH_PREPEND" "$@"
 fi
-# What the launch options set and the list above leaves out. The ones NotProton builds
+# What the launch options set and the list above leaves out. The ones Lullaby builds
 # itself (below) carry the player's part already.
 for name in $launch_env; do
   case "$name" in

@@ -160,7 +160,7 @@ struct SettingCatalogTests {
         game.exes = ["a.exe"]
         let kept = SettingCatalog.withoutInherited(game, level: .game, global: global)
         #expect(kept.retina == nil, "the shared value")
-        #expect(kept.renderer == nil, "NotProton's default renderer")
+        #expect(kept.renderer == nil, "Lullaby's default renderer")
         #expect(kept.avx == true)
         #expect(kept.exes == ["a.exe"])
         #expect(SettingCatalog.withoutInherited(global, level: .global, global: .empty).retina == true)
@@ -189,7 +189,7 @@ struct SettingCatalogTests {
         #expect(!lines.contains { $0.contains("COMMAND") || $0.contains("OPTION") })
     }
 
-    @Test("defaults reproduce NotProton's profile, as the engine reads it")
+    @Test("defaults reproduce Lullaby's profile, as the engine reads it")
     func defaultsMatchTheOldProfile() {
         let bottle = ConfigMaterializer.bottleLines(global: .empty, msync: true, cli: nil)
         let env = ConfigMaterializer.effectiveEnvironment(bottle: bottle, program: [])

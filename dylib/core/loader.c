@@ -139,7 +139,7 @@ static void *install_thread(void *unused) {
            (unsigned long)slide);
 
     // The client is up, so the bootstrapper's update check is over: Steam's update
-    // block goes back if NotProton's gate is on (feats/updategate.c).
+    // block goes back if Lullaby's gate is on (feats/updategate.c).
     np_update_gate_rearm();
     np_input_access_check();
 

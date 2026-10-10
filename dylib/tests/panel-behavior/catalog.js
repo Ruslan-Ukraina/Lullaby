@@ -109,7 +109,7 @@ for (const lang of ['en', 'uk', 'ru']) {
     `${lang}: the four quick rows in the catalog's order (${titles.join(' | ')})`);
   t.ok(text(tree).includes(catalog.text.section[lang]), `${lang}: the header is the catalog's`);
   t.ok(text(tree).includes(catalog.text.advanced[lang]), `${lang}: Advanced settings button`);
-  const extra = foreign(tree, lang, ['peak.exe', 'PEAK', 'NotProton']);
+  const extra = foreign(tree, lang, ['peak.exe', 'PEAK', 'Lullaby']);
   t.ok(extra.length === 0, `${lang}: every word comes from the catalog (${JSON.stringify(extra)})`);
   t.ok(!text(tree).includes('Dormison'), `${lang}: no engine name by the header`);
 }
@@ -121,7 +121,7 @@ for (const lang of ['en', 'uk', 'ru']) {
   const tree = api.view(ctx);
   const renderer = rowFor(tree, 'renderer', 'ru');
   t.ok(text(renderer.props.description).includes(catalog.text.defaultValue.ru.replace('%@', 'DXMT')),
-    'a game-only row of its own names NotProton\'s default');
+    'a game-only row of its own names Lullaby\'s default');
   const up = rowFor(tree, 'upscaler', 'ru');
   t.ok(!walk(up.props.description).some(n => n.props && n.props.className === 'NPInherit'),
     'an inherited row has no line under it');
@@ -171,7 +171,7 @@ for (const lang of ['en', 'uk', 'ru']) {
     `every other row is in the dialog (${inDialog.length} of ${others.length})`);
   const groups = walk(overlay).filter(n => n.props && n.props.className === 'NPGroup').map(n => text(n));
   t.ok(JSON.stringify(groups) === JSON.stringify(catalog.groups.map(g => g.title.uk)),
-    `by group, in order, no Game Porting Toolkit block (it is added in NotProton) (${groups})`);
+    `by group, in order, no Game Porting Toolkit block (it is added in Lullaby) (${groups})`);
   const buttons = walk(overlay).filter(n => n.type === 'Button');
   buttons.find(b => text(b) === catalog.text.resetGame.uk).props.onClick();
   buttons.find(b => text(b) === catalog.text.done.uk).props.onClick();
@@ -180,7 +180,7 @@ for (const lang of ['en', 'uk', 'ru']) {
     `Reset game settings, Done and Escape (${JSON.stringify(ctx.calls)})`);
   t.ok(groups.includes(catalog.groups.find(g => g.id === 'oldGames').title.uk), 'old games have a group of their own');
   t.ok(!walk(overlay).some(n => n.type === 'textarea' || n.type === 'input'), 'no variable or DLL editors');
-  t.ok(foreign(tree, 'uk', ['peak.exe', 'PEAK', 'NotProton']).length === 0,
+  t.ok(foreign(tree, 'uk', ['peak.exe', 'PEAK', 'Lullaby']).length === 0,
     'the dialog speaks only the catalog\'s words');
 }
 
@@ -195,13 +195,13 @@ for (const lang of ['en', 'uk', 'ru']) {
   t.ok(text(tree).includes(catalog.text.globalSection.ru), 'its own header');
   const retina = rowFor(tree, 'retina', 'ru');
   t.ok(text(retina.props.description).includes(catalog.text.defaultValue.ru.replace('%@', '\u0412\u044b\u043a\u043b.')),
-    'a changed value for all games names NotProton\'s default');
+    'a changed value for all games names Lullaby\'s default');
   const fps = rowFor(tree, 'fps', 'ru');
   t.ok(!walk(fps.props.description).some(n => n.props && n.props.className === 'NPInherit'), 'an unchanged one has no line');
   const dialog = walk(api.view(ctxFor(clone(globalState), 'ru', { advanced: true })))
     .find(n => n.props && n.props.className === 'NPOverlay');
   t.ok(!rowsOf(dialog).some(n => text(n.props.label).startsWith(titleOf('msync', 'ru'))), 'msync+ is a game\'s alone');
-  t.ok(text(dialog).includes(catalog.text.resetGlobal.ru), 'reset to NotProton\'s defaults');
+  t.ok(text(dialog).includes(catalog.text.resetGlobal.ru), 'reset to Lullaby\'s defaults');
 }
 
 // ---- status, errors -------------------------------------------------------------------------
@@ -241,8 +241,8 @@ for (const lang of ['en', 'uk', 'ru']) {
   const body = m && Buffer.from(m[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
   t.ok(body === '{"op":"set","app":3527290,"id":"fps","value":true}', `a request is a virtual file the dylib answers (${p})`);
   t.ok(api.langOf('ukrainian') === 'uk' && api.langOf('russian') === 'ru' && api.langOf('german') === 'en', "Steam's language");
-  const run = d => api.runsThroughNotProton(d);
-  t.ok(run({ strCompatToolName: 'lullaby', vecPlatforms: ['windows', 'osx'] }), 'a forced NotProton');
+  const run = d => api.runsThroughLullaby(d);
+  t.ok(run({ strCompatToolName: 'lullaby', vecPlatforms: ['windows', 'osx'] }), 'a forced Lullaby');
   t.ok(run({ strCompatToolName: '', vecPlatforms: ['windows'] }), 'a Windows-only game');
   t.ok(!run({ strCompatToolName: '', vecPlatforms: ['windows', 'osx'] }), 'not a game with a macOS build');
   t.ok(!run({ strCompatToolName: 'proton_9', vecPlatforms: ['windows'] }), 'not another tool');

@@ -94,7 +94,7 @@ struct DormisonEngine: EngineProvider {
             ("NP_ENGINE_DLLPATH_X86_64", dllPath(.x86_64)),
             ("NP_ENGINE_DLLPATH_I386", dllPath(.i386)),
         ]
-        return "# Written by NotProton for compat_run.sh. Do not edit.\n"
+        return "# Written by Lullaby for compat_run.sh. Do not edit.\n"
             + pairs.map { "\($0.0)=\(Self.quote($0.1))" }.joined(separator: "\n") + "\n"
     }
 

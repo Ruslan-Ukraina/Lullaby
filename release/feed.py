@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""NotProton's release feed: what the app carries and what the fork publishes (Phase 5).
+"""Lullaby's release feed: what the app carries and what the fork publishes (Phase 5).
 
 Staging into the app payload (make app-payload):
 
@@ -434,7 +434,7 @@ CONFIG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "feed.json")
 
 
 def feed_config(path=CONFIG):
-    """release/feed.json: where NotProton publishes and how the app downloads (DECISIONS P6-11).
+    """release/feed.json: where Lullaby publishes and how the app downloads (DECISIONS P6-11).
     Everything else (the feed base, the appcast URL) is derived from it."""
     c = json.load(open(path))
     if c.get("schema") != 1:

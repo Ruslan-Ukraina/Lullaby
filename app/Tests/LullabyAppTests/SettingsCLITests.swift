@@ -75,7 +75,7 @@ struct SettingsCLITests {
         #expect(state["running"] == .bool(true))
     }
 
-    @Test("for all games: inherits NotProton's defaults, a game inherits from it")
+    @Test("for all games: inherits Lullaby's defaults, a game inherits from it")
     func globalLevel() throws {
         let fixture = try SettingsFixture()
         defer { fixture.cleanUp() }

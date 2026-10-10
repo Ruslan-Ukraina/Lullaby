@@ -126,7 +126,7 @@ jobs:
           channels = json.load(open(engine))["channels"]
           entries = json.load(open(repo))["bridges"] + (json.load(open(current))["bridges"] if current else [])
           def revs(version): return [e["rev"] for e in entries if e["engine"] == version]
-          # The beta channel first: it is the one NotProton ships with today.
+          # The beta channel first: it is the one Lullaby ships with today.
           order = [c for c in ("beta", "stable") if c in channels and channels[c].get("version")]
           target = next((c for c in order if not revs(channels[c]["version"])), None)
           if target is None and (rebuild == "true" or dry_run == "true") and order:
@@ -291,7 +291,7 @@ jobs:
           {
             echo "The dormison-bridge workflow: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
             echo
-            echo "NotProton does not offer ${{ steps.detect.outputs.engine }} until it has a bridge (DECISIONS P5-1)."
+            echo "Lullaby does not offer ${{ steps.detect.outputs.engine }} until it has a bridge (DECISIONS P5-1)."
           } > "$body"
           if [ "$DRY_RUN" = true ]; then
             echo "Dry run, would open: **$title**" >> "$GITHUB_STEP_SUMMARY"

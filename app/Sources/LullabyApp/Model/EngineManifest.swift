@@ -76,7 +76,7 @@ struct EngineRelease: Sendable, Equatable {
     let sha256: String
     let sizeBytes: Int64
     let notes: String?
-    /// Sevoflurane's app version this release asks for. NotProton's own gate is
+    /// Sevoflurane's app version this release asks for. Lullaby's own gate is
     /// the support table (EngineSupport), so this is only logged.
     let minAppVersion: String?
 
@@ -124,7 +124,7 @@ struct EngineManifest: Sendable, Equatable {
         guard EngineSignature.isValid(data, signatureFile: signatureFile, key: key) else {
             throw StepFailure(
                 step: step,
-                detail: "The engine list does not carry Dormison's signature, so NotProton refused it.")
+                detail: "The engine list does not carry Dormison's signature, so Lullaby refused it.")
         }
         return try decode(data)
     }

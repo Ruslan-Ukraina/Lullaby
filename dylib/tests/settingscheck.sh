@@ -1,7 +1,7 @@
 #!/bin/sh
 # The prefix settings import of the run script: one Wine process per launch, and the controllers
 # Steam Input handles kept off hidraw (upstream NotProton 1.1.x tests, GPL-3.0, adapted to
-# NotProton-Dormison's keys and to a new prefix).
+# Lullaby-Dormison's keys and to a new prefix).
 # shellcheck disable=SC2016 # the sh -ec program expands its own variables
 set -e
 SRC="${1:-$(dirname "$0")/../feats/compat_run.sh}"
@@ -176,7 +176,7 @@ in_registry 054c/0ce6 057e/2006 057e/2007 057e/2009
 IGNORE='0x054c/0x0ce6' EXCEPT='' RAW='1'
 again "" 0
 { cat "$work/retina-off"; shown 054c/0ce6; shown 057e/2006; shown 057e/2007; shown 057e/2009; } > "$work/expected"
-same_file "LULLABY_RAW_CONTROLLERS=1 removes every key NotProton wrote" "$work/expected" "$case_dir/imported"
+same_file "LULLABY_RAW_CONTROLLERS=1 removes every key Lullaby wrote" "$work/expected" "$case_dir/imported"
 is "LULLABY_RAW_CONTROLLERS=1 tracks nothing" "" "$(owned)"
 is "LULLABY_RAW_CONTROLLERS=1 is logged" "controllers: games read them directly (LULLABY_RAW_CONTROLLERS=1)" "$(logged)"
 

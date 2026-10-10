@@ -1,9 +1,9 @@
-// Deploys NotProton's components into Steam and lullaby/ (the engine itself is Dormison, set up by EngineUpdater)
+// Deploys Lullaby's components into Steam and lullaby/ (the engine itself is Dormison, set up by EngineUpdater)
 
 import Foundation
 
 enum InstallPayload {
-    static let step = "Find NotProton's components"
+    static let step = "Find Lullaby's components"
 
     struct Located: Sendable {
         let dylib: URL
@@ -24,7 +24,7 @@ enum InstallPayload {
         guard let url = bundle.url(forResource: "payload", withExtension: nil) else {
             throw StepFailure(
                 step: step,
-                detail: "This build of NotProton carries no components at all."
+                detail: "This build of Lullaby carries no components at all."
             )
         }
         return url

@@ -159,7 +159,7 @@ public enum SettingsError: Error, Equatable, CustomStringConvertible {
         case let .unknownSetting(id): "unknown setting \(id)"
         case let .wrongLevel(id): "\(id) cannot be set at this level"
         case let .invalidValue(id, value): "\(value) is not a value of \(id)"
-        case let .reservedVariable(key): "\(key) is set by NotProton and cannot be set here"
+        case let .reservedVariable(key): "\(key) is set by Lullaby and cannot be set here"
         case .d3dmetalMissing: "D3DMetal is not installed: add Apple's Game Porting Toolkit first"
         case let .storage(what): what
         case let .usage(what): what

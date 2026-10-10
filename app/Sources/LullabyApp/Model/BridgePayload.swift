@@ -42,7 +42,7 @@ enum BridgePayload {
             guard let payloadRoot = try? InstallPayload.root() else {
                 throw StepFailure(
                     step: step,
-                    detail: "NotProton carries no components."
+                    detail: "Lullaby carries no components."
                 )
             }
             base = payloadRoot.appending(path: "bridge")

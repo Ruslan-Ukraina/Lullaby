@@ -42,7 +42,7 @@ struct InstallOutcome: Sendable {
 }
 
 enum SteamInstaller {
-    static let step = "Install NotProton"
+    static let step = "Install Lullaby"
 
     typealias ClientStopper = @Sendable (URL, () -> Void) throws -> Bool
     typealias BundleRegistrar = @Sendable (URL) -> Void
@@ -107,7 +107,7 @@ enum SteamInstaller {
         let known = SignatureUpdater(signatures: signatures).support()
         for database in payload.signatures {
             let target = signatures.appending(path: database.lastPathComponent)
-            // A revision of the same database from NotProton's signed releases stays.
+            // A revision of the same database from Lullaby's signed releases stays.
             if let have = Digest.sha256IfPresent(target), have != Digest.sha256IfPresent(database),
                known.accepted(database.lastPathComponent).contains(have)
             {
@@ -151,7 +151,7 @@ enum SteamInstaller {
             throw StepFailure(
                 step: step,
                 detail: "Steam is set up to inject a different dylib. Please repair Steam "
-                    + "before installing NotProton."
+                    + "before installing Lullaby."
             )
         }
 
@@ -191,7 +191,7 @@ enum SteamInstaller {
             throw StepFailure(
                 step: step,
                 detail: "Another dylib is present. Repair your Steam install before "
-                    + "installing NotProton."
+                    + "installing Lullaby."
             )
         }
     }
@@ -220,14 +220,14 @@ enum SteamInstaller {
     }
 
     static let gameRunning =
-        "A game is running under NotProton. Quit the game, then try again."
+        "A game is running under Lullaby. Quit the game, then try again."
 
     private static let mismatchAcrossAccounts =
-        "Steam has a different copy of NotProton, installed by another account on this Mac. "
-        + "Update NotProton from that account, then try again."
+        "Steam has a different copy of Lullaby, installed by another account on this Mac. "
+        + "Update Lullaby from that account, then try again."
 
     private static let unpatchedAcrossAccounts =
-        "Steam has not been set up for NotProton, and this account cannot change it. "
+        "Steam has not been set up for Lullaby, and this account cannot change it. "
         + "Install from the account that owns Steam."
 
     static func assertBundleIsWritable(_ app: URL) throws {

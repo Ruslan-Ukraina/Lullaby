@@ -1,4 +1,4 @@
-// Signs release files with NotProton's Ed25519 release key (Phase 5/6).
+// Signs release files with Lullaby's Ed25519 release key (Phase 5/6).
 //
 //     swift release/sign.swift <private key file> <file>...
 //

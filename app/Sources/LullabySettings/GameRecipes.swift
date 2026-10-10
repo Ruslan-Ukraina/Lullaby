@@ -1,4 +1,4 @@
-// NotProton's recipes: per-game defaults NotProton knows to work best, between the game's
+// Lullaby's recipes: per-game defaults Lullaby knows to work best, between the game's
 // own values and "for all games" (DECISIONS A1010-3). A recipe is found by the Steam app id,
 // or by an executable the game runs: a non-Steam shortcut has an id of its own on every Mac.
 // A recipe never touches the game's files; the player's own choice still wins, and

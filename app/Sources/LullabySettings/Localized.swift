@@ -1,4 +1,4 @@
-// Texts in the three languages NotProton speaks: English (the base), Ukrainian and
+// Texts in the three languages Lullaby speaks: English (the base), Ukrainian and
 // Russian. One field per language makes a missing translation a compile error;
 // LocalizationTests checks that none is empty and that each is translated.
 

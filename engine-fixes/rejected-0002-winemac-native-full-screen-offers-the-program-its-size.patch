@@ -1,4 +1,4 @@
-NotProton-Dormison, 2026-10-10. In native full screen (the green button) a window whose program
+Lullaby-Dormison, 2026-10-10. In native full screen (the green button) a window whose program
 made it fixed-size is scaled by Dormison at the size the program drew at: Resident Evil Requiem
 in its windowed mode showed 2294x1496 with a black strip and bars. Its program is now told the
 full-screen size, as a resizable window's is; RE9 re-renders at 3024x1898 (checked live with a
@@ -14,7 +14,7 @@ index bdd9e261b2..62c68f548e 100644
          }
      }
  
-+    /* NotProton: whether native full screen tells a scaled window's program the
++    /* Lullaby: whether native full screen tells a scaled window's program the
 +       full-screen size (LULLABY_FULLSCREEN_SCALES=1 keeps Dormison's scaling only). */
 +    static BOOL fullscreen_offers_size(void)
 +    {
@@ -31,7 +31,7 @@ index bdd9e261b2..62c68f548e 100644
      {
          enteringFullScreen = FALSE;
          enteredFullScreenTime = [[NSProcessInfo processInfo] systemUptime];
-+        /* NotProton: a window the program made fixed-size is scaled at the size it drew
++        /* Lullaby: a window the program made fixed-size is scaled at the size it drew
 +           at. Its program is now told the full-screen size, as a resizable window's is: one
 +           that re-renders at it fills the screen at the display's resolution, and the scaler,
 +           left on, then presents it 1:1; one that keeps its size stays scaled as before.

@@ -607,10 +607,10 @@ APP_BUILD   ?= $(APP_VERSION)
 
 APP_SIGN_ID ?= -
 
-# NotProton's release feed (docs/RELEASING.md). The key is the base64 Ed25519
+# Lullaby's release feed (docs/RELEASING.md). The key is the base64 Ed25519
 # public key; empty (the default until Phase 6) leaves the feed off and the app
 # uses the bridge and signatures it carries.
-# Where NotProton publishes and how the app downloads come from one file,
+# Where Lullaby publishes and how the app downloads come from one file,
 # release/feed.json (DECISIONS P6-11); the release workflows read the same file.
 feed_config = $(shell python3 -I release/feed.py config $(1))
 NP_RELEASE_FEED       ?= $(call feed_config,feed)

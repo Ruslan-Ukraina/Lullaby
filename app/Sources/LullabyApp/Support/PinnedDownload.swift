@@ -76,12 +76,12 @@ enum PinnedDownload {
 
     private static func reason(_ kinds: Set<Refusal>) -> String {
         if kinds == [.mismatch] {
-            return "Something is wrong with the downloaded files. Please check for a NotProton update."
+            return "Something is wrong with the downloaded files. Please check for a Lullaby update."
         }
         if kinds == [.unreachable] {
-            return "NotProton could not reach Valve's servers. Please check your internet "
+            return "Lullaby could not reach Valve's servers. Please check your internet "
                 + "connection and try again."
         }
-        return "NotProton could not download the files it needs from Valve. Please try again later."
+        return "Lullaby could not download the files it needs from Valve. Please try again later."
     }
 }

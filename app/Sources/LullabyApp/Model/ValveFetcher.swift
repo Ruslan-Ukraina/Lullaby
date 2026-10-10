@@ -60,7 +60,7 @@ enum ValveFetcher {
             throw StepFailure(
                 step: step,
                 detail: "Something is wrong with the downloaded files. "
-                    + "Please check for a NotProton update."
+                    + "Please check for a Lullaby update."
             )
         }
 

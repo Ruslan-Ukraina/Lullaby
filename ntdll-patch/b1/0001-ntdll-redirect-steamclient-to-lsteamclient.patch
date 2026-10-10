@@ -7,7 +7,7 @@ index 45654e9aa8..78abcb9ecd 100644
  WINE_DECLARE_DEBUG_CHANNEL(loaddll);
  WINE_DECLARE_DEBUG_CHANNEL(imports);
 +
-+/* NotProton: a module whose DllMain is never called. Set on Valve's steamclient64.dll and
++/* Lullaby: a module whose DllMain is never called. Set on Valve's steamclient64.dll and
 + * gameoverlayrenderer(64).dll once their exports lead to lsteamclient (Proton's flag, same value). */
 +#ifndef LDR_DONT_CALL_DLLMAIN
 +#define LDR_DONT_CALL_DLLMAIN 0x20000000
@@ -29,7 +29,7 @@ index 45654e9aa8..78abcb9ecd 100644
  
  
 +/*************************************************************************
-+ *		NotProton: Valve's steamclient -> lsteamclient
++ *		Lullaby: Valve's steamclient -> lsteamclient
 + *
 + * The same redirection as Proton's steamclient_setup_trampolines (ValveSoftware/wine,
 + * dlls/ntdll/loader.c and dlls/ntdll/unix/loader.c), done from the PE side only so the

@@ -196,7 +196,7 @@ jobs:
               echo
               cat "$RUNNER_TEMP/work/summary.md"
               echo
-              echo "NotProton keeps Steam on its current build until this is solved (docs/BACKLOG.md 22, 24)."
+              echo "Lullaby keeps Steam on its current build until this is solved (docs/BACKLOG.md 22, 24)."
             } > "$body"
             if [ "$DRY_RUN" = true ]; then
               echo "Dry run, would open: **$title**" >> "$GITHUB_STEP_SUMMARY"

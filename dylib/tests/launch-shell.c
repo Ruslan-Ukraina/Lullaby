@@ -1,4 +1,4 @@
-// From upstream NotProton 1.1.0, with NotProton's LULLABY_ENV_BASE prologue: the
+// From upstream NotProton 1.1.0, with Lullaby's LULLABY_ENV_BASE prologue: the
 // expected /bin/sh -c lines carry it ahead of the command line, and a real shell shows it
 // leaves out what the launch options set.
 #include "../hooks/hook_launch.c"
@@ -188,7 +188,7 @@ int main(void) {
     wraps("", "/bin/sh -c ''");
     wraps(";touch ~", "/bin/sh -c ';touch ~'");
 
-    printf("== the shell records what it was handed (NotProton) ==\n");
+    printf("== the shell records what it was handed (Lullaby) ==\n");
     base_leaves_out_launch_variables();
 
     printf("== STEAM_GAME_LAUNCH_SHELL stands in for /bin/sh -c as one argument ==\n");

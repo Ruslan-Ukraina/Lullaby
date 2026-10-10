@@ -1,4 +1,4 @@
-// How NotProton downloads its own releases (ROADMAP §3, DECISIONS P6-12).
+// How Lullaby downloads its own releases (ROADMAP §3, DECISIONS P6-12).
 //
 //   public   plain https from github.com/<repo>/releases/download/<tag>/<file>,
 //            the addresses the manifests carry
@@ -24,7 +24,7 @@ enum ReleaseAccess: Equatable, Sendable {
     var isPrivate: Bool { if case .private = self { true } else { false } }
 
     static let needsToken =
-        "NotProton's releases are private and this Mac has no access token for them. Add it in Status → NotProton → Access Token."
+        "Lullaby's releases are private and this Mac has no access token for them. Add it in Status → Lullaby → Access Token."
 }
 
 /// The read-only token for a private release repository, in the login Keychain.
@@ -56,7 +56,7 @@ enum ReleaseToken {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: repository,
-            kSecAttrLabel as String: "NotProton release access (\(repository))",
+            kSecAttrLabel as String: "Lullaby release access (\(repository))",
             kSecValueData as String: Data(trimmed.utf8),
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
         ]

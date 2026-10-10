@@ -1,4 +1,4 @@
-// Path construction for the NotProton support directory and Steam
+// Path construction for the Lullaby support directory and Steam
 
 import Foundation
 
@@ -24,7 +24,7 @@ enum SupportPaths {
     /// Downloaded Steam bridge builds, one folder each, and state.json naming the
     /// active one and the one Roll Back returns to (BridgeStore).
     static var bridges: URL { support.appending(path: "bridges") }
-    /// Verified copies of NotProton's signed release manifests, with their .sig files.
+    /// Verified copies of Lullaby's signed release manifests, with their .sig files.
     static var manifests: URL { support.appending(path: "manifests") }
     /// `auto` or `manual`: who keeps Steam's update block (SteamUpdateGate). The dylib
     /// reads it inside Steam, so the name is shared with dylib/feats/updategate.c.

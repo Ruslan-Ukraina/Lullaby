@@ -107,7 +107,7 @@ static int out_expand(np_out_t *o, const char *replace, const np_cap_t *caps) {
 
 // Renderer panel for the beta compat UI (selecttool), whose anchors give no name for
 // React, so the catalog panel cannot be built there (DECISIONS P7A-7): the one setting that
-// has to be reachable from the game's own Steam page. Everything else about a game lives in NotProton's Game Settings,
+// has to be reachable from the game's own Steam page. Everything else about a game lives in Lullaby's Game Settings,
 // whose .sevo/apps/<exe>.env is the single source of truth (docs/DECISIONS.md V3).
 // The choice is a launch option, LULLABY_RENDERER=<name>, which compat_run.sh
 // reads ahead of the game's env file.
@@ -153,7 +153,7 @@ static int out_expand(np_out_t *o, const char *replace, const np_cap_t *caps) {
     "onChange:v=>s([[\"LULLABY_RENDERER\",v.data],[\"CX_GRAPHICS_BACKEND\",\"\"]])})},\"gfx\")" \
     "]})})}"
 
-// NotProton's settings panel (feats/panel.js, docs/ROADMAP.md section 5): one function
+// Lullaby's settings panel (feats/panel.js, docs/ROADMAP.md section 5): one function
 // the page calls with its own JSX runtime, Steam's dialog controls and React. On the
 // Compatibility page of a game it draws the game's own values; in Settings > Compatibility
 // the values for all games. Both draw the catalog lullaby-settings answers with.
@@ -189,7 +189,7 @@ static const np_gate_t g_gates_forcetool[] = {
     // Settings page Compatibility entry, keeping the SteamOS exclusion (!rf())
     { "Compatibility:{visible:t&&(0,f.CI)()&&!(0,f.rf)()",
       "Compatibility:{visible:t&&true&&!(0,f.rf)()", 1 },
-    // The forced tool's list, only when there is a choice to make: with NotProton the one
+    // The forced tool's list, only when there is a choice to make: with Lullaby the one
     // tool, the box alone forces it (Steam's handler takes the first tool, a[0]), and the
     // game's choice stays in Steam's config as before (Amendment 09.10, §13.3 a).
     { "return(0,i.jsxs)(i.Fragment,{children:[0!=a.length&&(0,i.jsx)(_r,{label:(0,A.we)"
@@ -210,7 +210,7 @@ static const np_gate_t g_gates_forcetool[] = {
       "Rt=(0,a.PA)(e=>(0,i.jsxs)(c.nB,{children:[(0,i.jsx)(\"div\",{className:K().HiddenIfNotLast,"
       "children:(0,A.we)(\"#AppProperties_CompatibilityNoOptions\")}),(0,i.jsx)(It,{...e}),"
       "(0,i.jsx)(xt,{...e}),(0,i.jsx)(NPPanel.Game,{...e})]}));", 1 },
-    // Settings > Compatibility: NotProton's values for all games under Steam Play's own
+    // Settings > Compatibility: Lullaby's values for all games under Steam Play's own
     { "function h(e){return(0,i.jsxs)(A.sh,{children:[(0,i.jsx)(\"div\",{children:(0,l.we)"
       "(\"#Settings_SteamPlay_IsWildcardEnabled\")}),(0,i.jsx)(g,{bottomSeparator:\"none\"})]})}",
       NP_PANEL_GLOBAL_STATEMENT
@@ -224,7 +224,7 @@ static const np_gate_t g_gates_forcetool[] = {
       "!s.local_per_client_data?.installed&&"
       "s.most_available_per_client_data?.is_invalid_os_type&&(0,n.jsx)(U,{})", 1 },
     { "(0,h.we)(\"#GameList_Entry_Invalid_OSType2\")",
-      "\"Turn on NotProton (Dormison) under Properties > Compatibility to install "
+      "\"Turn on Lullaby (Dormison) under Properties > Compatibility to install "
       "and run the Windows version.\"", 1 },
 };
 
@@ -257,7 +257,7 @@ static const np_gate_t g_gates_selecttool[] = {
       NP_C1 ".most_available_per_client_data?.is_invalid_os_type&&"
       "(0," NP_C2 ".jsx)(" NP_C3 ",{})", 1 },
     { "(0," NP_C1 ".we)(\"#GameList_Entry_Invalid_OSType2\")",
-      "\"Turn on NotProton (Dormison) under Properties > Compatibility to install "
+      "\"Turn on Lullaby (Dormison) under Properties > Compatibility to install "
       "and run the Windows version.\"", 1 },
 };
 

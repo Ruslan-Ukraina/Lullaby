@@ -240,7 +240,7 @@ struct SteamInstallerTests {
             try String(contentsOf: fixture.deployedVersion, encoding: .utf8)
                 .trimmingCharacters(in: .whitespacesAndNewlines) == "2.0.0"
         )
-        // Taken by the first install, and not retaken: a backup of what NotProton itself
+        // Taken by the first install, and not retaken: a backup of what Lullaby itself
         // left behind is not a backup of the original.
         #expect(second.backedUpPlist == false)
     }
@@ -447,7 +447,7 @@ struct SteamInstallerTests {
         #expect(SteamBundle.currentControllerBlock(at: fixture.plist) == SteamBundle.controllerBlockValue)
         #expect(SteamBundle.currentInsert(at: fixture.plist) == fixture.deployedDylib.path(percentEncoded: false))
 
-        // A Steam patched by an older NotProton: the same dylib, no block list.
+        // A Steam patched by an older Lullaby: the same dylib, no block list.
         var dict = try #require(SteamBundle.readInfoPlist(at: fixture.plist))
         var environment = try #require(dict[SteamBundle.environmentKey] as? [String: Any])
         environment.removeValue(forKey: SteamBundle.controllerBlockKey)

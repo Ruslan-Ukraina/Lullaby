@@ -100,10 +100,10 @@ struct WindowLocalizationTests {
 
     @Test("§9.4 tip is the agreed text in each language")
     func tipText() throws {
-        let key = "Steam updates can break NotProton. NotProton already holds back Steam versions it doesn't support yet. Turn this on to stop Steam updates completely."
+        let key = "Steam updates can break Lullaby. Lullaby already holds back Steam versions it doesn't support yet. Turn this on to stop Steam updates completely."
         let values = try #require(try WindowLocalizationTests.catalog()[key])
-        #expect(values["uk"] == "Оновлення Steam можуть зламати NotProton. NotProton уже сам не пропускає версії Steam, які ще не підтримує. Увімкніть, щоб повністю зупинити оновлення Steam.")
-        #expect(values["ru"] == "Обновления Steam могут сломать NotProton. NotProton уже сам не пускает версии Steam, которые ещё не поддерживает. Включите, чтобы полностью остановить обновления Steam.")
+        #expect(values["uk"] == "Оновлення Steam можуть зламати Lullaby. Lullaby уже сам не пропускає версії Steam, які ще не підтримує. Увімкніть, щоб повністю зупинити оновлення Steam.")
+        #expect(values["ru"] == "Обновления Steam могут сломать Lullaby. Lullaby уже сам не пускает версии Steam, которые ещё не поддерживает. Включите, чтобы полностью остановить обновления Steam.")
     }
 }
 
@@ -148,6 +148,6 @@ struct CreditsTests {
         let credit = try #require(Credits.all.first { $0.name == "D3DMetal" })
         #expect(credit.authors == "Apple")
         #expect(credit.link == nil || credit.link?.contains("developer.apple.com") == true)
-        #expect(credit.role.contains("NotProton doesn't distribute it"))
+        #expect(credit.role.contains("Lullaby doesn't distribute it"))
     }
 }

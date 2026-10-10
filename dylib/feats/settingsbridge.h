@@ -1,4 +1,4 @@
-// The Steam panel's channel to NotProton's settings (docs/ROADMAP.md section 5, DECISIONS P7A-2).
+// The Steam panel's channel to Lullaby's settings (docs/ROADMAP.md section 5, DECISIONS P7A-2).
 //
 // Steam Helper serves https://steamloopback.host/<path> from its steamui folder through
 // CefStreamReader::CreateForFile, which opens the file with fopen; the webpatch hook

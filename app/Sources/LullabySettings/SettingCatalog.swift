@@ -58,7 +58,7 @@ public enum SettingCarrier: Sendable, Equatable {
     /// Wine registry values. compat_run.sh writes them into the game's prefix at launch,
     /// reading `marker` from the env files (a prefix has no wineserver between launches).
     case registry(values: [String], marker: String)
-    /// A NotProton key compat_run.sh reads from the env files and acts on itself.
+    /// A Lullaby key compat_run.sh reads from the env files and acts on itself.
     case runScript(String)
     /// Keys only bottle.env may set (Dormison ignores them in a program's file), plus the
     /// prefix's `lullaby-msync` marker.
@@ -231,7 +231,7 @@ public enum SettingCatalog {
     /// `values` at `level` without the values equal to what the level inherits: such a
     /// value is no choice of the level's own, and the panel shows no line for it
     /// (Amendment 09.10, §13.3 и). A game inherits from `global`, the global level and a
-    /// game-only setting from NotProton's defaults.
+    /// game-only setting from Lullaby's defaults.
     public static func withoutInherited(
         _ values: ConfigValues, level: SettingLevel, global: ConfigValues, recipe: ConfigValues = .empty
     ) -> ConfigValues {

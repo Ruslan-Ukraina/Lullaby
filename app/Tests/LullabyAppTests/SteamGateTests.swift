@@ -148,7 +148,7 @@ struct SteamGateTests {
         #expect(decision == .init(block: true, state: .waiting(offered: 1791249696, installed: 1788652215)))
         #expect(rig.blocked)
         #expect(try String(contentsOf: rig.gateFile, encoding: .utf8) == "auto\n")
-        #expect(SystemStatus.gateSentence(decision.state) == "Steam 1791249696 is out. Waiting for NotProton support.")
+        #expect(SystemStatus.gateSentence(decision.state) == "Steam 1791249696 is out. Waiting for Lullaby support.")
     }
 
     @Test("Signatures appear: the database is downloaded and the block lifts on its own, then comes back")
@@ -233,11 +233,11 @@ struct SteamGateTests {
         try rig.bundled()
         try rig.publishSignatures(serial: 1, database: 1791249696, builds: [1791249696], signer: Curve25519.Signing.PrivateKey())
         let fake = await failureMessage { _ = try await rig.signatureUpdater.update() }
-        #expect(fake.contains("does not carry NotProton's release signature"))
+        #expect(fake.contains("does not carry Lullaby's release signature"))
 
         try rig.publishSignatures(serial: 1, database: 1791249696, builds: [1791249696], served: GateRig.database(1791249696, note: "x"))
         let sha = await failureMessage { _ = try await rig.signatureUpdater.update() }
-        #expect(sha.contains("does not match NotProton's signed list"))
+        #expect(sha.contains("does not match Lullaby's signed list"))
         #expect(!FileManager.default.fileExists(atPath: rig.signatures.appending(path: "1791249696.json").path(percentEncoded: false)))
         #expect(!rig.signatureUpdater.support().supports(1791249696, installedIn: rig.signatures))
 

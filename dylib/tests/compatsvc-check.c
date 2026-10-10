@@ -344,7 +344,7 @@ static uint8_t response_buf[64];
 static void offered_cases(void) {
     reset();
     tool_spec_t tools[] = {
-        { "lullaby", "Dormison (NotProton)", COMPAT_PLATFORM_WINDOWS, 100, 0, 0 },
+        { "lullaby", "Dormison (Lullaby)", COMPAT_PLATFORM_WINDOWS, 100, 0, 0 },
     };
     build_tools(tools, 1);
     stub_platforms_val = COMPAT_PLATFORM_WINDOWS;
@@ -372,7 +372,7 @@ static void offered_cases(void) {
 static void hidden_cases(void) {
     reset();
     tool_spec_t tools[] = {
-        { "lullaby", "Dormison (NotProton)", COMPAT_PLATFORM_WINDOWS, 100, COMPAT_TOOL_GATE_HIDDEN, 0 },
+        { "lullaby", "Dormison (Lullaby)", COMPAT_PLATFORM_WINDOWS, 100, COMPAT_TOOL_GATE_HIDDEN, 0 },
     };
     build_tools(tools, 1);
     stub_platforms_val = COMPAT_PLATFORM_WINDOWS;
@@ -395,7 +395,7 @@ static void hidden_cases(void) {
 static void is_a_tool_cases(void) {
     reset();
     tool_spec_t tools[] = {
-        { "lullaby", "Dormison (NotProton)", COMPAT_PLATFORM_WINDOWS, 100, 0, 730 },
+        { "lullaby", "Dormison (Lullaby)", COMPAT_PLATFORM_WINDOWS, 100, 0, 730 },
     };
     build_tools(tools, 1);
     stub_platforms_val = COMPAT_PLATFORM_WINDOWS;
@@ -413,7 +413,7 @@ static void is_a_tool_cases(void) {
 static void none_entry_cases(void) {
     reset();
     tool_spec_t tools[] = {
-        { "lullaby", "Dormison (NotProton)", COMPAT_PLATFORM_WINDOWS, 100, 0, 0 },
+        { "lullaby", "Dormison (Lullaby)", COMPAT_PLATFORM_WINDOWS, 100, 0, 0 },
     };
     build_tools(tools, 1);
     stub_platforms_val = COMPAT_PLATFORM_WINDOWS;
@@ -493,7 +493,7 @@ static void priority_cases(void) {
 static void selected_cases(void) {
     reset();
     tool_spec_t tools[] = {
-        { "lullaby", "Dormison (NotProton)", COMPAT_PLATFORM_WINDOWS, 100, 0, 0 },
+        { "lullaby", "Dormison (Lullaby)", COMPAT_PLATFORM_WINDOWS, 100, 0, 0 },
     };
     build_tools(tools, 1);
     stub_platforms_val = COMPAT_PLATFORM_WINDOWS;
@@ -524,7 +524,7 @@ static void selected_cases(void) {
 static void fallback_cases(void) {
     reset();
     tool_spec_t tools[] = {
-        { "lullaby", "Dormison (NotProton)", COMPAT_PLATFORM_WINDOWS, 100, 0, 0 },
+        { "lullaby", "Dormison (Lullaby)", COMPAT_PLATFORM_WINDOWS, 100, 0, 0 },
     };
     build_tools(tools, 1);
     stub_platforms_val = COMPAT_PLATFORM_WINDOWS;
@@ -567,7 +567,7 @@ static void fallback_cases(void) {
 static void active_flag_cases(void) {
     reset();
     tool_spec_t tools[] = {
-        { "lullaby", "Dormison (NotProton)", COMPAT_PLATFORM_WINDOWS, 100, 0, 0 },
+        { "lullaby", "Dormison (Lullaby)", COMPAT_PLATFORM_WINDOWS, 100, 0, 0 },
         { "proton",    "Proton",    COMPAT_PLATFORM_WINDOWS, 200, 0, 0 },
     };
     build_tools(tools, 2);
@@ -615,7 +615,7 @@ static void no_manager_cases(void) {
     reset();
     parse_into_ok = 0;
     tool_spec_t tools[] = {
-        { "lullaby", "Dormison (NotProton)", COMPAT_PLATFORM_WINDOWS, 100, 0, 0 },
+        { "lullaby", "Dormison (Lullaby)", COMPAT_PLATFORM_WINDOWS, 100, 0, 0 },
     };
     build_tools(tools, 1);
     stub_platforms_val = COMPAT_PLATFORM_WINDOWS;

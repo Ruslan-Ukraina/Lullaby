@@ -410,11 +410,11 @@ static void osx_tick(void) {
     // automatic termination; it must stay up.
     static BOOL held;
     if (helper_regular && !held) {
-        [NSProcessInfo.processInfo disableAutomaticTermination:@"NotProton: Steam Helper holds Steam's Dock icon"];
+        [NSProcessInfo.processInfo disableAutomaticTermination:@"Lullaby: Steam Helper holds Steam's Dock icon"];
         [NSProcessInfo.processInfo disableSuddenTermination];
         held = YES;
     } else if (!helper_regular && held) {
-        [NSProcessInfo.processInfo enableAutomaticTermination:@"NotProton: Steam Helper holds Steam's Dock icon"];
+        [NSProcessInfo.processInfo enableAutomaticTermination:@"Lullaby: Steam Helper holds Steam's Dock icon"];
         [NSProcessInfo.processInfo enableSuddenTermination];
         held = NO;
     }

@@ -252,7 +252,7 @@ struct BridgeUpdaterTests {
             return
         }
         let message = await failureMessage { _ = try await updater.install(offered) }
-        #expect(message.contains("not the file NotProton's fix was built for"))
+        #expect(message.contains("not the file Lullaby's fix was built for"))
         #expect(rig.engineFile(BridgeRig.fixPath) == foreign)
     }
 
@@ -268,7 +268,7 @@ struct BridgeUpdaterTests {
 
         try rig.publishManifest(serial: 1, [try rig.artifact(rev: 2)], signer: stranger)
         let manifest = await failureMessage { _ = try await updater.check() }
-        #expect(manifest.contains("does not carry NotProton's release signature"))
+        #expect(manifest.contains("does not carry Lullaby's release signature"))
         #expect(updater.catalog().release(id: "bridge-dormison-b1-2") == nil)
         #expect(!FileManager.default.fileExists(atPath: rig.manifests.appending(path: BridgeCatalog.manifestName).path(percentEncoded: false)))
 
@@ -277,7 +277,7 @@ struct BridgeUpdaterTests {
         _ = try await updater.check()
         let offered = try #require(updater.catalog().release(id: "bridge-dormison-b1-2"))
         let artifact = await failureMessage { _ = try await updater.install(offered) }
-        #expect(artifact.contains("does not carry NotProton's release signature"))
+        #expect(artifact.contains("does not carry Lullaby's release signature"))
         #expect(BridgeStore.installedReleases(in: rig.store).isEmpty)
         #expect(rig.liveFile("steam.exe") == BridgeRig.file("steam.exe", rev: 1))
 
@@ -313,7 +313,7 @@ struct BridgeUpdaterTests {
         // Serial 4 after 6: a replayed older list.
         try rig.publishManifest(serial: 4, [])
         let replay = await failureMessage { _ = try await updater.check() }
-        #expect(replay.contains("older than the one NotProton already has"))
+        #expect(replay.contains("older than the one Lullaby already has"))
         #expect(updater.catalog().remoteSerial == 6)
     }
 

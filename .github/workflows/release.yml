@@ -59,7 +59,7 @@ jobs:
           # Sparkle compares CFBundleVersion: the commit count only grows on this branch.
           build=$(git rev-list --count HEAD)
           { echo "VERSION=$version"; echo "APP_BUILD=$build"; echo "KIND=$kind"; echo "PRE=$pre"; } >> "$GITHUB_ENV"
-          echo "## NotProton $version (build $build, $kind$([ "$pre" = true ] && echo ", pre-release"))" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Lullaby $version (build $build, $kind$([ "$pre" = true ] && echo ", pre-release"))" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Keys
         env:
@@ -184,11 +184,11 @@ jobs:
       - name: Archive, sign and write the appcast
         run: |
           arch="$RUNNER_TEMP/archives"; mkdir -p "$arch"
-          zip="NotProton-$VERSION.zip"
+          zip="Lullaby-$VERSION.zip"
           ditto -c -k --keepParent out/Lullaby.app "$arch/$zip"
           notes=$(git tag -l --format='%(contents)' "$GITHUB_REF_NAME" | sed '/^-----BEGIN PGP/,$d')
-          [ -n "$notes" ] || notes="NotProton $VERSION."
-          printf '%s\n' "$notes" > "$arch/NotProton-$VERSION.md"
+          [ -n "$notes" ] || notes="Lullaby $VERSION."
+          printf '%s\n' "$notes" > "$arch/Lullaby-$VERSION.md"
           swift package resolve --package-path app
           if [ "$DRY_RUN" != true ] && release/gh-publish.sh fetch "$MANIFEST_TAG" "$APPCAST" "$RUNNER_TEMP/appcast" --no-sig; then
             cp "$RUNNER_TEMP/appcast/$APPCAST" "$arch/appcast.xml"
@@ -208,7 +208,7 @@ jobs:
       - name: Keep the build
         uses: actions/upload-artifact@v5
         with:
-          name: NotProton-${{ env.VERSION }}
+          name: Lullaby-${{ env.VERSION }}
           path: ${{ env.ARCHIVES }}
 
       - name: Publish the release, then the appcast
@@ -218,7 +218,7 @@ jobs:
         run: |
           pre=""; [ "$PRE" = true ] && pre="--prerelease"
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag $pre \
-            --title "NotProton $VERSION" --notes-file "$ARCHIVES/NotProton-$VERSION.md" "$ARCHIVES/$ZIP"
+            --title "Lullaby $VERSION" --notes-file "$ARCHIVES/Lullaby-$VERSION.md" "$ARCHIVES/$ZIP"
           if [ "$ACCESS" = private ]; then
             # A private repository's download links need a browser session, so the
             # enclosure points at the asset's API address, which Sparkle reads with

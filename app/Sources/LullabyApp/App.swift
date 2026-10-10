@@ -1,4 +1,4 @@
-// NotProton's one window (Phase 8, ROADMAP §9): see Main/MainView.swift.
+// Lullaby's one window (Phase 8, ROADMAP §9): see Main/MainView.swift.
 
 import SwiftUI
 
@@ -17,7 +17,7 @@ struct LullabyApp: App {
     }
 
     var body: some Scene {
-        Window("NotProton", id: "main") {
+        Window("Lullaby", id: "main") {
             MainView()
                 .environment(main)
                 .task { await main.opened() }
@@ -32,7 +32,7 @@ struct LullabyApp: App {
         }
 
         // Credits: a window of its own beside the main one, only the close button (owner, 10.10).
-        Window(Text(verbatim: "NotProton"), id: CreditsView.windowID) {
+        Window(Text(verbatim: "Lullaby"), id: CreditsView.windowID) {
             CreditsView()
         }
         .windowStyle(.hiddenTitleBar)

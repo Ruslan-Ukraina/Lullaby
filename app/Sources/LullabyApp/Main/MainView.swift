@@ -1,4 +1,4 @@
-// The NotProton window (Phase 8, ROADMAP §9, with the owner's edits): icon, name, a line
+// The Lullaby window (Phase 8, ROADMAP §9, with the owner's edits): icon, name, a line
 // of state, one button (Install, Update or Delete), the credits signature at the bottom
 // left and ⚙︎ at the bottom right; the title bar is part of the background. A failure is a system alert; the same button
 // tries again. System controls only.
@@ -21,7 +21,7 @@ struct MainView: View {
                 .resizable()
                 .frame(width: 56, height: 56)
                 .accessibilityHidden(true)
-            Text(verbatim: "NotProton")
+            Text(verbatim: "Lullaby")
                 .font(.title3.weight(.semibold))
                 .padding(.top, 4)
                 .accessibilityAddTraits(.isHeader)
@@ -78,9 +78,9 @@ struct MainView: View {
 
     private func hint(_ button: MainScreen.Button) -> String {
         switch button {
-        case .install: tr("Installs the engine and adds NotProton to Steam.")
-        case .update: tr("Updates the engine, the Steam bridge, Steam support and NotProton.")
-        case .delete: tr("Removes NotProton from Steam. Asks first.")
+        case .install: tr("Installs the engine and adds Lullaby to Steam.")
+        case .update: tr("Updates the engine, the Steam bridge, Steam support and Lullaby.")
+        case .delete: tr("Removes Lullaby from Steam. Asks first.")
         }
     }
 
@@ -150,7 +150,7 @@ struct MainView: View {
     private var questionTitle: String {
         switch model.question {
         case .closeSteam?: tr("Close Steam?")
-        case .delete?: tr("Delete NotProton?")
+        case .delete?: tr("Delete Lullaby?")
         case .steamUpdatesOff?: tr("Turn off Steam updates?")
         case nil: ""
         }
@@ -175,11 +175,11 @@ struct MainView: View {
     private func questionMessage(_ question: MainModel.Question) -> String {
         switch question {
         case .closeSteam:
-            tr("Steam is open. NotProton will close it, then you can open it again.")
+            tr("Steam is open. Lullaby will close it, then you can open it again.")
         case .delete:
-            tr("NotProton is removed from Steam, and Steam goes back to how it was. Game prefixes and their backups, game settings and the Game Porting Toolkit stay.")
+            tr("Lullaby is removed from Steam, and Steam goes back to how it was. Game prefixes and their backups, game settings and the Game Porting Toolkit stay.")
         case .steamUpdatesOff:
-            tr("Steam won't update at all, even to versions NotProton supports. You can turn this back on here.")
+            tr("Steam won't update at all, even to versions Lullaby supports. You can turn this back on here.")
         }
     }
 }

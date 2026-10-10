@@ -1,4 +1,4 @@
-// Credits (ROADMAP §9.1): every part NotProton is made of or downloads, its authors and
+// Credits (ROADMAP §9.1): every part Lullaby is made of or downloads, its authors and
 // its license, as NOTICE lists them. GPL-3.0 asks the interface to show them; the test
 // CreditsTests keeps this list and NOTICE in step.
 
@@ -8,7 +8,7 @@ struct Credit: Identifiable, Sendable {
     let name: String
     let authors: String
     let license: String
-    /// What it does in NotProton, translated.
+    /// What it does in Lullaby, translated.
     let role: String
     let link: String?
     /// A word NOTICE uses for this part.
@@ -23,7 +23,7 @@ enum Credits {
             Credit(name: "NotProton", authors: "NotProtonNot, Logan (LaganYT)",
                    license: "GPL-3.0", role: tr("The original project this app is a fork of."),
                    link: "https://github.com/NotProtonNot/NotProton", noticeMarker: "NotProtonNot"),
-            Credit(name: "NotProton (Dormison)", authors: "Ruslan_Ukraina",
+            Credit(name: "Lullaby (Dormison)", authors: "Ruslan_Ukraina",
                    license: "GPL-3.0", role: tr("This fork: the Dormison engine, settings in Steam, this window."),
                    link: nil, noticeMarker: "GPLV3"),
             Credit(name: "Dormison", authors: "kageroumado",
@@ -57,7 +57,7 @@ enum Credits {
                    license: "LGPL-2.1-or-later", role: tr("Two engine fixes: memory use and Retina resolution."),
                    link: "https://github.com/gauthierpiarrette/highball-engine", noticeMarker: "Highball"),
             Credit(name: "Sparkle", authors: "Sparkle Project",
-                   license: "MIT", role: tr("Updates NotProton itself."),
+                   license: "MIT", role: tr("Updates Lullaby itself."),
                    link: "https://sparkle-project.org", noticeMarker: "Sparkle"),
             Credit(name: "Dobby", authors: "Jmpews",
                    license: "Apache-2.0", role: tr("Hooks functions inside Steam, so Steam shows Steam Play."),
@@ -69,7 +69,7 @@ enum Credits {
                    license: "MIT", role: tr("Reads JSON inside Steam."),
                    link: nil, noticeMarker: "cJSON"),
             Credit(name: "D3DMetal", authors: "Apple",
-                   license: tr("Apple's license"), role: tr("Direct3D 12 on Metal. You add it yourself from Apple's Game Porting Toolkit. NotProton doesn't distribute it."),
+                   license: tr("Apple's license"), role: tr("Direct3D 12 on Metal. You add it yourself from Apple's Game Porting Toolkit. Lullaby doesn't distribute it."),
                    link: "https://developer.apple.com/games/game-porting-toolkit/", noticeMarker: "D3DMetal"),
         ]
     }
@@ -86,7 +86,7 @@ struct CreditsView: View {
                     .resizable()
                     .frame(width: 36, height: 36)
                     .accessibilityHidden(true)
-                Text(verbatim: "NotProton")
+                Text(verbatim: "Lullaby")
                     .font(.headline)
                 Text(tr("Made by Ruslan_Ukraina on the work of these people."))
                     .font(.callout)

@@ -1,10 +1,10 @@
-// The settings hierarchy NotProton keeps for Dormison: one level for every game
+// The settings hierarchy Lullaby keeps for Dormison: one level for every game
 // ("for all games") and one per Steam app id. A game is an app id, not an
 // executable: the levels are stored by app id and written into the env file of
 // every executable the game is known to run (ConfigMaterializer).
 //
 // The value types and the inheritance rules follow Sevoflurane's Core/GameConfig.swift
-// (MIT, Copyright (c) 2026 kageroumado), adapted to NotProton: one prefix per game,
+// (MIT, Copyright (c) 2026 kageroumado), adapted to Lullaby: one prefix per game,
 // so the "for all games" level is what every prefix's bottle.env carries.
 
 import Foundation
@@ -92,7 +92,7 @@ public struct TuningParameters: Codable, Equatable, Sendable {
     }
 }
 
-/// The graphics card a game is told it runs on, chosen by NotProton rather than by the
+/// The graphics card a game is told it runs on, chosen by Lullaby rather than by the
 /// player: an AMD card, and an NVIDIA one while DLSS → MetalFX is on, since games offer
 /// DLSS only on NVIDIA. Both match an M4 Pro the way Sevoflurane's Core/GPUEquivalence.swift
 /// does (MIT, Copyright (c) 2026 kageroumado), and both are in Dormison's tables
@@ -159,7 +159,7 @@ public struct ConfigValues: Codable, Equatable, Sendable {
     }
 }
 
-/// What every level inherits when nothing is set anywhere: NotProton's profile
+/// What every level inherits when nothing is set anywhere: Lullaby's profile
 /// (DECISIONS P7A-3). Sevoflurane defaults differ where noted there.
 public enum ConfigDefaults {
     public static let values: ConfigValues = {
@@ -190,7 +190,7 @@ public enum ConfigLevel: String, Codable, Sendable {
 /// The two levels a game resolves through, read once.
 public struct ConfigStack: Sendable, Equatable {
     public var global: ConfigValues
-    /// NotProton's recipe for the game (GameRecipes), between its own values and global.
+    /// Lullaby's recipe for the game (GameRecipes), between its own values and global.
     public var recipe: ConfigValues
     public var game: ConfigValues
 

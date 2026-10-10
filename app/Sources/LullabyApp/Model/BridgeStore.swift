@@ -95,7 +95,7 @@ struct BridgeStore: Sendable {
 
     /// A remote build downloaded, verified and unpacked into bridges/<id>; one packed in
     /// the app checked and unpacked the same way; a local one as it is. `key` checks a
-    /// download's signature (nil: NotProton's releases are off, so only packed ones go).
+    /// download's signature (nil: Lullaby's releases are off, so only packed ones go).
     func obtain(
         _ release: BridgeRelease, key: Curve25519.Signing.PublicKey?, transport: any EngineTransport,
         report: @escaping @Sendable (BridgePhase) -> Void = { _ in }
@@ -119,7 +119,7 @@ struct BridgeStore: Sendable {
             guard size(of: archive) == total, Digest.sha256IfPresent(archive) == sha else {
                 AppLog.note("bridge: the packed \(archive.lastPathComponent) does not match its entry")
                 throw StepFailure(
-                    step: step, detail: "The Steam bridge inside NotProton is damaged. Download NotProton again.")
+                    step: step, detail: "The Steam bridge inside Lullaby is damaged. Download Lullaby again.")
             }
             AppLog.note("bridge: packed \(archive.lastPathComponent) verified (size, sha256)")
             return try unpack(release, archive: archive, report: report)
@@ -161,7 +161,7 @@ struct BridgeStore: Sendable {
             try? fm.removeItem(at: part)
             AppLog.note("bridge: \(name) sha256 \(digest), manifest \(sha)")
             throw StepFailure(
-                step: step, detail: "The downloaded Steam bridge does not match the bridge list (sha256), so NotProton deleted it.")
+                step: step, detail: "The downloaded Steam bridge does not match the bridge list (sha256), so Lullaby deleted it.")
         }
         let signature: Data
         do {
@@ -174,7 +174,7 @@ struct BridgeStore: Sendable {
             AppLog.note("bridge: \(name) signature invalid")
             throw StepFailure(
                 step: step,
-                detail: "The downloaded Steam bridge does not carry NotProton's release signature, so NotProton deleted it.")
+                detail: "The downloaded Steam bridge does not carry Lullaby's release signature, so Lullaby deleted it.")
         }
         AppLog.note("bridge: \(name) verified (size, sha256, signature)")
         let installed = try unpack(release, archive: part, report: report)
@@ -296,7 +296,7 @@ struct BridgeStore: Sendable {
         }
         if let why = Self.mismatch(release, engine) {
             AppLog.note("bridge: refused \(release.id): \(why)")
-            throw StepFailure(step: step, detail: why + " NotProton did not change the bridge.")
+            throw StepFailure(step: step, detail: why + " Lullaby did not change the bridge.")
         }
         let located = try release.located()
         try Self.applyB1(release, to: root)
@@ -365,7 +365,7 @@ struct BridgeStore: Sendable {
             } else if Digest.sha256IfPresent(original) != item.clean {
                 throw StepFailure(
                     step: step,
-                    detail: "\(item.path) in \(EngineStore.displayName(release.engine)) is not the file NotProton's fix was built for.")
+                    detail: "\(item.path) in \(EngineStore.displayName(release.engine)) is not the file Lullaby's fix was built for.")
             }
             let staging = live.deletingLastPathComponent().appending(path: ".\(name).new")
             try? fm.removeItem(at: staging)
@@ -486,7 +486,7 @@ struct BridgeUpdater: Sendable {
         BridgeCatalog.load(bundledRoot: bundledRoot, store: store.store, feed: feed, manifests: manifests)
     }
 
-    /// Reads the signed list from NotProton's releases into the cache. Nothing to do
+    /// Reads the signed list from Lullaby's releases into the cache. Nothing to do
     /// when the build has no release key.
     func refreshManifest() async throws {
         guard case .ready(let feed) = feed else { return }
@@ -549,7 +549,7 @@ struct BridgeUpdater: Sendable {
         guard let engine else { throw StepFailure(step: step, detail: "No engine is installed.") }
         if let why = BridgeStore.mismatch(release, engine) {
             AppLog.note("bridge: refused \(release.id): \(why)")
-            throw StepFailure(step: step, detail: why + " NotProton did not change the bridge.")
+            throw StepFailure(step: step, detail: why + " Lullaby did not change the bridge.")
         }
         report(.checking)
         var local = release

@@ -1,5 +1,5 @@
 // Step 1 of Install (ROADMAP §9.2): Dormison's Wine is an Intel program, so it needs
-// Rosetta. Installing Rosetta takes an administrator, which NotProton never asks for
+// Rosetta. Installing Rosetta takes an administrator, which Lullaby never asks for
 // itself (CLAUDE.md §3, no sudo): it opens a tiny Intel-only helper app instead, and
 // macOS shows its own "install Rosetta?" question. The helper quits as soon as it runs.
 

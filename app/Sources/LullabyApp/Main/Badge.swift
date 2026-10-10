@@ -7,8 +7,8 @@ import Foundation
 
 @MainActor
 final class BadgeStore {
-    static let installedKey = "NotProtonFirstInstallDone"
-    static let seenKey = "NotProtonSteamUpdatesTipSeen"
+    static let installedKey = "LullabyFirstInstallDone"
+    static let seenKey = "LullabySteamUpdatesTipSeen"
 
     private let defaults: UserDefaults
     private let dock: (String?) -> Void

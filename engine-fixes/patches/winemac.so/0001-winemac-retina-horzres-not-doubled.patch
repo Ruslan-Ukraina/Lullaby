@@ -1,5 +1,5 @@
 Highball patch 0020 (github.com/gauthierpiarrette/highball-engine, LGPL-2.1-or-later like Wine),
-itself from athei/wine fa43d6db2. Taken over unchanged for NotProton-Dormison, 2026-10-09:
+itself from athei/wine fa43d6db2. Taken over unchanged for Lullaby-Dormison, 2026-10-09:
 on Dormison b2 with Retina on, HORZRES/VERTRES read 6048x3928 while GetSystemMetrics and
 DESKTOPHORZRES read 3024x1964 (engine/tests/highball-probe.c); with the patch all three agree.
 

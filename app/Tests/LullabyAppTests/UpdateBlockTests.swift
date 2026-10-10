@@ -118,7 +118,7 @@ struct UpdateBlockTests {
     }
 
     // steam.cfg is the client's file. Writing the block replaced it outright and removing the
-    // block deleted it, either of which threw away settings nothing to do with NotProton.
+    // block deleted it, either of which threw away settings nothing to do with Lullaby.
     @Test("Blocking and unblocking leave the rest of the file alone")
     func otherSettingsSurvive() throws {
         let work = try scratch()

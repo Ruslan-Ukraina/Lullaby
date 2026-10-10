@@ -46,7 +46,7 @@ struct UninstallTests {
         }
 
         let updateBlock = root.appending(path: "steam.cfg")
-        // A client config holding a setting of Valve's beside the one NotProton adds, which is
+        // A client config holding a setting of Valve's beside the one Lullaby adds, which is
         // the shape that shows the removal taking out only its own line.
         try Data("BootStrapperInhibitAll=enable\nBootStrapperInhibitUpdateOnLaunch=enable\n".utf8)
             .write(to: updateBlock)
@@ -127,7 +127,7 @@ struct UninstallTests {
         #expect(verified.succeeded)
     }
 
-    // The client is no longer pinned and the setting that was not NotProton's is still there.
+    // The client is no longer pinned and the setting that was not Lullaby's is still there.
     private func unpinnedWithoutLosingTheRest(_ cfg: URL) -> Bool {
         guard let text = try? String(contentsOf: cfg, encoding: .utf8) else { return false }
         return !UpdateBlock.isPresent(at: [cfg]) && text.contains("BootStrapperInhibitAll=enable")

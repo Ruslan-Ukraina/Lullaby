@@ -1,5 +1,5 @@
 Highball patch 0018 (github.com/gauthierpiarrette/highball-engine, LGPL-2.1-or-later like Wine).
-Taken over unchanged for NotProton-Dormison, 2026-10-10: on Dormison b2 a 30 MB console program
+Taken over unchanged for Lullaby-Dormison, 2026-10-10: on Dormison b2 a 30 MB console program
 reads PagefileUsage 42523 MB (engine/tests/highball-probe.c); games that compare it with physical
 memory warn about low memory (Forza Horizon 6).
 

@@ -128,7 +128,7 @@ struct MainWindowStateTests {
         #expect(screen.problem == problem)
         #expect(screen.problemKind == .install)
         #expect(screen.button == .install && screen.buttonEnabled)
-        #expect(FlowProblem.title(.install) == tr("Couldn't install NotProton"))
+        #expect(FlowProblem.title(.install) == tr("Couldn't install Lullaby"))
         #expect(problem.message == tr("No connection to the internet. Check it, then try again."))
     }
 

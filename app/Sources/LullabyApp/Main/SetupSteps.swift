@@ -21,7 +21,7 @@ struct UpdatePlan: Equatable, Sendable {
         if let engine { parts.append(EngineStore.displayName(engine.version)) }
         if bridge != nil { parts.append(tr("Steam bridge")) }
         if steamPatch { parts.append(tr("Steam patch")) }
-        if let app { parts.append("NotProton \(app)") }
+        if let app { parts.append("Lullaby \(app)") }
         return parts
     }
 
@@ -123,7 +123,7 @@ enum SetupSteps {
                 throw KnownProblem(.steamMissing, log: "/Applications/Steam.app is missing")
             }
             if !force, await Task.detached(priority: .userInitiated, operation: { isCurrentInSteam() }).value {
-                AppLog.note("install: Steam already has this NotProton, left alone")
+                AppLog.note("install: Steam already has this Lullaby, left alone")
                 return
             }
             let result = try await Task.detached(priority: .userInitiated) {
@@ -152,7 +152,7 @@ enum SetupSteps {
     }
 
     static func app() -> FlowStep {
-        FlowStep(.app, tr("Updating NotProton")) { _ in
+        FlowStep(.app, tr("Updating Lullaby")) { _ in
             // Sparkle shows its own window, downloads, and asks to relaunch.
             await MainActor.run { AppUpdater.shared.check() }
         }

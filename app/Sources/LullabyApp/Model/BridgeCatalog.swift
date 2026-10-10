@@ -30,7 +30,7 @@
 //              own signature covers them. A bridge with engine fixes (Mach-O .so
 //              files) is bundled as its published tarball instead ("archive", every
 //              file with its digest) and unpacked into bridges/ when it is needed;
-//   remote     the signed manifest from NotProton's releases (ReleaseFeed), every
+//   remote     the signed manifest from Lullaby's releases (ReleaseFeed), every
 //              file with its digest.
 // An engine is supported when some bridge names its version: the commit and the
 // release's ntdll.dll are checked against the entry once the engine is unpacked.
@@ -57,7 +57,7 @@ struct BridgeRelease: Sendable, Equatable {
         let b1: String
     }
 
-    /// An engine file rebuilt from the same commit with NotProton's fixes
+    /// An engine file rebuilt from the same commit with Lullaby's fixes
     /// (engine-fixes/build-fixes.sh), put in place like the B1 pair. Optional: older
     /// bridges carry none.
     struct EngineFile: Sendable, Equatable {
@@ -228,7 +228,7 @@ struct BridgeRelease: Sendable, Equatable {
         if let feed {
             guard let text = item["url"] as? String, let url = URL(string: text), feed.allows(url),
                   url.lastPathComponent.hasPrefix(id)
-            else { throw bad("its download is not in NotProton's releases") }
+            else { throw bad("its download is not in Lullaby's releases") }
             guard let sha = (item["sha256"] as? String)?.lowercased(), EngineManifest.isSHA256(sha) else {
                 throw bad("no sha256")
             }
@@ -329,7 +329,7 @@ struct BridgeCatalog: Sendable {
     }
 
     /// Supported: a bridge for the version that is on disk with its B1 files, or
-    /// one NotProton's releases offer for download.
+    /// one Lullaby's releases offer for download.
     func verdict(for version: String) -> Verdict {
         let all = candidates(for: version)
         guard !all.isEmpty else {
@@ -350,7 +350,7 @@ struct BridgeCatalog: Sendable {
 
     func release(id: String) -> BridgeRelease? { releases.first { $0.id == id } }
 
-    /// The newest engine NotProton can download by itself, from the bridges that say
+    /// The newest engine Lullaby can download by itself, from the bridges that say
     /// where their engine comes from, and only when that bridge is usable (verdict).
     /// What Install falls back to while Dormison's newest release has no bridge.
     func newestDownloadableEngine(on channel: EngineChannel) -> EngineRelease? {

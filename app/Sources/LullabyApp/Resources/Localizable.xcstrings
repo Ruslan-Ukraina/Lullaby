@@ -25,25 +25,25 @@
         }
       }
     },
-    "A new engine is out, but NotProton doesn't support it yet. Try again later.": {
+    "A new engine is out, but Lullaby doesn't support it yet. Try again later.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "A new engine is out, but NotProton doesn't support it yet. Try again later."
+            "value": "A new engine is out, but Lullaby doesn't support it yet. Try again later."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Вышел новый движок, но NotProton его ещё не поддерживает. Попробуйте позже."
+            "value": "Вышел новый движок, но Lullaby его ещё не поддерживает. Попробуйте позже."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Вийшов новий рушій, але NotProton його ще не підтримує. Спробуйте пізніше."
+            "value": "Вийшов новий рушій, але Lullaby його ще не підтримує. Спробуйте пізніше."
           }
         }
       },
@@ -457,49 +457,49 @@
       },
       "generatesSymbol": false
     },
-    "Couldn't delete NotProton": {
+    "Couldn't delete Lullaby": {
       "extractionState": "manual",
       "generatesSymbol": false,
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn't delete NotProton"
+            "value": "Couldn't delete Lullaby"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Не удалось удалить NotProton"
+            "value": "Не удалось удалить Lullaby"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Не вдалося видалити NotProton"
+            "value": "Не вдалося видалити Lullaby"
           }
         }
       }
     },
-    "Couldn't delete NotProton's files. Details are in the log.": {
+    "Couldn't delete Lullaby's files. Details are in the log.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn't delete NotProton's files. Details are in the log."
+            "value": "Couldn't delete Lullaby's files. Details are in the log."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Не удалось удалить файлы NotProton. Подробности — в журнале."
+            "value": "Не удалось удалить файлы Lullaby. Подробности — в журнале."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Не вдалося видалити файли NotProton. Подробиці — у журналі."
+            "value": "Не вдалося видалити файли Lullaby. Подробиці — у журналі."
           }
         }
       },
@@ -529,49 +529,49 @@
       },
       "generatesSymbol": false
     },
-    "Couldn't install NotProton": {
+    "Couldn't install Lullaby": {
       "extractionState": "manual",
       "generatesSymbol": false,
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn't install NotProton"
+            "value": "Couldn't install Lullaby"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Не удалось установить NotProton"
+            "value": "Не удалось установить Lullaby"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Не вдалося встановити NotProton"
+            "value": "Не вдалося встановити Lullaby"
           }
         }
       }
     },
-    "Couldn't install NotProton into Steam. Details are in the log.": {
+    "Couldn't install Lullaby into Steam. Details are in the log.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn't install NotProton into Steam. Details are in the log."
+            "value": "Couldn't install Lullaby into Steam. Details are in the log."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Не удалось установить NotProton в Steam. Подробности — в журнале."
+            "value": "Не удалось установить Lullaby в Steam. Подробности — в журнале."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Не вдалося встановити NotProton у Steam. Подробиці — у журналі."
+            "value": "Не вдалося встановити Lullaby у Steam. Подробиці — у журналі."
           }
         }
       },
@@ -625,26 +625,26 @@
       },
       "generatesSymbol": false
     },
-    "Couldn't reinstall NotProton": {
+    "Couldn't reinstall Lullaby": {
       "extractionState": "manual",
       "generatesSymbol": false,
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn't reinstall NotProton"
+            "value": "Couldn't reinstall Lullaby"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Не удалось переустановить NotProton"
+            "value": "Не удалось переустановить Lullaby"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Не вдалося перевстановити NotProton"
+            "value": "Не вдалося перевстановити Lullaby"
           }
         }
       }
@@ -673,49 +673,49 @@
       },
       "generatesSymbol": false
     },
-    "Couldn't update NotProton": {
+    "Couldn't update Lullaby": {
       "extractionState": "manual",
       "generatesSymbol": false,
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn't update NotProton"
+            "value": "Couldn't update Lullaby"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Не удалось обновить NotProton"
+            "value": "Не удалось обновить Lullaby"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Не вдалося оновити NotProton"
+            "value": "Не вдалося оновити Lullaby"
           }
         }
       }
     },
-    "Couldn't update NotProton. Details are in the log.": {
+    "Couldn't update Lullaby. Details are in the log.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Couldn't update NotProton. Details are in the log."
+            "value": "Couldn't update Lullaby. Details are in the log."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Не удалось обновить NotProton. Подробности — в журнале."
+            "value": "Не удалось обновить Lullaby. Подробности — в журнале."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Не вдалося оновити NotProton. Подробиці — у журналі."
+            "value": "Не вдалося оновити Lullaby. Подробиці — у журналі."
           }
         }
       },
@@ -793,25 +793,25 @@
       },
       "generatesSymbol": false
     },
-    "Delete NotProton?": {
+    "Delete Lullaby?": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Delete NotProton?"
+            "value": "Delete Lullaby?"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Удалить NotProton?"
+            "value": "Удалить Lullaby?"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Видалити NotProton?"
+            "value": "Видалити Lullaby?"
           }
         }
       },
@@ -889,25 +889,25 @@
       },
       "generatesSymbol": false
     },
-    "Direct3D 12 on Metal. You add it yourself from Apple's Game Porting Toolkit. NotProton doesn't distribute it.": {
+    "Direct3D 12 on Metal. You add it yourself from Apple's Game Porting Toolkit. Lullaby doesn't distribute it.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Direct3D 12 on Metal. You add it yourself from Apple's Game Porting Toolkit. NotProton doesn't distribute it."
+            "value": "Direct3D 12 on Metal. You add it yourself from Apple's Game Porting Toolkit. Lullaby doesn't distribute it."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Direct3D 12 через Metal. Вы добавляете его сами из Game Porting Toolkit от Apple. NotProton его не распространяет."
+            "value": "Direct3D 12 через Metal. Вы добавляете его сами из Game Porting Toolkit от Apple. Lullaby его не распространяет."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Direct3D 12 через Metal. Ви додаєте його самі з Game Porting Toolkit від Apple. NotProton його не поширює."
+            "value": "Direct3D 12 через Metal. Ви додаєте його самі з Game Porting Toolkit від Apple. Lullaby його не поширює."
           }
         }
       },
@@ -1297,25 +1297,25 @@
       },
       "generatesSymbol": false
     },
-    "Installs the engine and adds NotProton to Steam.": {
+    "Installs the engine and adds Lullaby to Steam.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Installs the engine and adds NotProton to Steam."
+            "value": "Installs the engine and adds Lullaby to Steam."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Устанавливает движок и добавляет NotProton в Steam."
+            "value": "Устанавливает движок и добавляет Lullaby в Steam."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Встановлює рушій і додає NotProton у Steam."
+            "value": "Встановлює рушій і додає Lullaby у Steam."
           }
         }
       },
@@ -1441,49 +1441,49 @@
       },
       "generatesSymbol": false
     },
-    "NotProton is removed from Steam, and Steam goes back to how it was. Game prefixes and their backups, game settings and the Game Porting Toolkit stay.": {
+    "Lullaby is removed from Steam, and Steam goes back to how it was. Game prefixes and their backups, game settings and the Game Porting Toolkit stay.": {
       "extractionState": "manual",
       "generatesSymbol": false,
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "NotProton is removed from Steam, and Steam goes back to how it was. Game prefixes and their backups, game settings and the Game Porting Toolkit stay."
+            "value": "Lullaby is removed from Steam, and Steam goes back to how it was. Game prefixes and their backups, game settings and the Game Porting Toolkit stay."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "NotProton будет убран из Steam, и Steam станет таким, как был. Префиксы игр и их резервные копии, настройки игр и Game Porting Toolkit останутся."
+            "value": "Lullaby будет убран из Steam, и Steam станет таким, как был. Префиксы игр и их резервные копии, настройки игр и Game Porting Toolkit останутся."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "NotProton буде прибрано зі Steam, і Steam стане таким, як був. Префікси ігор і їхні резервні копії, налаштування ігор і Game Porting Toolkit залишаться."
+            "value": "Lullaby буде прибрано зі Steam, і Steam стане таким, як був. Префікси ігор і їхні резервні копії, налаштування ігор і Game Porting Toolkit залишаться."
           }
         }
       }
     },
-    "NotProton lets Steam update only to versions it supports.": {
+    "Lullaby lets Steam update only to versions it supports.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "NotProton lets Steam update only to versions it supports."
+            "value": "Lullaby lets Steam update only to versions it supports."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "NotProton разрешает Steam обновляться только до версий, которые поддерживает."
+            "value": "Lullaby разрешает Steam обновляться только до версий, которые поддерживает."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "NotProton дозволяє Steam оновлюватися лише до версій, які підтримує."
+            "value": "Lullaby дозволяє Steam оновлюватися лише до версій, які підтримує."
           }
         }
       },
@@ -1537,25 +1537,25 @@
       },
       "generatesSymbol": false
     },
-    "Pick the .dmg you downloaded from Apple. NotProton copies D3DMetal from it.": {
+    "Pick the .dmg you downloaded from Apple. Lullaby copies D3DMetal from it.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pick the .dmg you downloaded from Apple. NotProton copies D3DMetal from it."
+            "value": "Pick the .dmg you downloaded from Apple. Lullaby copies D3DMetal from it."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Выберите .dmg, скачанный с сайта Apple. NotProton скопирует из него D3DMetal."
+            "value": "Выберите .dmg, скачанный с сайта Apple. Lullaby скопирует из него D3DMetal."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Оберіть .dmg, завантажений з сайту Apple. NotProton скопіює з нього D3DMetal."
+            "value": "Оберіть .dmg, завантажений з сайту Apple. Lullaby скопіює з нього D3DMetal."
           }
         }
       },
@@ -1681,25 +1681,25 @@
       },
       "generatesSymbol": false
     },
-    "Removes NotProton from Steam. Asks first.": {
+    "Removes Lullaby from Steam. Asks first.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Removes NotProton from Steam. Asks first."
+            "value": "Removes Lullaby from Steam. Asks first."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Убирает NotProton из Steam. Сначала спрашивает."
+            "value": "Убирает Lullaby из Steam. Сначала спрашивает."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Прибирає NotProton зі Steam. Спершу запитує."
+            "value": "Прибирає Lullaby зі Steam. Спершу запитує."
           }
         }
       },
@@ -1897,25 +1897,25 @@
       },
       "generatesSymbol": false
     },
-    "Steam is open. NotProton will close it, then you can open it again.": {
+    "Steam is open. Lullaby will close it, then you can open it again.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Steam is open. NotProton will close it, then you can open it again."
+            "value": "Steam is open. Lullaby will close it, then you can open it again."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Steam открыт. NotProton закроет его, потом вы сможете открыть его снова."
+            "value": "Steam открыт. Lullaby закроет его, потом вы сможете открыть его снова."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Steam відкритий. NotProton закриє його, потім ви зможете відкрити його знову."
+            "value": "Steam відкритий. Lullaby закриє його, потім ви зможете відкрити його знову."
           }
         }
       },
@@ -1993,73 +1993,73 @@
       },
       "generatesSymbol": false
     },
-    "Steam updates can break NotProton. NotProton already holds back Steam versions it doesn't support yet. Turn this on to stop Steam updates completely.": {
+    "Steam updates can break Lullaby. Lullaby already holds back Steam versions it doesn't support yet. Turn this on to stop Steam updates completely.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Steam updates can break NotProton. NotProton already holds back Steam versions it doesn't support yet. Turn this on to stop Steam updates completely."
+            "value": "Steam updates can break Lullaby. Lullaby already holds back Steam versions it doesn't support yet. Turn this on to stop Steam updates completely."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Обновления Steam могут сломать NotProton. NotProton уже сам не пускает версии Steam, которые ещё не поддерживает. Включите, чтобы полностью остановить обновления Steam."
+            "value": "Обновления Steam могут сломать Lullaby. Lullaby уже сам не пускает версии Steam, которые ещё не поддерживает. Включите, чтобы полностью остановить обновления Steam."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Оновлення Steam можуть зламати NotProton. NotProton уже сам не пропускає версії Steam, які ще не підтримує. Увімкніть, щоб повністю зупинити оновлення Steam."
+            "value": "Оновлення Steam можуть зламати Lullaby. Lullaby уже сам не пропускає версії Steam, які ще не підтримує. Увімкніть, щоб повністю зупинити оновлення Steam."
           }
         }
       },
       "generatesSymbol": false
     },
-    "Steam was installed by another user of this Mac. Only that user can install NotProton into it.": {
+    "Steam was installed by another user of this Mac. Only that user can install Lullaby into it.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Steam was installed by another user of this Mac. Only that user can install NotProton into it."
+            "value": "Steam was installed by another user of this Mac. Only that user can install Lullaby into it."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Steam установил другой пользователь этого Mac. Только он может установить в него NotProton."
+            "value": "Steam установил другой пользователь этого Mac. Только он может установить в него Lullaby."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Steam встановив інший користувач цього Mac. Лише він може встановити в нього NotProton."
+            "value": "Steam встановив інший користувач цього Mac. Лише він може встановити в нього Lullaby."
           }
         }
       },
       "generatesSymbol": false
     },
-    "Steam won't update at all, even to versions NotProton supports. You can turn this back on here.": {
+    "Steam won't update at all, even to versions Lullaby supports. You can turn this back on here.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Steam won't update at all, even to versions NotProton supports. You can turn this back on here."
+            "value": "Steam won't update at all, even to versions Lullaby supports. You can turn this back on here."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Steam не будет обновляться совсем, даже до версий, которые NotProton поддерживает. Включить снова можно здесь."
+            "value": "Steam не будет обновляться совсем, даже до версий, которые Lullaby поддерживает. Включить снова можно здесь."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Steam не оновлюватиметься зовсім, навіть до версій, які NotProton підтримує. Увімкнути знову можна тут."
+            "value": "Steam не оновлюватиметься зовсім, навіть до версій, які Lullaby підтримує. Увімкнути знову можна тут."
           }
         }
       },
@@ -2473,73 +2473,73 @@
       },
       "generatesSymbol": false
     },
-    "Updates NotProton itself.": {
+    "Updates Lullaby itself.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Updates NotProton itself."
+            "value": "Updates Lullaby itself."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Обновляет сам NotProton."
+            "value": "Обновляет сам Lullaby."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Оновлює сам NotProton."
+            "value": "Оновлює сам Lullaby."
           }
         }
       },
       "generatesSymbol": false
     },
-    "Updates the engine, the Steam bridge, Steam support and NotProton.": {
+    "Updates the engine, the Steam bridge, Steam support and Lullaby.": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Updates the engine, the Steam bridge, Steam support and NotProton."
+            "value": "Updates the engine, the Steam bridge, Steam support and Lullaby."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Обновляет движок, мост Steam, поддержку Steam и NotProton."
+            "value": "Обновляет движок, мост Steam, поддержку Steam и Lullaby."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Оновлює рушій, міст Steam, підтримку Steam і NotProton."
+            "value": "Оновлює рушій, міст Steam, підтримку Steam і Lullaby."
           }
         }
       },
       "generatesSymbol": false
     },
-    "Updating NotProton": {
+    "Updating Lullaby": {
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Updating NotProton"
+            "value": "Updating Lullaby"
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Обновление NotProton"
+            "value": "Обновление Lullaby"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Оновлення NotProton"
+            "value": "Оновлення Lullaby"
           }
         }
       },
@@ -2593,26 +2593,26 @@
         }
       }
     },
-    "macOS didn't let NotProton change Steam. Allow NotProton under App Management in System Settings, then try again.": {
+    "macOS didn't let Lullaby change Steam. Allow Lullaby under App Management in System Settings, then try again.": {
       "extractionState": "manual",
       "generatesSymbol": false,
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "macOS didn't let NotProton change Steam. Allow NotProton under App Management in System Settings, then try again."
+            "value": "macOS didn't let Lullaby change Steam. Allow Lullaby under App Management in System Settings, then try again."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "macOS не разрешила NotProton вносить изменения в Steam. Разрешите NotProton в Системных настройках → «Управление приложениями» и попробуйте ещё раз."
+            "value": "macOS не разрешила Lullaby вносить изменения в Steam. Разрешите Lullaby в Системных настройках → «Управление приложениями» и попробуйте ещё раз."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "macOS не дозволила NotProton робити зміни в Steam. Дозвольте NotProton у Системних параметрах → «Керування програмами» й спробуйте ще раз."
+            "value": "macOS не дозволила Lullaby робити зміни в Steam. Дозвольте Lullaby у Системних параметрах → «Керування програмами» й спробуйте ще раз."
           }
         }
       }

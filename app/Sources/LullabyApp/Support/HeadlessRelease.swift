@@ -218,7 +218,7 @@ enum HeadlessRelease {
         if let engine = plan.engine { parts.append(EngineStore.displayName(engine.version)) }
         if plan.bridge != nil { parts.append(text("Steam bridge")) }
         if plan.steamPatch { parts.append(text("Steam patch")) }
-        if let app = plan.app { parts.append("NotProton \(app)") }
+        if let app = plan.app { parts.append("Lullaby \(app)") }
         let list = parts.formatted(.list(type: .and).locale(Locale(identifier: language)))
         return String(format: text("Update available: %@"), list)
     }

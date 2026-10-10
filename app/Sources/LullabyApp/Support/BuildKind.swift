@@ -4,7 +4,7 @@
 //   release  the release workflow, from a v* tag, with the owner's keys
 //   test     a dry run of the release workflows, with the TEST keys
 //   dev      anything else, a local `make app` included (the default)
-// A release build refuses the TEST keys outright, both NotProton's release key
+// A release build refuses the TEST keys outright, both Lullaby's release key
 // and Sparkle's: their private halves are derived from a public phrase
 // (release/testkeys.swift), so anyone can sign with them.
 
@@ -37,5 +37,5 @@ enum TestKeys {
     }
 
     static let refused =
-        "This release build carries a TEST key, so NotProton refuses it and works with what it carries."
+        "This release build carries a TEST key, so Lullaby refuses it and works with what it carries."
 }

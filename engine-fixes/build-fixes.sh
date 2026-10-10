@@ -1,6 +1,6 @@
 #!/bin/sh
 # Engine fixes: rebuilds single files of a Dormison release (a unix module such as
-# winemac.so) from the commit the release was built from, with NotProton's patches in
+# winemac.so) from the commit the release was built from, with Lullaby's patches in
 # engine-fixes/patches/<file>/*.patch, applied in order. The bridge carries them into the
 # engine next to the B1 ntdll.dll pair (BridgeRelease.engineFiles); the release's file
 # stays beside each as <file>.lullaby-orig.

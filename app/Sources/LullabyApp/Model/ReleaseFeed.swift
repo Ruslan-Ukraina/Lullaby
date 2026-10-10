@@ -1,4 +1,4 @@
-// NotProton's own release feed (Phase 5): the signed bridge-manifest.json and
+// Lullaby's own release feed (Phase 5): the signed bridge-manifest.json and
 // signatures-manifest.json in the releases of the fork, and the Ed25519 key that
 // signs them. Both come from Info.plist, as Sparkle's SUFeedURL and SUPublicEDKey
 // do: NPReleaseFeedURL and NPReleasePublicKey. The release key is created in
@@ -16,7 +16,7 @@ import Foundation
 struct ReleaseFeed: Sendable {
     static let urlKey = "NPReleaseFeedURL"
     static let keyKey = "NPReleasePublicKey"
-    static let step = "Check NotProton's releases"
+    static let step = "Check Lullaby's releases"
 
     /// Ends with "/". Assets are <base><tag>/<file>, as GitHub serves release downloads.
     let base: URL
@@ -33,7 +33,7 @@ struct ReleaseFeed: Sendable {
     }
 
     static let noKey =
-        "This build of NotProton has no release key, so it uses the bridge and signatures it carries."
+        "This build of Lullaby has no release key, so it uses the bridge and signatures it carries."
 
     /// From the app's Info.plist (Bundle.main), which `make app` fills from
     /// release/feed.json; a private feed takes its token from the Keychain.
@@ -97,7 +97,7 @@ struct ReleaseFeed: Sendable {
             return .off(TestKeys.refused)
         }
         guard var text = url?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else {
-            return .off("This build of NotProton names no release feed.")
+            return .off("This build of Lullaby names no release feed.")
         }
         if !text.hasSuffix("/") { text += "/" }
         let schemes = kind == .release ? ["https"] : ["https", "file"]
@@ -142,7 +142,7 @@ struct SignedDocument: Sendable {
         guard EngineSignature.isValid(data, signatureFile: signature, key: key) else {
             throw StepFailure(
                 step: ReleaseFeed.step,
-                detail: "\(name) does not carry NotProton's release signature, so NotProton refused it.")
+                detail: "\(name) does not carry Lullaby's release signature, so Lullaby refused it.")
         }
         guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               json["schema"] as? Int == schema, let serial = json["serial"] as? Int, serial > 0
@@ -187,7 +187,7 @@ struct SignedDocument: Sendable {
             AppLog.note("release feed: \(name) serial \(document.serial) is older than the cached \(known.serial)")
             throw StepFailure(
                 step: ReleaseFeed.step,
-                detail: "\(name) is older than the one NotProton already has (serial \(document.serial) < \(known.serial)), so NotProton refused it.")
+                detail: "\(name) is older than the one Lullaby already has (serial \(document.serial) < \(known.serial)), so Lullaby refused it.")
         }
         try atomicReplace(directory.appending(path: name), with: body, step: ReleaseFeed.step)
         try atomicReplace(directory.appending(path: name + ".sig"), with: signature, step: ReleaseFeed.step)

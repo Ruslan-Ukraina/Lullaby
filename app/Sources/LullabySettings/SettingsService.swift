@@ -223,7 +223,7 @@ public struct SettingsService: Sendable {
     }
 
     /// Writes the prefixes a change at this level reaches: the game's, or every
-    /// NotProton prefix for the shared level.
+    /// Lullaby prefix for the shared level.
     public func materialize(appID: Int?) throws {
         if let appID {
             for prefix in library.prefixes(of: appID) { try materialize(appID: appID, prefix: prefix) }
@@ -253,7 +253,7 @@ public struct SettingsService: Sendable {
         }
     }
 
-    /// Every NotProton prefix written before the catalog, migrated and rewritten.
+    /// Every Lullaby prefix written before the catalog, migrated and rewritten.
     public func migrateAll() throws -> [Int] {
         var migrated: [Int] = []
         for (id, prefix) in library.allPrefixes() where ConfigMigration.needsMigration(prefix: prefix) {

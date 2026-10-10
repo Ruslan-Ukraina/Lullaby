@@ -167,7 +167,7 @@ echo
 echo "S1. Nothing called Sevoflurane"
 if [ -s "$support/lullaby-sevo.log" ]; then
 	tail -3 "$support/lullaby-sevo.log" | show
-	echo "         (View menu settings went to NotProton's stand-in, as they should)"
+	echo "         (View menu settings went to Lullaby's stand-in, as they should)"
 fi
 sevo_pid=$(pgrep -f "Sevoflurane.app/Contents/MacOS/" 2>/dev/null | head -1)
 if [ -n "$sevo_pid" ]; then

@@ -1,4 +1,4 @@
-// NotProton's settings in Steam (docs/ROADMAP.md section 5): the block under Properties >
+// Lullaby's settings in Steam (docs/ROADMAP.md section 5): the block under Properties >
 // Compatibility (a game's own values) and under Settings > Compatibility (values for all
 // games), each with its quick rows and an Advanced dialog, drawn with Steam's own controls.
 //
@@ -14,9 +14,9 @@
   "use strict";
   var TOKEN = "__NP_SETTINGS_TOKEN__";
   var FALLBACK = {
-    en: "NotProton settings are unavailable: %@",
-    uk: "\u041d\u0430\u043b\u0430\u0448\u0442\u0443\u0432\u0430\u043d\u043d\u044f NotProton \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0456: %@",
-    ru: "\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438 NotProton \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u044b: %@"
+    en: "Lullaby settings are unavailable: %@",
+    uk: "\u041d\u0430\u043b\u0430\u0448\u0442\u0443\u0432\u0430\u043d\u043d\u044f Lullaby \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0456: %@",
+    ru: "\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438 Lullaby \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u044b: %@"
   };
   var DOT = " \u00b7 ";
   // Steam's controls the panel draws with. Their names are the page's own and not part of
@@ -121,9 +121,9 @@
 
   // The line under a row names what the level above holds, and only where this level's
   // value differs from it (a value equal to it is stored as inherit): "For all games" on a
-  // game's page, NotProton's default for all games and for a game's own rows (the
+  // game's page, Lullaby's default for all games and for a game's own rows (the
   // renderer, msync+). One button under the block resets them all.
-  // A value NotProton's recipe supplies (DECISIONS A1010-3) is named as the recipe's, both
+  // A value Lullaby's recipe supplies (DECISIONS A1010-3) is named as the recipe's, both
   // when the game follows it and when its own choice differs from it.
   function describe(ctx, s, v, info) {
     var line = null;
@@ -196,7 +196,7 @@
           onChange: function (o) { ctx.change(s.id, JSON.parse(o.data)); }
         });
         // D3DMetal picked (by the player or a recipe) but no toolkit added: one line
-        // pointing to NotProton's settings, where the toolkit is added (Phase 8).
+        // pointing to Lullaby's settings, where the toolkit is added (Phase 8).
         var needsToolkit = !toolkit(ctx).active && ctl.choices.some(function (c) {
           return c.requires === "d3dmetal" && key(c.value) === key(eff);
         });
@@ -373,9 +373,9 @@
     };
   }
 
-  // Steam's own apps, non-Steam shortcuts included, that run through NotProton: a forced
-  // NotProton, or no forced tool on a game without a macOS build.
-  function runsThroughNotProton(d) {
+  // Steam's own apps, non-Steam shortcuts included, that run through Lullaby: a forced
+  // Lullaby, or no forced tool on a game without a macOS build.
+  function runsThroughLullaby(d) {
     if (!d) return false;
     var tool = d.strCompatToolName || "";
     if (tool) return tool === "lullaby";
@@ -383,7 +383,7 @@
   }
 
   function GamePanel(props) {
-    var d = props.details, on = runsThroughNotProton(d);
+    var d = props.details, on = runsThroughLullaby(d);
     if (MISSING.indexOf("React") >= 0) return on ? view({ lang: "en" }) : null;
     var ctx = usePanel(d ? d.unAppID : 0, on);
     return on ? view(ctx) : null;
@@ -398,6 +398,6 @@
     Game: GamePanel, Global: GlobalPanel,
     // For the fixture tests.
     view: view, requestPath: requestPath, langOf: langOf,
-    runsThroughNotProton: runsThroughNotProton, FALLBACK: FALLBACK
+    runsThroughLullaby: runsThroughLullaby, FALLBACK: FALLBACK
   };
 })

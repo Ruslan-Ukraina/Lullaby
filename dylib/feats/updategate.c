@@ -2,7 +2,7 @@
 // only while Valve offers a Steam build it has signatures for (SteamUpdateGate);
 // the bootstrapper reads steam.cfg when Steam starts, updates, and starts the
 // client, where this runs and writes the block back. The next build then waits
-// for NotProton's signatures even when the app is not open.
+// for Lullaby's signatures even when the app is not open.
 
 #include "updategate.h"
 #include "../util/file.h"

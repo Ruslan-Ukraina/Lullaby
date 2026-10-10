@@ -64,15 +64,15 @@ struct FlowProblem: Equatable, Sendable {
         case .offline:
             tr("No connection to the internet. Check it, then try again.")
         case .appManagement:
-            tr("macOS didn't let NotProton change Steam. Allow NotProton under App Management in System Settings, then try again.")
+            tr("macOS didn't let Lullaby change Steam. Allow Lullaby under App Management in System Settings, then try again.")
         case .otherAccount:
-            tr("Steam was installed by another user of this Mac. Only that user can install NotProton into it.")
+            tr("Steam was installed by another user of this Mac. Only that user can install Lullaby into it.")
         case .rosettaMissing:
             tr("Windows games need Rosetta. Install it when macOS asks, then try again.")
         case .steamMissing:
             tr("Steam isn't in the Applications folder. Install Steam, then try again.")
         case .engineNotSupportedYet:
-            tr("A new engine is out, but NotProton doesn't support it yet. Try again later.")
+            tr("A new engine is out, but Lullaby doesn't support it yet. Try again later.")
         case .noBridgeYet:
             tr("The Steam bridge for this engine isn't ready yet. Try again later.")
         case .toolkitNotFound:
@@ -85,10 +85,10 @@ struct FlowProblem: Equatable, Sendable {
     /// The alert's title, by what was being done.
     static func title(_ kind: FlowKind) -> String {
         switch kind {
-        case .install: tr("Couldn't install NotProton")
-        case .update: tr("Couldn't update NotProton")
-        case .reinstall: tr("Couldn't reinstall NotProton")
-        case .delete: tr("Couldn't delete NotProton")
+        case .install: tr("Couldn't install Lullaby")
+        case .update: tr("Couldn't update Lullaby")
+        case .reinstall: tr("Couldn't reinstall Lullaby")
+        case .delete: tr("Couldn't delete Lullaby")
         case .addToolkit: tr("Couldn't add the Game Porting Toolkit")
         case .steamUpdates: tr("Couldn't change Steam updates")
         }
@@ -106,10 +106,10 @@ struct FlowProblem: Equatable, Sendable {
         case .engine: tr("Couldn't install the engine. Details are in the log.")
         case .bridge: tr("Couldn't install the Steam bridge. Details are in the log.")
         case .signatures: tr("Couldn't download Steam support files. Details are in the log.")
-        case .steam: tr("Couldn't install NotProton into Steam. Details are in the log.")
-        case .app: tr("Couldn't update NotProton. Details are in the log.")
+        case .steam: tr("Couldn't install Lullaby into Steam. Details are in the log.")
+        case .app: tr("Couldn't update Lullaby. Details are in the log.")
         case .removeSteam: tr("Couldn't return Steam to how it was. Details are in the log.")
-        case .removeFiles: tr("Couldn't delete NotProton's files. Details are in the log.")
+        case .removeFiles: tr("Couldn't delete Lullaby's files. Details are in the log.")
         case .toolkit: tr("Couldn't add the Game Porting Toolkit. Details are in the log.")
         case .steamUpdates: tr("Couldn't change Steam updates. Details are in the log.")
         }

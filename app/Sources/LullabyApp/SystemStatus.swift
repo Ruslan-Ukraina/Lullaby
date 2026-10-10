@@ -167,7 +167,7 @@ final class SystemStatus {
             }
 
             var parts = [
-                (force ? "NotProton reinstalled" : "NotProton successfully installed")
+                (force ? "Lullaby reinstalled" : "Lullaby successfully installed")
                     + (result.build.map { " (build \($0))." } ?? ".")
             ]
             if result.stoppedClient {
@@ -206,8 +206,8 @@ final class SystemStatus {
             let result = try await Uninstall.run { progress($0.label) }
 
             return result.restoredValveSignature
-                ? "NotProton has been removed."
-                : "NotProton has been removed. Steam needs to be redownloaded. "
+                ? "Lullaby has been removed."
+                : "Lullaby has been removed. Steam needs to be redownloaded. "
                     + "Please run Repair Steam again once you are online."
         }
     }

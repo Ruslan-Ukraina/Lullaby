@@ -2,7 +2,7 @@
 // and has no icon: that is what the Dock tooltip and Stage Manager show. Info.plist
 // itself cannot be changed (Steam checks it at every start and reinstalls its package
 // when it differs, DECISIONS W15), but Steam does not check files it does not ship.
-// With native Steam windows on (and your go-ahead, 2026-10-07), NotProton adds:
+// With native Steam windows on (and your go-ahead, 2026-10-07), Lullaby adds:
 //   Resources/<lang>.lproj/InfoPlist.strings  CFBundleName/CFBundleDisplayName "Steam"
 //   a custom bundle icon                        Steam.app's icon, as Finder sets one
 // Everything added is listed in Resources/.lullaby-added, and only that (plus the
@@ -112,7 +112,7 @@ enum SteamHelperFiles {
         try? fm.removeItem(at: marker(helper))
         if removed {
             register(helper)
-            AppLog.note("steam helper: NotProton's name and icon files removed")
+            AppLog.note("steam helper: Lullaby's name and icon files removed")
         }
         return removed
     }

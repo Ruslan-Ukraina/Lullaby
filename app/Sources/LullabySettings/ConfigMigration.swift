@@ -1,8 +1,8 @@
-// Brings the settings NotProton kept before the catalog into the store, without
+// Brings the settings Lullaby kept before the catalog into the store, without
 // losing a value the player chose (docs/ROADMAP.md §4, "Миграция").
 //
 // Before Phase 7A a prefix's files were the source of truth:
-// - `.sevo/bottle.env`, written once by compat_run.sh with NotProton's profile, and
+// - `.sevo/bottle.env`, written once by compat_run.sh with Lullaby's profile, and
 //   by the player's hand after that;
 // - `.sevo/apps/<exe>.env`, written by the Game Settings window and the View menu's
 //   stand-in, plus the run script's SEVO_LOADER;
@@ -31,7 +31,7 @@ public enum ConfigMigration {
             return ((try? FileManager.default.contentsOfDirectory(atPath: apps.path(percentEncoded: false))) ?? [])
                 .contains { $0.hasSuffix(".env") }
         }
-        return !text.hasPrefix(ConfigMaterializer.header)
+        return !ConfigMaterializer.isOurs(text)
     }
 
     static let backupName = "pre-catalog-backup"
@@ -62,7 +62,7 @@ public enum ConfigMigration {
 
         // The prefix's bottle.env: only what differs from the old profile was chosen.
         if let text = try? String(contentsOf: sevo.appending(path: "bottle.env"), encoding: .utf8),
-            !text.hasPrefix(ConfigMaterializer.header)
+            !ConfigMaterializer.isOurs(text)
         {
             let pairs = ConfigMaterializer.parse(text).filter { oldProfile[$0.key] != $0.value }
             apply(pairs, to: &values)
@@ -77,7 +77,7 @@ public enum ConfigMigration {
             guard let exe = GameExecutables.recordable(String(file.dropLast(4))) else { continue }
             exes.append(exe)
             guard let text = try? String(contentsOf: apps.appending(path: file), encoding: .utf8),
-                !text.hasPrefix(ConfigMaterializer.header)
+                !ConfigMaterializer.isOurs(text)
             else { continue }
             apply(ConfigMaterializer.parse(text), to: &values)
         }
@@ -119,7 +119,7 @@ public enum ConfigMigration {
             case "SEVO_FORCE_UMA": values.unifiedMemory = flag(value)
             case "SEVO_LARGE_ADDRESS_AWARE": values.largeAddressAware = flag(value)
             case "ROSETTA_ADVERTISE_AVX": values.avx = flag(value)
-            // Files from before the catalog carry the project's old name (NotProton until
+            // Files from before the catalog carry the project's old name (Lullaby until
             // 10.10.2026, docs/RENAME_LULLABY.md).
             case "LULLABY_RETINA", "NOTPROTON_RETINA": values.retina = flag(value)
             case "LULLABY_RENDERER", "NOTPROTON_RENDERER": values.renderer = RendererChoice(rawValue: value.lowercased()) ?? values.renderer

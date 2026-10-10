@@ -1,4 +1,4 @@
-// The Steam panel's channel to NotProton's settings. See settingsbridge.h.
+// The Steam panel's channel to Lullaby's settings. See settingsbridge.h.
 #include "settingsbridge.h"
 #include "../util/file.h"
 #include "../util/log.h"

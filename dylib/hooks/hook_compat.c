@@ -61,7 +61,7 @@ static void *orig_FindToolForTargetApp = NULL;
 typedef void *(*fn_FindToolForTargetApp)(void *self, uint32_t appid);
 
 // An unmapped windows-only app resolves to no tool ("Install on Windows").
-// Those are defaulted to NotProton's tool for quality UX.
+// Those are defaulted to Lullaby's tool for quality UX.
 static void *hook_FindToolForTargetApp(void *self, uint32_t appid) {
     fn_FindToolForTargetApp orig = (fn_FindToolForTargetApp)orig_FindToolForTargetApp;
     if (!orig) {
@@ -84,7 +84,7 @@ static void *hook_FindToolForTargetApp(void *self, uint32_t appid) {
 
     void *ours = np_compat_registered_tool(self);
     if (ours)
-        NP_DBG("hook_FindToolForTargetApp: appID %u is windows-only, defaulting to the NotProton tool",
+        NP_DBG("hook_FindToolForTargetApp: appID %u is windows-only, defaulting to the Lullaby tool",
                appid);
     return ours;
 }
@@ -112,7 +112,7 @@ static uint64_t hook_InternalSpecifyCompatTool(void *self, uint64_t appid,
     return result;
 }
 
-// The trampoline is the client's own resolution without the NotProton default.
+// The trampoline is the client's own resolution without the Lullaby default.
 void np_hooks_compat_publish_originals(void) {
     np_compat_set_chosen_tool_fn((uintptr_t)orig_FindToolForTargetApp);
 }
@@ -138,7 +138,7 @@ static void instrument_oslist_override_gate(void *address, void *ctx_) {
 #define TOOL_DEPENDENCY_OFF   0x20
 
 // Proton targets linux with no macOS depot, so the depot lookup fails. Rewriting
-// the tool to appid zero points the launch builder at the local NotProton
+// the tool to appid zero points the launch builder at the local Lullaby
 // directory.
 static void instrument_resolver_local_redirect(void *address, void *ctx_) {
     (void)address;
@@ -162,7 +162,7 @@ static void instrument_resolver_local_redirect(void *address, void *ctx_) {
     *(const char **)(tool + np_compat_tool_off(COMPAT_TOOL_INSTALL_OFF)) = tool_dir;
     *(const char **)(tool + TOOL_COMMANDLINE_OFF) = np_compat_tool_commandline();
 
-    NP_LOG("instrument_resolver_local_redirect: tool %u routed to the local NotProton tool at %s",
+    NP_LOG("instrument_resolver_local_redirect: tool %u routed to the local Lullaby tool at %s",
            tool_appid, tool_dir);
 }
 

@@ -87,7 +87,7 @@ int np_steamwin_css_should_patch(const char *path) {
 //                  own gradient: no black, no band; border-box keeps the height.
 //                  Popups without a DialogContent are not moved.
 const char NP_STEAMWIN_CSS[] =
-    "\n/* NotProton: native Steam windows */\n"
+    "\n/* Lullaby: native Steam windows */\n"
     ".TitleBar.OSX.NPDesktop .title-bar-actions.window-controls{visibility:hidden!important}\n"
     ".friendListHeaderContainer.titleBarContainer.OSX:has(> .TitleBar.NPDesktop){padding-top:12px!important}\n"
     "html.ModalDialogPopup:has(.TitleBar.NPDesktop) .DialogContent:not(.DialogContent .DialogContent)"
@@ -102,7 +102,7 @@ char *np_steamwin_css_transform(const uint8_t *src, size_t src_len, size_t *out_
     // Only stylesheets that style the title bar, and never twice.
     if (!memmem(src, src_len, ANCHOR, sizeof(ANCHOR) - 1))
         return NULL;
-    if (memmem(src, src_len, "NotProton: native Steam windows", 31))
+    if (memmem(src, src_len, "Lullaby: native Steam windows", 31))
         return NULL;
     size_t extra = sizeof(NP_STEAMWIN_CSS) - 1;
     char *out = malloc(src_len + extra + 1);

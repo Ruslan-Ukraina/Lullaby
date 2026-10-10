@@ -33,7 +33,7 @@ public struct GameLibrary: Sendable {
             .filter { isDirectory($0) }
     }
 
-    /// Every NotProton prefix: compatdata entries whose prefix the run script set up
+    /// Every Lullaby prefix: compatdata entries whose prefix the run script set up
     /// for Dormison (it holds `.sevo`).
     public func allPrefixes() -> [(appID: Int, prefix: URL)] {
         var found: [(Int, URL)] = []
@@ -94,7 +94,7 @@ public enum GameExecutables {
         "ue4prereq", "ueprereq", "easyanticheat", "eac", "battleye",
     ]
 
-    /// Windows' and Wine's own programs, and NotProton's Steam shim: never a game.
+    /// Windows' and Wine's own programs, and Lullaby's Steam shim: never a game.
     static let windowsTools: Set<String> = [
         "steam.exe", "explorer.exe", "services.exe", "winedevice.exe", "plugplay.exe", "svchost.exe",
         "rpcss.exe", "conhost.exe", "wineboot.exe", "start.exe", "rundll32.exe", "iscriptevaluator.exe",

@@ -4,14 +4,14 @@
 
 import Foundation
 
-/// NotProton's place on this Mac, read from Status's snapshot.
+/// Lullaby's place on this Mac, read from Status's snapshot.
 enum InstallState: Equatable, Sendable {
     case checking
     case steamMissing
     case notInstalled
-    /// Steam has NotProton but something is missing (no engine, another account's copy).
+    /// Steam has Lullaby but something is missing (no engine, another account's copy).
     case incomplete
-    /// Steam carries another add-on in NotProton's place.
+    /// Steam carries another add-on in Lullaby's place.
     case foreign
     case installed(engine: String?)
 

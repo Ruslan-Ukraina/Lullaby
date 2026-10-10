@@ -71,9 +71,9 @@ public enum GroupTitles {
 /// from the catalog too, so it carries no text of its own.
 public enum PanelText {
     public static let all: [String: L10n] = [
-        "section": .same("NotProton"),
-        "globalSection": L10n("NotProton — for all games", uk: "NotProton — для всіх ігор",
-                              ru: "NotProton — для всех игр"),
+        "section": .same("Lullaby"),
+        "globalSection": L10n("Lullaby — for all games", uk: "Lullaby — для всіх ігор",
+                              ru: "Lullaby — для всех игр"),
         "globalCaption": L10n("A game can have its own value in its Properties.",
                               uk: "Гра може мати власне значення у своїх властивостях.",
                               ru: "У игры может быть своё значение в её свойствах."),
@@ -87,8 +87,8 @@ public enum PanelText {
                                     ru: "Дополнительные настройки для всех игр"),
         "resetGame": L10n("Reset game settings", uk: "Скинути налаштування гри", ru: "Сбросить настройки игры"),
         "resetRecipe": L10n("Restore recipe", uk: "Повернути рецепт", ru: "Вернуть рецепт"),
-        "recipe": L10n("NotProton recipe", uk: "Рецепт NotProton", ru: "Рецепт NotProton"),
-        "recipeValue": L10n("NotProton recipe: %@", uk: "Рецепт NotProton: %@", ru: "Рецепт NotProton: %@"),
+        "recipe": L10n("Lullaby recipe", uk: "Рецепт Lullaby", ru: "Рецепт Lullaby"),
+        "recipeValue": L10n("Lullaby recipe: %@", uk: "Рецепт Lullaby: %@", ru: "Рецепт Lullaby: %@"),
         "resetGlobal": L10n("Reset to defaults", uk: "Скинути до типових",
                             ru: "Сбросить по умолчанию"),
         "done": L10n("Done", uk: "Готово", ru: "Готово"),
@@ -98,23 +98,23 @@ public enum PanelText {
         "restartGame": L10n("The game is running. Changes apply after you restart it.",
                             uk: "Гра запущена. Зміни діють після її перезапуску.",
                             ru: "Игра запущена. Изменения применятся после её перезапуска."),
-        "firstLaunch": L10n("The game hasn't been run through NotProton yet. Settings apply from its first launch.",
-                            uk: "Гру ще не запускали через NotProton. Налаштування діють з першого запуску.",
-                            ru: "Игру ещё не запускали через NotProton. Настройки применятся при первом запуске."),
+        "firstLaunch": L10n("The game hasn't been run through Lullaby yet. Settings apply from its first launch.",
+                            uk: "Гру ще не запускали через Lullaby. Налаштування діють з першого запуску.",
+                            ru: "Игру ещё не запускали через Lullaby. Настройки применятся при первом запуске."),
         "globalApplies": L10n("Changes apply the next time each game starts.",
                               uk: "Зміни діють з наступного запуску кожної гри.",
                               ru: "Изменения применятся при следующем запуске каждой игры."),
         "executables": L10n("Game files: %@", uk: "Файли гри: %@", ru: "Файлы игры: %@"),
-        "unavailable": L10n("NotProton settings are unavailable: %@", uk: "Налаштування NotProton недоступні: %@",
-                            ru: "Настройки NotProton недоступны: %@"),
+        "unavailable": L10n("Lullaby settings are unavailable: %@", uk: "Налаштування Lullaby недоступні: %@",
+                            ru: "Настройки Lullaby недоступны: %@"),
         "saveFailed": L10n("Could not save: %@", uk: "Не вдалося зберегти: %@", ru: "Не удалось сохранить: %@"),
         "experimental": L10n("experimental", uk: "експеримент", ru: "эксперимент"),
         "waitSpin": L10n("Wait spin", uk: "Очікування (spin)", ru: "Ожидание (spin)"),
         "objectSpin": L10n("Object spin", uk: "Об’єкти (spin)", ru: "Объекты (spin)"),
         "backOff": L10n("Back off", uk: "Відступати", ru: "Отступать"),
         "close": L10n("Close", uk: "Закрити", ru: "Закрыть"),
-        "toolkitInSettings": L10n("Add GPTK in NotProton's settings", uk: "Додай GPTK у налаштуваннях NotProton",
-                                  ru: "Добавь GPTK в настройках NotProton"),
+        "toolkitInSettings": L10n("Add GPTK in Lullaby's settings", uk: "Додай GPTK у налаштуваннях Lullaby",
+                                  ru: "Добавь GPTK в настройках Lullaby"),
     ]
 }
 
@@ -193,9 +193,9 @@ extension SettingCopy {
                     uk: "Для 3D-ігор, які рендеряться в роздільності нижчій за екранну.",
                     ru: "Для 3D-игр, которые рендерятся в разрешении ниже экранного.")),
             ],
-            footnote: L10n("View › Upscaler in the game's menu changes it while you play. NotProton remembers your choice.",
-                           uk: "View › Upscaler у меню гри змінює його під час гри. NotProton запам’ятовує ваш вибір.",
-                           ru: "View › Upscaler в меню игры меняет его во время игры. NotProton запоминает ваш выбор.")))
+            footnote: L10n("View › Upscaler in the game's menu changes it while you play. Lullaby remembers your choice.",
+                           uk: "View › Upscaler у меню гри змінює його під час гри. Lullaby запам’ятовує ваш вибір.",
+                           ru: "View › Upscaler в меню игры меняет его во время игры. Lullaby запоминает ваш выбор.")))
 
     static let fps = SettingCopy(
         L10n("Frame rate counter", uk: "Лічильник FPS", ru: "Счётчик FPS"),
@@ -233,9 +233,9 @@ extension SettingCopy {
                     uk: "Вікна, розмір яких гра й так дозволяє змінювати, теж масштабуються, а не перемальовуються.",
                     ru: "Окна, размер которых игра и так позволяет менять, тоже масштабируются, а не перерисовываются.")),
             ],
-            footnote: L10n("View › Resizable Windows in the game's menu changes it. NotProton remembers your choice.",
-                           uk: "View › Resizable Windows у меню гри змінює це. NotProton запам’ятовує ваш вибір.",
-                           ru: "View › Resizable Windows в меню игры меняет это. NotProton запоминает ваш выбор.")))
+            footnote: L10n("View › Resizable Windows in the game's menu changes it. Lullaby remembers your choice.",
+                           uk: "View › Resizable Windows у меню гри змінює це. Lullaby запам’ятовує ваш вибір.",
+                           ru: "View › Resizable Windows в меню игры меняет это. Lullaby запоминает ваш выбор.")))
 
     static let filter = SettingCopy(
         L10n("Final filter", uk: "Фінальний фільтр", ru: "Финальный фильтр"),
@@ -280,9 +280,9 @@ extension SettingCopy {
                  ru: "DXMT отвечает на вызовы NVIDIA (NVAPI) и DLSS от игры и масштабирует через MetalFX. Работает только с DXMT."),
             entries: [
                 HelpEntry(L10n("Graphics card", uk: "Відеокарта", ru: "Видеокарта"), L10n(
-                    "NotProton chooses the card the game sees: an AMD Radeon RX 9060 XT, or, with this on, an NVIDIA GeForce RTX 5060 Ti, because games offer DLSS only on NVIDIA.",
-                    uk: "NotProton сам обирає відеокарту, яку бачить гра: AMD Radeon RX 9060 XT, а з цією опцією — NVIDIA GeForce RTX 5060 Ti, бо ігри пропонують DLSS лише на NVIDIA.",
-                    ru: "NotProton сам выбирает видеокарту, которую видит игра: AMD Radeon RX 9060 XT, а с этой опцией — NVIDIA GeForce RTX 5060 Ti, потому что игры предлагают DLSS только на NVIDIA.")),
+                    "Lullaby chooses the card the game sees: an AMD Radeon RX 9060 XT, or, with this on, an NVIDIA GeForce RTX 5060 Ti, because games offer DLSS only on NVIDIA.",
+                    uk: "Lullaby сам обирає відеокарту, яку бачить гра: AMD Radeon RX 9060 XT, а з цією опцією — NVIDIA GeForce RTX 5060 Ti, бо ігри пропонують DLSS лише на NVIDIA.",
+                    ru: "Lullaby сам выбирает видеокарту, которую видит игра: AMD Radeon RX 9060 XT, а с этой опцией — NVIDIA GeForce RTX 5060 Ti, потому что игры предлагают DLSS только на NVIDIA.")),
                 HelpEntry(L10n("If a game misbehaves", uk: "Якщо гра поводиться дивно", ru: "Если игра ведёт себя странно"), L10n(
                     "Turn it off for that game. Few games have been tested this way.",
                     uk: "Вимкніть для цієї гри. Цим шляхом перевірено мало ігор.",

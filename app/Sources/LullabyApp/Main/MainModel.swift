@@ -67,7 +67,7 @@ final class MainModel {
 
     // MARK: ⚙︎ read-only lines
 
-    /// Steam's build, and whether NotProton has signatures for it ("checked").
+    /// Steam's build, and whether Lullaby has signatures for it ("checked").
     var steamVersion: (build: String, checked: Bool)? {
         guard let updates = status.snapshot?.updates, let build = updates.installedSteam else { return nil }
         return (String(build), updates.supportedBuilds.contains(build))

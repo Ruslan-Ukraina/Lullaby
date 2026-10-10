@@ -195,7 +195,7 @@ public struct SettingsCLI {
 
     /// `app config <appid> <key> <value>`, as winemac.drv's `sevoStoreSetting:` runs it:
     /// upscaler and filter by name, windows by level name. fps and fps-graph switch
-    /// Dormison's own counter, which is no NotProton setting since Amendment 09.10 (the
+    /// Dormison's own counter, which is no Lullaby setting since Amendment 09.10 (the
     /// panel's counter is the Metal HUD): the switch lasts the session and is not kept.
     func sevoAppConfig(_ arguments: [String]) throws -> Result {
         guard arguments.count == 4, arguments[0] == "config" else {

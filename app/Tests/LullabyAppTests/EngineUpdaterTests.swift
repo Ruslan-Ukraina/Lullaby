@@ -773,7 +773,7 @@ struct EngineUpdaterTests {
         #expect(message.contains("no previous engine"))
     }
 
-    @Test("A new engine brings its bridge from NotProton's releases; Roll Back brings the old engine's bridge back")
+    @Test("A new engine brings its bridge from Lullaby's releases; Roll Back brings the old engine's bridge back")
     func engineFetchesBridge() async throws {
         let rig = Rig()
         defer { rig.remove() }

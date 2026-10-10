@@ -1,7 +1,7 @@
 // Installs, reinstalls and rolls back the Dormison engine (Phase 4).
 //
 // Install: signed engine.json → channel's release → is it supported (a Steam
-// bridge for the version, BridgeCatalog: bundled, downloaded, or in NotProton's
+// bridge for the version, BridgeCatalog: bundled, downloaded, or in Lullaby's
 // signed bridge-manifest.json) → tarball, resumed from a .part file → size,
 // sha256 from the manifest and the tarball's own Ed25519 signature → the bridge
 // downloaded and checked if it is not on disk (BridgeStore) → unpack beside the
@@ -27,7 +27,7 @@ enum EngineUpdateCheck: Sendable, Equatable {
     /// The channel offers what is installed. `supported`: Reinstall is possible.
     case upToDate(EngineRelease, supported: Bool)
     case available(EngineRelease)
-    /// A newer Dormison is out, but this NotProton has no B1 ntdll or bridge for it.
+    /// A newer Dormison is out, but this Lullaby has no B1 ntdll or bridge for it.
     case waiting(EngineRelease, reason: String)
     /// The installed engine is newer than anything on the channel.
     case newerInstalled(EngineRelease)
@@ -122,7 +122,7 @@ struct EngineUpdater: Sendable {
     var manifestURL: URL = EngineManifest.url
     var key: Curve25519.Signing.PublicKey = EngineSignature.dormisonKey
     var transport: any EngineTransport = URLSessionEngineTransport()
-    /// NotProton's own releases: the key bridge downloads are checked with.
+    /// Lullaby's own releases: the key bridge downloads are checked with.
     var feed: ReleaseFeed.Setup = ReleaseFeed.configured
     var support: @Sendable () throws -> BridgeCatalog = { BridgeUpdater().catalog() }
     /// Reads the signed bridge list before a check, so a new engine's bridge is known.
@@ -138,11 +138,11 @@ struct EngineUpdater: Sendable {
     var freeSpace: @Sendable (URL) -> Int64? = EngineUpdater.availableCapacity
 
     static let gameRunning =
-        "A game is running under NotProton. Quit the game, then try again."
+        "A game is running under Lullaby. Quit the game, then try again."
     static let steamRunning =
         "Steam is running. Quit Steam, then try again."
     static let offline =
-        "NotProton could not reach GitHub. Check your internet connection and try again."
+        "Lullaby could not reach GitHub. Check your internet connection and try again."
 
     // MARK: Check
 
@@ -254,7 +254,7 @@ struct EngineUpdater: Sendable {
         guard case .supported(var bridgeRelease) = try support().verdict(for: version) else {
             throw StepFailure(
                 step: step,
-                detail: "\(release.displayName) is out, but NotProton does not support it yet. Wait for a NotProton update.")
+                detail: "\(release.displayName) is out, but Lullaby does not support it yet. Wait for a Lullaby update.")
         }
         let fm = FileManager.default
         try fm.createDirectory(at: runners, withIntermediateDirectories: true)
@@ -299,7 +299,7 @@ struct EngineUpdater: Sendable {
                 throw StepFailure(
                     step: step,
                     detail: "\(release.displayName) was built from \(commit.prefix(12)), "
-                        + "but NotProton's Steam bridge is for \(entry.engineCommit.prefix(12)).")
+                        + "but Lullaby's Steam bridge is for \(entry.engineCommit.prefix(12)).")
             }
             AppLog.note("engine: \(version) files match engine-manifest.json, commit \(commit.prefix(12))")
 
@@ -430,7 +430,7 @@ struct EngineUpdater: Sendable {
                 AppLog.note("engine: \(name) sha256 \(digest), manifest \(release.sha256)")
                 throw StepFailure(
                     step: step,
-                    detail: "The downloaded engine does not match the engine list (sha256), so NotProton deleted it.")
+                    detail: "The downloaded engine does not match the engine list (sha256), so Lullaby deleted it.")
             }
             try fm.moveItem(at: part, to: tarball)
         }
@@ -448,7 +448,7 @@ struct EngineUpdater: Sendable {
             AppLog.note("engine: \(name) signature invalid")
             throw StepFailure(
                 step: step,
-                detail: "The downloaded engine does not carry Dormison's signature, so NotProton deleted it.")
+                detail: "The downloaded engine does not carry Dormison's signature, so Lullaby deleted it.")
         }
         try signature.write(to: signatureFile(for: tarball))
         AppLog.note("engine: \(name) verified (size, sha256, signature)")

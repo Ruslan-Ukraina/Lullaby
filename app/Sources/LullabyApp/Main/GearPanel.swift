@@ -1,6 +1,6 @@
 // ⚙︎ (Phase 8, owner's edits of 10.10), top to bottom: Reinstall; Install GPTK; Turn Off
 // Steam Updates; Steam's and Dormison's versions at the very bottom (read only; a Steam
-// build NotProton has no signatures for is orange, "not checked"). The first time it opens after Install, the Steam
+// build Lullaby has no signatures for is orange, "not checked"). The first time it opens after Install, the Steam
 // updates row is highlighted and a short tip explains it (§9.4).
 
 import AppKit
@@ -77,7 +77,7 @@ struct GearPanel: View {
                 Text(tr("Turn Off Steam Updates"))
                 Text(model.steamUpdatesOff
                      ? tr("Steam doesn't update at all.")
-                     : tr("NotProton lets Steam update only to versions it supports."))
+                     : tr("Lullaby lets Steam update only to versions it supports."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -89,7 +89,7 @@ struct GearPanel: View {
         .background(model.highlightSteamUpdates ? AnyShapeStyle(.tint.opacity(0.18)) : AnyShapeStyle(.clear),
                     in: .rect(cornerRadius: 8))
         .popover(isPresented: $showsTip, arrowEdge: .trailing) {
-            Text(tr("Steam updates can break NotProton. NotProton already holds back Steam versions it doesn't support yet. Turn this on to stop Steam updates completely."))
+            Text(tr("Steam updates can break Lullaby. Lullaby already holds back Steam versions it doesn't support yet. Turn this on to stop Steam updates completely."))
                 .font(.callout)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(width: 240)
@@ -141,7 +141,7 @@ struct GearPanel: View {
     private func chooseToolkit() {
         let panel = NSOpenPanel()
         panel.title = tr("Choose the Game Porting Toolkit")
-        panel.message = tr("Pick the .dmg you downloaded from Apple. NotProton copies D3DMetal from it.")
+        panel.message = tr("Pick the .dmg you downloaded from Apple. Lullaby copies D3DMetal from it.")
         panel.allowedContentTypes = [UTType(filenameExtension: "dmg") ?? .diskImage]
         panel.directoryURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
         guard panel.runModal() == .OK, let url = panel.url else { return }

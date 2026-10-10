@@ -1,4 +1,4 @@
-// Creates an Ed25519 key pair for NotProton's release feed.
+// Creates an Ed25519 key pair for Lullaby's release feed.
 //
 //     swift release/keygen.swift <private key file>
 //

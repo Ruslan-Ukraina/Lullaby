@@ -1,6 +1,6 @@
 // Makes Steam Play Launch Options function the way they do on Linux.
 //
-// From upstream NotProton 1.1.0 (e9f97f7, e7758ba; GPL-3.0, same project). NotProton's own
+// From upstream NotProton 1.1.0 (e9f97f7, e7758ba; GPL-3.0, same project). Lullaby's own
 // addition: the shell first records the names of the variables it was handed in
 // LULLABY_ENV_BASE, so compat_run.sh can tell the ones the player's launch options set
 // (NAME=value ahead of %command%) and hand them to the game, which starts through

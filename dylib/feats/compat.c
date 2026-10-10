@@ -14,7 +14,7 @@
 // the tool's name contains "proton" so without a match every AutoCloud rule silently
 // skips the app.
 #define TOOL_DIR_NAME "lullaby"
-#define TOOL_DISPLAY_NAME "Dormison (NotProton)"
+#define TOOL_DISPLAY_NAME "Dormison (Lullaby)"
 
 #define COMPAT_MANAGER_ENABLED_OFF  0x7B0
 #define COMPAT_TOOL_STRIDE          0x130

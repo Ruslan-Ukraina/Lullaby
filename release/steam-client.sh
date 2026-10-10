@@ -86,7 +86,7 @@ echo "==> steamclient.dylib: $archs, signed by Valve ($VALVE_TEAM)"
 echo "$build" > "$WORK/build"
 case " $archs " in
 	*" arm64 "*) ;;
-	*) die "steamclient.dylib has no arm64 half ($archs); the NotProton dylib is arm64 only" ;;
+	*) die "steamclient.dylib has no arm64 half ($archs); the Lullaby dylib is arm64 only" ;;
 esac
 case " $archs " in
 	*" x86_64 "*) ;;

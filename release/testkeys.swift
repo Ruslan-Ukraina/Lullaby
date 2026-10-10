@@ -1,4 +1,4 @@
-// NotProton's TEST keys, for dry runs of the release workflows (Phase 6).
+// Lullaby's TEST keys, for dry runs of the release workflows (Phase 6).
 //
 //     swift release/testkeys.swift <release|sparkle> [<private key file>]
 //
@@ -21,6 +21,8 @@ guard (1...2).contains(arguments.count), names.contains(arguments[0]) else {
     FileHandle.standardError.write(Data("usage: swift release/testkeys.swift <release|sparkle> [<private key file>]\n".utf8))
     exit(2)
 }
+// The phrase keeps the project's old name: the keys derived from it sign the bridge
+// the app carries (R74), and a new phrase would be new keys.
 let phrase = "NotProton TEST \(arguments[0]) key. Public on purpose; release builds refuse it."
 let seed = Data(SHA256.hash(data: Data(phrase.utf8)))
 let key = try Curve25519.Signing.PrivateKey(rawRepresentation: seed)

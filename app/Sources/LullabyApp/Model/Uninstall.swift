@@ -28,7 +28,7 @@ struct UninstallOutcome: Sendable {
 }
 
 enum Uninstall {
-    static let step = "Remove NotProton"
+    static let step = "Remove Lullaby"
 
     typealias Repair = @Sendable (@escaping @Sendable (RepairPhase) -> Void) async throws -> Void
 

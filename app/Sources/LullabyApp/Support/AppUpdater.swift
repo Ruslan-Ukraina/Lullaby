@@ -23,7 +23,7 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
 
     nonisolated static let feedKey = "SUFeedURL"
     nonisolated static let keyKey = "SUPublicEDKey"
-    nonisolated static let prereleaseDefault = "NotProtonPrereleaseUpdates"
+    nonisolated static let prereleaseDefault = "LullabyPrereleaseUpdates"
     nonisolated static let prereleaseChannel = "beta"
 
     enum Setup: Equatable, Sendable {
@@ -51,7 +51,7 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
         let keyText = (key ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let feedText = (feed ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !keyText.isEmpty, !feedText.isEmpty else {
-            return .off("This build of NotProton has no update feed, so it does not update itself.")
+            return .off("This build of Lullaby has no update feed, so it does not update itself.")
         }
         guard let raw = Data(base64Encoded: keyText), raw.count == 32 else {
             return .off("The update key in this build is not a valid EdDSA public key.")

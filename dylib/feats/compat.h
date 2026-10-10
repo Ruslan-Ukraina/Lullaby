@@ -61,23 +61,23 @@ void np_compat_force_enable(void *compat_mgr);
 void     np_compat_set_valid_platforms_fn(uintptr_t get_valid_platforms);
 uint32_t np_compat_valid_platforms(void *compat_mgr, uint32_t appid);
 
-// The tool an app will run under: user mapping if present, NotProton's tool by default
+// The tool an app will run under: user mapping if present, Lullaby's tool by default
 // otherwise. Goes through the same function the launch path uses.
 void  np_compat_set_find_tool_fn(uintptr_t find_tool_for_target_app);
 void *np_compat_tool_for_app(void *compat_mgr, uint32_t appid);
 
-// True when the launch command runs NotProton's compatibility tool.
+// True when the launch command runs Lullaby's compatibility tool.
 int np_compat_runs_tool(const char *cmd);
 
-// True when the app is set to run with NotProton's compatibility tool.
+// True when the app is set to run with Lullaby's compatibility tool.
 int np_compat_app_runs_tool(uint32_t appid);
 
-// The tool from the client's own mapping alone, without the NotProton default.
+// The tool from the client's own mapping alone, without the Lullaby default.
 // The properties page needs the two apart to show absence vs. choice.
 void  np_compat_set_chosen_tool_fn(uintptr_t find_tool_for_target_app);
 void *np_compat_chosen_tool(void *compat_mgr, uint32_t appid);
 
-// Whether an app gets NotProton's tool by default: windows-only with no macOS.
+// Whether an app gets Lullaby's tool by default: windows-only with no macOS.
 //
 // Deliberately blind to whether a macOS build can actually run. A 32-bit macOS
 // build cannot run on a current system, but moving it onto a tool means fetching
@@ -105,7 +105,7 @@ void np_compat_map_tool(void *compat_mgr, uint32_t appid, const char *tool_name)
 // CCompatManager::YldRegisterTool, resolved at install time.
 void np_compat_set_register_fn(uintptr_t yld_register_tool);
 
-// Registers NotProton's tool into the given manager once. The local
+// Registers Lullaby's tool into the given manager once. The local
 // compatibilitytools.d scan uses a different instance than the dropdown reads
 // and does not run on every launch, so this registers into the right one.
 void np_compat_register_tool(void *compat_mgr);
@@ -115,11 +115,11 @@ void np_compat_register_tool(void *compat_mgr);
 // scan builds a different instance).
 void *np_compat_manager(void);
 
-// The registered NotProton tool entry in the manager array, or NULL.
+// The registered Lullaby tool entry in the manager array, or NULL.
 // Manager-owned. Callers read fields without taking ownership.
 void *np_compat_registered_tool(void *compat_mgr);
 
-// Absolute path to the local NotProton tool directory, or NULL. Resolved once
+// Absolute path to the local Lullaby tool directory, or NULL. Resolved once
 // and cached.
 const char *np_compat_tool_dir(void);
 

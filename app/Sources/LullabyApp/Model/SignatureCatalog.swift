@@ -61,7 +61,7 @@ struct SignatureSupport: Sendable, Equatable {
                 guard let text = item["url"] as? String, let parsed = URL(string: text), feed.allows(parsed),
                       parsed.lastPathComponent == file
                 else {
-                    AppLog.note("signatures: \(file) is not served from NotProton's releases")
+                    AppLog.note("signatures: \(file) is not served from Lullaby's releases")
                     continue
                 }
                 url = parsed
@@ -182,12 +182,12 @@ struct SignatureUpdater: Sendable {
                 AppLog.note("signatures: \(database.file) sha256 does not match the manifest")
                 throw StepFailure(
                     step: SignatureSupport.step,
-                    detail: "The signature database \(database.file) does not match NotProton's signed list, so NotProton refused it.")
+                    detail: "The signature database \(database.file) does not match Lullaby's signed list, so Lullaby refused it.")
             }
             guard SignatureSupport.isUsableDatabase(data, file: database.file) else {
                 throw StepFailure(
                     step: SignatureSupport.step,
-                    detail: "The signature database \(database.file) is not one lullaby.dylib can read, so NotProton refused it.")
+                    detail: "The signature database \(database.file) is not one lullaby.dylib can read, so Lullaby refused it.")
             }
             try atomicReplace(target, with: data, step: SignatureSupport.step)
             installed.append(database.file)

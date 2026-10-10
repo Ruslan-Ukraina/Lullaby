@@ -1,6 +1,6 @@
 // The env files on disk: a header, every executable of a game, the run script's
 // lines kept, WINEMSYNC never changed under a running game, idempotent rewrites;
-// and the migration of the files NotProton wrote before the catalog.
+// and the migration of the files Lullaby wrote before the catalog.
 
 import Foundation
 import Testing
@@ -71,7 +71,7 @@ struct ConfigMaterializerTests {
                             exes: ["game/bin/win64/deadlock.exe", "game/bin/win64/vconsole2.exe",
                                    "game/bin/win64/crashreporter.exe"])
         try FileManager.default.createDirectory(at: fixture.prefix(1422450), withIntermediateDirectories: true)
-        try fixture.write("# written by NotProton; edits are overwritten\nSEVO_LOADER=/b/Deadlock.app/Contents/MacOS/wine\n",
+        try fixture.write("# written by Lullaby; edits are overwritten\nSEVO_LOADER=/b/Deadlock.app/Contents/MacOS/wine\n",
                           ".sevo/apps/deadlock.exe.env", in: 1422450)
 
         try fixture.service.record(appID: 1422450, exe: "deadlock.exe", installDirectory: nil)
@@ -134,13 +134,13 @@ struct ConfigMaterializerTests {
         let fixture = try SettingsFixture()
         defer { fixture.cleanUp() }
         for id in [10, 20] {
-            try fixture.write("# written by NotProton; edits are overwritten\n", ".sevo/bottle.env", in: id)
+            try fixture.write("# written by Lullaby; edits are overwritten\n", ".sevo/bottle.env", in: id)
         }
         try FileManager.default.createDirectory(at: fixture.prefix(30), withIntermediateDirectories: true)
         try fixture.service.set("upscaler", .string("lanczos"), appID: nil)
         #expect(fixture.read(".sevo/bottle.env", in: 10)?.contains("SEVO_UPSCALER=lanczos") == true)
         #expect(fixture.read(".sevo/bottle.env", in: 20)?.contains("SEVO_UPSCALER=lanczos") == true)
-        #expect(fixture.read(".sevo/bottle.env", in: 30) == nil, "a prefix NotProton never ran is not touched")
+        #expect(fixture.read(".sevo/bottle.env", in: 30) == nil, "a prefix Lullaby never ran is not touched")
     }
 
     @Test("DXVK's dxvk.conf names the game's card in its prefix; someone else's stays")
@@ -174,7 +174,7 @@ struct ConfigMaterializerTests {
         try fixture.service.set("retina", .bool(false), appID: 8)
         #expect(fixture.service.store.game(8).retina == false)
         try fixture.service.set("upscaler", .string("off"), appID: nil)
-        #expect(fixture.service.store.global().upscaler == nil, "NotProton's default")
+        #expect(fixture.service.store.global().upscaler == nil, "Lullaby's default")
     }
 
     @Test("reset returns a game to inherit and keeps its executables")
@@ -199,7 +199,7 @@ struct ConfigMigrationTests {
 
     /// PEAK's and Deadlock's files as Phase 2 left them.
     static let oldBottle = """
-        # Dormison settings for every program in this prefix, first written by NotProton.
+        # Dormison settings for every program in this prefix, first written by Lullaby.
         # One KEY=VALUE per line; .sevo/apps/<program>.env overrides them per program.
         SEVO_RESIZABLE_WINDOWS=1
         SEVO_UPSCALER=off
@@ -300,7 +300,7 @@ struct StoreUpgradeTests {
             .write(to: games.appending(path: "3527290.json"), atomically: true, encoding: .utf8)
         try #"{"fps":true,"exes":["etx.exe"]}"#
             .write(to: games.appending(path: "227300.json"), atomically: true, encoding: .utf8)
-        try fixture.write("# written by NotProton; edits are overwritten\nSEVO_CPU_COUNT=4\n", ".sevo/bottle.env", in: 3527290)
+        try fixture.write("# written by Lullaby; edits are overwritten\nSEVO_CPU_COUNT=4\n", ".sevo/bottle.env", in: 3527290)
         #expect(store.schema == 1)
 
         let cli = SettingsCLI(service: fixture.service)
@@ -308,7 +308,7 @@ struct StoreUpgradeTests {
         #expect(store.schema == 2)
         let global = store.global()
         #expect(global.retina == true)
-        #expect(global.fps == nil, "off for all games is NotProton's default")
+        #expect(global.fps == nil, "off for all games is Lullaby's default")
         let peak = store.game(3527290)
         #expect(peak.fps == true, "the HUD was on")
         #expect(peak.retina == nil, "equal to the shared value")

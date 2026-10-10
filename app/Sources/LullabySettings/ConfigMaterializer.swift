@@ -12,7 +12,7 @@
 // The graphics card is not a setting: it follows DLSS → MetalFX (GPUIdentity.forGame), and
 // DXVK's part of it is a dxvk.conf in the game's prefix.
 //
-// NotProton keeps one prefix per game, so a prefix's bottle.env also holds the two
+// Lullaby keeps one prefix per game, so a prefix's bottle.env also holds the two
 // lines only that file may carry: WINEMSYNC, which the run script sets at every launch
 // and this code never changes under a running game, and SEVO_CLI.
 //
@@ -22,7 +22,15 @@
 import Foundation
 
 public enum ConfigMaterializer {
-    public static let header = "# written by NotProton; edits are overwritten"
+    public static let header = "# written by Lullaby; edits are overwritten"
+    /// The same header from before the rename (NotProton until 10.10.2026): a file with it
+    /// is the catalog's as well, so it is rewritten, never migrated as a player's file.
+    static let legacyHeaders = ["# written by NotProton; edits are overwritten"]
+
+    /// The file is one this code wrote, under the current name or an earlier one.
+    public static func isOurs(_ text: String) -> Bool {
+        ([header] + legacyHeaders).contains { text.hasPrefix($0) }
+    }
 
     /// Keys of a program's file that compat_run.sh writes and this code keeps.
     static let runScriptKeys = ["SEVO_LOADER"]
@@ -35,7 +43,7 @@ public enum ConfigMaterializer {
     public static func bottleLines(global: ConfigValues, msync: Bool, cli: String?, d3dmetal: String? = nil) -> [String] {
         let stack = ConfigStack(global: global)
         var lines = [
-            "# NotProton settings for every game. A game's own values: .sevo/apps/<program>.env",
+            "# Lullaby settings for every game. A game's own values: .sevo/apps/<program>.env",
             "SEVO_RESIZABLE_WINDOWS=\(stack[\.windows].rawValue)",
             "SEVO_UPSCALER=\(stack[\.upscaler].rawValue)",
             "SEVO_FINAL_FILTER=\(stack[\.filter].rawValue)",
@@ -162,7 +170,7 @@ public enum ConfigMaterializer {
     /// The same options as dxvk.conf, one per line; the first line is a comment to DXVK.
     static func dxvkConfigFile(_ card: GPUIdentity) -> String {
         """
-        # written by NotProton; edits are overwritten
+        # written by Lullaby; edits are overwritten
         dxgi.customVendorId = \(String(format: "%04x", card.vendorID))
         dxgi.customDeviceId = \(String(format: "%04x", card.deviceID))
         dxgi.customDeviceDesc = "\(card.name)"
@@ -202,7 +210,7 @@ public enum ConfigMaterializer {
         let dxvk = prefix.appending(path: dxvkConfigPrefixPath)
         let existing = try? String(contentsOf: dxvk, encoding: .utf8)
         let dxvkText = dxvkConfigFile(gpu(stack))
-        if existing.map({ $0.hasPrefix(header) && $0 != dxvkText }) ?? true,
+        if existing.map({ isOurs($0) && $0 != dxvkText }) ?? true,
             FileManager.default.fileExists(atPath: dxvk.deletingLastPathComponent().path(percentEncoded: false))
         {
             try dxvkText.write(to: dxvk, atomically: true, encoding: .utf8)
@@ -220,7 +228,7 @@ public enum ConfigMaterializer {
         let wanted = Set(exes.map { "\($0).env" })
         for entry in (try? FileManager.default.contentsOfDirectory(at: apps, includingPropertiesForKeys: nil)) ?? []
         where !wanted.contains(entry.lastPathComponent) && entry.pathExtension == "env" {
-            guard let text = try? String(contentsOf: entry, encoding: .utf8), text.hasPrefix(header) else { continue }
+            guard let text = try? String(contentsOf: entry, encoding: .utf8), isOurs(text) else { continue }
             let kept = existingLines(entry, keys: runScriptKeys)
             if kept.isEmpty {
                 try? FileManager.default.removeItem(at: entry)

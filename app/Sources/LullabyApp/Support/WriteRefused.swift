@@ -34,10 +34,10 @@ enum Remedy: Hashable {
 
     var advice: String {
         switch self {
-        case .appManagement: "NotProton needs the App Management permission."
+        case .appManagement: "Lullaby needs the App Management permission."
         case .otherAccount:
             "Steam was installed by another account on this Mac. Only that account can modify it. "
-                + "Log in to macOS with that account to reinstall NotProton."
+                + "Log in to macOS with that account to reinstall Lullaby."
         case .ownership: "Check permissions, make sure your user owns the folder."
         }
     }
