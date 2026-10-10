@@ -1,13 +1,13 @@
 {
   "bridges": [
     {
-      "engine": "dormison-b2",
-      "engineCommit": "768e85ab0393025b463f5f371810a12a34d0466d",
+      "engine": "dormison-r5",
+      "engineCommit": "4ed1e4195327ab907e0c3c96dc5c2405bf753c9f",
       "engineFiles": [
         {
-          "clean": "ed4c4b2a3bbe73ed24749b6d61aa45383bc33ea8363d6cf564198d3c48222f64",
+          "clean": "d6f5c3e38d43340ae17b2f540aaaa5499acc84d40d814780f84df2ea44449735",
           "file": "engine/ntdll.so",
-          "patched": "23c0374dc7e141d92ee3a350eaab44b3d6aa67eaa92fe465a0ff744ce9efbdb6",
+          "patched": "82c22d907bec6b0a0a6b9447e4c7db460d9193a894b5d2eec28681ff8cd6355f",
           "patches": [
             {
               "name": "0001-ntdll-commit-charge-is-the-footprint.patch",
@@ -17,9 +17,9 @@
           "path": "wine/lib/wine/x86_64-unix/ntdll.so"
         },
         {
-          "clean": "e7253a4369ff8baaf1cccdf44ce9ccc18ea835f141ea6c20ac168b2d48c3d112",
+          "clean": "358d922737979c8e6b8a939f2b750425b9d7f22a224ce64590a95dd4eafb1d23",
           "file": "engine/winemac.so",
-          "patched": "36d51839b226237a03d6d22492af4960c03049dab88377ea91aecd15038bfc47",
+          "patched": "e3a8fc092f9bb03607b6429281525802ca2ccbeb3d643a21669626cda4f0681c",
           "patches": [
             {
               "name": "0001-winemac-retina-horzres-not-doubled.patch",
@@ -30,55 +30,55 @@
         }
       ],
       "engineRelease": {
-        "sha256": "e90b6692e0f21b30e622b65f8fb5b93ccb070b77778f5afc153d82da5ba1cb1d",
-        "sizeBytes": 232970284,
-        "url": "https://github.com/kageroumado/dormison/releases/download/b2/dormison-b2.tar.xz"
+        "sha256": "ddc3460eeae6209ed739ae732a3e4b136bfe3a77fd76ece76860903f1bc3d511",
+        "sizeBytes": 234717860,
+        "url": "https://github.com/kageroumado/dormison/releases/download/r5/dormison-r5.tar.xz"
       },
       "files": [
         {
           "name": "steam.exe",
           "path": "steam.exe",
-          "sha256": "dcb68db126d3d9454061d5a19574250b0d671a74fe54c763968ef69753f148be"
+          "sha256": "a4566ef558458b8032d1f513937f071ecca2b1494fb71273a0dc75077e5b3c67"
         },
         {
           "name": "x86_64-windows-lsteamclient.dll",
           "path": "x86_64-windows-lsteamclient.dll",
-          "sha256": "56706a2679f5a02a6ffd3a446154adc08d5cda58d7125a586038a94738274aa5"
+          "sha256": "2c6ca412b7d34a46163d9b900a1310247aa3518ab6b79f1cec73a4015b4ced8d"
         },
         {
           "name": "x86_64-unix-lsteamclient.so",
           "path": "x86_64-unix-lsteamclient.so",
-          "sha256": "725119c0a8efb4327ffc5344187f681f9d890280461a28e086adde57be21d884"
+          "sha256": "12c97e78664f76a77cddf75e71043293e958783e5787e6aa7b45d85e41db6a82"
         },
         {
           "name": "i386-windows-lsteamclient.dll",
           "path": "i386-windows-lsteamclient.dll",
-          "sha256": "abc0b939db9a8539ebff7c9a34a00838db886fc79ffb860a837283d040941475"
+          "sha256": "b2c6973afe2a14d52e3a65977636568c9b053339507625ca7ef6ad047644fbcb"
         }
       ],
-      "id": "bridge-dormison-b2-3",
+      "id": "bridge-dormison-r5-1",
       "ntdll": [
         {
           "arch": "x86_64",
-          "b1": "2e6f091d268abeeb347f3eecb937fb5a94dcda4f42d697eec58b378aae4bd05e",
-          "clean": "7b92a81509001b9a87fa9c2da4753e47d68466730b4d31cc8d3e940d9f3b147b",
+          "b1": "d75572d9cd5110a3cec6950f6ed13473d0b834a79f90570a2d2445afb3ea28f7",
+          "clean": "778819b3ce22645d777dc2cc7abfe725eb7c3779deb23bba6fe7acbec3f14364",
           "file": "ntdll/x86_64-ntdll.dll",
           "path": "wine/lib/wine/x86_64-windows/ntdll.dll"
         },
         {
           "arch": "i386",
-          "b1": "ee2ec669a5b6b38f6662ecb505a49290e971f429d3aeecb7175789d33dd904c5",
-          "clean": "a06a0eb7ed85933d8877e7b46a86d9b64d7e970744a04275cb542b78518e0a9d",
+          "b1": "070c7fa2f46514986f5805526a34d7c78230e8467c2702228258448320fa465f",
+          "clean": "7084bb9da373379701e6e721aef42311c34f64da5b4d5c076f9a666f39b25e57",
           "file": "ntdll/i386-ntdll.dll",
           "path": "wine/lib/wine/i386-windows/ntdll.dll"
         }
       ],
       "patch": "0001-ntdll-redirect-steamclient-to-lsteamclient.patch",
       "patchSha256": "e70d520f010f5f33556e7e9b911bc8cd9d55f6426ea9d637f881862eb3751524",
-      "rev": 3,
-      "sha256": "23963c935295200a85d8fd3a89675c545e998f5a3ae35da64289ad57f4d6ea4b",
-      "sizeBytes": 7451792,
-      "url": "https://github.com/Ruslan-Ukraina/NotProton/releases/download/bridge-dormison-b2-3/bridge-dormison-b2-3.tar.xz"
+      "rev": 1,
+      "sha256": "6bdfdb6ff8a09255d2b4f6f3c5c0cd694bccfc95a03770088301de7c28f39b34",
+      "sizeBytes": 7458752,
+      "url": "https://github.com/Ruslan-Ukraina/NotProton/releases/download/bridge-dormison-r5-1/bridge-dormison-r5-1.tar.xz"
     }
   ],
   "schema": 1,
