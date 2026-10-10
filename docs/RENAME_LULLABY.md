@@ -8,6 +8,13 @@
 
 Репозиторий уже `Ruslan-Ukraina/Lullaby` (Фаза 9). Работа — в ветке `phase-8`, отдельной сессией. Фаза 6 после переименования: Sparkle, Keychain и ключи сразу привязываются к новому Bundle ID и `feed.json` → `Ruslan-Ukraina/Lullaby`.
 
+## Состояние (10.10.2026, вечер)
+
+- **Шаги 1–3 и 5 сделаны** в ветке `lullaby-rename` (от `phase-8`, запушена в `origin`): 6 групп переименования, миграция с тестами, документы. `make app` — 0, `make app-tests` — 0 (421). Решения — DECISIONS P9-11…P9-14.
+- **Шаг 4 (перенос на Mac владельца) — ждёт «можно»**: SPIKE_TEST §18. Проверено на APFS-клоне настоящих данных в scratch (`LullabyApp --migrate-scratch <home>`): 5 игр в `config.vdf`, 11 `.sevo`-файлов, хранилище настроек не изменилось, повторный прогон — без изменений.
+- **Отличия от плана ниже:** `.sevo/*.env` содержали `NOTPROTON_*` и старый заголовок (план считал, что имени там нет) — миграция пишет их заново из хранилища, старый заголовок признаётся своим; новая папка, которую окно успело создать (`app.log`), не мешает переносу; Bundle ID помощника — `com.ruslanukraina.Lullaby.rosetta-check`; C-префиксы шли пятой группой, не последней — тесты `__text` не понадобились (`sigcheck`, `anchorcheck`, `callscheck`, `sigdb-fixtures` — 0).
+- **Предложение правки `CLAUDE.md` (без «ок» не меняю):** заголовок «форк NotProton на движке Dormison» → «Lullaby — форк NotProton на движке Dormison»; §7 рабочие папки: `~/Projects/NotProton` → по желанию переименовать в `~/Projects/Lullaby` после закрытия сессии; в §2.1 пути `app/Sources/NotProtonApp/…` → `app/Sources/LullabyApp/…`, папка данных `…/notproton` → `…/lullaby`; упоминание `ntdll-patch/resolve.py`/`apply.py` — «удалены (O3, P9-9), в истории git».
+
 ## Масштаб (по коду 10.10)
 
 `notproton` (без учёта регистра, без `docs/`) — в **211 файлах, 1228 местах**: `app/` 103 файла, `dylib/` 60, `release/` 9, `ntdll-patch/` 9, `perf/` 5, `engine-fixes/` 4, `.github/` 4, `lsteamclient/`, `bridge/`, `steam-shim/`, `overlay-shim/`, `engine/`, `Makefile`, `README.md`, `NOTICE`, `.gitignore`, `CLAUDE.md`.

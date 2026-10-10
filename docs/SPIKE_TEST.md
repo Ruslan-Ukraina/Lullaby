@@ -1,5 +1,7 @@
 # SPIKE_TEST — ручная проверка Фазы 1 (go / no-go)
 
+> До 10.10.2026 проект назывался **NotProton**; старые записи не переписаны (docs/RENAME_LULLABY.md).
+
 Ветка `spike/dormison`. Займёт 30–60 минут плюс время на скачивание игр.
 Тебе нужно запустить три игры из Steam и посмотреть на них. Всё, что можно проверить без Steam, уже проверено, итоги — в разделе 0.
 Если что-то не так, остановись. Пришли мне номер шага и вывод команды, ничего не чини сам.
@@ -1054,3 +1056,25 @@ Delete теперь можно нажимать (10.10, P8-17): Install посл
 3. VoiceOver (⌘F5): кнопка читается по названию с подсказкой, ⚙︎ — «Налаштування» (с «Нове», пока есть бейдж), подпись — «Автори й ліцензії».
 
 Скриншоты — только окна NotProton и только если ты сам хочешь их приложить.
+
+## 18. Перенос NotProton → Lullaby на твоём Mac (только после твоего «можно»)
+
+Что произойдёт: папка `~/Library/Application Support/notproton` переименуется в `lullaby` (без копирования), Steam получит Repair и новый патч, у 5 игр в Steam выбор инструмента сменится на «Dormison (Lullaby)». Настройки игр и префиксы остаются. Делаю я по твоему «можно» или ты сам по шагам ниже.
+
+1. Закрой все игры. Steam можно не закрывать: Lullaby закроет его мягко (до 45 с).
+2. `/Applications/NotProton.app` **не удаляй** — пусть лежит для отката. Скопируй `~/Projects/NotProton-phase8/out/Lullaby.app` в `/Applications`.
+3. Открой `Lullaby.app`. Ожидаемо: под названием оранжевая строка «Знайдено NotProton. «Встановити» перенесе його в Lullaby…» и кнопка **Встановити**. Если macOS спросит про «Управление приложениями» (App Management) для Lullaby — разреши: это новое приложение для macOS.
+4. Нажми **Встановити**. Шаги: «Перенесення з NotProton» → Rosetta → движок (уже есть, пропуск) → мост → файлы поддержки Steam → «Встановлення в Steam». Ожидаемо: строка «Встановлено · Dormison r5».
+5. Проверка:
+   - `ls ~/Library/Application\ Support | grep -i -E 'notproton|lullaby'` → только `lullaby`;
+   - `ls ~/Library/Application\ Support/Steam/config/` → есть `config.vdf.before-lullaby`;
+   - в Steam у PEAK и RE9: Свойства → Совместимость → «Dormison (Lullaby)»;
+   - запусти PEAK, затем `~/Projects/NotProton-phase8/engine/spike-check.sh 3527290` → 0 failed (лог теперь `compatdata/3527290/lullaby-run.log`);
+   - журнал переноса: строки `migration:` в `~/Library/Application Support/lullaby/app.log`.
+6. **Откат** (если что-то не так; лучше напиши мне — сделаю сам по «можно»):
+   1. Закрой Steam. Верни чистый `Steam.app`: скачай Steam с steampowered.com и замени им `/Applications/Steam.app` (данные Steam в `~/Library/Application Support/Steam` это не трогает). Без этого NotProton откажется ставиться: в Steam будет чужой патч (Lullaby).
+   2. `mv ~/Library/Application\ Support/lullaby ~/Library/Application\ Support/notproton`
+   3. `cp ~/Library/Application\ Support/Steam/config/config.vdf.before-lullaby ~/Library/Application\ Support/Steam/config/config.vdf`
+   4. В каждом `compatdata/<appid>/` верни имена `lullaby-msync` → `notproton-msync`, `lullaby-hidden-controllers` → `notproton-hidden-controllers` (команду пришлю).
+   5. Открой `NotProton.app` → **Встановити**.
+   Оговорка: файлы `.sevo` в префиксах уже переписаны под Lullaby (`LULLABY_*`), старый NotProton их не поймёт и до первой правки настроек может запустить игры с рендерером по умолчанию. После отката я перепишу их обратно из хранилища настроек (оно не меняется).

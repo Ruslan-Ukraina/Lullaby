@@ -1,5 +1,7 @@
 # PROGRESS — журнал работ
 
+> До 10.10.2026 проект назывался **NotProton**; старые записи не переписаны (docs/RENAME_LULLABY.md).
+
 Новая сессия: прочитай `CLAUDE.md`, затем этот файл сверху вниз; открытые вопросы — в `docs/BLOCKERS.md`.
 
 ---
@@ -1253,3 +1255,15 @@ PEAK, DXMT, меню; `perf/peak-ab.sh` чередует «исходно → и
 
 Делать: I1, I4, I5, I7, O1, O3; не делать: I2, I3, I6, I8, O2, O4, O5. I4, I5, O1 внесены в `PHASE6_PLAN.md` (шаг 1а). I1, O3 и I7 — следующей сессией вместе с переименованием в Lullaby (здесь достигнут лимит 150 ходов). Для I7 нужен выбор места (BLOCKERS п. 3).
 **Фаза 9 закрыта** по составу задания: A (перенос, 21/21, Actions выкл.), B, C (измерено, изменено, измерено снова), решения получены. Остаётся выполнить одобренные пункты (I1, O3, I7) и переименование — новые задачи.
+
+## 2026-10-10 ~19:45–22:30 CEST — Переименование в Lullaby, миграция, I1, O3 (ветка `lullaby-rename`)
+
+Работа в `~/Projects/NotProton-phase8`, ветка `lullaby-rename` от `phase-8`, запушена в `origin` (приватный Lullaby). На Mac владельца ничего не применялось; Steam, игры, `runners/current` не тронуты.
+- **O3** (P9-9): 17 файлов B2 и `make ntdll-resolve` удалены; B1 цел. `5462fe7`.
+- **I1** (P9-10): исходники Dormison b1/b2/r5 (`git archive`, `.tar.xz` ~53 МБ каждый) — ассеты релиза `sources-dormison`; sha256 в `INDEPENDENCE.md`, совпали с GitHub. `5e73ae6`.
+- **Переименование** (P9-11), 6 групп, после каждой — тесты: модули `50c0a60`; идентичность (`Lullaby.app`, `com.ruslanukraina.Lullaby`) `f9c154d`; строчные имена (папка `lullaby`, `lullaby.dylib`, инструмент Steam `lullaby`) `517d058`; переменные `LULLABY_*` `763c467`; тексты en/uk/ru `629fbb6`; C-префиксы `lb_`/`LB_` + README `5d29204`. Оставлено со старым именем нарочно: credits/NOTICE, ссылки на апстрим, фраза тестовых ключей, `np_overlay_shim_install` и `NOTPROTON_OVERLAY_SHIM` (их ищет собранный мост r5-1, R78).
+- **Найдено по ходу:** тесты писали в настоящий `~/Library` (`spawn-live` — лог dylib, тесты Valve — кеш пакетов) и после переименования создали `lullaby/` и `Caches/lullaby` — исправлено (P9-13), созданное мной удалено, `Library/Application Support/lullaby` отсутствует. `.sevo`-файлы содержали `NOTPROTON_*` и старый заголовок — без поправки миграция каталога приняла бы их за файлы игрока (P9-11, `ConfigMaterializer.isOurs`).
+- **Миграция** (P9-12) `0c74545`: `LegacyMigration` первым шагом Install/Update/Reinstall; 10 новых тестов; окно «Знайдено NotProton…». **Проверка на APFS-клоне настоящих данных** (`LullabyApp --migrate-scratch`, scratch): код 0, 5 игр в `config.vdf`, 8 файлов `*.notproton-orig`, 9 меток, 11 `.sevo` переписаны, хранилище настроек побайтно то же, повторный прогон — без изменений.
+- **Окно** (P9-14): строка статуса до двух строк (снимок владельца: обрезалась посередине).
+- **Итог проверок:** `make app` — 0; `make app-tests` — 0, **421 тест**; C-проверки и скрипты (`all runcheck scriptcheck compatcheck compatsvc-check sigcheck anchorcheck callscheck sigdb-fixtures peicon-fixtures webpatch-fixtures steamwin-check updategate-check settingsbridge-check webpatch-syntax launch-shell spawn-env spawn-live panel-behavior overlay-shim-tests`) — 0 (на группе 6).
+- **Дальше:** I7 (git bundle) — ниже; перенос на Mac — по «можно» (SPIKE_TEST §18); I4, I5, O1 — Фаза 6; предложение правки CLAUDE.md — в `RENAME_LULLABY.md`.

@@ -296,7 +296,9 @@ enum LegacyMigration {
                 !files.fileExists(atPath: to.path(percentEncoded: false)),
                 (try? files.moveItem(at: from, to: to)) != nil
             else { return }
-            report.renamed.append(String(from.path(percentEncoded: false).dropFirst(root.path(percentEncoded: false).count)))
+            let base = root.resolvingSymlinksInPath().path(percentEncoded: false)
+            let path = from.resolvingSymlinksInPath().path(percentEncoded: false)
+            report.renamed.append(path.hasPrefix(base) ? String(path.dropFirst(base.count)) : path)
         }
         for (from, to) in renamedFiles.sorted(by: { $0.key < $1.key }) {
             move(root.appending(path: from), root.appending(path: to))
