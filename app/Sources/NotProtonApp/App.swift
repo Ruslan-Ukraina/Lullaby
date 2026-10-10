@@ -5,7 +5,8 @@ import SwiftUI
 @main
 struct NotProtonApp: App {
 
-    @State private var status = SystemStatus()
+    @State private var status: SystemStatus
+    @State private var main: MainModel
     @State private var prefixes = PrefixesModel()
     @State private var pane: Pane = .status
     // Made on first use, after AppLog.start(), so its first lines reach app.log.
@@ -17,10 +18,25 @@ struct NotProtonApp: App {
         HeadlessInstall.runIfRequested()
         HeadlessEngine.runIfRequested()
         HeadlessRelease.runIfRequested()
+        let status = SystemStatus()
+        _status = State(initialValue: status)
+        _main = State(initialValue: MainModel(status: status))
     }
 
     var body: some Scene {
+        // Phase 8: the small window (ROADMAP §9).
         Window("NotProton", id: "main") {
+            MainView()
+                .environment(main)
+                .task { await main.opened() }
+        }
+        .windowResizability(.contentSize)
+        .defaultSize(MainView.size)
+        .commands { menus }
+
+        // The old window, kept until the owner decides where each part goes (§9.6);
+        // ⚙︎ → More Settings… opens it.
+        Window(String(localized: "More Settings", bundle: .module), id: "classic") {
             RootView(pane: $pane)
                 .environment(status)
                 .environment(prefixes)
@@ -28,7 +44,7 @@ struct NotProtonApp: App {
                 .onChange(of: pane) { prefixes.forgetOutcome() }
         }
         .defaultSize(width: 900, height: 760)
-        .commands { menus }
+        .defaultLaunchBehavior(.suppressed)
     }
 
     @CommandsBuilder

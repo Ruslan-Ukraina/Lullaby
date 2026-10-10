@@ -93,6 +93,9 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
         if controller == nil {
             controller = SPUStandardUpdaterController(
                 startingUpdater: privateFeed == nil, updaterDelegate: self, userDriverDelegate: nil)
+            // No background checks (ROADMAP §9.5): the window looks when it opens.
+            controller?.updater.automaticallyChecksForUpdates = false
+            controller?.updater.automaticallyDownloadsUpdates = false
         }
         if let privateFeed {
             controller?.updater.httpHeaders = [
@@ -155,6 +158,34 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
         Bundle.main.object(forInfoDictionaryKey: ReleaseAccess.repositoryKey) as? String ?? ""
     }
 
+    private var probeWaiter: CheckedContinuation<String?, Never>?
+
+    /// The newer version Sparkle finds, without showing anything (the window's Update).
+    /// nil when there is none, when updates are off, or when the check does not answer.
+    func probe(timeout: Duration = .seconds(20)) async -> String? {
+        guard let controller, isAvailable, probeWaiter == nil else { return nil }
+        if privateFeed != nil {
+            await resolveAppcast(then: {})
+            guard resolvedAppcast != nil else { return nil }
+            if !controller.updater.canCheckForUpdates { controller.startUpdater() }
+        }
+        return await withCheckedContinuation { waiter in
+            probeWaiter = waiter
+            controller.updater.checkForUpdateInformation()
+            Task { [weak self] in
+                try? await Task.sleep(for: timeout)
+                self?.answerProbe(nil, why: "no answer in time")
+            }
+        }
+    }
+
+    private func answerProbe(_ version: String?, why: String) {
+        guard let waiter = probeWaiter else { return }
+        probeWaiter = nil
+        AppLog.note("app updates: probe, \(version ?? why)")
+        waiter.resume(returning: version)
+    }
+
     func feedURLString(for updater: SPUUpdater) -> String? {
         resolvedAppcast?.absoluteString
     }
@@ -166,14 +197,17 @@ final class AppUpdater: NSObject, SPUUpdaterDelegate {
     }
 
     func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
+        answerProbe(item.displayVersionString, why: "")
         AppLog.note("app updates: found \(item.displayVersionString) (\(item.versionString))\(item.channel.map { ", channel \($0)" } ?? "")")
     }
 
     func updaterDidNotFindUpdate(_ updater: SPUUpdater) {
+        answerProbe(nil, why: "no newer version")
         AppLog.note("app updates: no newer version")
     }
 
     func updater(_ updater: SPUUpdater, didAbortWithError error: any Error) {
+        answerProbe(nil, why: "stopped")
         AppLog.note("app updates: stopped, \(error.localizedDescription)")
     }
 

@@ -80,6 +80,10 @@ later). Each rebuilt file is first proven equal to the release's, instruction fo
 instruction, without the patches. These files stay LGPL-2.1-or-later; their sources are
 Dormison's commit plus the patches in this repository.
 
+Dormison's release carries, unchanged, DXMT (Direct3D 10/11 on Metal, Feifan He for
+CodeWeavers, LGPL-2.1-or-later), DXVK (Philip Rebohle, zlib) and MoltenVK (The Brenwill
+Workshop and The Khronos Group, Apache-2.0); each keeps the license it ships with.
+
 Two of those engine fixes are Highball's (https://github.com/gauthierpiarrette/highball-engine,
 patches to Wine, LGPL-2.1-or-later): 0018 (commit charge is the footprint) and 0020 (Retina
 HORZRES, itself from athei/wine fa43d6db2). Their headers name the source.

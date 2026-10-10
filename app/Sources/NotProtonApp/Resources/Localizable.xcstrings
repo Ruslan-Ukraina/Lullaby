@@ -1,0 +1,3222 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "A game is still running. Quit it, then press Retry.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A game is still running. Quit it, then press Retry."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Игра ещё работает. Закройте её и нажмите «Повторить»."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Гра ще працює. Закрийте її й натисніть «Повторити»."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "A new engine is out, but NotProton doesn't support it yet. Try again later.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A new engine is out, but NotProton doesn't support it yet. Try again later."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вышел новый движок, но NotProton его ещё не поддерживает. Попробуйте позже."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вийшов новий рушій, але NotProton його ще не підтримує. Спробуйте пізніше."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Add Game Porting Toolkit…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add Game Porting Toolkit…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавить Game Porting Toolkit…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Додати Game Porting Toolkit…"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Adding the Game Porting Toolkit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adding the Game Porting Toolkit"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавление Game Porting Toolkit"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Додавання Game Porting Toolkit"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Adding the Game Porting Toolkit…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adding the Game Porting Toolkit…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавление Game Porting Toolkit…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Додавання Game Porting Toolkit…"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Also delete game prefixes": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Also delete game prefixes"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Также удалить префиксы игр"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Також видалити префікси ігор"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Apple's license": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple's license"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лицензия Apple"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ліцензія Apple"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Attach them when you report a problem.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attach them when you report a problem."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Приложите их, когда сообщаете о проблеме."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Додайте їх, коли повідомляєте про проблему."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Back on the previous Steam bridge.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back on the previous Steam bridge."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Возвращён предыдущий мост Steam."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повернуто попередній міст Steam."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Back on the previous engine.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back on the previous engine."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Возвращён предыдущий движок."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повернуто попередній рушій."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Back to %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back to %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вернуться к %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повернутися до %@"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отменить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скасувати"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Changing Steam updates…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Changing Steam updates…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Изменение обновлений Steam…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зміна оновлень Steam…"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Checking Rosetta": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking Rosetta"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверка Rosetta"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевірка Rosetta"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Checking…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверка…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевірка…"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Choose the Game Porting Toolkit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose the Game Porting Toolkit"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите Game Porting Toolkit"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оберіть Game Porting Toolkit"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Close Steam and Continue": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close Steam and Continue"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Закрыть Steam и продолжить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Закрити Steam і продовжити"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Close Steam?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close Steam?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Закрыть Steam?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Закрити Steam?"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Closing Steam": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Closing Steam"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Закрытие Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Закриття Steam"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Connects Windows games to the Mac Steam.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connects Windows games to the Mac Steam."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Соединяет игры для Windows со Steam для Mac."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "З'єднує ігри для Windows зі Steam для Mac."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't add the Game Porting Toolkit. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't add the Game Porting Toolkit. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось добавить Game Porting Toolkit. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося додати Game Porting Toolkit. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't change Steam updates. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't change Steam updates. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось изменить обновления Steam. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося змінити оновлення Steam. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't check Rosetta. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't check Rosetta. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось проверить Rosetta. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося перевірити Rosetta. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't close Steam. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't close Steam. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось закрыть Steam. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося закрити Steam. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't delete NotProton's files. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't delete NotProton's files. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось удалить файлы NotProton. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося видалити файли NotProton. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't delete the game prefixes. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't delete the game prefixes. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось удалить префиксы игр. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося видалити префікси ігор. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't download Steam support files. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't download Steam support files. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось скачать файлы поддержки Steam. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося завантажити файли підтримки Steam. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't go back to the previous Steam bridge. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't go back to the previous Steam bridge. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось вернуть предыдущий мост Steam. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося повернути попередній міст Steam. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't go back to the previous engine. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't go back to the previous engine. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось вернуть предыдущий движок. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося повернути попередній рушій. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't install NotProton into Steam. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't install NotProton into Steam. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось установить NotProton в Steam. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося встановити NotProton у Steam. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't install the Steam bridge. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't install the Steam bridge. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось установить мост Steam. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося встановити міст Steam. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't install the engine. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't install the engine. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось установить движок. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося встановити рушій. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't return Steam to how it was. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't return Steam to how it was. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось вернуть Steam в исходное состояние. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося повернути Steam до початкового стану. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't update NotProton. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't update NotProton. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось обновить NotProton. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося оновити NotProton. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Credits and licenses": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Credits and licenses"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Авторы и лицензии"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Автори й ліцензії"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Delete": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Видалити"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Delete NotProton?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete NotProton?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить NotProton?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Видалити NotProton?"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Delete…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Видалити…"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Deleting game prefixes": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deleting game prefixes"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удаление префиксов игр"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Видалення префіксів ігор"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Deleting the engine and the Steam bridge": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deleting the engine and the Steam bridge"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удаление движка и моста Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Видалення рушія й моста Steam"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Deleting…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deleting…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удаление…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Видалення…"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Direct3D 10 and 11 on Metal. Comes with Dormison.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct3D 10 and 11 on Metal. Comes with Dormison."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct3D 10 и 11 через Metal. Входит в Dormison."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct3D 10 і 11 через Metal. Входить у Dormison."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Direct3D 12 on Metal. You add it yourself from Apple's Game Porting Toolkit. NotProton doesn't distribute it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct3D 12 on Metal. You add it yourself from Apple's Game Porting Toolkit. NotProton doesn't distribute it."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct3D 12 через Metal. Вы добавляете его сами из Game Porting Toolkit от Apple. NotProton его не распространяет."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct3D 12 через Metal. Ви додаєте його самі з Game Porting Toolkit від Apple. NotProton його не поширює."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Direct3D 9–11 on Vulkan. Comes with Dormison.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct3D 9–11 on Vulkan. Comes with Dormison."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct3D 9–11 через Vulkan. Входит в Dormison."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct3D 9–11 через Vulkan. Входить у Dormison."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Done": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Готово"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Готово"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Done! Open Steam and start a Windows game.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done! Open Steam and start a Windows game."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Готово! Откройте Steam и запустите игру для Windows."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Готово! Відкрийте Steam і запустіть гру для Windows."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Downloaded %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloaded %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скачано %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Завантажено %@"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Downloaded %@ of %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloaded %@ of %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скачано %@ из %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Завантажено %@ з %@"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Downloading Valve's files": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloading Valve's files"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скачивание файлов Valve"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Завантаження файлів Valve"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Downloading the engine": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloading the engine"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скачивание движка"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Завантаження рушія"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Everything is up to date.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Everything is up to date."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Всё обновлено."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Усе оновлено."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Experimental Direct3D 10–12 renderer. Downloaded only if you pick it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Experimental Direct3D 10–12 renderer. Downloaded only if you pick it."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Экспериментальный рендерер Direct3D 10–12. Скачивается, только если вы его выберете."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Експериментальний рендерер Direct3D 10–12. Завантажується, лише якщо ви його оберете."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "For DirectX 12 games. Download it from Apple first.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For DirectX 12 games. Download it from Apple first."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Для игр на DirectX 12. Сначала скачайте его с сайта Apple."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Для ігор на DirectX 12. Спершу завантажте його з сайту Apple."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Full license texts are in the NOTICE file.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Full license texts are in the NOTICE file."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Полные тексты лицензий — в файле NOTICE."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повні тексти ліцензій — у файлі NOTICE."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Game Porting Toolkit added. Pick D3DMetal in a game's settings in Steam.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Game Porting Toolkit added. Pick D3DMetal in a game's settings in Steam."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Game Porting Toolkit добавлен. Выберите D3DMetal в настройках игры в Steam."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Game Porting Toolkit додано. Оберіть D3DMetal у налаштуваннях гри в Steam."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Getting Steam support files": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Getting Steam support files"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Получение файлов поддержки Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отримання файлів підтримки Steam"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Going back to the previous Steam bridge": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Going back to the previous Steam bridge"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Возврат предыдущего моста Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повернення попереднього моста Steam"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Going back to the previous engine": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Going back to the previous engine"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Возврат предыдущего движка"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повернення попереднього рушія"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Headers used to build steam-shim.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Headers used to build steam-shim."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Заголовки для сборки steam-shim."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Заголовки для збирання steam-shim."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Install": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Install"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Встановити"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Installed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installed"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установлено"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Встановлено"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Installed · %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installed · %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установлено · %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Встановлено · %@"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Installing into Steam": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installing into Steam"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установка в Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Встановлення в Steam"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Installing the Steam bridge": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installing the Steam bridge"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установка моста Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Встановлення моста Steam"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Installing…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installing…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установка…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Встановлення…"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Installs the engine and adds NotProton to Steam.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installs the engine and adds NotProton to Steam."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Устанавливает движок и добавляет NotProton в Steam."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Встановлює рушій і додає NotProton у Steam."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Made by Ruslan_Ukraina on the work of these people.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Made by Ruslan_Ukraina on the work of these people."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сделал Ruslan_Ukraina на основе труда этих людей."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зробив Ruslan_Ukraina на основі праці цих людей."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "More Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "More Settings"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Другие настройки"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Інші налаштування"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "More Settings…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "More Settings…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Другие настройки…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Інші налаштування…"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "New": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новое"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нове"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "No connection to the internet. Check it, then press Retry.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No connection to the internet. Check it, then press Retry."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет соединения с интернетом. Проверьте его и нажмите «Повторить»."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Немає з'єднання з інтернетом. Перевірте його й натисніть «Повторити»."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Not fully installed. Press Install to finish.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not fully installed. Press Install to finish."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установлено не полностью. Нажмите «Установить», чтобы завершить."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Встановлено не повністю. Натисніть «Встановити», щоб завершити."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Not installed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not installed"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не установлено"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не встановлено"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "NotProton is deleted. Steam is back to how it was.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NotProton is deleted. Steam is back to how it was."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NotProton удалён. Steam такой, как был."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NotProton видалено. Steam такий, як був."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "NotProton is removed from Steam, and Steam goes back to how it was. The engine and the Steam bridge are deleted too. Your game settings stay.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NotProton is removed from Steam, and Steam goes back to how it was. The engine and the Steam bridge are deleted too. Your game settings stay."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NotProton будет убран из Steam, и Steam станет таким, как был. Движок и мост Steam тоже будут удалены. Ваши настройки игр останутся."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NotProton буде прибрано зі Steam, і Steam стане таким, як був. Рушій і міст Steam теж буде видалено. Ваші налаштування ігор залишаться."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "NotProton lets Steam update only to versions it supports.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NotProton lets Steam update only to versions it supports."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NotProton разрешает Steam обновляться только до версий, которые поддерживает."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NotProton дозволяє Steam оновлюватися лише до версій, які підтримує."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Open Logs": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Logs"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть журналы"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відкрити журнали"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Open Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Settings"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть настройки"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відкрити параметри"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Open Steam": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Steam"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відкрити Steam"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Pick the .dmg you downloaded from Apple. NotProton copies D3DMetal from it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pick the .dmg you downloaded from Apple. NotProton copies D3DMetal from it."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите .dmg, скачанный с сайта Apple. NotProton скопирует из него D3DMetal."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оберіть .dmg, завантажений з сайту Apple. NotProton скопіює з нього D3DMetal."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Prefixes, backups and the full status, as before.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prefixes, backups and the full status, as before."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Префиксы, резервные копии и полное состояние, как раньше."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Префікси, резервні копії й повний стан, як раніше."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Progress": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Progress"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ход выполнения"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Хід виконання"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Puts every part back in place.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puts every part back in place."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ставит все части заново."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ставить усі частини заново."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Reads JSON in steam-shim.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reads JSON in steam-shim."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Читает JSON в steam-shim."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Читає JSON у steam-shim."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Reads JSON inside Steam.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reads JSON inside Steam."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Читает JSON внутри Steam."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Читає JSON усередині Steam."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Reinstall": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reinstall"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переустановить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевстановити"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Reinstalled.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reinstalled."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переустановлено."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевстановлено."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Reinstalling…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reinstalling…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переустановка…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевстановлення…"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Removes NotProton from Steam. Asks first.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Removes NotProton from Steam. Asks first."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Убирает NotProton из Steam. Сначала спрашивает."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прибирає NotProton зі Steam. Спершу запитує."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Retry": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retry"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повторить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повторити"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Returning Steam to how it was": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Returning Steam to how it was"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Возврат Steam в исходное состояние"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повернення Steam до початкового стану"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Roll Back Engine": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roll Back Engine"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вернуть предыдущий движок"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повернути попередній рушій"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Roll Back Steam Bridge": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Roll Back Steam Bridge"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вернуть предыдущий мост Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повернути попередній міст Steam"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Rolling back…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rolling back…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Возврат…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повернення…"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Runs Windows programs. Dormison is built on it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Runs Windows programs. Dormison is built on it."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запускает программы Windows. Dormison построен на нём."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запускає програми Windows. Dormison побудований на ньому."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Saved.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранено."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Збережено."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Настройки"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Налаштування"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Starts games the way Steam on Windows does.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Starts games the way Steam on Windows does."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запускает игры так, как это делает Steam в Windows."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запускає ігри так, як це робить Steam у Windows."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Steam bridge": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam bridge"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "мост Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "міст Steam"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Steam didn't close. Quit Steam yourself, then press Retry.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam didn't close. Quit Steam yourself, then press Retry."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam не закрылся. Закройте Steam сами и нажмите «Повторить»."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam не закрився. Закрийте Steam самі й натисніть «Повторити»."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Steam doesn't update at all.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam doesn't update at all."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam совсем не обновляется."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam зовсім не оновлюється."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Steam has another add-on installed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam has another add-on installed"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В Steam установлено другое дополнение"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У Steam встановлено інше доповнення"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Steam is open. NotProton will close it, then you can open it again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam is open. NotProton will close it, then you can open it again."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam открыт. NotProton закроет его, потом вы сможете открыть его снова."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam відкритий. NotProton закриє його, потім ви зможете відкрити його знову."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Steam isn't in the Applications folder. Install Steam, then press Retry.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam isn't in the Applications folder. Install Steam, then press Retry."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam нет в папке «Программы». Установите Steam и нажмите «Повторить»."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam немає в папці «Програми». Встановіть Steam і натисніть «Повторити»."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Steam isn't installed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam isn't installed"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam не установлен"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam не встановлено"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Steam patch": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam patch"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "патч Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "патч Steam"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Steam updates can break NotProton. NotProton already holds back Steam versions it doesn't support yet. Turn this on to stop Steam updates completely.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam updates can break NotProton. NotProton already holds back Steam versions it doesn't support yet. Turn this on to stop Steam updates completely."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновления Steam могут сломать NotProton. NotProton уже сам не пускает версии Steam, которые ещё не поддерживает. Включите, чтобы полностью остановить обновления Steam."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оновлення Steam можуть зламати NotProton. NotProton уже сам не пропускає версії Steam, які ще не підтримує. Увімкніть, щоб повністю зупинити оновлення Steam."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Steam was installed by another user of this Mac. Only that user can install NotProton into it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam was installed by another user of this Mac. Only that user can install NotProton into it."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam установил другой пользователь этого Mac. Только он может установить в него NotProton."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam встановив інший користувач цього Mac. Лише він може встановити в нього NotProton."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Steam won't update at all, even to versions NotProton supports. You can turn this back on here.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam won't update at all, even to versions NotProton supports. You can turn this back on here."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam не будет обновляться совсем, даже до версий, которые NotProton поддерживает. Включить снова можно здесь."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam не оновлюватиметься зовсім, навіть до версій, які NotProton підтримує. Увімкнути знову можна тут."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Step %@ of %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Step %@ of %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Шаг %@ из %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Крок %@ з %@"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Testing the engine": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Testing the engine"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверка движка"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевірка рушія"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "The Steam bridge for this engine isn't ready yet. Try again later.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Steam bridge for this engine isn't ready yet. Try again later."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Мост Steam для этого движка ещё не готов. Попробуйте позже."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Міст Steam для цього рушія ще не готовий. Спробуйте пізніше."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "The Wine and Wine Staging authors": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Wine and Wine Staging authors"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Авторы Wine и Wine Staging"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Автори Wine і Wine Staging"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "The engine: Wine for macOS with msync and native windows.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The engine: Wine for macOS with msync and native windows."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Движок: Wine для macOS с msync и родными окнами."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Рушій: Wine для macOS з msync і рідними вікнами."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "The game settings and the graphics card list follow it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The game settings and the graphics card list follow it."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Настройки игр и список видеокарт сделаны по его образцу."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Налаштування ігор і список відеокарт зроблені за його зразком."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "The original project this app is a fork of.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The original project this app is a fork of."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оригинальный проект, форком которого является это приложение."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оригінальний проєкт, форком якого є ця програма."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "They can hold saves of games without Steam Cloud.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "They can hold saves of games without Steam Cloud."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В них могут быть сохранения игр без Steam Cloud."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У них можуть бути збереження ігор без Steam Cloud."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "This file isn't Apple's Game Porting Toolkit. Pick the .dmg you downloaded from Apple.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This file isn't Apple's Game Porting Toolkit. Pick the .dmg you downloaded from Apple."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Это не Game Porting Toolkit от Apple. Выберите .dmg, скачанный с сайта Apple."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Це не Game Porting Toolkit від Apple. Оберіть .dmg, завантажений з сайту Apple."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "This fork: the Dormison engine, settings in Steam, this window.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This fork: the Dormison engine, settings in Steam, this window."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот форк: движок Dormison, настройки в Steam, это окно."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цей форк: рушій Dormison, налаштування в Steam, це вікно."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Turn Off": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn Off"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отключить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вимкнути"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Turn Off Steam Updates": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn Off Steam Updates"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отключить обновления Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вимкнути оновлення Steam"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Turn off Steam updates?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn off Steam updates?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отключить обновления Steam?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вимкнути оновлення Steam?"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Turning off Steam updates": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turning off Steam updates"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отключение обновлений Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вимкнення оновлень Steam"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Turning on Steam updates": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turning on Steam updates"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Включение обновлений Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Увімкнення оновлень Steam"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Two engine fixes: memory use and Retina resolution.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Two engine fixes: memory use and Retina resolution."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Два исправления движка: память и разрешение Retina."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Два виправлення рушія: пам'ять і роздільність Retina."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Update": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оновити"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Update available: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update available: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Есть обновление: %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Є оновлення: %@"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Updates NotProton itself.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updates NotProton itself."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновляет сам NotProton."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оновлює сам NotProton."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Updates the engine, the Steam bridge, Steam support and NotProton.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updates the engine, the Steam bridge, Steam support and NotProton."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновляет движок, мост Steam, поддержку Steam и NotProton."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оновлює рушій, міст Steam, підтримку Steam і NotProton."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Updating NotProton": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updating NotProton"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновление NotProton"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оновлення NotProton"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Updating…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updating…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновление…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оновлення…"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Vulkan on Metal. Comes with Dormison.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vulkan on Metal. Comes with Dormison."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vulkan через Metal. Входит в Dormison."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vulkan через Metal. Входить у Dormison."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Windows games need Rosetta. Install it when macOS asks, then press Retry.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Windows games need Rosetta. Install it when macOS asks, then press Retry."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Играм для Windows нужна Rosetta. Установите её, когда macOS предложит, и нажмите «Повторить»."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Іграм для Windows потрібна Rosetta. Встановіть її, коли macOS запропонує, і натисніть «Повторити»."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "macOS didn't let NotProton change Steam. Allow NotProton under App Management in System Settings, then press Retry.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS didn't let NotProton change Steam. Allow NotProton under App Management in System Settings, then press Retry."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS не разрешила NotProton изменить Steam. Разрешите NotProton в Системных настройках → «Управление приложениями» и нажмите «Повторить»."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS не дозволила NotProton змінити Steam. Дозвольте NotProton у Системних параметрах → «Керування програмами» й натисніть «Повторити»."
+          }
+        }
+      },
+      "generatesSymbol": false
+    }
+  },
+  "version": "1.0"
+}

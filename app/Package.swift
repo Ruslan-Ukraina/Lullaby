@@ -14,6 +14,7 @@ let hasPayload = FileManager.default.fileExists(
     atPath: packageRoot.appendingPathComponent(payloadPath).path)
 let package = Package(
     name: "NotProtonApp",
+    defaultLocalization: "en",
     platforms: [.macOS("26.0")],
     dependencies: [
         .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.10.0"),
@@ -37,6 +38,7 @@ let package = Package(
             resources: (hasPayload ? [.copy("Resources/payload")] : []) + [
                 .copy("Resources/payload.manifest"),
                 .copy("Resources/valve-packages.manifest"),
+                .process("Resources/Localizable.xcstrings"),
             ],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),

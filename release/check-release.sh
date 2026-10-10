@@ -73,7 +73,8 @@ bundle)
 		done
 	fi
 	if [ "$KIND" = release ]; then
-		[ "$(plist "$app" SUEnableAutomaticChecks)" = true ] || die "a release build checks for updates by itself"
+		# ROADMAP §9.5: no background checks; the window looks when it opens.
+		[ "$(plist "$app" SUEnableAutomaticChecks)" = false ] || die "a release build must not check for updates in the background"
 		[ "$(plist "$app" SURequireSignedFeed)" = true ] || die "a release build requires a signed appcast"
 	fi
 	codesign --verify --strict "$app" || die "$app: the code signature does not verify"

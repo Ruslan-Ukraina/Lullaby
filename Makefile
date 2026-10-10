@@ -602,6 +602,7 @@ endif
 	@echo "==> Staged app payload in $(APP_PAYLOAD)"
 
 APP_BUNDLE  := $(OUT_DIR)/NotProton.app
+ROSETTA_CHECK := $(APP_BUNDLE)/Contents/Helpers/NotProton Rosetta Check.app
 APP_BUNDLE_PAYLOAD := $(APP_BUNDLE)/Contents/Resources/NotProtonApp_NotProtonApp.bundle/Contents/Resources/payload
 APP_ZIP     := $(OUT_DIR)/NotProton.zip
 APP_VERSION ?= $(shell sed -n 's/^\#define NOTPROTON_VERSION "\(.*\)"/\1/p' dylib/version.h)
@@ -673,7 +674,7 @@ app: app-config app-payload $(ICON_CAR)
 		"Set :NPEngineManifestURL $(NP_ENGINE_MANIFEST)" -c \
 		"Set :SUFeedURL $(if $(SPARKLE_KEY),$(SPARKLE_FEED))" -c \
 		"Set :SUPublicEDKey $(SPARKLE_KEY)" -c \
-		"Set :SUEnableAutomaticChecks $(if $(SPARKLE_KEY),true,false)" \
+		"Set :SUEnableAutomaticChecks false" \
 		"$(APP_BUNDLE)/Contents/Info.plist"
 	cp "$$(swift build --package-path app -c release --show-bin-path)/NotProtonApp" \
 		"$(APP_BUNDLE)/Contents/MacOS/NotProtonApp"
@@ -697,6 +698,12 @@ app: app-config app-payload $(ICON_CAR)
 		exit 1; \
 	fi
 	@echo "==> Payload complete in the bundle"
+	@# Install's Rosetta step opens this Intel-only helper so macOS offers Rosetta (Phase 8).
+	@mkdir -p "$(ROSETTA_CHECK)/Contents/MacOS"
+	cp app/rosetta-check/Info.plist "$(ROSETTA_CHECK)/Contents/Info.plist"
+	$(CC) -arch x86_64 -mmacosx-version-min=26.0 -O2 -o "$(ROSETTA_CHECK)/Contents/MacOS/rosetta-check" \
+		app/rosetta-check/main.c
+	codesign -f -s "$(APP_SIGN_ID)" "$(ROSETTA_CHECK)"
 	codesign -f -s "$(APP_SIGN_ID)" "$(APP_BUNDLE)"
 	codesign --verify --strict "$(APP_BUNDLE)"
 	release/check-release.sh bundle "$(APP_BUNDLE)"
