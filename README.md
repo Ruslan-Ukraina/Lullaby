@@ -61,5 +61,3 @@ macOS, так само як Steam Play (Proton) на Linux.
 - `make app` збирає застосунок, `make app-tests` запускає тести Swift; перевірки C і
   скриптів — це інші цілі в `Makefile`.
 - Плани, рішення й журнал роботи — у `docs/` (російською).
-
-Issues і pull requests — завжди раді.
