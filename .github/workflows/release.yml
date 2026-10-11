@@ -190,6 +190,8 @@ jobs:
           arch="$RUNNER_TEMP/archives"; mkdir -p "$arch"
           zip="Lullaby-$VERSION.zip"
           ditto -c -k --keepParent out/Lullaby.app "$arch/$zip"
+          # checkout leaves the tag without its annotation (the notes); fetch the tag object itself.
+          git fetch --force --no-tags origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
           notes=$(git tag -l --format='%(contents)' "$GITHUB_REF_NAME" | sed '/^-----BEGIN PGP/,$d')
           [ -n "$notes" ] || notes="Lullaby $VERSION."
           printf '%s\n' "$notes" > "$arch/Lullaby-$VERSION.md"
