@@ -233,6 +233,25 @@ struct LegacyMigrationTests {
         #expect(rig.read(rig.layout.configVDF)?.contains("\"lullaby\"") == false, "config.vdf untouched")
     }
 
+    @Test("The original NotProton's folder beside a Lullaby installation stays; the rest goes on")
+    func upstreamBesideInstallation() async throws {
+        let rig = try Rig()
+        defer { rig.cleanUp() }
+        try rig.write("1.1.7\n", rig.old.appending(path: "dylib.version"))
+        try rig.write("x", rig.old.appending(path: "runners/crossover-26.3.0.39832/marker"))
+        try rig.write("x", rig.old.appending(path: "bridge/steam.exe"))
+        try rig.write("{}", rig.new.appending(path: "settings/global.json"))
+        #expect(!LegacyMigration.isNeeded(rig.layout), "Install no longer offers the move")
+
+        let report = try await LegacyMigration.run(rig.layout, effects: rig.effects)
+
+        #expect(!report.movedSupport)
+        #expect(rig.exists(rig.old.appending(path: "runners/crossover-26.3.0.39832/marker")))
+        #expect(rig.exists(rig.new.appending(path: "settings/global.json")))
+        #expect(!rig.exists(rig.new.appending(path: "runners")))
+        #expect(!rig.exists(rig.layout.pending))
+    }
+
     @Test("What the window wrote before the move joins the moved folder")
     func earlyLogs() async throws {
         let rig = try Rig()

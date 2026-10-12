@@ -142,7 +142,8 @@ enum LegacyMigration {
     static func isNeeded(_ layout: Layout = .live) -> Bool {
         let files = FileManager.default
         func exists(_ url: URL) -> Bool { files.fileExists(atPath: url.path(percentEncoded: false)) }
-        if exists(layout.oldSupport) || exists(layout.pending) || exists(layout.oldTool) { return true }
+        if exists(layout.oldSupport), !leavesOldSupport(layout) { return true }
+        if exists(layout.pending) || exists(layout.oldTool) { return true }
         if steamHasOldPatch(layout.steamApp) { return true }
         guard let text = try? String(contentsOf: layout.configVDF, encoding: .utf8) else { return false }
         return rewriteToolMapping(text).count > 0
@@ -230,6 +231,23 @@ enum LegacyMigration {
 
     // MARK: Parts
 
+    /// The old folder was written by the original NotProton (CrossOver: `bridge/`,
+    /// `runners/crossover-*`), not by this project before the rename (`bridges/`,
+    /// `runners/dormison-*`).
+    static func isUpstreamNotProton(_ folder: URL) -> Bool {
+        let files = FileManager.default
+        if files.fileExists(atPath: folder.appending(path: "bridges").path(percentEncoded: false)) { return false }
+        let runners = (try? files.contentsOfDirectory(atPath: folder.appending(path: "runners").path(percentEncoded: false))) ?? []
+        return !runners.contains { $0.hasPrefix("dormison") }
+    }
+
+    /// A Lullaby installation is there and the old folder is the original NotProton's:
+    /// nothing in it is ours to bring over, so it stays where it is, untouched.
+    static func leavesOldSupport(_ layout: Layout) -> Bool {
+        let entries = (try? FileManager.default.contentsOfDirectory(atPath: layout.newSupport.path(percentEncoded: false))) ?? []
+        return entries.contains(where: installationMarkers.contains) && isUpstreamNotProton(layout.oldSupport)
+    }
+
     /// One rename of the whole folder, the same disk, no copy. A Lullaby folder that is
     /// there already stops it when it is an installation (an engine, a bridge or settings).
     /// Otherwise it is what the window wrote before the move (it logs as soon as it opens):
@@ -241,6 +259,10 @@ enum LegacyMigration {
         let new = layout.newSupport.path(percentEncoded: false)
         guard files.fileExists(atPath: old) else { return }
 
+        if leavesOldSupport(layout) {
+            log("\(old) is the original NotProton's and \(new) is an installation already: left as it is")
+            return
+        }
         var early: [String] = []
         if files.fileExists(atPath: new) {
             let entries = try files.contentsOfDirectory(atPath: new).filter { $0 != ".DS_Store" }
