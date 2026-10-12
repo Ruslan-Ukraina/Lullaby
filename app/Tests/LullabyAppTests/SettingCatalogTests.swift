@@ -22,13 +22,13 @@ struct SettingCatalogTests {
 
     @Test("the four quick settings, in order; the Advanced groups, old games apart")
     func quickSettings() {
-        #expect(SettingCatalog.quick.map(\.id) == [.renderer, .retina, .upscaler, .fps])
+        #expect(SettingCatalog.quick.map(\.id) == [.renderer, .retina, .metalfx, .fps])
         #expect(SettingCatalog.setting(.renderer).levels == [.game])
         #expect(SettingCatalog.setting(.msync).levels == [.game])
         func advanced(_ group: SettingGroup) -> [SettingID] {
             SettingCatalog.settings(in: group, at: .game).filter { $0.quick == nil }.map(\.id)
         }
-        #expect(advanced(.picture) == [.windows, .filter, .dlss])
+        #expect(advanced(.picture) == [.upscaler, .windows, .filter, .dlss])
         #expect(advanced(.mouse) == [.mouse])
         #expect(advanced(.performance) == [.tuning, .unifiedMemory, .avx])
         #expect(advanced(.oldGames) == [.emulateModeset, .largeAddressAware])
@@ -39,6 +39,7 @@ struct SettingCatalogTests {
     static let samples: [(SettingID, JSONValue, String)] = [
         (.renderer, .string("dxvk"), "LULLABY_RENDERER=dxvk"),
         (.retina, .bool(true), "LULLABY_RETINA=1"),
+        (.metalfx, .string("2"), "DXMT_METALFX_SPATIAL_SWAPCHAIN=1"),
         (.upscaler, .string("metalfx"), "SEVO_UPSCALER=metalfx"),
         (.fps, .bool(true), "MTL_HUD_ENABLED=1"),
         (.windows, .string("all"), "SEVO_RESIZABLE_WINDOWS=all"),

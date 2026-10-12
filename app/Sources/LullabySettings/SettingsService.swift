@@ -72,6 +72,7 @@ public struct SettingsService: Sendable {
                 "control": control(setting),
             ]
             if let quick = setting.quick { object["quick"] = .number(quick) }
+            if !setting.renderers.isEmpty { object["renderers"] = .array(setting.renderers.map { .string($0.rawValue) }) }
             if let caption = setting.copy.caption { object["caption"] = caption.json }
             return .object(object)
         }

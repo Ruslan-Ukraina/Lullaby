@@ -8,7 +8,7 @@
 import Foundation
 
 public enum SettingID: String, CaseIterable, Sendable, Codable {
-    case renderer, retina, upscaler, fps
+    case renderer, retina, metalfx, upscaler, fps
     case windows, filter, dlss
     case mouse
     case tuning, unifiedMemory, avx
@@ -92,6 +92,14 @@ public struct Setting: Sendable {
     public let write: @Sendable (inout ConfigValues, JSONValue?) throws -> Void
     /// What the hierarchy resolves to.
     public let resolved: @Sendable (ConfigStack) -> JSONValue
+    /// The renderers a game's row is shown with; empty for every renderer.
+    public var renderers: [RendererChoice] = []
+
+    func shown(with renderers: [RendererChoice]) -> Setting {
+        var setting = self
+        setting.renderers = renderers
+        return setting
+    }
 
     /// The label of a value, for "For all games: …".
     public func label(of value: JSONValue) -> L10n {
@@ -163,8 +171,16 @@ public enum SettingCatalog {
             copy: .renderer, carrier: .runScript("LULLABY_RENDERER")),
         .flag(.retina, in: .picture, quick: 2, key: \.retina, copy: .retina,
               carrier: .registry(values: ["RetinaMode"], marker: "LULLABY_RETINA")),
+        // NotProton's MetalFX: DXMT enlarges every frame from the resolution the game is
+        // set to, before the window. Its row is there while the game is on DXMT.
         .choice(
-            .upscaler, in: .picture, quick: 3, key: \.upscaler,
+            .metalfx, in: .picture, quick: 3, key: \.metalfx,
+            labels: [(.off, Words.off), (.x1_5, .same("1.5×")), (.x1_72, .same("1.72×")), (.x2, .same("2×")),
+                     (.x3, .same("3×"))],
+            copy: .metalfx, carrier: .environment(["DXMT_METALFX_SPATIAL_SWAPCHAIN", "DXMT_CONFIG"]))
+            .shown(with: [.dxmt]),
+        .choice(
+            .upscaler, in: .picture, key: \.upscaler,
             labels: [
                 (.off, Words.off),
                 (.lanczos, L10n("Final filter only", uk: "Лише фінальний фільтр", ru: "Только финальный фильтр")),

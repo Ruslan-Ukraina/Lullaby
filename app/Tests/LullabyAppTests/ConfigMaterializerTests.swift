@@ -162,6 +162,35 @@ struct ConfigMaterializerTests {
         #expect(fixture.read("drive_c/windows/dxvk.conf", in: 12) == "dxgi.customVendorId = 8086\n")
     }
 
+    @Test("MetalFX on DXMT's swapchain: the switch and the factor reach the game, the card stays in DXMT_CONFIG")
+    func swapchainMetalFX() throws {
+        let off = ConfigMaterializer.bottleLines(global: .empty, msync: true, cli: nil)
+        #expect(off.contains("DXMT_METALFX_SPATIAL_SWAPCHAIN=0"))
+        #expect(!off.joined().contains("metalSpatialUpscaleFactor"))
+
+        var game = ConfigValues()
+        game.metalfx = .x1_5
+        let stack = ConfigStack(global: .empty, game: game)
+        let env = ConfigMaterializer.effectiveEnvironment(
+            bottle: off, program: ConfigMaterializer.gameLines(appID: 1422450, stack: stack))
+        #expect(env["DXMT_METALFX_SPATIAL_SWAPCHAIN"] == "1")
+        let config = try #require(env["DXMT_CONFIG"])
+        #expect(config.hasSuffix("; d3d11.metalSpatialUpscaleFactor = 1.5"))
+        #expect(config.contains("dxgi.customDeviceId = 7590"))
+
+        game.dlss = true
+        let both = ConfigMaterializer.effectiveEnvironment(
+            bottle: off, program: ConfigMaterializer.gameLines(appID: 1422450, stack: ConfigStack(global: .empty, game: game)))
+        #expect(both["DXMT_CONFIG"]?.contains("dxgi.customDeviceId = 2d04; ") == true)
+        #expect(both["DXMT_CONFIG"]?.hasSuffix("metalSpatialUpscaleFactor = 1.5") == true)
+
+        var global = ConfigValues()
+        global.metalfx = .x2
+        let shared = ConfigMaterializer.bottleLines(global: global, msync: true, cli: nil)
+        #expect(shared.contains("DXMT_METALFX_SPATIAL_SWAPCHAIN=1"))
+        #expect(shared.contains { $0.hasPrefix("DXMT_CONFIG=") && $0.hasSuffix("metalSpatialUpscaleFactor = 2.0") })
+    }
+
     @Test("a value set equal to what the game inherits is stored as inherit")
     func equalToInherited() throws {
         let fixture = try SettingsFixture()

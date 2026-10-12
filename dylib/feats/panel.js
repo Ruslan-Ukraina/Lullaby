@@ -224,10 +224,18 @@
     return list.map(function (s) { return el(Row, { key: s.id, ctx: ctx, setting: s }); });
   }
 
+  // A row for some renderers only (MetalFX: DXMT) is drawn for a game on one of them.
+  function shownWithRenderer(ctx, s) {
+    if (ctx.global || !s.renderers || !s.renderers.length) return true;
+    var r = ctx.state && ctx.state.values && ctx.state.values.renderer;
+    return !r || s.renderers.indexOf(r.effective) >= 0;
+  }
+
   function settingsAt(ctx, quick) {
     var level = ctx.global ? "global" : "game";
     return ctx.catalog.settings.filter(function (s) {
-      return s.levels.indexOf(level) >= 0 && (quick ? s.quick !== undefined : s.quick === undefined);
+      return s.levels.indexOf(level) >= 0 && (quick ? s.quick !== undefined : s.quick === undefined)
+        && shownWithRenderer(ctx, s);
     }).sort(function (a, b) { return (a.quick || 0) - (b.quick || 0); });
   }
 

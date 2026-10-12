@@ -197,6 +197,36 @@ extension SettingCopy {
                            uk: "View › Upscaler у меню гри змінює його під час гри. Lullaby запам’ятовує ваш вибір.",
                            ru: "View › Upscaler в меню игры меняет его во время игры. Lullaby запоминает ваш выбор.")))
 
+    static let metalfx = SettingCopy(
+        L10n("MetalFX upscaling", uk: "Апскейл MetalFX", ru: "Апскейл MetalFX"),
+        caption: L10n("Samples from the resolution the game is set to.",
+                      uk: "Береться роздільність, вибрана в налаштуваннях гри.",
+                      ru: "Берётся разрешение, выбранное в настройках игры."),
+        help: SettingHelp(
+            L10n("The game draws at the resolution set in its own options, and MetalFX enlarges that picture before it reaches the window. Works with DXMT only, in Direct3D 10 and 11 games.",
+                 uk: "Гра малює в роздільності, вибраній у її налаштуваннях, а MetalFX збільшує цю картинку перед тим, як вона потрапить у вікно. Працює лише з DXMT, в іграх на Direct3D 10 і 11.",
+                 ru: "Игра рисует в разрешении, выбранном в её настройках, а MetalFX увеличивает эту картинку, прежде чем она попадёт в окно. Работает только с DXMT, в играх на Direct3D 10 и 11."),
+            entries: [
+                HelpEntry(.same("2×"), L10n(
+                    "Four times fewer pixels to draw. With Retina off, the game's resolution doubled is the screen's own.",
+                    uk: "Удвічі менша сторона кадру — вчетверо менше пікселів. З вимкненим Retina подвоєна роздільність гри збігається з екранною.",
+                    ru: "Вдвое меньшая сторона кадра — вчетверо меньше пикселей. С выключенным Retina удвоенное разрешение игры совпадает с экранным.")),
+                HelpEntry(L10n("1.5× and 1.72×", uk: "1.5× і 1.72×", ru: "1.5× и 1.72×"), L10n(
+                    "Sharper, with a smaller gain.",
+                    uk: "Чіткіше, але приріст менший.",
+                    ru: "Чётче, но прирост меньше.")),
+                HelpEntry(.same("3×"), L10n(
+                    "The fastest and the softest picture.",
+                    uk: "Найшвидше, картинка найм’якша.",
+                    ru: "Быстрее всего, картинка самая мягкая.")),
+                HelpEntry(L10n("The game's own upscaler", uk: "Власний апскейлер гри", ru: "Собственный апскейлер игры"), L10n(
+                    "Turn FSR or DLSS in the game off while this is on: two upscalers do the work twice.",
+                    uk: "Вимкніть FSR або DLSS у грі, поки це ввімкнено: два апскейлери роблять одну роботу двічі.",
+                    ru: "Выключите FSR или DLSS в игре, пока это включено: два апскейлера делают одну работу дважды.")),
+            ],
+            footnote: L10n("Takes effect at the next launch.", uk: "Діє з наступного запуску.",
+                           ru: "Действует со следующего запуска.")))
+
     static let fps = SettingCopy(
         L10n("Frame rate counter", uk: "Лічильник FPS", ru: "Счётчик FPS"),
         caption: L10n("Apple's Metal HUD shown over the game.", uk: "Metal HUD від Apple поверх гри.",

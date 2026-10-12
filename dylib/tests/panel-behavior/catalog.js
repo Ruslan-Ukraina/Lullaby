@@ -16,6 +16,12 @@ const t = runner('catalog panel');
 
 const catalog = JSON.parse(fs.readFileSync(path.join(fixtures, 'catalog.json'), 'utf8'));
 const gameState = JSON.parse(fs.readFileSync(path.join(fixtures, 'state-game.json'), 'utf8'));
+// The fixture game is on DXVK; MetalFX upscaling is a row of DXMT games only.
+const dxmtState = (() => {
+  const s = JSON.parse(JSON.stringify(gameState));
+  s.values.renderer.effective = s.values.renderer.own = 'dxmt';
+  return s;
+})();
 const globalState = JSON.parse(fs.readFileSync(path.join(fixtures, 'state-global.json'), 'utf8'));
 const clone = x => JSON.parse(JSON.stringify(x));
 
@@ -101,7 +107,7 @@ const rowFor = (tree, id, lang) => rowsOf(tree).find(n => text(n.props.label).st
 // ---- the game's panel, in each language ----------------------------------------------
 
 for (const lang of ['en', 'uk', 'ru']) {
-  const ctx = ctxFor(clone(gameState), lang);
+  const ctx = ctxFor(clone(dxmtState), lang);
   const tree = api.view(ctx);
   const quick = catalog.settings.filter(s => s.quick !== undefined).sort((a, b) => a.quick - b.quick);
   const titles = rowsOf(tree).map(n => text(n.props.label));
@@ -114,15 +120,25 @@ for (const lang of ['en', 'uk', 'ru']) {
   t.ok(!text(tree).includes('Dormison'), `${lang}: no engine name by the header`);
 }
 
+// ---- a row for one renderer ------------------------------------------------------------
+
+{
+  t.ok(!!rowFor(api.view(ctxFor(clone(dxmtState), 'en')), 'metalfx', 'en'), 'MetalFX upscaling is there on DXMT');
+  t.ok(!rowFor(api.view(ctxFor(clone(gameState), 'en')), 'metalfx', 'en'), 'and gone on DXVK, as in NotProton');
+  const metal = clone(dxmtState);
+  metal.values.renderer.effective = 'd3dmetal';
+  t.ok(!rowFor(api.view(ctxFor(metal, 'en')), 'metalfx', 'en'), 'and on D3DMetal');
+}
+
 // ---- inheritance, Reset and changes -----------------------------------------------------
 
 {
-  const ctx = ctxFor(clone(gameState), 'ru');
+  const ctx = ctxFor(clone(dxmtState), 'ru');
   const tree = api.view(ctx);
   const renderer = rowFor(tree, 'renderer', 'ru');
   t.ok(text(renderer.props.description).includes(catalog.text.defaultValue.ru.replace('%@', 'DXMT')),
     'a game-only row of its own names Lullaby\'s default');
-  const up = rowFor(tree, 'upscaler', 'ru');
+  const up = rowFor(tree, 'metalfx', 'ru');
   t.ok(!walk(up.props.description).some(n => n.props && n.props.className === 'LBInherit'),
     'an inherited row has no line under it');
   const retina = rowFor(tree, 'retina', 'ru');
@@ -136,12 +152,12 @@ for (const lang of ['en', 'uk', 'ru']) {
     'lists are as wide as their choices');
   t.ok(!walk(tree).some(n => n.props && n.props.className === 'LBLink'), 'no Reset in the rows');
   fps.props.onChange(false);
-  const upscaler = rowFor(tree, 'upscaler', 'ru');
-  upscaler.props.onChange({ data: JSON.stringify('metalfx') });
+  const upscaler = rowFor(tree, 'metalfx', 'ru');
+  upscaler.props.onChange({ data: JSON.stringify('2') });
   const resetGame = walk(tree).filter(n => n.type === 'Button' && text(n) === catalog.text.resetGame.ru);
   t.ok(resetGame.length === 1, 'one "Reset game settings" under the block');
   resetGame[0].props.onClick();
-  t.ok(JSON.stringify(ctx.calls) === JSON.stringify([['set', 'fps', false], ['set', 'upscaler', 'metalfx'], ['reset']]),
+  t.ok(JSON.stringify(ctx.calls) === JSON.stringify([['set', 'fps', false], ['set', 'metalfx', '2'], ['reset']]),
     `a toggle and a list set values, the button resets the game (${JSON.stringify(ctx.calls)})`);
   const css = text(walk(tree).find(n => n.type === 'style'));
   const z = Number((/\.LBOverlay\{[^}]*z-index:(\d+)/.exec(css) || [])[1]);

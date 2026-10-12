@@ -53,6 +53,7 @@ public enum ConfigMaterializer {
         lines += engineCounterOff
         lines += tuningLines(stack)
         lines += gpuLines(stack)
+        lines.append(swapchainUpscaleLine(stack))
         // DLSS through MetalFX: DXMT's own switch, and D3DMetal's (Sevoflurane's
         // Core/BottleGraphics.swift names it; it does nothing under the other renderers).
         if stack[\.dlss] {
@@ -83,6 +84,11 @@ public enum ConfigMaterializer {
         if let mouse = game.mouse { lines.append("SEVO_LINEAR_MOUSE=\(mouse == .linear ? "1" : "0")") }
         lines += switches.compactMap { key, path in game[keyPath: path].map { "\(key)=\($0 ? "1" : "0")" } }
         if game.tuning != nil { lines += tuningLines(stack) }
+        if game.metalfx != nil {
+            lines.append(swapchainUpscaleLine(stack))
+            // DXMT_CONFIG carries the factor beside the card; DLSS below writes it whole.
+            if game.dlss == nil { lines.append("DXMT_CONFIG=\(dxmtConfig(stack))") }
+        }
         if let dlss = game.dlss {
             // The card follows DLSS, so a game that sets it names its card over the shared one.
             lines += gpuLines(stack)
@@ -148,12 +154,24 @@ public enum ConfigMaterializer {
             "SEVO_GPU_DRIVER_VERSION=\(card.driverVersion)",
             "SEVO_GPU_DRIVER_DATE=\(card.driverDate)",
             "SEVO_GPU_DRIVER_PROVIDER=\(card.driverProvider)",
-            "DXMT_CONFIG=\(dxgiConfig(card))",
+            "DXMT_CONFIG=\(dxmtConfig(stack))",
             "DXVK_CONFIG_FILE=\(dxvkConfigWindowsPath)",
             "D3DM_VENDOR_ID=\(vendor)",
             "D3DM_DEVICE_ID=\(device)",
             "D3DM_DEVICE_DESCRIPTION=\(card.name)",
         ]
+    }
+
+    /// DXMT's switch for MetalFX on the swapchain; it acts on "1" only.
+    static func swapchainUpscaleLine(_ stack: ConfigStack) -> String {
+        "DXMT_METALFX_SPATIAL_SWAPCHAIN=\(stack[\.metalfx] == .off ? "0" : "1")"
+    }
+
+    /// DXMT's options: the card, and the MetalFX factor while it is on.
+    static func dxmtConfig(_ stack: ConfigStack) -> String {
+        let card = dxgiConfig(gpu(stack))
+        guard let factor = stack[\.metalfx].factor else { return card }
+        return card + "; d3d11.metalSpatialUpscaleFactor = \(factor)"
     }
 
     /// DXGI's options in the shape DXMT and DXVK both parse (`dxgi_options.cpp`): an id as

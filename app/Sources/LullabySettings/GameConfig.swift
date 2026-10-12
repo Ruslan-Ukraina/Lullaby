@@ -31,6 +31,29 @@ public enum UpscalerChoice: String, Codable, CaseIterable, Sendable {
     case off, lanczos, metalfx
 }
 
+/// DXMT's MetalFX upscaler on the swapchain (`DXMT_METALFX_SPATIAL_SWAPCHAIN`,
+/// `d3d11.metalSpatialUpscaleFactor`, dxmt `src/d3d11/d3d11_swapchain.cpp`): the game
+/// draws at its own size and the window gets that picture enlarged by the factor.
+public enum SwapchainUpscale: String, Codable, CaseIterable, Sendable {
+    // NotProton's choices (dylib/feats/webpatch.c upstream, "MetalFX Upscaling").
+    case off
+    case x1_5 = "1.5"
+    case x1_72 = "1.72"
+    case x2 = "2"
+    case x3 = "3"
+
+    /// The factor in DXMT's config, nil when off.
+    public var factor: String? {
+        switch self {
+        case .off: nil
+        case .x1_5: "1.5"
+        case .x1_72: "1.72"
+        case .x2: "2.0"
+        case .x3: "3.0"
+        }
+    }
+}
+
 /// Dormison's `FinalFilter`.
 public enum FinalFilter: String, Codable, CaseIterable, Sendable {
     case nearest, bilinear, lanczos
@@ -126,6 +149,8 @@ public struct ConfigValues: Codable, Equatable, Sendable {
     public var renderer: RendererChoice?
     public var retina: Bool?
     public var upscaler: UpscalerChoice?
+    /// DXMT's MetalFX on the swapchain; DXMT only.
+    public var metalfx: SwapchainUpscale?
     /// Apple's Metal HUD (MTL_HUD_ENABLED), the panel's frame rate counter.
     public var fps: Bool?
     public var windows: WindowTreatment?
@@ -167,6 +192,7 @@ public enum ConfigDefaults {
         v.renderer = .dxmt
         v.retina = false
         v.upscaler = .off
+        v.metalfx = .off
         v.fps = false
         v.windows = .fixed
         v.filter = .lanczos

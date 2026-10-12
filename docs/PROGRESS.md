@@ -1370,3 +1370,9 @@ PEAK, DXMT, меню; `perf/peak-ab.sh` чередует «исходно → и
 - Владелец: «все замечательно». Стоит **1.1.0-pre.6**; путь без окон Sparkle: «Оновити» → прогресс в окне → «Lullaby оновлено / Перезапустити» → перезапуск. Примечания релиза — текст тега (`release.yml` дотягивает аннотацию).
 - Шаги 0–7 закрыты. **Открыт шаг 8**: запусков по расписанию ещё нет (первый ожидается 05:23 UTC); проверки — 4 раза в сутки, итог — одним сообщением.
 - Минуты Фазы 6 на сейчас ≈330 из 2000.
+
+## 2026-10-12 ~13:54 CEST — Установка рядом с оригинальным NotProton; MetalFX как в NotProton
+
+- **Install падал на «Перенести из NotProton»:** `notproton/` — папка оригинального NotProton 1.1.7 (CrossOver), `lullaby/` — уже установка. Теперь такая папка остаётся нетронутой, установка продолжается (`5306580`, тест).
+- **MetalFX (владелец: в Deadlock NotProton+CrossOver заметно быстрее, MetalFX там работает, у нас нет).** Наш пункт «MetalFX Spatial» — апскейлер окна Dormison, при игре в размер окна он ничего не делает (`presenter=off upscaler=off` в `lullaby-run.log` Deadlock). NotProton (`upstream/main:dylib/feats/webpatch.c`) включает MetalFX самого DXMT на swapchain: `DXMT_METALFX_SPATIAL_SWAPCHAIN=1` + `d3d11.metalSpatialUpscaleFactor` в `DXMT_CONFIG`. Скопировано: настройка `metalfx` (Выкл. / 1.5× / 1.72× / 2× / 3×, как в NotProton), быстрая строка вместо апскейлера Dormison (он ушёл в «Дополнительно»), строка видна только для игры на DXMT. Фактор дописывается к `DXMT_CONFIG` рядом с подменой видеокарты. DXMT v0.80 это поддерживает (`src/d3d11/d3d11_swapchain.cpp`).
+- `make app-tests` — 439 зелёные, `make panel-behavior` — 0, `make webpatch-fixtures` — 0, `make app` — собран. **На игре не проверено** — ждёт владельца (Deadlock: рендерер DXMT, MetalFX 2×, FSR в игре выключить).
