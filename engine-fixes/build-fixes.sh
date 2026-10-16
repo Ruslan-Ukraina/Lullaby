@@ -45,6 +45,7 @@ engine_path() {
 	case "$1" in
 		winemac.so) echo wine/lib/wine/x86_64-unix/winemac.so ;;
 		ntdll.so) echo wine/lib/wine/x86_64-unix/ntdll.so ;;
+		win32u.so) echo wine/lib/wine/x86_64-unix/win32u.so ;;
 		*) die "no recipe for $1" ;;
 	esac
 }
@@ -52,6 +53,7 @@ make_target() {
 	case "$1" in
 		winemac.so) echo dlls/winemac.drv/winemac.so ;;
 		ntdll.so) echo dlls/ntdll/ntdll.so ;;
+		win32u.so) echo dlls/win32u/win32u.so ;;
 	esac
 }
 prepare() {

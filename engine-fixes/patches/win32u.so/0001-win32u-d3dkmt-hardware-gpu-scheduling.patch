@@ -1,0 +1,25 @@
+diff --git a/dlls/win32u/d3dkmt.c b/dlls/win32u/d3dkmt.c
+index ae82a769794..ab7dfe556c4 100644
+--- a/dlls/win32u/d3dkmt.c
++++ b/dlls/win32u/d3dkmt.c
+@@ -617,6 +617,20 @@ NTSTATUS WINAPI NtGdiDdDDIQueryAdapterInfo( D3DKMT_QUERYADAPTERINFO *desc )
+         *value = KMT_DRIVERVERSION_WDDM_3_1;
+         return STATUS_SUCCESS;
+     }
++    case KMTQAITYPE_WDDM_2_7_CAPS:
++    {
++        /* D3DKMT_WDDM_2_7_CAPS: HwSchSupported, HwSchEnabled, HwSchEnabledByDefault.
++         * Hardware-accelerated GPU scheduling is what NVIDIA Streamline requires
++         * before it offers DLSS Frame Generation, which D3DMetal runs on Metal; the
++         * Mac's GPU schedules its own work, so the answer is "on". */
++        UINT *value = desc->pPrivateDriverData;
++
++        if (desc->PrivateDriverDataSize < sizeof(*value))
++            return STATUS_INVALID_PARAMETER;
++
++        *value = 0x7;
++        return STATUS_SUCCESS;
++    }
+     default:
+     {
+         FIXME( "type %d not handled.\n", desc->Type );

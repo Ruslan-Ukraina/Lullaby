@@ -1460,3 +1460,9 @@ PEAK, DXMT, меню; `perf/peak-ab.sh` чередует «исходно → и
 - r6 vs r5: 10 коммитов, в основном нативные macOS-игры Sevoflurane (супервизор сеанса, мост Steam для нативных игр); в частях Lullaby — `kernelbase/process.c`, `ntdll/unix/{process,env}.c` (~100 строк). Графика/D3DMetal без изменений.
 - **На Mac владельца не стоит:** `--release update` работает только на тестовом дереве; на настоящих данных — кнопка «Оновити». У владельца приложение pre.9 (pre.11 с исправлением DLSS ждёт «Оновити»).
 - Ждёт владельца: «Оновити» → pre.11 → «Оновити» → Dormison r6 (Steam закроется мягко) → проверка RE9 (D3DMetal beta 3, DLSS).
+
+## 2026-10-17 ~01:20 CEST — DLSS Frame Generation: патч HAGS в win32u
+
+- Streamline даёт DLSS-G только при включённом Hardware-accelerated GPU Scheduling; узнаёт через `D3DKMTQueryAdapterInfo(KMTQAITYPE_WDDM_2_7_CAPS)`, а Wine отвечает NOT_IMPLEMENTED → «Disabling DLSS-G». Патч `engine-fixes/patches/win32u.so/0001-win32u-d3dkmt-hardware-gpu-scheduling.patch`: ответ `HwSchSupported|HwSchEnabled|HwSchEnabledByDefault`.
+- `win32u.so` r6 собран с freetype: `setup-wine-tree.sh` включает freetype, если он есть в релизе (библиотека из движка, заголовки — pkg-config/Homebrew); CI ставит `freetype pkgconf`. Рецепт `win32u.so` в `build-fixes.sh`. Локально: ntdll.so, win32u.so, winemac.so r6 — равны релизу по инструкциям, все 6 патчей легли.
+- Проверено на RE9 (r6, локальный win32u.so): Streamline `Feature 'kFeatureDLSS_G' loaded`, хуки `CreateSwapChainForHwnd`/`Present` — OK (раньше «Disabling DLSS-G»). Включение в меню игры — проверяет владелец.

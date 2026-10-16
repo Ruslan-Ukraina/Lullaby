@@ -117,6 +117,22 @@ if [ -n "${ENGINE:-}" ] && [ -f "$ENGINE/wine/lib/wine/x86_64-unix/ntdll.so" ]; 
     esac
 fi
 
+# A release that ships libfreetype (dormison-r6 does) has win32u.so built with it, and
+# win32u is only rebuilt equal to the release with freetype on too: the headers come
+# from the host (pkg-config or Homebrew), the library from the engine itself, which is
+# the x86_64 build the unix half has to link against.
+if [ -n "${ENGINE:-}" ] && [ -f "$ENGINE/wine/lib/libfreetype.dylib" ]; then
+    case " $CONFIGURE_OPTS " in
+    *" --without-freetype "*)
+        ft_cflags=$(pkg-config --cflags freetype2 2>/dev/null || true)
+        [ -n "$ft_cflags" ] || ft_cflags="-I$(brew --prefix freetype 2>/dev/null || echo /opt/homebrew)/include/freetype2"
+        CONFIGURE_OPTS=$(echo " $CONFIGURE_OPTS " | sed 's/ --without-freetype / --with-freetype /')
+        export FREETYPE_CFLAGS="$ft_cflags" FREETYPE_LIBS="-L$ENGINE/wine/lib -lfreetype"
+        echo "==> the release ships freetype: configuring with it ($FREETYPE_CFLAGS)"
+        ;;
+    esac
+fi
+
 # A configure that dies in config.status still leaves config.status behind, so that
 # is not the thing to test for. The Makefile is what has to exist.
 if [ -f "$WINE_BUILD/Makefile" ]; then
