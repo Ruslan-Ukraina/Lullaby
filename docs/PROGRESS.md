@@ -1409,3 +1409,11 @@ PEAK, DXMT, меню; `perf/peak-ab.sh` чередует «исходно → и
 - Вывод: D3DMetal 4.0 beta 3 несовместим с движком Dormison r5 (unix-сторона Wine собрана под beta 2). В Lullaby не чинится — нужен движок под beta 3 (r6 или своя сборка).
 - Состояние у владельца: активна `4.0 beta 2` (из `scratch/backups/gptk-4.0-beta-2`), beta 3 → `scratch/backups/gptk-4.0-beta-3`; `compatibilitytools.d/lullaby/run` = скрипт pre.10 (pre.9 — в `scratch/backups/run-pre9`).
 - **Риск:** импорт beta 3 снова удалит beta 2 (замена из pre.7). Нужен запрет toolkit, несовместимого с движком, или откат — BACKLOG.
+
+## 2026-10-16 ~21:30 CEST — Причина падения D3DMetal 4.0 beta 3 найдена: таблица Win32Dispatch выросла
+
+- Прослойка `winemac.drv/d3dmetal.c` у CrossOver 26.3.0 (исходники `crossover-sources-26.3.0`) и у Dormison совпадает — не она.
+- `libd3dshared.dylib` (otool): `Win32DispatchInit` копирует таблицу **0x230** байт в beta 2 и **0x248** в beta 3; `PatchWin32DispatchFunctions` ставит `g_callbacks = table + 0x148` (beta 2) / **`+ 0x150`** (beta 3); новый wrapper `pack_FindBestWindowHWND` в поле 0x148, его колбэк — `g_callbacks + 0xd8` (новый, в конце). Порядок остальных колбэков не изменился (сверено по всем `pack_*`).
+- Dormison r5 (`dlls/ntdll/unix/loader.c`) захардкодил 0x230/0x148: `calloc(0x230)` → beta 3 читает 0x18 байт чужой кучи; колбэки пишутся на 8 байт раньше, затирая `pack_FindBestWindowHWND`. Отсюда падение (`os_unfair_lock` по 0x3c, `-[__NSCFConstantString release]` в r11).
+- Исправление: `engine-fixes/patches/ntdll.so/0002-ntdll-d3dmetal-4b3-dispatch-layout.patch` — таблица с запасом (0x400), раскладка по заполненному полю 0x148. Приходит через мост, как `0001`, движок не пересобирается. Колбэк `FindBestWindowHWND` пока пуст (NULL → `STATUS_ENTRYPOINT_NOT_FOUND`).
+- Дерево r5 для сборки: `scratch/dormison-r5-src` / `-build` (старое `scratch/dormison-src` стояло на b-коммите).
