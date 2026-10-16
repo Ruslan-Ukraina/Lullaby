@@ -1428,3 +1428,10 @@ PEAK, DXMT, меню; `perf/peak-ab.sh` чередует «исходно → и
 - **Без реализации** (мост r5-3): `pack_FindBestWindowHWND` зовёт пустой колбэк 0xd8 и возвращает неинициализированный HWND → тест падает (`c0000005`, `assertion failed in 64-bit code`).
 - **Реализация:** `engine-fixes/patches/winemac.so/0002-winemac-d3dmetal-find-best-window.patch` (`__wine_d3dmetal_find_best_window`: видимое окно верхнего уровня процесса с клиентской областью = размеру swapchain, иначе активное наше, иначе самое большое) + `ntdll.so/0003-ntdll-d3dmetal-4b3-find-best-window.patch` (ms_abi-обёртка в слоте 0x148, вызов через `d3dmetal_reenter` на syscall-фрейме).
 - **Проверено:** `engine-fixes/tests/d3dmetal-composition-swapchain.c` с `D3DM_EXE_OVERRIDE=Anno117.exe` — `FindBestWindowHWND 640x480 -> окно теста`, swapchain `S_OK`, 30×Present `S_OK`. RE9 на beta 3 с этой сборкой — меню, 120 FPS. Чистые сборки ntdll.so/winemac.so = релиз r5 по инструкциям.
+- **Мост `bridge-dormison-r5-4`** (run 38963825627) опубликован, поставлен владельцу (previous r5-3): composition-тест `S_OK`, RE9 на beta 3 — меню, 120 FPS.
+
+## 2026-10-16 ~23:00 CEST — Почему игры не показывают DLSS (расследование, не исправлено)
+
+- RE9, `+debugstr` (Streamline 2.8.0): `sl.dlss`/`sl.dlss_d`/`sl.dlss_g` — `adapter mask 0x0`; «Failed to obtain DLSS min spec requirements from NGX», «sl.dlss not supported on current hardware», «Disabling DLSS-G…»; строк `Adapter … architecture` нет — Streamline не нашёл ни одного адаптера NVIDIA. `nvapi64.dll` (D3DMetal) загружается и выгружается, ни одна функция не вызвана (relay). В sl.common есть проверка подписи NVIDIA (`WinVerifyTrust`, «Streamline will not load unsecured modules») — главный подозреваемый, не доказано.
+- Ключ `NGXCore` без `FullPath` и у нас, и в бутылке CrossOver.
+- Движок r5 несёт `nvapi64.dll`/`nvngx.dll` от GPTK beta 2 в `x86_64-windows` → в `system32` префиксов.
