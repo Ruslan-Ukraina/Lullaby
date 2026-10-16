@@ -136,6 +136,19 @@ public struct D3DMetalStore: Sendable {
         return D3DMetalToolkit(version: version, root: destination)
     }
 
+    /// A new toolkit replaces the ones before it: the player picks an image to change the
+    /// version, not to collect them. Only a toolkit this Mac runs replaces anything, so an
+    /// image for a newer macOS leaves the usable version in place. Answers what was removed.
+    @discardableResult
+    public func removeOthers(than toolkit: D3DMetalToolkit) -> [String] {
+        guard toolkit.requiredMacOS <= macOS else { return [] }
+        var removed: [String] = []
+        for other in installed() where other.version != toolkit.version {
+            if (try? FileManager.default.removeItem(at: other.root)) != nil { removed.append(other.version) }
+        }
+        return removed
+    }
+
     static func redistLib(under root: URL) -> URL? {
         let lib = root.appending(path: "redist/lib")
         return FileManager.default.fileExists(atPath: lib.appending(path: "external/D3DMetal.framework")

@@ -118,6 +118,29 @@ struct D3DMetalStoreTests {
         #expect(state?["unusable"]?.array?.count == 2)
     }
 
+    @Test("a new toolkit replaces the old ones, unless this Mac cannot run it")
+    func newToolkitReplaces() throws {
+        let dir = try scratch()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        func folder(_ name: String) throws -> URL {
+            let url = dir.appending(path: "Evaluation environment for Windows games \(name)")
+            try Self.makeRedist(at: url)
+            return url
+        }
+        let on26 = D3DMetalStore(root: dir.appending(path: "d3dmetal"), macOS: 26)
+        let three = try on26.install(from: try folder("3.0"))
+        #expect(on26.removeOthers(than: three).isEmpty)
+        let four = try on26.install(from: try folder("4.0 beta 2"))
+        #expect(on26.removeOthers(than: four).isEmpty, "a toolkit this Mac cannot run replaces nothing")
+        #expect(on26.installed().map(\.version) == ["3.0", "4.0 beta 2"])
+
+        let on27 = D3DMetalStore(root: on26.root, macOS: 27)
+        let beta3 = try on27.install(from: try folder("4.0 beta 3"))
+        #expect(on27.removeOthers(than: beta3) == ["3.0", "4.0 beta 2"])
+        #expect(on27.installed().map(\.version) == ["4.0 beta 3"])
+        #expect(on27.active()?.version == "4.0 beta 3")
+    }
+
     @Test("the version comes from the volume's name")
     func versionNames() {
         #expect(D3DMetalStore.version(ofVolume: URL(filePath: "/Volumes/Evaluation environment for Windows games 4.0 beta 2 1")) == "4.0 beta 2")

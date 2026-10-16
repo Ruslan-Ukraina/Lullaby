@@ -171,14 +171,16 @@ public struct SettingsCLI {
         }
     }
 
-    /// Installs, records the outcome for the panel, and rewrites every prefix so bottle.env
-    /// names the version games get.
+    /// Installs, removes the versions it replaces, records the outcome for the panel, and
+    /// rewrites every prefix so bottle.env names the version games get.
     func install(_ source: URL) throws -> JSONValue {
         let store = service.d3dmetal
         store.setStatus(.object(["state": .string("installing"), "source": .string(source.lastPathComponent)]))
         do {
             let toolkit = try store.install(from: source)
             service.log("d3dmetal: installed \(toolkit.version) from \(source.path(percentEncoded: false))")
+            let removed = store.removeOthers(than: toolkit)
+            if !removed.isEmpty { service.log("d3dmetal: \(toolkit.version) replaced \(removed.joined(separator: ", "))") }
             var status: [String: JSONValue] = ["state": .string("installed"), "version": .string(toolkit.version)]
             if toolkit.requiredMacOS > store.macOS { status["requires"] = .number(toolkit.requiredMacOS) }
             store.setStatus(.object(status))
