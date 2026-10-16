@@ -1435,3 +1435,12 @@ PEAK, DXMT, меню; `perf/peak-ab.sh` чередует «исходно → и
 - RE9, `+debugstr` (Streamline 2.8.0): `sl.dlss`/`sl.dlss_d`/`sl.dlss_g` — `adapter mask 0x0`; «Failed to obtain DLSS min spec requirements from NGX», «sl.dlss not supported on current hardware», «Disabling DLSS-G…»; строк `Adapter … architecture` нет — Streamline не нашёл ни одного адаптера NVIDIA. `nvapi64.dll` (D3DMetal) загружается и выгружается, ни одна функция не вызвана (relay). В sl.common есть проверка подписи NVIDIA (`WinVerifyTrust`, «Streamline will not load unsecured modules») — главный подозреваемый, не доказано.
 - Ключ `NGXCore` без `FullPath` и у нас, и в бутылке CrossOver.
 - Движок r5 несёт `nvapi64.dll`/`nvngx.dll` от GPTK beta 2 в `x86_64-windows` → в `system32` префиксов.
+
+## 2026-10-16 ~23:45 CEST — DLSS в играх на Streamline: что установлено
+
+- **Подмена видеокарты** (Radeon RX 9060 XT ↔ GeForce RTX 5060 Ti) — это сам D3DMetal: без `D3DM_ENABLE_METALFX` он представляется AMD (0x1002, «AMD Compatibility Mode»), с ним — NVIDIA (0x10de); наши `D3DM_VENDOR_ID`/`DEVICE_ID` лишь уточняют модель (`engine-fixes/tests/dxgi-adapters.c`). Причиной не является.
+- **RE9:** DLSS был выключен на уровне игры (`dlss own=false` → `re9.exe.env`: `LULLABY_DLSS=0`, `D3DM_ENABLE_METALFX=`) — поэтому Streamline видел Radeon. Сброшено к общему «Вкл.» (`lullaby-settings set --app 4022369388 dlss null`).
+- После этого Streamline видит NVIDIA, но: `getSystemCaps: NVAPI failed to initialize`, NGX `0xbad00002`, плагины DLSS/DLSS-D/DLSS-G отключены.
+- **Не подпись:** между загрузками/выгрузками `nvapi64` нет вызовов crypt32/wintrust (Streamline проверяет подписью только свои `sl.*`). Загрузчик NVAPI в `sl.common.dll`: `LoadLibraryExW(nvapi64.dll, SEARCH_SYSTEM32)` → `GetProcAddress(nvapi_QueryInterface, nvapi_Direct_GetMethod)` → QI(0xAD298D3F) → `NvAPI_Initialize`; при ошибке `FreeLibrary`.
+- **Вне игры всё работает** (`engine-fixes/tests/nvapi-streamline-loader.c`, `nvapi-streamline-sequence.c`): Initialize 0, EnumPhysicalGPUs n=1, драйвер 576.02 r616, LUID 0.1012 = LUID адаптера DXGI, arch 0x190. В процессе RE9 — нет. Следующий шаг: найти, что отличается в игровом процессе (порядок/поток вызова, повторная загрузка 6 раз, другой потребитель NVAPI).
+- Проверено и отброшено: файлы GPTK в `system32` вместо папки рендерера (+ override `n`) — NVAPI не загрузился вовсе; откат сделан.
