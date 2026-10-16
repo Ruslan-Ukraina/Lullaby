@@ -1468,3 +1468,10 @@ PEAK, DXMT, меню; `perf/peak-ab.sh` чередует «исходно → и
 - Проверено на RE9 (r6, локальный win32u.so): Streamline `Feature 'kFeatureDLSS_G' loaded`, хуки `CreateSwapChainForHwnd`/`Present` — OK (раньше «Disabling DLSS-G»). Включение в меню игры — проверяет владелец.
 - **Мост `bridge-dormison-r6-2`** (DLSS-G): CI не совпадал с релизом из-за отсутствия x86_64 `libvulkan` на runner → `setup-wine-tree.sh` линкует configure с библиотеками движка (`wine/lib`). CI: ntdll/win32u/winemac равны релизу, опубликован. Поставлен владельцу (`bridge-install`; мой локальный win32u.so заменён на чистый из бэкапа, затем исправление встало штатно; все 3 файла = манифест). RE9: `NVIDIA driver 576.2`, `kFeatureDLSS_G loaded`.
 - Reflex в D3DMetal 4.0b3 — заглушки (`NvAPI_D3D_SetSleepMode`/`NvAPI_D3D_Sleep` → 0). Дальше по задержке: ограничитель FPS для D3DMetal (`D3DM_MAX_FPS`) в панели; «Reflex Lullaby» — отдельная задача.
+
+## 2026-10-17 ~02:10 CEST — Разрывы при генерации кадров и «низкая задержка»: патч движка (эксперимент)
+
+- `engine-fixes/patches/winemac.so/0003-winemac-lullaby-vsync-and-low-latency.patch` (`WineMetalLayer`, слой D3DMetal): `LULLABY_FORCE_VSYNC=1` — `displaySyncEnabled` всегда YES (игры с генерацией кадров выключают V-Sync → разрывы); `LULLABY_LOW_LATENCY=1` — не больше 2 drawable в полёте и, если ограничение не задано, ограничитель Dormison (`sevo_limiter`) на частоту экрана − 3. Без переменных патч ничего не меняет. Сборка против r6: все файлы = релиз по инструкциям.
+- Проверено на RE9 (переменные через `re9.exe.env`): журнал `lullaby: D3DMetal layer: force vsync 1, low latency 1, frame limit 117`; игра работает (~97 FPS в меню). Разрывы/задержку на глаз — владелец. Переключателей в панели пока нет.
+- Reflex в D3DMetal — заглушки. Открытая замена: LatencyFleX (Apache-2.0; на Linux dxvk-nvapi направляет в него `NvAPI_D3D_SetSleepMode/Sleep/SetLatencyMarker`); с V-Sync не помогает. Отдельный проект по решению владельца.
+- После теста `winemac.so` возвращён к мосту r6-2 (все файлы движка = манифест r6-2).
