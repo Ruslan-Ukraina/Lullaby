@@ -787,7 +787,11 @@ stage_renderer() {
       for f in "$tk/lib/wine/x86_64-windows"/*.dll; do
         [ -f "$f" ] || continue
         b=$(basename "$f" .dll)
-        ln -sfn "$f" "$dir/x86_64-windows/$b.dll"
+        # Apple's Read Me (4.0 beta 3): DLSS reaches MetalFX through nvngx-on-metalfx
+        # under the name nvngx, the one games load (D3DM_ENABLE_METALFX switches it).
+        n=$b
+        [ "$b" = nvngx-on-metalfx ] && n=nvngx
+        ln -sfn "$f" "$dir/x86_64-windows/$n.dll"
         # The engine carries links for the DLLs of the toolkit it was built beside
         # (d3d11, d3d12, dxgi); a newer toolkit brings more (4.0 beta 3: d3d12core,
         # d3d10, nvapi64, nvngx-on-metalfx). Those get the target the toolkit's own
@@ -796,8 +800,8 @@ stage_renderer() {
         if [ ! -e "$u" ] && t=$(readlink "$tk/lib/wine/x86_64-unix/$b.so" 2>/dev/null); then
           u="$ext/${t##*/}"
         fi
-        ln -sfn "$u" "$dir/x86_64-unix/$b.so"
-        names="${names:+$names,}$b"
+        ln -sfn "$u" "$dir/x86_64-unix/$n.so"
+        names="${names:+$names,}$n"
       done
       [ -n "$names" ] || return 1
       renderer_overrides="$names=b"
