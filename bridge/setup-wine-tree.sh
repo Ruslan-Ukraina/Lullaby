@@ -98,6 +98,25 @@ rsync -a --exclude build.sh --exclude gen-implib.sh --exclude fetch-headers.sh \
     "$repo/steam-shim/" "$WINE_SRC/programs/steam.exe/"
 echo "==> placed sources for dlls/lsteamclient and programs/steam.exe"
 
+# The release's install prefix is compiled into ntdll.so (BINDIR, DLLDIR, DATADIR), and
+# a different one moves every later byte of its data: dormison-r6 was configured with
+# --prefix=/Users/kirie/Developer/build/dormison/stage, r5 with the default, and the
+# unpatched rebuild only matches the release's code with the release's prefix. Read off
+# the engine's ntdll.so (ENGINE, the unpacked release) unless CONFIGURE_OPTS names one.
+if [ -n "${ENGINE:-}" ] && [ -f "$ENGINE/wine/lib/wine/x86_64-unix/ntdll.so" ]; then
+    case " $CONFIGURE_OPTS " in
+    *" --prefix="*) ;;
+    *)
+        release_prefix=$(strings -a "$ENGINE/wine/lib/wine/x86_64-unix/ntdll.so" \
+            | sed -n 's|^\(/.*\)/lib/wine$|\1|p' | head -1)
+        if [ -n "$release_prefix" ]; then
+            CONFIGURE_OPTS="$CONFIGURE_OPTS --prefix=$release_prefix"
+            echo "==> the release was built with --prefix=$release_prefix"
+        fi
+        ;;
+    esac
+fi
+
 # A configure that dies in config.status still leaves config.status behind, so that
 # is not the thing to test for. The Makefile is what has to exist.
 if [ -f "$WINE_BUILD/Makefile" ]; then
