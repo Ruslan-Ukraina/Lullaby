@@ -1398,3 +1398,14 @@ PEAK, DXMT, меню; `perf/peak-ab.sh` чередует «исходно → и
 - `lullaby-run.log`: `renderer d3dmetal: …/x86_64-unix/d3d12core.so leads nowhere in this engine` → `d3dmetal unavailable, using DXMT`. GPTK 4.0 beta 3 принёс `d3d12core`, `d3d10`, `nvapi64`, `nvngx-on-metalfx`; у движка r5 ссылки только для `d3d11`, `d3d12`, `dxgi`.
 - Исправление (`compat_run.sh`): DLL без ссылки в движке получает цель ссылки самого toolkit в том же `wine/lib/external`. Проверено на файлах владельца во временной папке: 7 из 7 ссылок разрешаются в один `dormison-r5/wine/lib/external/libd3dshared.dylib`. `runcheck` — 0. На игре не проверено — ждёт владельца (RE9, D3DMetal).
 - **pre.10:** по Read Me GPTK 4.0 beta 3 DLSS→MetalFX идёт через `nvngx-on-metalfx` под именем `nvngx`; раньше файл лежал под исходным именем, игра его не находила. Теперь подкладывается как `nvngx` (DLL, unix-половина, override). Заглушки `nvngx.dll`/`nvapi64.dll` есть в `system32` всех префиксов. `runcheck` — 0. Из Read Me на будущее: `D3DM_MTL4` (Metal 4, на macOS 27 включён по умолчанию), `D3DM_SUPPORT_DXR`, `D3DM_MAX_FPS`, очистка кеша шейдеров `$(getconf DARWIN_USER_CACHE_DIR)/d3dm/<игра>/shaders.cache`.
+
+## 2026-10-16 ~20:35 CEST — D3DMetal: живые тесты RE9 (разрешение владельца на автономные запуски)
+
+Ярлык RE9 (appid 4022369388, `steam://rungameid/17275944973925089280`), снимки — `scratch/re9-*.png`.
+- beta 3 + скрипт pre.10 (`nvngx`) → «An unhandled exception occurred» (re9.exe +0x9e835a…).
+- beta 3, без `nvngx.dll`/`nvapi64.dll` beta 2 в папке игры (они там с июля, побайтно beta 2; на время теста в бэкапе, возвращены) → то же падение.
+- beta 3 без override `d3d12core` → то же падение.
+- **beta 2 + скрипт pre.10 → главное меню, ~105 FPS, HUD «D3D12 (Metal 4)», «Game Porting Toolkit 4.0b2».** Дважды.
+- Вывод: D3DMetal 4.0 beta 3 несовместим с движком Dormison r5 (unix-сторона Wine собрана под beta 2). В Lullaby не чинится — нужен движок под beta 3 (r6 или своя сборка).
+- Состояние у владельца: активна `4.0 beta 2` (из `scratch/backups/gptk-4.0-beta-2`), beta 3 → `scratch/backups/gptk-4.0-beta-3`; `compatibilitytools.d/lullaby/run` = скрипт pre.10 (pre.9 — в `scratch/backups/run-pre9`).
+- **Риск:** импорт beta 3 снова удалит beta 2 (замена из pre.7). Нужен запрет toolkit, несовместимого с движком, или откат — BACKLOG.
