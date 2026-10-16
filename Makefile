@@ -294,10 +294,11 @@ webpatch-syntax: $(PANEL_JS_H)
 	  dylib/tests/webpatch-apply.c dylib/feats/webpatch.c dylib/feats/settingsbridge.c \
 	  dylib/util/file.c dylib/util/log.c && \
 	tmp=$$(mktemp -d) && n=0 && \
-	for f in "$(STEAMUI_DIR)"/chunk~*.js "$(STEAMUI_DIR)"/library.js; do \
+	for f in "$(STEAMUI_DIR)"/chunk~*.js "$(STEAMUI_DIR)"/library.js "$(STEAMUI_DIR)"/sp.js; do \
 		[ -f "$$f" ] && grep -q 'AppProperties_Compat' "$$f" || continue; \
 		$(OUT_DIR)/webpatch-apply "$$f" "$$tmp/patched.js" || { rm -rf "$${tmp:?}"; exit 1; }; \
 		node --check "$$tmp/patched.js" || { echo "webpatch-syntax: $$f does not parse after the webpatch"; rm -rf "$${tmp:?}"; exit 1; }; \
+		node dylib/tests/lbselp-check.js "$$tmp/patched.js" || { rm -rf "$${tmp:?}"; exit 1; }; \
 		n=$$((n + 1)); \
 	done; \
 	rm -rf "$${tmp:?}"; \

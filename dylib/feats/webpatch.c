@@ -179,6 +179,26 @@ static int out_expand(lb_out_t *o, const char *replace, const lb_cap_t *caps) {
 #define LB_CX_OPTIONS_STATEMENT \
     "var MSCXOpts=" LB_CX_OPTIONS_BODY("np", LB_C3, LB_C4) ";"
 
+// The selecttool page (stable since Steam 1791918634) imports no React by a name the
+// anchors can hold, so the catalog panel finds it through webpack's own runtime, as
+// Decky Loader does: a chunk pushed with a runtime callback gets the require function,
+// and React and React DOM are the loaded modules that look like them (module cache
+// first, then factories whose text names their exports). Module ids change with every
+// Steam build; these markers do not. Steam's dialog controls are the page's own import
+// (LB_C4, the module with XY and m). Without React the page keeps the renderer list
+// (MSCXOpts), as before. Built once, on first render.
+#define LB_SEL_PANEL_STATEMENT \
+    "function LBSelP(J,B){if(LBSelP.d)return LBSelP.p;LBSelP.d=1;LBSelP.p=null;try{" \
+    "var q;self.webpackChunksteamui.push([[\"lb\"+Math.random()],{},function(r){q=r}]);" \
+    "var f=function(t,mk){var k,e;if(q.c)for(k in q.c){e=q.c[k]&&q.c[k].exports;" \
+    "try{if(e&&t(e))return e}catch(x){}}" \
+    "for(k in q.m){var s=String(q.m[k]);if(s.length<300000&&mk.every(function(w){return s.indexOf(w)>=0}))" \
+    "try{e=q(k);if(e&&t(e))return e}catch(x){}}return null};" \
+    "var R=f(function(e){return typeof e.useState===\"function\"&&typeof e.createElement===\"function\"" \
+    "&&typeof e.useEffect===\"function\"},[\".useState=\",\".createElement=\"])," \
+    "D=f(function(e){return typeof e.createPortal===\"function\"},[\".createPortal=\"]);" \
+    "if(R)LBSelP.p=(" LB_PANEL_JS ")(J,B,R,D)}catch(x){LBSelP.p=null}return LBSelP.p}"
+
 static const lb_gate_t g_gates_forcetool[] = {
     // SteamPlay settings section
     { "function ue(e){return(0,T.CI)()?",
@@ -242,13 +262,25 @@ static const lb_gate_t g_gates_selecttool[] = {
       "(\"#Settings_SteamPlay_SteamPlay\"),children:[(0," LB_C3 ".jsx)(" LB_C6 ",{details:" LB_C2 ".details}),"
       "(0," LB_C3 ".jsx)(" LB_C7 ".G,{setting:\"compat_show_all_tools\",label:(0," LB_C5 ".we)"
       "(\"#Settings_SteamPlay_ShowAll\"),feature:" LB_C8 ".OK})]})}",
-      LB_CX_OPTIONS_STATEMENT
+      LB_CX_OPTIONS_STATEMENT LB_SEL_PANEL_STATEMENT
       "function " LB_C1 "(" LB_C2 "){return(0," LB_C3 ".jsxs)(" LB_C3 ".Fragment,{children:["
       "(0," LB_C3 ".jsxs)(" LB_C4 ".XY,{label:(0," LB_C5 ".we)"
       "(\"#Settings_SteamPlay_SteamPlay\"),children:[(0," LB_C3 ".jsx)(" LB_C6 ",{details:" LB_C2 ".details}),"
       "(0," LB_C3 ".jsx)(" LB_C7 ".G,{setting:\"compat_show_all_tools\",label:(0," LB_C5 ".we)"
       "(\"#Settings_SteamPlay_ShowAll\"),feature:" LB_C8 ".OK})]}),"
-      "(0," LB_C3 ".jsx)(MSCXOpts,{details:" LB_C2 ".details})]})}", 1 },
+      "LBSelP(" LB_C3 "," LB_C4 ")?(0," LB_C3 ".jsx)(LBSelP(" LB_C3 "," LB_C4 ").Game,{details:" LB_C2 ".details})"
+      ":(0," LB_C3 ".jsx)(MSCXOpts,{details:" LB_C2 ".details})]})}", 1 },
+    // Settings > Compatibility: Lullaby's values for all games under Steam Play's own
+    { "function " LB_C1 "(" LB_C2 "){return(0," LB_C3 ".jsxs)(" LB_C4 ".XY,{label:(0," LB_C5 ".we)"
+      "(\"#Settings_SteamPlay_SteamPlay\"),children:[(0," LB_C3 ".jsx)(" LB_C6 ",{}),"
+      "(0," LB_C3 ".jsx)(" LB_C7 ".G,{setting:\"compat_show_all_tools\",label:(0," LB_C5 ".we)"
+      "(\"#Settings_SteamPlay_ShowAll\"),feature:" LB_C8 ".OK})]})}",
+      "function " LB_C1 "(" LB_C2 "){return(0," LB_C3 ".jsxs)(" LB_C3 ".Fragment,{children:["
+      "(0," LB_C3 ".jsxs)(" LB_C4 ".XY,{label:(0," LB_C5 ".we)"
+      "(\"#Settings_SteamPlay_SteamPlay\"),children:[(0," LB_C3 ".jsx)(" LB_C6 ",{}),"
+      "(0," LB_C3 ".jsx)(" LB_C7 ".G,{setting:\"compat_show_all_tools\",label:(0," LB_C5 ".we)"
+      "(\"#Settings_SteamPlay_ShowAll\"),feature:" LB_C8 ".OK})]}),"
+      "LBSelP(" LB_C3 "," LB_C4 ")?(0," LB_C3 ".jsx)(LBSelP(" LB_C3 "," LB_C4 ").Global,{}):null]})}", 1 },
     { "get is_invalid_os_type(){return this.most_available_per_client_data.is_invalid_os_type}",
       "get is_invalid_os_type(){return false}", 1 },
     // Reminder banner for 32 bit Mac games
