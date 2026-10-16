@@ -1,0 +1,46 @@
+--- a/dlls/ntdll/unix/loader.c
++++ b/dlls/ntdll/unix/loader.c
+@@ -1668,8 +1668,35 @@
+                            (UINT_PTR)rect, (UINT_PTR)proc, lparam, 0, 0 ))
+         return FALSE;
+     return (BOOL)result;
++}
++
++/* D3DMetal 4.0 beta 3's FindBestWindowHWND slot (0x148). The toolkit's own
++ * pack_FindBestWindowHWND forwards to a host callback winemac.drv does not
++ * provide and then returns an uninitialized HWND; this takes its place. It is
++ * called with the ms_abi convention (width in rcx, height in rdx) from native
++ * code that may run on the PE user stack, so the window search, which calls
++ * win32u, runs on a syscall frame as NtUserEnumDisplayMonitors does. */
++static HWND (*p_find_best_window)( UINT width, UINT height );
++
++static UINT64 find_best_window_for_d3dmetal( UINT64 width, UINT64 height, UINT64 a2, UINT64 a3,
++                                             UINT64 a4, UINT64 a5 )
++{
++    if (!p_find_best_window) p_find_best_window = dlsym( RTLD_DEFAULT, "__wine_d3dmetal_find_best_window" );
++    if (!p_find_best_window) return 0;
++    return (UINT_PTR)p_find_best_window( width, height );
+ }
+ 
++static void * __attribute__((ms_abi)) d3dmetal_find_best_window_hwnd( UINT width, UINT height )
++{
++    UINT64 result = 0;
++
++    if (on_kernel_stack()) result = find_best_window_for_d3dmetal( width, height, 0, 0, 0, 0 );
++    else if (!d3dmetal_reenter( (void *)find_best_window_for_d3dmetal, &result, width, height, 0, 0, 0, 0 ))
++        result = 0;
++    TRACE( "FindBestWindowHWND %ux%u -> %p\n", width, height, (void *)(UINT_PTR)result );
++    return (void *)(UINT_PTR)result;
++}
++
+ static void init_win32_dispatch( void *handle )
+ {
+     int (*p_Win32DispatchInit)( void * );
+@@ -1695,6 +1722,7 @@
+     {
+         win32_dispatch_table_size = WIN32_DISPATCH_TABLE_SIZE_4B3;
+         win32_dispatch_callbacks_offset = WIN32_DISPATCH_CALLBACKS_4B3;
++        *(void **)((char *)table + WIN32_DISPATCH_CALLBACKS_4B2) = (void *)d3dmetal_find_best_window_hwnd;
+     }
+     TRACE( "dispatch table %#x bytes, host callbacks at %#x\n",
+            win32_dispatch_table_size, win32_dispatch_callbacks_offset );

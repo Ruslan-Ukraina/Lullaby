@@ -1421,3 +1421,10 @@ PEAK, DXMT, меню; `perf/peak-ab.sh` чередует «исходно → и
 - **Мост `bridge-dormison-r5-3`** (run 38955777457): собран, протестирован, подписан, опубликован; `bridge-manifest.json` serial 3, ntdll.so — патчи 0001+0002. Поставлен на Mac владельца штатно (`--release bridge-install`, previous = r5-2, Steam не закрывался) → RE9 на beta 3 с ntdll.so из CI (`c789d605…`): меню, ~111 FPS. Снимки `scratch/re9-b3fix.png`, `re9-b2fix.png`, `re9-r5-3.png`.
 - У владельца активна beta 3; beta 2 — `scratch/backups/gptk-4.0-beta-2`.
 - Дальше: колбэк `FindBestWindowHWND` (пока NULL); импорт GPTK не удаляет рабочую версию до проверки (BACKLOG).
+
+## 2026-10-16 ~22:50 CEST — FindBestWindowHWND (D3DMetal 4.0 beta 3) опознан и реализован
+
+- **Что это:** `WineSwapchainCallbacks::FindBestWindowHWND(const DXGI_SWAP_CHAIN_DESC1*)` (слот 10 `GFXTSwapchainInterface`) → Win32Dispatch 0x148 с `(Width, Height)`. Зовёт его только `DXGIFactory::CreateSwapChainForComposition`, а тот открыт лишь профилям с флагом `+0x2d` в таблице приложений D3DMetal (`__DATA,__data`, записи 0x40): в beta 3 это **Anno117.exe**; остальным — `E_NOTIMPL`. `D3DM_EXE_OVERRIDE=<exe>` подставляет профиль.
+- **Без реализации** (мост r5-3): `pack_FindBestWindowHWND` зовёт пустой колбэк 0xd8 и возвращает неинициализированный HWND → тест падает (`c0000005`, `assertion failed in 64-bit code`).
+- **Реализация:** `engine-fixes/patches/winemac.so/0002-winemac-d3dmetal-find-best-window.patch` (`__wine_d3dmetal_find_best_window`: видимое окно верхнего уровня процесса с клиентской областью = размеру swapchain, иначе активное наше, иначе самое большое) + `ntdll.so/0003-ntdll-d3dmetal-4b3-find-best-window.patch` (ms_abi-обёртка в слоте 0x148, вызов через `d3dmetal_reenter` на syscall-фрейме).
+- **Проверено:** `engine-fixes/tests/d3dmetal-composition-swapchain.c` с `D3DM_EXE_OVERRIDE=Anno117.exe` — `FindBestWindowHWND 640x480 -> окно теста`, swapchain `S_OK`, 30×Present `S_OK`. RE9 на beta 3 с этой сборкой — меню, 120 FPS. Чистые сборки ntdll.so/winemac.so = релиз r5 по инструкциям.
