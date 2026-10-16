@@ -133,6 +133,15 @@ if [ -n "${ENGINE:-}" ] && [ -f "$ENGINE/wine/lib/libfreetype.dylib" ]; then
     esac
 fi
 
+# The release's own libraries (libvulkan, libMoltenVK, libfreetype, x86_64 builds the
+# engine ships in wine/lib) decide what configure turns on, as on the machine the
+# release was built on: without libvulkan the rebuilt win32u.so lacks its Vulkan code
+# and no longer equals the release. Configure looks there first.
+if [ -n "${ENGINE:-}" ] && [ -d "$ENGINE/wine/lib" ]; then
+    export LDFLAGS="-L$ENGINE/wine/lib ${LDFLAGS:-}"
+    echo "==> configure links against the release's libraries in $ENGINE/wine/lib"
+fi
+
 # A configure that dies in config.status still leaves config.status behind, so that
 # is not the thing to test for. The Makefile is what has to exist.
 if [ -f "$WINE_BUILD/Makefile" ]; then
