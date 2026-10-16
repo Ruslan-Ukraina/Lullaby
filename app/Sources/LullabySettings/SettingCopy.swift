@@ -411,6 +411,26 @@ extension SettingCopy {
                     ru: "Игра, которая выбирает более медленный путь с AVX, может работать лучше без этого.")),
             ]))
 
+    static let forceVsync = SettingCopy(
+        L10n("No frame tearing", uk: "Без розривів кадру", ru: "Без разрывов кадра"),
+        caption: L10n("Keeps D3DMetal's picture in step with the display, even with frame generation on.",
+                      uk: "Тримає картинку D3DMetal у такт з екраном, навіть з генерацією кадрів.",
+                      ru: "Держит картинку D3DMetal в такт с экраном, даже с генерацией кадров."),
+        help: SettingHelp(
+            L10n("Games with frame generation turn V-Sync off, and the picture then tears. On, every frame waits for the display's refresh. D3DMetal only.",
+                 uk: "Ігри з генерацією кадрів вимикають V-Sync, і картинка тоді рветься. Увімкнено — кожен кадр чекає оновлення екрана. Лише D3DMetal.",
+                 ru: "Игры с генерацией кадров выключают V-Sync, и картинка тогда рвётся. Включено — каждый кадр ждёт обновления экрана. Только D3DMetal.")))
+
+    static let lowLatency = SettingCopy(
+        L10n("Low latency", uk: "Низька затримка", ru: "Низкая задержка"),
+        caption: L10n("A shorter frame queue: input reaches the screen sooner.",
+                      uk: "Коротша черга кадрів: введення швидше доходить до екрана.",
+                      ru: "Короче очередь кадров: ввод быстрее доходит до экрана."),
+        help: SettingHelp(
+            L10n("What NVIDIA Reflex does for the frame queue, which D3DMetal leaves undone: two frames in flight instead of three, and frames held three under the display's refresh rate so V-Sync never queues them. D3DMetal only.",
+                 uk: "Те, що NVIDIA Reflex робить із чергою кадрів, а D3DMetal не робить: два кадри в дорозі замість трьох і темп на три кадри нижче частоти екрана, щоб V-Sync не збирав черги. Лише D3DMetal.",
+                 ru: "То, что NVIDIA Reflex делает с очередью кадров, а D3DMetal не делает: два кадра в пути вместо трёх и темп на три кадра ниже частоты экрана, чтобы V-Sync не копил очередь. Только D3DMetal.")))
+
     static let msync = SettingCopy(
         .same("msync+"),
         caption: L10n("Always on. Turn it off only to test a problem in this game.",

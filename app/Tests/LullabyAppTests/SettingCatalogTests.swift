@@ -32,7 +32,7 @@ struct SettingCatalogTests {
         #expect(advanced(.mouse) == [.mouse])
         #expect(advanced(.performance) == [.tuning, .unifiedMemory, .avx])
         #expect(advanced(.oldGames) == [.emulateModeset, .largeAddressAware])
-        #expect(advanced(.diagnostics) == [.msync])
+        #expect(advanced(.diagnostics) == [.msync, .forceVsync, .lowLatency])
     }
 
     /// A value other than the default for each setting, and a key it must reach.
@@ -51,6 +51,8 @@ struct SettingCatalogTests {
         (.avx, .bool(true), "ROSETTA_ADVERTISE_AVX=1"),
         (.emulateModeset, .bool(true), "LULLABY_EMULATE_MODESET=1"),
         (.largeAddressAware, .bool(true), "SEVO_LARGE_ADDRESS_AWARE=1"),
+        (.forceVsync, .bool(true), "LULLABY_FORCE_VSYNC=1"),
+        (.lowLatency, .bool(true), "LULLABY_LOW_LATENCY=1"),
     ]
 
     @Test("every game setting reaches its key, and inherit writes none")

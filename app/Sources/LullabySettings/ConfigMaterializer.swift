@@ -105,6 +105,8 @@ public enum ConfigMaterializer {
         ("SEVO_LARGE_ADDRESS_AWARE", \.largeAddressAware),
         ("ROSETTA_ADVERTISE_AVX", \.avx),
         ("SEVO_FORCE_UMA", \.unifiedMemory),
+        ("LULLABY_FORCE_VSYNC", \.forceVsync),
+        ("LULLABY_LOW_LATENCY", \.lowLatency),
     ]
 
     /// Dormison's own counter and graph stay off: the panel's counter is the Metal HUD

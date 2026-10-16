@@ -14,6 +14,7 @@ public enum SettingID: String, CaseIterable, Sendable, Codable {
     case tuning, unifiedMemory, avx
     case emulateModeset, largeAddressAware
     case msync
+    case forceVsync, lowLatency
 }
 
 /// The groups the Advanced dialog shows, in order. `oldGames` holds what only older games
@@ -226,6 +227,11 @@ public enum SettingCatalog {
               carrier: .environment(["SEVO_LARGE_ADDRESS_AWARE"])),
         .flag(.msync, in: .diagnostics, levels: [.game], key: \.msync, copy: .msync,
               carrier: .bottleOnly(["WINEMSYNC"])),
+        // Lullaby's winemac.so fix 0003 (WineMetalLayer): the D3DMetal layer's sync and queue.
+        .flag(.forceVsync, in: .diagnostics, experimental: true, key: \.forceVsync, copy: .forceVsync,
+              carrier: .environment(["LULLABY_FORCE_VSYNC"])),
+        .flag(.lowLatency, in: .diagnostics, experimental: true, key: \.lowLatency, copy: .lowLatency,
+              carrier: .environment(["LULLABY_LOW_LATENCY"])),
     ]
 
     public static func setting(_ id: SettingID) -> Setting {

@@ -165,6 +165,10 @@ public struct ConfigValues: Codable, Equatable, Sendable {
     public var avx: Bool?
     /// Game level only, a debugging switch: msync+ stays on otherwise.
     public var msync: Bool?
+    /// The D3DMetal layer stays in step with the display (winemac.so fix 0003).
+    public var forceVsync: Bool?
+    /// Two frames in flight and presents held under the refresh rate (winemac.so fix 0003).
+    public var lowLatency: Bool?
 
     /// Game level only: the lowercase executables the game is known to run.
     public var exes: [String]?
@@ -204,6 +208,8 @@ public enum ConfigDefaults {
         v.largeAddressAware = false
         v.avx = false
         v.msync = true
+        v.forceVsync = false
+        v.lowLatency = false
         return v
     }()
 }
