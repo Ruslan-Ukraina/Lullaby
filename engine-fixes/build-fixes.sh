@@ -116,8 +116,17 @@ for dir in "$here"/patches/*/; do
 	build "$name" "$dir"
 	normalized_code "$built" > "$OUT/$name-base.dis"
 	normalized_code "$clean" > "$OUT/$name-release.dis"
-	cmp -s "$OUT/$name-base.dis" "$OUT/$name-release.dis" \
-		|| die "$name: the rebuilt unpatched code differs from the release's; compiler or flags drifted (diff $OUT/$name-base.dis $OUT/$name-release.dis)"
+	if ! cmp -s "$OUT/$name-base.dis" "$OUT/$name-release.dis"; then
+		# The first differences, so that a CI log says what drifted.
+		diff "$OUT/$name-base.dis" "$OUT/$name-release.dis" | head -40 >&2 || true
+		nm "$built" | awk '{print $NF}' | sort -u > "$OUT/$name-base.syms"
+		nm "$clean" | awk '{print $NF}' | sort -u > "$OUT/$name-release.syms"
+		echo "==> symbols only in the release:" >&2
+		comm -13 "$OUT/$name-base.syms" "$OUT/$name-release.syms" | head -20 >&2 || true
+		echo "==> symbols only in the rebuild:" >&2
+		comm -23 "$OUT/$name-base.syms" "$OUT/$name-release.syms" | head -20 >&2 || true
+		die "$name: the rebuilt unpatched code differs from the release's; compiler or flags drifted (diff $OUT/$name-base.dis $OUT/$name-release.dis)"
+	fi
 	echo "==> $name: the rebuilt unpatched code is the release's, instruction for instruction"
 
 	patches=""
