@@ -788,7 +788,15 @@ stage_renderer() {
         [ -f "$f" ] || continue
         b=$(basename "$f" .dll)
         ln -sfn "$f" "$dir/x86_64-windows/$b.dll"
-        ln -sfn "$wine_unix/$b.so" "$dir/x86_64-unix/$b.so"
+        # The engine carries links for the DLLs of the toolkit it was built beside
+        # (d3d11, d3d12, dxgi); a newer toolkit brings more (4.0 beta 3: d3d12core,
+        # d3d10, nvapi64, nvngx-on-metalfx). Those get the target the toolkit's own
+        # link names, in the same lib/external, so one libd3dshared serves them all.
+        u="$wine_unix/$b.so"
+        if [ ! -e "$u" ] && t=$(readlink "$tk/lib/wine/x86_64-unix/$b.so" 2>/dev/null); then
+          u="$ext/${t##*/}"
+        fi
+        ln -sfn "$u" "$dir/x86_64-unix/$b.so"
         names="${names:+$names,}$b"
       done
       [ -n "$names" ] || return 1

@@ -1391,3 +1391,9 @@ PEAK, DXMT, меню; `perf/peak-ab.sh` чередует «исходно → и
 - **Не исправлено:** `sigdb-fixtures` — `all_deprecated.json`, `vtable_va_real.json` держат адреса старого `steamclient.dylib` и сверяются с живым Steam; падали и до правок.
 - Живая проверка в Steam не сделана: `--install-into-steam` из песочницы — «Could not write files», запуск вне песочницы запрещён автоматическим режимом. Доставка — через релиз pre.8 и «Оновити».
 - **«CrossOver 26.3» в списке Steam** — инструмент оригинального NotProton 1.1.7 (`compatibilitytools.d/notproton-26.3`, 12.10), не Lullaby. С согласия владельца перенесён в `scratch/backups/compattool-notproton-26.3`. «Стандартний (Dormison (Lullaby))» — псевдоним Steam для инструмента по умолчанию.
+
+## 2026-10-16 ~20:10 CEST — D3DMetal с GPTK 4.0 beta 3 молча уходил в DXMT; pre.9
+
+- Владелец: новая панель на странице Steam работает (D3DMetal в списке); RE9 на D3DMetal — «Unsupported graphics card (0x80004002)».
+- `lullaby-run.log`: `renderer d3dmetal: …/x86_64-unix/d3d12core.so leads nowhere in this engine` → `d3dmetal unavailable, using DXMT`. GPTK 4.0 beta 3 принёс `d3d12core`, `d3d10`, `nvapi64`, `nvngx-on-metalfx`; у движка r5 ссылки только для `d3d11`, `d3d12`, `dxgi`.
+- Исправление (`compat_run.sh`): DLL без ссылки в движке получает цель ссылки самого toolkit в том же `wine/lib/external`. Проверено на файлах владельца во временной папке: 7 из 7 ссылок разрешаются в один `dormison-r5/wine/lib/external/libd3dshared.dylib`. `runcheck` — 0. На игре не проверено — ждёт владельца (RE9, D3DMetal).
