@@ -33,8 +33,14 @@ enum ReleaseAccess: Equatable, Sendable {
         if let status = (error as? TransportFailure)?.status, status == 401 || status == 403 {
             return tokenRejected
         }
+        if let status = (error as? TransportFailure)?.status, status == 404 {
+            return notFound
+        }
         return EngineUpdater.offline
     }
+
+    static let notFound =
+        "GitHub has no such file (404): the release may still be publishing. Try again in a few minutes."
 
     static let needsToken =
         "Lullaby's releases are private and this Mac has no access token for them. Add it in ⚙︎ → Access Token…"

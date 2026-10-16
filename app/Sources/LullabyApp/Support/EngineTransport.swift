@@ -152,7 +152,7 @@ struct URLSessionEngineTransport: EngineTransport, RequestTransport {
                     completionHandler(.allow)
                 } else {
                     failure = status == 200
-                        ? RangeUnsupported() : TransportFailure(detail: "The download server answered \(status).")
+                        ? RangeUnsupported() : TransportFailure(detail: "The download server answered \(status).", status: status)
                     completionHandler(.cancel)
                 }
                 return
@@ -177,7 +177,7 @@ struct URLSessionEngineTransport: EngineTransport, RequestTransport {
                 // which the size check after the download catches).
                 completionHandler(.cancel)
             default:
-                failure = TransportFailure(detail: "The download server answered \(status).")
+                failure = TransportFailure(detail: "The download server answered \(status).", status: status)
                 completionHandler(.cancel)
             }
         }

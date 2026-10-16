@@ -273,8 +273,12 @@ struct EngineUpdater: Sendable {
             guard case .ready(let feed) = feed else {
                 throw StepFailure(step: step, detail: ReleaseFeed.noKey)
             }
+            // The bridge is a release asset of Lullaby's own feed: a private feed is read
+            // through GitHub's API with the token (ReleaseFeed.transport), as BridgeUpdater
+            // does; the plain transport got 404 from a private repository.
             bridgeRelease = try await bridgeStore.obtain(
-                bridgeRelease, key: feed.key, transport: transport, report: { report(.bridge($0)) })
+                bridgeRelease, key: feed.key, transport: feed.transport(over: transport),
+                report: { report(.bridge($0)) })
         case .packed:
             bridgeRelease = try await bridgeStore.obtain(
                 bridgeRelease, key: nil, transport: transport, report: { report(.bridge($0)) })

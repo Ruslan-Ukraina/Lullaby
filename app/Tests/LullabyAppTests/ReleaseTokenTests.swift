@@ -37,6 +37,11 @@ struct ReleaseTokenTests {
         #expect(problem.cause == .tokenRejected)
     }
 
+    @Test("A file GitHub does not have (404) is said as such, not as a lost connection")
+    func notFoundIsNotOffline() {
+        #expect(ReleaseAccess.failure(TransportFailure(detail: "x", status: 404)) == ReleaseAccess.notFound)
+    }
+
     @Test("Other failures stay offline")
     func otherFailures() {
         #expect(ReleaseAccess.failure(TransportFailure(detail: "x", status: 500)) == EngineUpdater.offline)

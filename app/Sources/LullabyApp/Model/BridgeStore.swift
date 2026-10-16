@@ -148,7 +148,7 @@ struct BridgeStore: Sendable {
                 AppLog.note("bridge: download stopped at \(size(of: part)) of \(total): \(error.localizedDescription)")
                 throw StepFailure(
                     step: step,
-                    detail: "The download stopped. \(EngineUpdater.offline) What arrived is kept, and the next try continues from there.")
+                    detail: "The download stopped. \(ReleaseAccess.failure(error)) What arrived is kept, and the next try continues from there.")
             }
         }
         report(.verifying)
