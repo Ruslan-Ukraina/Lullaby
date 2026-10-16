@@ -718,6 +718,25 @@ fi
 # files stay as shipped. Each renderer directory links into runners/current, so
 # it follows an engine switch. DXMT is the default for D3D10 and D3D11.
 renderers="$support/renderers"
+# NVIDIA's secure loader (nvapi64.lib, in Streamline and in games that call NVAPI
+# directly) loads nvapi64.dll only through the copy in system32, and refuses a copy
+# that is not the one the renderer provides: Dormison's engine places GPTK 4.0 beta 2's
+# there at wineboot, and with another toolkit active NvAPI_Initialize answered
+# NVAPI_LIBRARY_NOT_FOUND, so Streamline saw no NVIDIA GPU and games hid DLSS. Apple's
+# Read Me says the same: nvapi64.dll and nvngx.dll go into the prefix's system32.
+# $1: directory holding nvapi64.dll; $2: the file that becomes nvngx.dll.
+place_nvidia_dlls() {
+  [ -n "$WINEPREFIX" ] && [ -d "$WINEPREFIX/drive_c/windows/system32" ] || return 0
+  for pair in "nvapi64.dll:$1/nvapi64.dll" "nvngx.dll:$2"; do
+    dst="$WINEPREFIX/drive_c/windows/system32/${pair%%:*}"
+    src="${pair#*:}"
+    [ -f "$src" ] || continue
+    cmp -s "$src" "$dst" && continue
+    cp -f "$src" "$dst" || return 1
+    echo "dlss: $(basename "$dst") in system32 <- $src" >> "$log" 2>&1 || true
+  done
+}
+
 stage_renderer() {
   dir="$renderers/$1"
   case "$1" in
@@ -734,6 +753,7 @@ stage_renderer() {
         for f in nvapi64 nvngx; do
           ln -sfn "$engine_root/dxmt/$f.dll" "$dir/x86_64-windows/$f.dll"
         done
+        place_nvidia_dlls "$engine_root/dxmt" "$engine_root/dxmt/nvngx.dll" || return 1
       fi
       # Wine looks for a builtin's unix half beside the directory it found the
       # PE in, and winemetal's is the engine's (32 bit games reach it via wow64).
@@ -805,6 +825,7 @@ stage_renderer() {
       done
       [ -n "$names" ] || return 1
       renderer_overrides="$names=b"
+      place_nvidia_dlls "$tk/lib/wine/x86_64-windows" "$tk/lib/wine/x86_64-windows/nvngx-on-metalfx.dll" || return 1
       export SEVO_LIBD3DSHARED_PATH="$ext/libd3dshared.dylib" D3DM_WINE_UNIX_CALL=1
       ;;
     *) return 1 ;;
