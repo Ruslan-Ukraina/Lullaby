@@ -1417,3 +1417,7 @@ PEAK, DXMT, меню; `perf/peak-ab.sh` чередует «исходно → и
 - Dormison r5 (`dlls/ntdll/unix/loader.c`) захардкодил 0x230/0x148: `calloc(0x230)` → beta 3 читает 0x18 байт чужой кучи; колбэки пишутся на 8 байт раньше, затирая `pack_FindBestWindowHWND`. Отсюда падение (`os_unfair_lock` по 0x3c, `-[__NSCFConstantString release]` в r11).
 - Исправление: `engine-fixes/patches/ntdll.so/0002-ntdll-d3dmetal-4b3-dispatch-layout.patch` — таблица с запасом (0x400), раскладка по заполненному полю 0x148. Приходит через мост, как `0001`, движок не пересобирается. Колбэк `FindBestWindowHWND` пока пуст (NULL → `STATUS_ENTRYPOINT_NOT_FOUND`).
 - Дерево r5 для сборки: `scratch/dormison-r5-src` / `-build` (старое `scratch/dormison-src` стояло на b-коммите).
+- **Проверено (21:20–21:47):** локальная сборка `ntdll.so` (чистая = релиз r5 по инструкциям; с 0001+0002) → RE9 на **4.0 beta 3**: меню, ~112 FPS, GPU 9.2 мс (beta 2: 14 мс); beta 2 на том же ntdll — меню, ~109 FPS.
+- **Мост `bridge-dormison-r5-3`** (run 38955777457): собран, протестирован, подписан, опубликован; `bridge-manifest.json` serial 3, ntdll.so — патчи 0001+0002. Поставлен на Mac владельца штатно (`--release bridge-install`, previous = r5-2, Steam не закрывался) → RE9 на beta 3 с ntdll.so из CI (`c789d605…`): меню, ~111 FPS. Снимки `scratch/re9-b3fix.png`, `re9-b2fix.png`, `re9-r5-3.png`.
+- У владельца активна beta 3; beta 2 — `scratch/backups/gptk-4.0-beta-2`.
+- Дальше: колбэк `FindBestWindowHWND` (пока NULL); импорт GPTK не удаляет рабочую версию до проверки (BACKLOG).
