@@ -13,3 +13,10 @@ workflow applies them. Each applies on top of `patches/winemac.so/0001..0003`.
   views above the game's Metal view (WoWSilicon/WoWSilicon#25). Wine refills two of them
   within a second; still "Composited". Next step would be to stop Wine filling them while a
   metal view covers the window, and `LULLABY_TEST_NO_EDR=1` (diagnostic, wrong colours).
+- `0004-winemac-lullaby-direct-display-re9.patch` — the source-level fix, only for `re9.exe`
+  (image name checked in `macdrv_init`) or `LULLABY_DIRECT_DISPLAY=1`: while the game's Metal
+  view covers its window, `WineContentView` keeps the surface image out of its layer
+  (`updateLayer`), the black backgrounds stay off, the metal layer is opaque and the content
+  view reports itself opaque so AppKit does not fill the window frame. Builds clean against
+  r6 (2026-10-17); the first run showed "direct display: on for this program", but the Mac
+  locked before the HUD could be read — not yet verified.
