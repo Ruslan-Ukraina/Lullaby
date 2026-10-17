@@ -421,6 +421,16 @@ extension SettingCopy {
                  uk: "На весь екран macOS вмикає для гри ігровий режим: процесор і відеокарта дістаються їй першою, а програми у фоні притримуються. Під час стріму чи запису це гальмує OBS, VTuber-модель тощо. Вимкнено — пакет гри відмовляється від ігрового режиму. Діє з наступного запуску.",
                  ru: "На весь экран macOS включает для игры игровой режим: процессор и видеокарта достаются ей первой, а программы в фоне придерживаются. Во время стрима или записи это тормозит OBS, VTuber-модель и т. п. Выключено — пакет игры отказывается от игрового режима. Действует со следующего запуска.")))
 
+    static let frameLimit = SettingCopy(
+        L10n("Frame rate limit", uk: "Обмеження FPS", ru: "Ограничение FPS"),
+        caption: L10n("Frames on the screen per second at most. Leaves the GPU room for streaming.",
+                      uk: "Не більше стільки кадрів на екрані за секунду. Лишає відеокарті запас для стріму.",
+                      ru: "Не больше стольких кадров на экране в секунду. Оставляет видеокарте запас для стрима."),
+        help: SettingHelp(
+            L10n("Dormison holds every frame until its turn. The limit counts frames on the screen: with frame generation the game itself draws half of them. A game that always reaches its limit runs evenly, and while you stream the GPU keeps room for OBS and a VTuber model, so frames stop arriving late. Pick a little under what the game holds where it is heaviest.",
+                 uk: "Dormison притримує кожен кадр до його черги. Обмеження рахує кадри на екрані: з генерацією кадрів гра сама малює половину. Гра, що завжди сягає обмеження, йде рівно, а під час стріму відеокарта зберігає запас для OBS і VTuber-моделі, тож кадри перестають запізнюватися. Обирайте трохи нижче за те, що гра тримає там, де найважче.",
+                 ru: "Dormison придерживает каждый кадр до его очереди. Ограничение считает кадры на экране: с генерацией кадров игра сама рисует половину. Игра, которая всегда достигает ограничения, идёт ровно, а во время стрима видеокарта сохраняет запас для OBS и VTuber-модели, так что кадры перестают опаздывать. Выбирайте чуть ниже того, что игра держит там, где тяжелее всего.")))
+
     static let forceVsync = SettingCopy(
         L10n("No frame tearing", uk: "Без розривів кадру", ru: "Без разрывов кадра"),
         caption: L10n("Keeps D3DMetal's picture in step with the display, even with frame generation on.",

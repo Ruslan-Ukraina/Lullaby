@@ -30,7 +30,7 @@ struct SettingCatalogTests {
         }
         #expect(advanced(.picture) == [.upscaler, .windows, .filter, .dlss])
         #expect(advanced(.mouse) == [.mouse])
-        #expect(advanced(.performance) == [.tuning, .unifiedMemory, .avx, .gameMode])
+        #expect(advanced(.performance) == [.tuning, .unifiedMemory, .avx, .gameMode, .frameLimit])
         #expect(advanced(.oldGames) == [.emulateModeset, .largeAddressAware])
         #expect(advanced(.diagnostics) == [.msync, .forceVsync, .lowLatency])
     }
@@ -50,6 +50,7 @@ struct SettingCatalogTests {
         (.unifiedMemory, .bool(true), "SEVO_FORCE_UMA=1"),
         (.avx, .bool(true), "ROSETTA_ADVERTISE_AVX=1"),
         (.gameMode, .bool(false), "LULLABY_GAME_MODE=0"),
+        (.frameLimit, .string("60"), "SEVO_FPS_LIMIT=60"),
         (.emulateModeset, .bool(true), "LULLABY_EMULATE_MODESET=1"),
         (.largeAddressAware, .bool(true), "SEVO_LARGE_ADDRESS_AWARE=1"),
         (.forceVsync, .bool(true), "LULLABY_FORCE_VSYNC=1"),

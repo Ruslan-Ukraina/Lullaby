@@ -45,6 +45,7 @@ public enum ConfigMaterializer {
         var lines = [
             "# Lullaby settings for every game. A game's own values: .sevo/apps/<program>.env",
             "SEVO_RESIZABLE_WINDOWS=\(stack[\.windows].rawValue)",
+            "SEVO_FPS_LIMIT=\(stack[\.frameLimit].envValue)",
             "SEVO_UPSCALER=\(stack[\.upscaler].rawValue)",
             "SEVO_FINAL_FILTER=\(stack[\.filter].rawValue)",
             "SEVO_LINEAR_MOUSE=\(stack[\.mouse] == .linear ? "1" : "0")",
@@ -77,6 +78,7 @@ public enum ConfigMaterializer {
         var lines = ["# app \(appID)" + (game.name.map { " \($0)" } ?? "")]
         if let renderer = game.renderer { lines.append("LULLABY_RENDERER=\(renderer.rawValue)") }
         if let windows = game.windows { lines.append("SEVO_RESIZABLE_WINDOWS=\(windows.rawValue)") }
+        if let limit = game.frameLimit { lines.append("SEVO_FPS_LIMIT=\(limit.envValue)") }
         if let upscaler = game.upscaler { lines.append("SEVO_UPSCALER=\(upscaler.rawValue)") }
         if let filter = game.filter { lines.append("SEVO_FINAL_FILTER=\(filter.rawValue)") }
         // The system curve over a linear shared value needs the key written: bottle.env

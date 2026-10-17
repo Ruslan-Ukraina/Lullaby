@@ -11,7 +11,7 @@ public enum SettingID: String, CaseIterable, Sendable, Codable {
     case renderer, retina, metalfx, upscaler, fps
     case windows, filter, dlss
     case mouse
-    case tuning, unifiedMemory, avx, gameMode
+    case tuning, unifiedMemory, avx, gameMode, frameLimit
     case emulateModeset, largeAddressAware
     case msync
     case forceVsync, lowLatency
@@ -223,6 +223,11 @@ public enum SettingCatalog {
         .flag(.avx, in: .performance, key: \.avx, copy: .avx, carrier: .environment(["ROSETTA_ADVERTISE_AVX"])),
         // The run script writes the game's bundle (compat_run.sh): LSSupportsGameMode.
         .flag(.gameMode, in: .performance, key: \.gameMode, copy: .gameMode, carrier: .environment(["LULLABY_GAME_MODE"])),
+        .choice(
+            .frameLimit, in: .performance, key: \.frameLimit,
+            labels: [(.off, L10n("No limit", uk: "Без обмеження", ru: "Без ограничения"))]
+                + FrameLimit.allCases.filter { $0 != .off }.map { ($0, L10n.same($0.rawValue)) },
+            copy: .frameLimit, carrier: .environment(["SEVO_FPS_LIMIT"])),
         .flag(.emulateModeset, in: .oldGames, key: \.emulateModeset, copy: .emulateModeset,
               carrier: .registry(values: ["EmulateModeset"], marker: "LULLABY_EMULATE_MODESET")),
         .flag(.largeAddressAware, in: .oldGames, key: \.largeAddressAware, copy: .largeAddressAware,

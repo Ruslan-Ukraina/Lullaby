@@ -1,5 +1,5 @@
 diff --git a/dlls/winemac.drv/d3dmetal_objc.m b/dlls/winemac.drv/d3dmetal_objc.m
-index 777a351e975..93070c3c9ea 100644
+index 777a351e975..7942d075858 100644
 --- a/dlls/winemac.drv/d3dmetal_objc.m
 +++ b/dlls/winemac.drv/d3dmetal_objc.m
 @@ -36,6 +36,17 @@
@@ -143,7 +143,7 @@ index 777a351e975..93070c3c9ea 100644
  @implementation WineMetalLayer
  {
      os_unfair_lock stateLock;
-@@ -53,6 +180,21 @@ @implementation WineMetalLayer
+@@ -53,6 +180,36 @@ @implementation WineMetalLayer
      struct sevo_limiter limiter;
  }
  
@@ -160,12 +160,27 @@ index 777a351e975..93070c3c9ea 100644
 +    {
 +        lullaby_layer_switches();
 +        [super setDisplaySyncEnabled:lullaby_force_vsync ? YES : enabled];
++        if (lullaby_force_vsync && self.maximumDrawableCount < 3) [super setMaximumDrawableCount:3];
++    }
++
++    /* With the layer in step with the display a frame waits for a refresh before its
++       drawable comes back, so two drawables leave the GPU waiting for one: with
++       LULLABY_FORCE_VSYNC the layer keeps at least three. The count D3DMetal asked for
++       goes to the log once. */
++    - (void) setMaximumDrawableCount:(NSUInteger)count
++    {
++        static int logged;
++        lullaby_layer_switches();
++        if (!logged++)
++            fprintf(stderr, "lullaby: D3DMetal layer: %lu drawables asked for%s\n", (unsigned long)count,
++                    lullaby_force_vsync && count < 3 ? ", 3 given (force vsync)" : "");
++        [super setMaximumDrawableCount:lullaby_force_vsync && count < 3 ? 3 : count];
 +    }
 +
      - (void) dealloc
      {
          objc_storeWeak(&_wineView, nil);
-@@ -144,7 +286,14 @@ - (void) setWineView:(NSView*)view
+@@ -144,7 +301,14 @@ - (void) setWineView:(NSView*)view
              sevo_presenter_release(presenter);
          }
          else

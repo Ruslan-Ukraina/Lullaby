@@ -25,6 +25,17 @@ public enum WindowTreatment: String, Codable, CaseIterable, Sendable {
     }
 }
 
+/// Dormison's frame limiter (`SEVO_FPS_LIMIT`, winemac `sevo_limiter`): frames on the screen
+/// per second, generated ones included.
+public enum FrameLimit: String, Codable, CaseIterable, Sendable {
+    case off
+    case f30 = "30", f40 = "40", f45 = "45", f50 = "50", f60 = "60"
+    case f80 = "80", f90 = "90", f100 = "100", f120 = "120"
+
+    /// The env value: 0 is no limit.
+    public var envValue: String { self == .off ? "0" : rawValue }
+}
+
 /// Dormison's `Upscaler`. Anime4K and CuNNy come with shader packages, which this
 /// engine build does not ship (SEVO_SHADER_DIR), so they are not offered yet.
 public enum UpscalerChoice: String, Codable, CaseIterable, Sendable {
@@ -165,6 +176,8 @@ public struct ConfigValues: Codable, Equatable, Sendable {
     public var avx: Bool?
     /// macOS Game Mode for the game's bundle; off keeps streaming apps at full speed.
     public var gameMode: Bool?
+    /// Frames on the screen per second at most (Dormison's limiter); off for none.
+    public var frameLimit: FrameLimit?
     /// Game level only, a debugging switch: msync+ stays on otherwise.
     public var msync: Bool?
     /// The D3DMetal layer stays in step with the display (winemac.so fix 0003).
@@ -210,6 +223,7 @@ public enum ConfigDefaults {
         v.largeAddressAware = false
         v.avx = false
         v.gameMode = true
+        v.frameLimit = .off
         v.msync = true
         v.forceVsync = false
         v.lowLatency = false
