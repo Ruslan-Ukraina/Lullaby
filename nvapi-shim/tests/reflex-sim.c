@@ -9,7 +9,8 @@
  *
  * Usage: [SIM_GPU_MS=20] [SIM_CPU_MS=8] [SIM_VSYNC_HZ=0] reflex-sim.exe [0|1]   1 (default)
  * turns low latency mode on; the variables set the frame costs and a display the frames
- * wait for (V-Sync: shown on its next refresh).
+ * wait for (V-Sync: shown on its next refresh, SIM_LAG_MS later for a compositor; the
+ * swapchain image is free again once shown).
  * Prints "frames N fps F latency L ms" over the last half of the run. */
 
 #define WIN32_LEAN_AND_MEAN
@@ -21,7 +22,7 @@
 #include <string.h>
 #include <math.h>
 
-static int GPU_MS = 20, CPU_MS = 8, VSYNC_HZ = 0;
+static int GPU_MS = 20, CPU_MS = 8, VSYNC_HZ = 0, LAG_MS = 0;
 #define QUEUE 3
 #define FRAMES 300
 
@@ -81,8 +82,9 @@ static DWORD WINAPI display(void *arg)
     for (int i = 0; i < FRAMES; i++)
     {
         WaitForSingleObject(to_display, INFINITE);
-        while (now_ms() < shown_at[i]) Sleep(0);
-        gpu_done[i] = shown_at[i];
+        while (now_ms() < shown_at[i] + LAG_MS) Sleep(0);
+        gpu_done[i] = shown_at[i] + LAG_MS;
+        ReleaseSemaphore(slots, 1, NULL);
         if (feed) { feed->ring[i % 256].present_ns = now_ns(); MemoryBarrier(); feed->presented++; }
     }
     return 0;
@@ -103,6 +105,7 @@ static DWORD WINAPI gpu(void *arg)
             last_shown = at;
             shown_at[i] = at;
             ReleaseSemaphore(to_display, 1, NULL);
+            continue;
         }
         else if (feed) { feed->ring[i % 256].present_ns = now_ns(); MemoryBarrier(); feed->presented++; }
         ReleaseSemaphore(slots, 1, NULL);
@@ -116,6 +119,7 @@ int main(int argc, char **argv)
     if (getenv("SIM_GPU_MS")) GPU_MS = atoi(getenv("SIM_GPU_MS"));
     if (getenv("SIM_CPU_MS")) CPU_MS = atoi(getenv("SIM_CPU_MS"));
     if (getenv("SIM_VSYNC_HZ")) VSYNC_HZ = atoi(getenv("SIM_VSYNC_HZ"));
+    if (getenv("SIM_LAG_MS")) LAG_MS = atoi(getenv("SIM_LAG_MS"));
     HMODULE nv = LoadLibraryA("nvapi64.dll");
     query_fn q = nv ? (query_fn)GetProcAddress(nv, "nvapi_QueryInterface") : NULL;
     set_sleep_mode_fn set_mode = q ? (set_sleep_mode_fn)q(0xac1ca9e0) : NULL;

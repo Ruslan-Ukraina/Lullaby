@@ -378,7 +378,12 @@ static NvAPI_Status __cdecl lb_Sleep(void *dev)
         log_line("reflex: no present feed (an upscaler or another renderer?), frames go unpaced");
         warned_no_feed = TRUE;
     }
-    if (on && f && frame_no) need = acquired_at_release[frame_no % FRAMES];
+    /* Frames up to N-2 on the screen, or with V-Sync up to N-3: a frame then waits for a
+       refresh and macOS's compositor after the GPU, and two in flight would leave the GPU
+       idle and the display at half its rate (RE9's menu sat at 60 on a 120 Hz screen). */
+    if (on && f && frame_no)
+        need = synced > 0.7 && frame_no > 1 ? acquired_at_release[(frame_no - 1) % FRAMES]
+                                            : acquired_at_release[frame_no % FRAMES];
     ReleaseSRWLockExclusive(&reflex_lock);
 
     start = now_ns();
