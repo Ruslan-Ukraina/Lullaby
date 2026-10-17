@@ -125,14 +125,25 @@ int main(int argc, char **argv)
     set_sleep_mode_fn set_mode = q ? (set_sleep_mode_fn)q(0xac1ca9e0) : NULL;
     sleep_fn nv_sleep = q ? (sleep_fn)q(0x852cd1d2) : NULL;
     marker_fn set_marker = q ? (marker_fn)q(0xd9984c05) : NULL;
-    int dev = 1;
+    int fake_dev = 1;
+    void *dev = &fake_dev;
 
     QueryPerformanceFrequency(&freq);
     timeBeginPeriod(1);
     open_feed();
+    /* A real D3D12 device where one can be made (D3DMetal's NVAPI looks at it). */
+    {
+        typedef HRESULT (WINAPI *create_fn)(void *, int, const GUID *, void **);
+        static const GUID iid_device = {0x189819f1,0x1db6,0x4b57,{0xbe,0x54,0x18,0x21,0x33,0x9b,0x85,0xf7}};
+        HMODULE d3d12 = LoadLibraryA("d3d12.dll");
+        create_fn create = d3d12 ? (create_fn)GetProcAddress(d3d12, "D3D12CreateDevice") : NULL;
+        void *device = NULL;
+        if (create && SUCCEEDED(create(NULL, 0xc000 /* 12_0 */, &iid_device, &device)) && device) dev = device;
+        printf("device %s\n", dev == &fake_dev ? "fake" : "D3D12");
+    }
     if (!set_mode || !nv_sleep || !set_marker) { printf("no Reflex functions (nvapi64 %p)\n", nv); return 1; }
     sleep_mode m = { sizeof(sleep_mode) | (1u << 16), (UINT8)on, 0, 0, 1, 0, {0} };
-    printf("SetSleepMode %d\n", set_mode(&dev, &m));
+    printf("SetSleepMode %d\n", set_mode(dev, &m));
 
     slots = CreateSemaphoreA(NULL, QUEUE, QUEUE, NULL);
     work = CreateSemaphoreA(NULL, 0, FRAMES, NULL);
@@ -143,15 +154,15 @@ int main(int argc, char **argv)
     for (int i = 0; i < FRAMES; i++)
     {
         marker mk = { sizeof(marker) | (1u << 16), (UINT64)i + 1, 0, 0, {0} };
-        nv_sleep(&dev);
+        nv_sleep(dev);
         sim_start[i] = now_ms();
-        mk.type = 0; set_marker(&dev, &mk);          /* SIMULATION_START */
+        mk.type = 0; set_marker(dev, &mk);          /* SIMULATION_START */
         spin(CPU_MS);
-        mk.type = 4; set_marker(&dev, &mk);          /* PRESENT_START */
+        mk.type = 4; set_marker(dev, &mk);          /* PRESENT_START */
         WaitForSingleObject(slots, INFINITE);        /* Present: blocks on a full queue */
         if (feed) { feed->ring[i % 256].acquire_ns = now_ns(); MemoryBarrier(); feed->acquired++; }
         ReleaseSemaphore(work, 1, NULL);
-        mk.type = 5; set_marker(&dev, &mk);          /* PRESENT_END */
+        mk.type = 5; set_marker(dev, &mk);          /* PRESENT_END */
     }
     Sleep(GPU_MS * (QUEUE + 2));
 

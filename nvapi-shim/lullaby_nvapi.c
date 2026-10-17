@@ -93,11 +93,21 @@ typedef struct {
 } present_feed;
 
 typedef void *(__cdecl *query_fn)(unsigned int);
+typedef NvAPI_Status (__cdecl *dev_params_fn)(void *, void *);
+typedef NvAPI_Status (__cdecl *dev_fn)(void *);
+typedef NvAPI_Status (__cdecl *queue_type_fn)(void *, int);
 typedef void *(__cdecl *direct_fn)(void *, void *, void *, void *);
 
 static INIT_ONCE init_once = INIT_ONCE_STATIC_INIT;
 static query_fn real_query;
 static direct_fn real_direct;
+/* D3DMetal's own Reflex entry points. Its frame generation listens to them (the out-of-band
+   queue Streamline renders DLSS-G on, the frame markers), so every call goes on to it too;
+   answering them here alone left a Metal 4 queue waiting on an event that never came and
+   froze the picture for half a minute at a time. */
+static dev_params_fn real_set_sleep_mode, real_set_latency_marker, real_set_async_frame_marker;
+static dev_fn real_sleep;
+static queue_type_fn real_notify_out_of_band;
 static BOOL reflex_here = TRUE;
 static HANDLE log_file = INVALID_HANDLE_VALUE;
 static SRWLOCK log_lock = SRWLOCK_INIT;
@@ -157,6 +167,14 @@ static BOOL CALLBACK init(INIT_ONCE *once, void *param, void **ctx)
     }
     real_query = (query_fn)GetProcAddress(real, "nvapi_QueryInterface");
     real_direct = (direct_fn)GetProcAddress(real, "nvapi_Direct_GetMethod");
+    if (real_query)
+    {
+        real_set_sleep_mode = (dev_params_fn)real_query(ID_SET_SLEEP_MODE);
+        real_sleep = (dev_fn)real_query(ID_SLEEP);
+        real_set_latency_marker = (dev_params_fn)real_query(ID_SET_LATENCY_MARKER);
+        real_set_async_frame_marker = (dev_params_fn)real_query(ID_SET_ASYNC_FRAME_MARKER);
+        real_notify_out_of_band = (queue_type_fn)real_query(ID_NOTIFY_OUT_OF_BAND_QUEUE);
+    }
     return TRUE;
 }
 
@@ -308,6 +326,7 @@ static NvAPI_Status __cdecl lb_SetSleepMode(void *dev, NV_SET_SLEEP_MODE_PARAMS 
     low_latency = !!p->bLowLatencyMode;
     interval_us = p->minimumIntervalUs;
     ReleaseSRWLockExclusive(&reflex_lock);
+    if (real_set_sleep_mode) real_set_sleep_mode(dev, p);
     return NVAPI_OK;
 }
 
@@ -452,6 +471,7 @@ static NvAPI_Status __cdecl lb_Sleep(void *dev)
         stat_latency_ns = stat_latency_samples = 0;
     }
     ReleaseSRWLockExclusive(&reflex_lock);
+    if (real_sleep) real_sleep(dev);
     return NVAPI_OK;
 }
 
@@ -502,6 +522,7 @@ static NvAPI_Status __cdecl lb_SetLatencyMarker(void *dev, NV_LATENCY_MARKER_PAR
     default: break;
     }
     ReleaseSRWLockExclusive(&reflex_lock);
+    if (real_set_latency_marker) real_set_latency_marker(dev, p);
     return NVAPI_OK;
 }
 
@@ -526,11 +547,13 @@ static NvAPI_Status __cdecl lb_GetLatency(void *dev, NV_LATENCY_RESULT_PARAMS *p
 
 static NvAPI_Status __cdecl lb_SetAsyncFrameMarker(void *queue, void *params)
 {
+    if (real_set_async_frame_marker) return real_set_async_frame_marker(queue, params);
     return queue && params ? NVAPI_OK : NVAPI_INVALID_ARGUMENT;
 }
 
 static NvAPI_Status __cdecl lb_NotifyOutOfBandCommandQueue(void *queue, int type)
 {
+    if (real_notify_out_of_band) return real_notify_out_of_band(queue, type);
     return queue ? NVAPI_OK : NVAPI_INVALID_ARGUMENT;
 }
 
@@ -569,7 +592,7 @@ void *__cdecl nvapi_QueryInterface(unsigned int id)
     ReleaseSRWLockExclusive(&log_lock);
     if (first)
         log_line("query 0x%08x %s: %s", id, name_of(id),
-                 ours ? (real_fn ? "Lullaby (D3DMetal has one too)" : "Lullaby")
+                 ours ? (real_fn ? "Lullaby, then D3DMetal's" : "Lullaby")
                       : (real_fn ? "D3DMetal" : "missing"));
     return ours ? ours : real_fn;
 }
