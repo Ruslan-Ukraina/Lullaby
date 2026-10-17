@@ -167,7 +167,7 @@ public struct ConfigValues: Codable, Equatable, Sendable {
     public var msync: Bool?
     /// The D3DMetal layer stays in step with the display (winemac.so fix 0003).
     public var forceVsync: Bool?
-    /// Two frames in flight and presents held under the refresh rate (winemac.so fix 0003).
+    /// NVIDIA Reflex by Lullaby's nvapi64.dll, fed by the D3DMetal layer (winemac.so fix 0003).
     public var lowLatency: Bool?
 
     /// Game level only: the lowercase executables the game is known to run.

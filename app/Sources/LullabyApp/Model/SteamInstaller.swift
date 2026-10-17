@@ -62,6 +62,7 @@ enum SteamInstaller {
         overlayShim: URL = SupportPaths.overlayShim,
         iconmaker: URL = SupportPaths.iconmaker,
         appinfo: URL = SupportPaths.appinfo,
+        nvapiShim: URL = SupportPaths.nvapiShim,
         settingsCLI: URL = SupportPaths.settingsCLI,
         deployedVersion: URL = SupportPaths.deployedVersion,
         backups: URL = SupportPaths.backups,
@@ -120,6 +121,7 @@ enum SteamInstaller {
         try install(payload.overlayShim, at: overlayShim)
         try install(payload.iconmaker, at: iconmaker)
         try install(payload.appinfo, at: appinfo)
+        try install(payload.nvapiShim, at: nvapiShim)
         try install(payload.settingsCLI, at: settingsCLI)
         try installRunScript(payload.runScript, at: runScript)
 

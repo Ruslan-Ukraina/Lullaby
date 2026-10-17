@@ -130,8 +130,12 @@ jobs:
           done
           echo "BRIDGE_FEED_DIR=$dir" >> "$GITHUB_ENV"
 
+      # Lullaby's nvapi64.dll is a Windows DLL (nvapi-shim/).
+      - name: Install mingw-w64
+        run: brew install mingw-w64
+
       - name: Build the dylib, the shim and the helpers
-        run: make all overlay-shim iconmaker appinfo
+        run: make all overlay-shim iconmaker appinfo nvapi-shim
 
       - name: Build Lullaby.app
         run: |

@@ -1,4 +1,4 @@
-/* What a D3D12 game is told about ray tracing: the adapter, the raytracing tier
+/* What a D3D12 game is told about ray tracing: the adapter and its memory, the raytracing tier
    (D3D12_OPTIONS5) and the features RT paths commonly also need. Built with mingw,
    run under the game's renderer; prints one line per fact. */
 #define COBJMACROS
@@ -8,6 +8,7 @@
 #include <d3d12.h>
 
 static const GUID IID_F = {0x7b7166ec,0x21c7,0x44ae,{0xb2,0x1a,0xc9,0xae,0x32,0x1a,0xe3,0x69}};
+static const GUID IID_A3 = {0x645967a4,0x1392,0x4310,{0xa7,0x98,0x80,0x53,0xce,0x3e,0x93,0xfd}};
 static const GUID IID_Dev = {0x189819f1,0x1db6,0x4b57,{0xbe,0x54,0x18,0x21,0x33,0x9b,0x85,0xf7}};
 
 int main(void)
@@ -17,6 +18,16 @@ int main(void)
     if (FAILED(hr) || IDXGIFactory_EnumAdapters(f, 0, &a) == DXGI_ERROR_NOT_FOUND) { printf("no adapter %08lx\n", hr); return 1; }
     IDXGIAdapter_GetDesc(a, &desc);
     printf("adapter vendor 0x%04x device 0x%04x %ls\n", desc.VendorId, desc.DeviceId, desc.Description);
+    printf("memory dedicated %llu MB, dedicated system %llu MB, shared %llu MB\n",
+           (unsigned long long)desc.DedicatedVideoMemory >> 20, (unsigned long long)desc.DedicatedSystemMemory >> 20,
+           (unsigned long long)desc.SharedSystemMemory >> 20);
+    {
+        IDXGIAdapter3 *a3 = 0; DXGI_QUERY_VIDEO_MEMORY_INFO mi = {0};
+        if (SUCCEEDED(IDXGIAdapter_QueryInterface(a, &IID_A3, (void **)&a3)) &&
+            SUCCEEDED(IDXGIAdapter3_QueryVideoMemoryInfo(a3, 0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &mi)))
+            printf("local budget %llu MB, usage %llu MB\n", (unsigned long long)mi.Budget >> 20, (unsigned long long)mi.CurrentUsage >> 20);
+        else printf("no IDXGIAdapter3 memory info\n");
+    }
     hr = D3D12CreateDevice((IUnknown *)a, D3D_FEATURE_LEVEL_12_0, &IID_Dev, (void **)&d);
     printf("D3D12CreateDevice %08lx\n", hr);
     if (FAILED(hr)) return 1;

@@ -65,7 +65,7 @@ TARGET      := $(OUT_DIR)/lullaby.dylib
 OBJS := $(patsubst %.c,$(OUT_DIR)/%.o,$(SRCS)) $(patsubst %.m,$(OUT_DIR)/%.o,$(OBJC_SRCS))
 DEPS := $(OBJS:.o=.d)
 
-.PHONY: all clean rebuild dobby deploy dylib-install sigcheck app-payload app app-zip app-config \
+.PHONY: all nvapi-shim clean rebuild dobby deploy dylib-install sigcheck app-payload app app-zip app-config \
         anchorcheck callscheck sigdb-fixtures webpatch-fixtures peicon-fixtures panel-behavior app-tests launch-shell \
         tests-list overlay-shim overlay-shim-install overlay-shim-tests \
         overlay-shim-bench iconmaker icon \
@@ -505,6 +505,16 @@ $(APPINFO): helpers/appinfo.swift
 	swiftc -O -target $(ARCH)-apple-macos$(MIN_VER) -o $@ $<
 	@echo "==> Built $@"
 
+# Lullaby's nvapi64.dll (nvapi-shim/): NVIDIA Reflex in front of D3DMetal's. Needs mingw-w64.
+NVAPI_SHIM := $(OUT_DIR)/lullaby-nvapi64.dll
+
+nvapi-shim: $(NVAPI_SHIM)
+
+$(NVAPI_SHIM): nvapi-shim/lullaby_nvapi.c nvapi-shim/nvapi_names.h nvapi-shim/nvapi64.def nvapi-shim/build.sh
+	@mkdir -p $(OUT_DIR)
+	nvapi-shim/build.sh $@
+	@echo "==> Built $@"
+
 helpers-install: $(ICONMAKER) $(APPINFO)
 	$(call install_atomically,$(ICONMAKER),$(SUPPORT_DIR)/iconmaker)
 	$(call install_atomically,$(APPINFO),$(SUPPORT_DIR)/appinfo)
@@ -570,13 +580,14 @@ bridge:
 	steam-shim/build.sh
 	@echo "==> Built the bridge, now run: $(MAKE) app-payload"
 
-app-payload: $(TARGET) $(OVERLAY_SHIM) $(ICONMAKER) $(APPINFO)
+app-payload: $(TARGET) $(OVERLAY_SHIM) $(ICONMAKER) $(APPINFO) $(NVAPI_SHIM)
 	@mkdir -p "$(APP_PAYLOAD)/signatures/macos.arm64"
 	@mkdir -p "$(APP_PAYLOAD)/bridge"
 	cp -f $(TARGET) "$(APP_PAYLOAD)/lullaby.dylib"
 	cp -f $(OVERLAY_SHIM) "$(APP_PAYLOAD)/overlay-shim.dylib"
 	cp -f $(ICONMAKER) "$(APP_PAYLOAD)/iconmaker"
 	cp -f $(APPINFO) "$(APP_PAYLOAD)/appinfo"
+	cp -f $(NVAPI_SHIM) "$(APP_PAYLOAD)/lullaby-nvapi64.dll"
 	swift build --package-path app -c release --product lullaby-settings
 	cp -f "$$(swift build --package-path app -c release --show-bin-path)/lullaby-settings" \
 		"$(APP_PAYLOAD)/lullaby-settings"

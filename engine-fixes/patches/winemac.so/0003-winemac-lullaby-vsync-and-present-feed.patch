@@ -1,0 +1,204 @@
+diff --git a/dlls/winemac.drv/d3dmetal_objc.m b/dlls/winemac.drv/d3dmetal_objc.m
+index 777a351e975..93070c3c9ea 100644
+--- a/dlls/winemac.drv/d3dmetal_objc.m
++++ b/dlls/winemac.drv/d3dmetal_objc.m
+@@ -36,6 +36,17 @@
+ #include "sevo_stats.h"
+ #import <Metal/Metal.h>
+ #include <os/lock.h>
++#include <errno.h>
++#include <fcntl.h>
++#include <limits.h>
++#include <mach/mach_time.h>
++#include <stdatomic.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <sys/mman.h>
++#include <sys/stat.h>
++#include <unistd.h>
+ 
+ #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
+ 
+@@ -45,6 +56,122 @@
+ extern id objc_loadWeakRetained(id *location);
+ extern id objc_storeWeak(id *location, id obj);
+ 
++/* Lullaby's switches for the D3DMetal layer, read once per process from the env files.
++ *
++ * LULLABY_FORCE_VSYNC=1: the layer stays in step with the display. D3DMetal sets
++ *   displaySyncEnabled from the game's sync interval, and a game with frame generation
++ *   on presents with V-Sync off, which tears; the generated frames then go out paced.
++ * LULLABY_PRESENT_FEED=1: every drawable handed out and the moment it reached the screen
++ *   go into <prefix>/.sevo/run/<Windows pid>.present, a page of shared memory that
++ *   Lullaby's nvapi64.dll reads to end each frame for its NVIDIA Reflex pacing
++ *   (LatencyFleX). Times are mach_continuous_time in nanoseconds, the clock ntdll's
++ *   NtQueryPerformanceCounter counts in 100 ns. */
++static int lullaby_force_vsync = -1, lullaby_present_feed = -1;
++
++#define LULLABY_FEED_MAGIC 0x544e45535250424cull /* "LBPRSENT" */
++#define LULLABY_FEED_RING 256
++
++struct lullaby_feed
++{
++    uint64_t magic;
++    uint64_t version;
++    _Atomic uint64_t acquired;
++    _Atomic uint64_t presented;
++    struct { _Atomic uint64_t acquire_ns, present_ns; } ring[LULLABY_FEED_RING];
++};
++
++static struct lullaby_feed *lullaby_feed;
++static char lullaby_feed_path[PATH_MAX];
++static mach_timebase_info_data_t lullaby_timebase;
++
++/* macdrv_init's: the Windows process id, which names the page for the Windows side. */
++extern unsigned int lullaby_windows_pid;
++
++static int lullaby_env_on(const char *name)
++{
++    const char *value = getenv(name);
++    return value && value[0] == '1' && !value[1];
++}
++
++static uint64_t lullaby_now_ns(void)
++{
++    return mach_continuous_time() * lullaby_timebase.numer / lullaby_timebase.denom;
++}
++
++static void lullaby_feed_close(void)
++{
++    if (lullaby_feed_path[0]) unlink(lullaby_feed_path);
++}
++
++static void lullaby_feed_open(void)
++{
++    const char *prefix = getenv("WINEPREFIX");
++    struct lullaby_feed *mapped;
++    char dir[PATH_MAX];
++    int fd;
++
++    if (!prefix || prefix[0] != '/' || !lullaby_windows_pid) return;
++    if (snprintf(dir, sizeof(dir), "%s/.sevo/run", prefix) >= (int)sizeof(dir)) return;
++    if (mkdir(dir, 0700) && errno != EEXIST) return;
++    if (snprintf(lullaby_feed_path, sizeof(lullaby_feed_path), "%s/%u.present", dir, lullaby_windows_pid)
++        >= (int)sizeof(lullaby_feed_path)) goto fail;
++    if ((fd = open(lullaby_feed_path, O_RDWR | O_CREAT | O_TRUNC, 0600)) < 0) goto fail;
++    if (ftruncate(fd, sizeof(*mapped)))
++    {
++        close(fd);
++        goto fail_unlink;
++    }
++    mapped = mmap(NULL, sizeof(*mapped), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++    close(fd);
++    if (mapped == MAP_FAILED) goto fail_unlink;
++    mapped->version = 1;
++    __atomic_store_n(&mapped->magic, LULLABY_FEED_MAGIC, __ATOMIC_RELEASE);
++    lullaby_feed = mapped;
++    atexit(lullaby_feed_close);
++    return;
++fail_unlink:
++    unlink(lullaby_feed_path);
++fail:
++    lullaby_feed_path[0] = 0;
++}
++
++static void lullaby_layer_switches(void)
++{
++    static dispatch_once_t once;
++    dispatch_once(&once, ^{
++        mach_timebase_info(&lullaby_timebase);
++        lullaby_force_vsync = lullaby_env_on("LULLABY_FORCE_VSYNC");
++        lullaby_present_feed = lullaby_env_on("LULLABY_PRESENT_FEED");
++        if (lullaby_present_feed) lullaby_feed_open();
++        fprintf(stderr, "lullaby: D3DMetal layer: force vsync %d, present feed %s\n", lullaby_force_vsync,
++                lullaby_feed ? lullaby_feed_path : lullaby_present_feed ? "failed" : "off");
++    });
++}
++
++/* Notes a drawable handed out, and when it reaches the screen. A dropped drawable
++   (presentedTime 0) counts as done when its handler runs. */
++static void lullaby_feed_drawable(id<CAMetalDrawable> drawable)
++{
++    struct lullaby_feed *feed = lullaby_feed;
++    uint64_t index;
++
++    if (!feed || ![drawable respondsToSelector:@selector(addPresentedHandler:)]) return;
++    index = atomic_fetch_add_explicit(&feed->acquired, 1, memory_order_relaxed) % LULLABY_FEED_RING;
++    atomic_store_explicit(&feed->ring[index].present_ns, 0, memory_order_relaxed);
++    atomic_store_explicit(&feed->ring[index].acquire_ns, lullaby_now_ns(), memory_order_release);
++    [drawable addPresentedHandler:^(id<MTLDrawable> shown) {
++        uint64_t now = lullaby_now_ns(), at = now;
++        CFTimeInterval presented = shown.presentedTime;
++        if (presented > 0)
++        {
++            double ago = CACurrentMediaTime() - presented;
++            if (ago > 0 && ago < 1) at = now - (uint64_t)(ago * 1e9);
++        }
++        atomic_store_explicit(&feed->ring[index].present_ns, at, memory_order_release);
++        atomic_fetch_add_explicit(&feed->presented, 1, memory_order_release);
++    }];
++}
++
+ @implementation WineMetalLayer
+ {
+     os_unfair_lock stateLock;
+@@ -53,6 +180,21 @@ @implementation WineMetalLayer
+     struct sevo_limiter limiter;
+ }
+ 
++    - (id) init
++    {
++        if ((self = [super init]))
++        {
++            lullaby_layer_switches();
++        }
++        return self;
++    }
++
++    - (void) setDisplaySyncEnabled:(BOOL)enabled
++    {
++        lullaby_layer_switches();
++        [super setDisplaySyncEnabled:lullaby_force_vsync ? YES : enabled];
++    }
++
+     - (void) dealloc
+     {
+         objc_storeWeak(&_wineView, nil);
+@@ -144,7 +286,14 @@ - (void) setWineView:(NSView*)view
+             sevo_presenter_release(presenter);
+         }
+         else
++        {
+             drawable = [super nextDrawable];
++            if (drawable)
++            {
++                lullaby_layer_switches();
++                lullaby_feed_drawable(drawable);
++            }
++        }
+ 
+         if (drawable) sevo_stats_note_drawable();
+         return drawable;
+diff --git a/dlls/winemac.drv/macdrv_main.c b/dlls/winemac.drv/macdrv_main.c
+index 78219b9642d..83ea1bedb43 100644
+--- a/dlls/winemac.drv/macdrv_main.c
++++ b/dlls/winemac.drv/macdrv_main.c
+@@ -612,12 +612,17 @@ static void load_strings(struct localized_string *str)
+ /***********************************************************************
+  *              macdrv_init
+  */
++/* Lullaby: the Windows process id, which names the D3DMetal layer's present feed
++   (d3dmetal_objc.m). Read here, on a Wine thread, for the renderer's threads have no TEB. */
++unsigned int lullaby_windows_pid;
++
+ static NTSTATUS macdrv_init(void *arg)
+ {
+     struct init_params *params = arg;
+     SessionAttributeBits attributes;
+     OSStatus status;
+ 
++    lullaby_windows_pid = HandleToULong(NtCurrentTeb()->ClientId.UniqueProcess);
+     app_icon_callback = params->app_icon_callback;
+     app_quit_request_callback = params->app_quit_request_callback;
+     regcreateopenkeyexa_callback = params->regcreateopenkeyexa_callback;

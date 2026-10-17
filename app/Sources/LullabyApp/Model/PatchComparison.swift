@@ -41,6 +41,7 @@ enum PatchComparison {
         var overlayShim: URL
         var iconmaker: URL
         var appinfo: URL
+        var nvapiShim: URL
         var settingsCLI: URL
         var signatures: URL
 
@@ -52,6 +53,7 @@ enum PatchComparison {
                 overlayShim: SupportPaths.overlayShim,
                 iconmaker: SupportPaths.iconmaker,
                 appinfo: SupportPaths.appinfo,
+                nvapiShim: SupportPaths.nvapiShim,
                 settingsCLI: SupportPaths.settingsCLI,
                 signatures: SupportPaths.signatures
             )
@@ -95,6 +97,7 @@ enum PatchComparison {
             (installed.overlayShim, payload.overlayShim),
             (installed.iconmaker, payload.iconmaker),
             (installed.appinfo, payload.appinfo),
+            (installed.nvapiShim, payload.nvapiShim),
             (installed.settingsCLI, payload.settingsCLI),
         ]
         // A database the feed revised (signatures-manifest.json) is current, not stale.

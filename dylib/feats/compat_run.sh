@@ -784,7 +784,7 @@ stage_renderer() {
       done
       renderer_overrides="d3d11,d3d10core=b"
       ;;
-    d3dmetal)
+    d3dmetal|d3dmetal-reflex)
       # Apple's D3DMetal from the player's Game Porting Toolkit (lullaby/d3dmetal/<version>,
       # named by LULLABY_D3DMETAL in bottle.env). Its macOS half goes into the running
       # engine's wine/lib/external, where the engine's x86_64-unix/{d3d11,d3d12,dxgi,...}.so
@@ -827,6 +827,26 @@ stage_renderer() {
       renderer_overrides="$names=b"
       place_nvidia_dlls "$tk/lib/wine/x86_64-windows" "$tk/lib/wine/x86_64-windows/nvngx-on-metalfx.dll" || return 1
       export SEVO_LIBD3DSHARED_PATH="$ext/libd3dshared.dylib" D3DM_WINE_UNIX_CALL=1
+      # NVIDIA Reflex by Lullaby (Low latency, Diagnostics): Lullaby's nvapi64.dll answers
+      # the game in front of D3DMetal's, which keeps its unix half as nvapi64_d3dm. The
+      # D3DMetal layer feeds it when each frame reaches the screen (winemac.so fix 0003).
+      # The prefix holds a file of each name, as the loader requires for a builtin.
+      if [ "$1" = d3dmetal-reflex ]; then
+        apple="$tk/lib/wine/x86_64-windows/nvapi64.dll"
+        [ -f "$apple" ] && [ -L "$dir/x86_64-unix/nvapi64.so" ] || return 1
+        ln -sfn "$apple" "$dir/x86_64-windows/nvapi64_d3dm.dll"
+        mv -f "$dir/x86_64-unix/nvapi64.so" "$dir/x86_64-unix/nvapi64_d3dm.so" || return 1
+        ln -sfn "$nvapi_shim" "$dir/x86_64-windows/nvapi64.dll"
+        renderer_overrides="$names,nvapi64_d3dm=b"
+        if [ -n "$WINEPREFIX" ] && [ -d "$WINEPREFIX/drive_c/windows/system32" ]; then
+          for pair in "nvapi64.dll:$nvapi_shim" "nvapi64_d3dm.dll:$apple"; do
+            dst="$WINEPREFIX/drive_c/windows/system32/${pair%%:*}"
+            cmp -s "${pair#*:}" "$dst" || cp -f "${pair#*:}" "$dst" || return 1
+          done
+        fi
+        export LULLABY_PRESENT_FEED=1
+        echo "reflex: Lullaby's nvapi64 in front of D3DMetal's" >> "$log" 2>&1 || true
+      fi
       ;;
     *) return 1 ;;
   esac
@@ -852,6 +872,19 @@ renderer_dir="$renderer"
 if [ "$renderer" = dxmt ] && [ "$LULLABY_DLSS" = 1 ]; then
   renderer_dir=dxmt-nvext
   echo "renderer: DLSS -> MetalFX through DXMT (experimental)" >> "$log" 2>&1 || true
+fi
+# Lullaby's NVIDIA Reflex (the game's Low latency switch): D3DMetal from a directory of
+# its own, so a game without it never loads Lullaby's nvapi64.
+nvapi_shim="$support/lullaby-nvapi64.dll"
+if [ "$renderer" = d3dmetal ] && [ "$(env_value LULLABY_LOW_LATENCY)" = 1 ]; then
+  if [ -f "$nvapi_shim" ]; then
+    renderer_dir=d3dmetal-reflex
+    mkdir -p "$support/launchers/app-$app_id" 2>/dev/null || true
+    LULLABY_NVAPI_LOG="Z:$(printf '%s' "$support/launchers/app-$app_id/lullaby-nvapi.log" | tr / '\134')"
+    export LULLABY_NVAPI_LOG
+  else
+    echo "reflex: no $nvapi_shim, Reflex stays D3DMetal's" >> "$log" 2>&1 || true
+  fi
 fi
 if [ "$renderer" != wined3d ]; then
   if stage_renderer "$renderer_dir"; then
@@ -1224,6 +1257,11 @@ done
 if [ -n "$WINEDLLPATH_PREPEND" ]; then
   set -- --env WINEDLLPATH_PREPEND="$WINEDLLPATH_PREPEND" "$@"
 fi
+# Lullaby's Reflex: the D3DMetal layer's present feed and the nvapi64 log.
+for name in LULLABY_PRESENT_FEED LULLABY_NVAPI_LOG; do
+  eval "value=\${$name-}"
+  [ -n "$value" ] && set -- --env "$name=$value" "$@"
+done
 # What the launch options set and the list above leaves out. The ones Lullaby builds
 # itself (below) carry the player's part already.
 for name in $launch_env; do

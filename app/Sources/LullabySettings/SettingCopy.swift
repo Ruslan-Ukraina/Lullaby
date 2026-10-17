@@ -422,14 +422,14 @@ extension SettingCopy {
                  ru: "Игры с генерацией кадров выключают V-Sync, и картинка тогда рвётся. Включено — каждый кадр ждёт обновления экрана. Только D3DMetal.")))
 
     static let lowLatency = SettingCopy(
-        L10n("Low latency", uk: "Низька затримка", ru: "Низкая задержка"),
-        caption: L10n("A shorter frame queue: input reaches the screen sooner.",
-                      uk: "Коротша черга кадрів: введення швидше доходить до екрана.",
-                      ru: "Короче очередь кадров: ввод быстрее доходит до экрана."),
+        L10n("NVIDIA Reflex", uk: "NVIDIA Reflex", ru: "NVIDIA Reflex"),
+        caption: L10n("Makes the game's Reflex option work: input reaches the screen sooner.",
+                      uk: "Вмикає справжню роботу пункту Reflex у грі: введення швидше доходить до екрана.",
+                      ru: "Включает настоящую работу пункта Reflex в игре: ввод быстрее доходит до экрана."),
         help: SettingHelp(
-            L10n("What NVIDIA Reflex does for the frame queue, which D3DMetal leaves undone: two frames in flight instead of three, and frames held three under the display's refresh rate so V-Sync never queues them. D3DMetal only.",
-                 uk: "Те, що NVIDIA Reflex робить із чергою кадрів, а D3DMetal не робить: два кадри в дорозі замість трьох і темп на три кадри нижче частоти екрана, щоб V-Sync не збирав черги. Лише D3DMetal.",
-                 ru: "То, что NVIDIA Reflex делает с очередью кадров, а D3DMetal не делает: два кадра в пути вместо трёх и темп на три кадра ниже частоты экрана, чтобы V-Sync не копил очередь. Только D3DMetal.")))
+            L10n("D3DMetal answers a game's NVIDIA Reflex calls and does nothing. On, Lullaby answers them: before each frame the game waits until the previous one is on the screen, so it starts on fresh input with no frame queued in front of it (the method of Korthos Software's low_latency_layer). Turn Reflex on in the game too. D3DMetal with DLSS on only; the log is lullaby-nvapi.log beside the game's Wine log.",
+                 uk: "D3DMetal відповідає на виклики NVIDIA Reflex у грі й нічого не робить. Увімкнено — відповідає Lullaby: перед кожним кадром гра чекає, доки попередній з'явиться на екрані, тож починає зі свіжим введенням і без черги кадрів (метод low_latency_layer від Korthos Software). Увімкніть Reflex і в самій грі. Лише D3DMetal з увімкненим DLSS; журнал — lullaby-nvapi.log поруч із журналом Wine гри.",
+                 ru: "D3DMetal отвечает на вызовы NVIDIA Reflex в игре и ничего не делает. Включено — отвечает Lullaby: перед каждым кадром игра ждёт, пока предыдущий появится на экране, поэтому начинает со свежим вводом и без очереди кадров (метод low_latency_layer от Korthos Software). Включите Reflex и в самой игре. Только D3DMetal с включённым DLSS; журнал — lullaby-nvapi.log рядом с журналом Wine игры.")))
 
     static let msync = SettingCopy(
         .same("msync+"),

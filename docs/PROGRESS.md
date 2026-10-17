@@ -1475,3 +1475,13 @@ PEAK, DXMT, меню; `perf/peak-ab.sh` чередует «исходно → и
 - Проверено на RE9 (переменные через `re9.exe.env`): журнал `lullaby: D3DMetal layer: force vsync 1, low latency 1, frame limit 117`; игра работает (~97 FPS в меню). Разрывы/задержку на глаз — владелец. Переключателей в панели пока нет.
 - Reflex в D3DMetal — заглушки. Открытая замена: LatencyFleX (Apache-2.0; на Linux dxvk-nvapi направляет в него `NvAPI_D3D_SetSleepMode/Sleep/SetLatencyMarker`); с V-Sync не помогает. Отдельный проект по решению владельца.
 - После теста `winemac.so` возвращён к мосту r6-2 (все файлы движка = манифест r6-2).
+
+## 2026-10-17 ~14:30 CEST — Трассировка лучей в RE9 и NVIDIA Reflex от Lullaby
+
+- **Трассировка (RE9):** D3DMetal 4.0b3 на M4 Pro сообщает DXR 1.1, SM 6.6, mesh shaders (`engine-fixes/tests/d3d12-raytracing-caps.c`); `D3DM_SUPPORT_DXR` по умолчанию включён на Apple9 (`=0` только выключает). NVAPI: драйвер 576.02, Ada, 58 RT-ядер. Видеопамять 18 186 МБ выделенной + столько же общей (игра показывает 35,52 ГБ). Подмена на RTX 4070 (`.sevo/debug.env`, удалён) — пункт RT не появился. В журнале D3DMetal (`/usr/bin/log`, subsystem `D3DMetal`) нет попыток создать RT-конвейер: игра решает сама. Попутно: десятки PSO RE9 D3DMetal не собирает («marking PSO as no-op») — бэклог.
+- **Reflex:** LatencyFleX (2022) отброшен — без времени завершения кадра на GPU не опустошает очередь (симуляция: 108 → 93 мс). Взят метод `low_latency_layer` (Korthos Software, MIT, 2026, проверен на RE9): `Sleep` кадра N ждёт показа кадра N−1, затем минимальный интервал игры.
+  - `nvapi-shim/`: своя `nvapi64.dll` (mingw, помечена «Wine builtin DLL») перед `nvapi64_d3dm` Apple; журнал всех запрошенных функций NVAPI (`launchers/app-<id>/lullaby-nvapi.log`) и Reflex (`SetSleepMode/GetSleepStatus/Sleep/SetLatencyMarker/GetLatency`), статистика каждые 5 с с «PC latency».
+  - `winemac.so` 0003 переписан: V-Sync оставлен, «2 drawable + лимит 117» убраны; `LULLABY_PRESENT_FEED=1` — страница `.sevo/run/<Windows pid>.present` (момент выдачи drawable и показа по `addPresentedHandler`, часы `mach_continuous_time` = QPC). Сборка против r6: файлы без патчей = релиз.
+  - `compat_run.sh`: при «NVIDIA Reflex» (бывш. «Низька затримка», `LULLABY_LOW_LATENCY`) рендерер `d3dmetal-reflex`.
+  - Симуляция (GPU 20 мс, очередь 3): без Reflex 93–106 мс, с Reflex 31–35 мс; журнал считает 34,7 мс при фактических 34,5.
+  - Тесты: app-tests 441, C-наборы, runcheck/scriptcheck/launch-shell — 0.
