@@ -27,3 +27,11 @@ workflow applies them. Each applies on top of `patches/winemac.so/0001..0003`.
   Needs RE9's window treatment "Fixed-size and full-screen games" (`windows = window`) so its
   window can go full screen — to go into the RE9 recipe together with the bridge. Builds clean
   against r6; not yet run (the Mac was locked).
+- `0004-winemac-lullaby-re9-native-fullscreen-direct-v2.patch` — run on RE9 2026-10-17 (owner
+  present): native full screen enters by itself, 3024×1898, picture fills the screen below the
+  housing, 80 fps in the menu. Wine's layers are clear (dump: both WineContentView layers
+  without contents or background); AppKit's frame layers (CABackdropLayer, CUIWindowFrameLayer,
+  NSVisualEffectView with CAChameleonLayer) hidden in full screen; the hidden toolbar removed —
+  the NSToolbarFullScreenWindow (alpha 0, 1512×32) stays. Metal HUD: still "Composited".
+  Left to rule out: the game's HDR output (RGB10A2, ITU-R 2100 PQ, EDR) — needs HDR off in
+  RE9's own menu.
