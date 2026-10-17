@@ -1,5 +1,6 @@
 /* Lullaby's nvapi64.dll: stands in front of D3DMetal's (Apple's Game Porting Toolkit),
- * which the run script stages as nvapi64_d3dm.dll.
+ * which the run script stages as nvapimt.dll (its own name inside it
+ * changed to match, or Wine would hand this DLL back for it).
  *
  * - Every function a game asks for goes to D3DMetal's, and the first request for each is
  *   logged by name (LULLABY_NVAPI_LOG, a Windows path), with whether D3DMetal has it.
@@ -139,9 +140,14 @@ static BOOL CALLBACK init(INIT_ONCE *once, void *param, void **ctx)
         reflex_here = FALSE;
     log_line("=== lullaby nvapi64 (pid %lu): Reflex %s", GetCurrentProcessId(),
              reflex_here ? "paced by Lullaby" : "left to D3DMetal");
-    if (!(real = LoadLibraryW(L"nvapi64_d3dm.dll")))
+    if (!(real = LoadLibraryW(L"nvapimt.dll")))
     {
-        log_line("D3DMetal's nvapi64_d3dm.dll did not load (error %lu): every function is missing", GetLastError());
+        log_line("D3DMetal's nvapimt.dll did not load (error %lu): every function is missing", GetLastError());
+        return TRUE;
+    }
+    if (real == GetModuleHandleW(L"nvapi64.dll"))
+    {
+        log_line("nvapimt.dll is this DLL again: every function is missing");
         return TRUE;
     }
     real_query = (query_fn)GetProcAddress(real, "nvapi_QueryInterface");

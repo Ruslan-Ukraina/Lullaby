@@ -828,18 +828,24 @@ stage_renderer() {
       place_nvidia_dlls "$tk/lib/wine/x86_64-windows" "$tk/lib/wine/x86_64-windows/nvngx-on-metalfx.dll" || return 1
       export SEVO_LIBD3DSHARED_PATH="$ext/libd3dshared.dylib" D3DM_WINE_UNIX_CALL=1
       # NVIDIA Reflex by Lullaby (Low latency, Diagnostics): Lullaby's nvapi64.dll answers
-      # the game in front of D3DMetal's, which keeps its unix half as nvapi64_d3dm. The
-      # D3DMetal layer feeds it when each frame reaches the screen (winemac.so fix 0003).
+      # the game in front of D3DMetal's, which keeps its unix half as nvapimt. The D3DMetal
+      # layer feeds it when each frame reaches the screen (winemac.so fix 0003).
+      # Wine finds a builtin by the name inside its file, and Apple's says nvapi64.dll, which
+      # would hand Lullaby's back to itself: the copy here says nvapimt.dll, same length.
       # The prefix holds a file of each name, as the loader requires for a builtin.
       if [ "$1" = d3dmetal-reflex ]; then
         apple="$tk/lib/wine/x86_64-windows/nvapi64.dll"
         [ -f "$apple" ] && [ -L "$dir/x86_64-unix/nvapi64.so" ] || return 1
-        ln -sfn "$apple" "$dir/x86_64-windows/nvapi64_d3dm.dll"
-        mv -f "$dir/x86_64-unix/nvapi64.so" "$dir/x86_64-unix/nvapi64_d3dm.so" || return 1
+        at=$(LC_ALL=C grep -a -b -o 'nvapi64\.dll' "$apple" | cut -d: -f1)
+        case "$at" in ''|*[!0-9]*) echo "reflex: D3DMetal's nvapi64.dll names itself $(printf '%s' "$at" | wc -l) times, not once" >> "$log" 2>&1; return 1 ;; esac
+        cp -f "$apple" "$dir/x86_64-windows/nvapimt.dll" || return 1
+        printf 'nvapimt.dll' | dd of="$dir/x86_64-windows/nvapimt.dll" bs=1 seek="$at" conv=notrunc 2>/dev/null || return 1
+        mv -f "$dir/x86_64-unix/nvapi64.so" "$dir/x86_64-unix/nvapimt.so" || return 1
         ln -sfn "$nvapi_shim" "$dir/x86_64-windows/nvapi64.dll"
-        renderer_overrides="$names,nvapi64_d3dm=b"
+        renderer_overrides="$names,nvapimt=b"
         if [ -n "$WINEPREFIX" ] && [ -d "$WINEPREFIX/drive_c/windows/system32" ]; then
-          for pair in "nvapi64.dll:$nvapi_shim" "nvapi64_d3dm.dll:$apple"; do
+          rm -f "$WINEPREFIX/drive_c/windows/system32/nvapi64_d3dm.dll"
+          for pair in "nvapi64.dll:$nvapi_shim" "nvapimt.dll:$dir/x86_64-windows/nvapimt.dll"; do
             dst="$WINEPREFIX/drive_c/windows/system32/${pair%%:*}"
             cmp -s "${pair#*:}" "$dst" || cp -f "${pair#*:}" "$dst" || return 1
           done
