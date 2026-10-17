@@ -7,7 +7,8 @@
  * the present feed the D3DMetal layer writes (winemac.so fix 0003): a drawable is
  * taken at Present and shown when the GPU is done with it.
  *
- * Usage: reflex-sim.exe [0|1]   1 (default) turns low latency mode on.
+ * Usage: [SIM_GPU_MS=20] [SIM_CPU_MS=8] reflex-sim.exe [0|1]   1 (default) turns low
+ * latency mode on; the variables set the frame costs.
  * Prints "frames N fps F latency L ms" over the last half of the run. */
 
 #define WIN32_LEAN_AND_MEAN
@@ -18,8 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define GPU_MS 20
-#define CPU_MS 8
+static int GPU_MS = 20, CPU_MS = 8;
 #define QUEUE 3
 #define FRAMES 300
 
@@ -86,6 +86,8 @@ static DWORD WINAPI gpu(void *arg)
 int main(int argc, char **argv)
 {
     int on = argc > 1 ? atoi(argv[1]) : 1;
+    if (getenv("SIM_GPU_MS")) GPU_MS = atoi(getenv("SIM_GPU_MS"));
+    if (getenv("SIM_CPU_MS")) CPU_MS = atoi(getenv("SIM_CPU_MS"));
     HMODULE nv = LoadLibraryA("nvapi64.dll");
     query_fn q = nv ? (query_fn)GetProcAddress(nv, "nvapi_QueryInterface") : NULL;
     set_sleep_mode_fn set_mode = q ? (set_sleep_mode_fn)q(0xac1ca9e0) : NULL;
@@ -123,6 +125,6 @@ int main(int argc, char **argv)
     int n = 0;
     for (int i = FRAMES / 2; i < FRAMES; i++) if (gpu_done[i] > 0) { lat += gpu_done[i] - sim_start[i]; n++; }
     double secs = (gpu_done[FRAMES - 1] - gpu_done[FRAMES / 2]) / 1000.0;
-    printf("low latency %d: frames %d fps %.1f latency %.1f ms\n", on, n, (FRAMES / 2 - 1) / secs, lat / n);
+    printf("gpu %d cpu %d low latency %d: frames %d fps %.1f latency %.1f ms\n", GPU_MS, CPU_MS, on, n, (FRAMES / 2 - 1) / secs, lat / n);
     return 0;
 }

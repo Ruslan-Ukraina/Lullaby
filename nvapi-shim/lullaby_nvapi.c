@@ -5,10 +5,11 @@
  *   logged by name (LULLABY_NVAPI_LOG, a Windows path), with whether D3DMetal has it.
  * - NVIDIA Reflex, which D3DMetal leaves as stubs, is answered here, the way Korthos
  *   Software's low_latency_layer does it for Vulkan (https://github.com/Korthos-Software/
- *   low_latency_layer, MIT): with low latency mode on, the game's NvAPI_D3D_Sleep before
- *   frame N returns only once frame N-1 is on the screen, then holds the game's minimum
- *   frame interval. The simulation then starts on fresh input with no frame queued in
- *   front of it. "On the screen" comes from the D3DMetal layer's present feed (winemac.so
+ *   low_latency_layer, MIT): with low latency mode on, the game's NvAPI_D3D_Sleep holds
+ *   each frame until no frame is queued in front of it, then the game's minimum frame
+ *   interval. Waiting for the previous frame outright leaves the GPU idle while the CPU
+ *   builds the next one, so frame N goes once frame N-2 is on the screen and its CPU part
+ *   (averaged) would end as frame N-1 leaves the GPU (averaged): no queue and no bubble. "On the screen" comes from the D3DMetal layer's present feed (winemac.so
  *   fix 0003, <prefix>/.sevo/run/<Windows pid>.present). LULLABY_REFLEX=0 leaves Reflex
  *   to D3DMetal.
  */
@@ -234,14 +235,23 @@ static SRWLOCK reflex_lock = SRWLOCK_INIT;
 static BOOL low_latency;
 static UINT32 interval_us;
 static BOOL game_sleeps, warned_no_feed;
-static uint64_t acquired_at_sleep; /* the feed's drawable count when the last Sleep returned */
 static uint64_t last_release;      /* when the last Sleep returned */
 static NV_FRAME_REPORT reports[RING];
+
+/* Just in time: frame N is released once frame N-2 is on the screen, and no earlier than
+   when its CPU part, done, meets frame N-1 leaving the GPU. Per released frame (frame_no):
+   the feed's drawable count at its release, and its SIMULATION_START. */
+#define FRAMES 8
+static uint64_t frame_no;
+static uint64_t acquired_at_release[FRAMES], sim_start_of[FRAMES];
+static uint64_t release_of_game_id[RING];   /* by the game's frame id: when its Sleep returned */
+static uint64_t prev_done;                  /* when the previous wait's frame reached the screen */
+static double gpu_ns, cpu_ns;               /* averages: frame interval on screen, CPU time to Present */
+
 /* stats for the log */
 static uint64_t stat_since, stat_frames, stat_wait_ns, stat_timeouts;
-/* PC latency, as Reflex names it: from a frame's SIMULATION_START to its reaching the
-   screen, which the next Sleep sees within a quarter of a millisecond. */
-static uint64_t last_sim_start, stat_latency_ns, stat_latency_samples;
+/* PC latency, as Reflex names it: from a frame's SIMULATION_START to its reaching the screen. */
+static uint64_t stat_latency_ns, stat_latency_samples;
 
 static NV_FRAME_REPORT *report_for(uint64_t game_id)
 {
@@ -252,6 +262,11 @@ static NV_FRAME_REPORT *report_for(uint64_t game_id)
         r->frameID = game_id;
     }
     return r;
+}
+
+static void average(double *avg, double sample)
+{
+    *avg = *avg ? *avg * 0.9 + sample * 0.1 : sample;
 }
 
 static NvAPI_Status __cdecl lb_SetSleepMode(void *dev, NV_SET_SLEEP_MODE_PARAMS *p)
@@ -285,18 +300,20 @@ static NvAPI_Status __cdecl lb_GetSleepStatus(void *dev, NV_GET_SLEEP_STATUS_PAR
     return NVAPI_OK;
 }
 
-/* Frame N-1 is on the screen when a drawable was handed out after the last Sleep and
-   every drawable handed out so far has been presented. */
-static BOOL previous_frame_shown(present_feed *f)
+/* Whether every drawable handed out before frame N-1's release is on the screen, i.e.
+   frames up to N-2; *shown gets when the last of them got there. */
+static BOOL older_frames_shown(present_feed *f, uint64_t need, uint64_t *shown)
 {
-    UINT64 acquired = f->acquired;
+    UINT64 presented = f->presented;
     MemoryBarrier();
-    return acquired > acquired_at_sleep && f->presented >= acquired;
+    if (presented < need) return FALSE;
+    *shown = f->ring[(need - 1) % FEED_RING].present_ns;
+    return TRUE;
 }
 
 static NvAPI_Status __cdecl lb_Sleep(void *dev)
 {
-    uint64_t start, deadline, t;
+    uint64_t start, deadline, t, need = 0, shown = 0, target = 0;
     present_feed *f;
     BOOL on, timed_out = FALSE;
     UINT32 interval;
@@ -313,29 +330,45 @@ static NvAPI_Status __cdecl lb_Sleep(void *dev)
         log_line("reflex: no present feed (an upscaler or another renderer?), frames go unpaced");
         warned_no_feed = TRUE;
     }
+    if (f && frame_no) need = acquired_at_release[frame_no % FRAMES];
     ReleaseSRWLockExclusive(&reflex_lock);
 
     start = now_ns();
-    if (f)
+    if (f && need)
     {
         deadline = start + MAX_WAIT_NS;
-        while (!previous_frame_shown(f))
+        while (!older_frames_shown(f, need, &shown))
         {
-            if ((t = now_ns()) >= deadline) { timed_out = TRUE; break; }
+            if (now_ns() >= deadline) { timed_out = TRUE; break; }
             nap(250000);
+        }
+        if (!timed_out)
+        {
+            if (!shown || shown > now_ns()) shown = now_ns();
+            AcquireSRWLockExclusive(&reflex_lock);
+            if (prev_done && shown > prev_done && shown - prev_done < 100000000ull)
+                average(&gpu_ns, (double)(shown - prev_done));
+            prev_done = shown;
+            /* Frame N-1 leaves the GPU about one frame interval after N-2 showed; frame N
+               starts its CPU part that long before, less a margin against a bubble. */
+            if (gpu_ns && cpu_ns && cpu_ns < gpu_ns)
+                target = shown + (uint64_t)(gpu_ns - cpu_ns - 1000000 - gpu_ns * 0.05);
+            if (sim_start_of[(frame_no - 1) % FRAMES] && sim_start_of[(frame_no - 1) % FRAMES] < shown)
+            {
+                stat_latency_ns += shown - sim_start_of[(frame_no - 1) % FRAMES];
+                stat_latency_samples++;
+            }
+            ReleaseSRWLockExclusive(&reflex_lock);
+            if (target > now_ns()) wait_until(target);
         }
     }
     if (interval && last_release) wait_until(last_release + (uint64_t)interval * 1000);
     t = now_ns();
 
     AcquireSRWLockExclusive(&reflex_lock);
-    if (f) acquired_at_sleep = f->acquired;
-    if (f && !timed_out && last_sim_start && last_sim_start < t)
-    {
-        stat_latency_ns += t - last_sim_start;
-        stat_latency_samples++;
-    }
-    last_sim_start = 0;
+    frame_no++;
+    acquired_at_release[frame_no % FRAMES] = f ? f->acquired : 0;
+    sim_start_of[frame_no % FRAMES] = 0;
     last_release = t;
     stat_frames++;
     stat_wait_ns += t - start;
@@ -344,10 +377,11 @@ static NvAPI_Status __cdecl lb_Sleep(void *dev)
     else if (t - stat_since >= 5000000000ull)
     {
         double secs = (t - stat_since) / 1e9;
-        log_line("reflex: %s, %.1f fps, held %.2f ms a frame, PC latency %.1f ms, %llu frames not shown in time",
+        log_line("reflex: %s, %.1f fps, held %.2f ms a frame, PC latency %.1f ms, GPU %.2f ms, CPU %.2f ms, %llu frames not shown in time",
                  on ? (f ? "low latency" : "low latency without a feed") : "off",
                  stat_frames / secs, stat_wait_ns / 1e6 / stat_frames,
-                 stat_latency_samples ? stat_latency_ns / 1e6 / stat_latency_samples : -1.0, stat_timeouts);
+                 stat_latency_samples ? stat_latency_ns / 1e6 / stat_latency_samples : -1.0,
+                 gpu_ns / 1e6, cpu_ns / 1e6, stat_timeouts);
         stat_since = t;
         stat_frames = stat_wait_ns = stat_timeouts = 0;
         stat_latency_ns = stat_latency_samples = 0;
@@ -369,13 +403,20 @@ static NvAPI_Status __cdecl lb_SetLatencyMarker(void *dev, NV_LATENCY_MARKER_PAR
     {
     case SIMULATION_START:
         r->simStartTime = us;
-        last_sim_start = us * 1000;
+        if (!sim_start_of[frame_no % FRAMES]) sim_start_of[frame_no % FRAMES] = us * 1000;
+        release_of_game_id[p->frameID % RING] = last_release;
         break;
     case SIMULATION_END: r->simEndTime = us; break;
     case RENDERSUBMIT_START: r->renderSubmitStartTime = us; break;
     case RENDERSUBMIT_END: r->renderSubmitEndTime = us; break;
     case PRESENT_START: r->presentStartTime = us; break;
-    case PRESENT_END: r->presentEndTime = us; break;
+    case PRESENT_END:
+        r->presentEndTime = us;
+        /* The CPU part of a frame: from its release to Present returning. */
+        if (release_of_game_id[p->frameID % RING] && us * 1000 > release_of_game_id[p->frameID % RING])
+            average(&cpu_ns, (double)(us * 1000 - release_of_game_id[p->frameID % RING]));
+        release_of_game_id[p->frameID % RING] = 0;
+        break;
     case INPUT_SAMPLE: r->inputSampleTime = us; break;
     default: break;
     }
