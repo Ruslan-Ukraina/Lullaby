@@ -1,0 +1,197 @@
+diff --git a/dlls/winemac.drv/cocoa_window.m b/dlls/winemac.drv/cocoa_window.m
+index bdd9e261b27..d5b771446e5 100644
+--- a/dlls/winemac.drv/cocoa_window.m
++++ b/dlls/winemac.drv/cocoa_window.m
+@@ -1964,8 +1964,11 @@ - (void) adjustFullScreenBehavior:(NSWindowCollectionBehavior)behavior
+     {
+         NSUInteger style = [self styleMask];
+ 
++        /* With LULLABY_NATIVE_FULLSCREEN a window already in full screen stays there when the
++           program makes it borderless, as a game does once its window fills the screen. */
+         if (behavior & NSWindowCollectionBehaviorParticipatesInCycle &&
+-            style & NSWindowStyleMaskResizable && !(style & NSWindowStyleMaskUtilityWindow) && !maximized &&
++            ((style & NSWindowStyleMaskResizable && !(style & NSWindowStyleMaskUtilityWindow) && !maximized) ||
++             (lullaby_native_fullscreen() && (style & NSWindowStyleMaskFullScreen))) &&
+             !(self.parentWindow || self.latentParentWindow))
+         {
+             behavior |= NSWindowCollectionBehaviorFullScreenPrimary;
+@@ -1984,6 +1987,8 @@ - (void) adjustFullScreenBehavior:(NSWindowCollectionBehavior)behavior
+             [self setCollectionBehavior:behavior];
+             [self adjustFeaturesForState];
+         }
++        if ([self isVisible])
++            [self lullabyEnterNativeFullScreenSoon];
+     }
+ 
+     - (void) setWindowFeatures:(const struct macdrv_window_features*)wf
+@@ -2681,6 +2686,9 @@ - (void) orderBelow:(WineWindow*)prev orAbove:(WineWindow*)next activate:(BOOL)a
+             }
+             pendingOrderOut = FALSE;
+ 
++            if (!wasVisible)
++                [self lullabyEnterNativeFullScreenSoon];
++
+             if ([self becameEligibleParentOrChild])
+                 needAdjustWindowLevels = TRUE;
+ 
+@@ -3996,8 +4004,48 @@ - (void) windowDidEndLiveResize:(NSNotification *)notification
+         }
+     }
+ 
++    static BOOL lullaby_native_fullscreen(void)
++    {
++        static int enabled = -1;
++
++        if (enabled < 0)
++        {
++            const char *value = getenv("LULLABY_NATIVE_FULLSCREEN");
++            enabled = value && value[0] == '1' && !value[1];
++        }
++        return enabled;
++    }
++
++    /* Lullaby: LULLABY_NATIVE_FULLSCREEN=1 takes the first window that can go full screen
++       into macOS's full screen when it first shows, as its green button would. A full-screen
++       window can be drawn straight to the display, past the compositor. */
++    - (void) lullabyEnterNativeFullScreenSoon
++    {
++        static BOOL done;
++
++        if (!lullaby_native_fullscreen() || done) return;
++        fprintf(stderr, "lullaby: native full screen: window %p behavior %#lx style %#lx visible %d\n", self,
++                (unsigned long)[self collectionBehavior], (unsigned long)[self styleMask], (int)[self isVisible]);
++        if (!([self collectionBehavior] & NSWindowCollectionBehaviorFullScreenPrimary)) return;
++        if ([self styleMask] & NSWindowStyleMaskFullScreen) return;
++        done = YES;
++        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
++            fprintf(stderr, "lullaby: native full screen: toggling window %p (visible %d, active %d, disabled %d, maximized %d)\n",
++                    self, (int)[self isVisible], (int)[NSApp isActive], (int)self.disabled, (int)maximized);
++            [NSApp activateIgnoringOtherApps:YES];
++            [self makeKeyAndOrderFront:nil];
++            if ([self isVisible] && !([self styleMask] & NSWindowStyleMaskFullScreen))
++                [super toggleFullScreen:nil];
++            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
++                fprintf(stderr, "lullaby: native full screen: after 3 s style %#lx frame %s\n", (unsigned long)[self styleMask],
++                        [NSStringFromRect([self frame]) UTF8String]);
++            });
++        });
++    }
++
+     - (void) windowDidEnterFullScreen:(NSNotification*)notification
+     {
++        fprintf(stderr, "lullaby: native full screen: entered, frame %s\n", [NSStringFromRect([self frame]) UTF8String]);
+         enteringFullScreen = FALSE;
+         enteredFullScreenTime = [[NSProcessInfo processInfo] systemUptime];
+         if (pendingOrderOut)
+@@ -4006,6 +4054,7 @@ - (void) windowDidEnterFullScreen:(NSNotification*)notification
+ 
+     - (void) windowDidExitFullScreen:(NSNotification*)notification
+     {
++        fprintf(stderr, "lullaby: native full screen: exited\n");
+         exitingFullScreen = FALSE;
+         [self setFrameAndWineFrame:nonFullscreenFrame];
+         [self windowDidResize:nil];
+diff --git a/dlls/winemac.drv/d3dmetal_objc.m b/dlls/winemac.drv/d3dmetal_objc.m
+index 93070c3c9ea..b7f9d45b89e 100644
+--- a/dlls/winemac.drv/d3dmetal_objc.m
++++ b/dlls/winemac.drv/d3dmetal_objc.m
+@@ -172,6 +172,35 @@ static void lullaby_feed_drawable(id<CAMetalDrawable> drawable)
+     }];
+ }
+ 
++/* Lullaby: macOS scans a CAMetalLayer out straight to the display (the Metal HUD's
++   "Direct") only when no layer above it paints content of its own. In a winemac window two
++   do though the game's picture covers them: the window frame's layer has a background
++   colour (AppKit's, for a WineContentView that is not opaque) and the outer WineContentView's
++   layer holds the window surface image. While the metal view covers the whole window both
++   are cleared; Wine fills them again now and then, so this runs every second.
++   (WoWSilicon/WoWSilicon#25, athei/mtld3d#1123.) Main thread. */
++static void lullaby_clear_layers_over(NSView *metal_view)
++{
++    NSWindow *window = metal_view.window;
++    static int logged;
++    int cleared = 0;
++
++    if (!window || !window.isVisible) return;
++    /* The metal layer's own background shows nowhere it draws. */
++    if (metal_view.layer.backgroundColor) { metal_view.layer.backgroundColor = NULL; cleared++; }
++    /* Every view up to the window frame (Dormison's WineStageView, the outer and inner
++       WineContentView, NSNextStepFrame), as long as the metal view covers it. */
++    for (NSView *v = metal_view.superview; v; v = v.superview)
++    {
++        if (fabs(v.bounds.size.width - metal_view.bounds.size.width) > 1 ||
++            fabs(v.bounds.size.height - metal_view.bounds.size.height) > 1) break;
++        if (v.layer.contents) { v.layer.contents = nil; cleared++; }
++        if (v.layer.backgroundColor) { v.layer.backgroundColor = NULL; cleared++; }
++    }
++    if (cleared && logged++ < 5)
++        fprintf(stderr, "lullaby: direct display: cleared %d layer fills over the game's picture\n", cleared);
++}
++
+ @implementation WineMetalLayer
+ {
+     os_unfair_lock stateLock;
+@@ -185,10 +214,37 @@ - (id) init
+         if ((self = [super init]))
+         {
+             lullaby_layer_switches();
++            /* Lullaby's native full screen (cocoa_window.m): an opaque layer is one macOS can
++               hand straight to the display. */
++            {
++                const char *value = getenv("LULLABY_NATIVE_FULLSCREEN");
++                if (value && value[0] == '1' && !value[1]) [super setOpaque:YES];
++            }
+         }
+         return self;
+     }
+ 
++    /* Diagnostic only (LULLABY_TEST_NO_EDR=1): the layer refuses extended dynamic range, to
++       learn whether EDR keeps macOS from showing it straight on the display. Colours are wrong. */
++    - (void) setWantsExtendedDynamicRangeContent:(BOOL)value
++    {
++        const char *test = getenv("LULLABY_TEST_NO_EDR");
++        [super setWantsExtendedDynamicRangeContent:(test && test[0] == '1') ? NO : value];
++    }
++
++    - (void) setColorspace:(CGColorSpaceRef)space
++    {
++        const char *test = getenv("LULLABY_TEST_NO_EDR");
++        if (test && test[0] == '1')
++        {
++            CGColorSpaceRef srgb = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
++            [super setColorspace:srgb];
++            CGColorSpaceRelease(srgb);
++        }
++        else
++            [super setColorspace:space];
++    }
++
+     - (void) setDisplaySyncEnabled:(BOOL)enabled
+     {
+         lullaby_layer_switches();
+@@ -290,8 +346,25 @@ - (void) setWineView:(NSView*)view
+             drawable = [super nextDrawable];
+             if (drawable)
+             {
++                static uint64_t count;
+                 lullaby_layer_switches();
+                 lullaby_feed_drawable(drawable);
++                if (getenv("LULLABY_DIRECT_DISPLAY") && !(count % 120) && [owner isKindOfClass:[NSView class]])
++                {
++                    NSView *view = [owner retain];
++                    dispatch_async(dispatch_get_main_queue(), ^{
++                        lullaby_clear_layers_over(view);
++                        [view release];
++                    });
++                }
++                if (getenv("LULLABY_NATIVE_FULLSCREEN") && !(count++ % 1200))
++                    fprintf(stderr, "lullaby: layer opaque %d edr %d format %lu scale %.1f bounds %s drawable %.0fx%.0f "
++                            "colorspace %s sync %d window %s\n", (int)self.opaque, (int)self.wantsExtendedDynamicRangeContent,
++                            (unsigned long)self.pixelFormat, self.contentsScale, [NSStringFromRect(self.bounds) UTF8String],
++                            self.drawableSize.width, self.drawableSize.height,
++                            self.colorspace ? [(NSString *)CGColorSpaceCopyName(self.colorspace) UTF8String] : "none",
++                            (int)self.displaySyncEnabled,
++                            owner.window ? [NSStringFromRect(owner.window.frame) UTF8String] : "none");
+             }
+         }
+ 
