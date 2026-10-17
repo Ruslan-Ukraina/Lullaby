@@ -20,3 +20,10 @@ workflow applies them. Each applies on top of `patches/winemac.so/0001..0003`.
   view reports itself opaque so AppKit does not fill the window frame. Builds clean against
   r6 (2026-10-17); the first run showed "direct display: on for this program", but the Mac
   locked before the HUD could be read — not yet verified.
+- `0004-winemac-lullaby-re9-native-fullscreen-direct.patch` — the owner's target (2026-10-17):
+  macOS native full screen (below the camera housing is fine) at the window's own resolution
+  and not composited, RE9 only. The direct-display patch above plus: the game's window enters
+  macOS full screen the first time it can, and stays there when the game makes it borderless.
+  Needs RE9's window treatment "Fixed-size and full-screen games" (`windows = window`) so its
+  window can go full screen — to go into the RE9 recipe together with the bridge. Builds clean
+  against r6; not yet run (the Mac was locked).

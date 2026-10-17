@@ -1,0 +1,199 @@
+diff --git a/dlls/winemac.drv/cocoa_window.m b/dlls/winemac.drv/cocoa_window.m
+index bdd9e261b27..c5c2c4785cf 100644
+--- a/dlls/winemac.drv/cocoa_window.m
++++ b/dlls/winemac.drv/cocoa_window.m
+@@ -690,6 +690,31 @@ - (NSFocusRingType) focusRingType
+ @end
+ 
+ 
++/* Lullaby: macOS scans a CAMetalLayer out straight to the display (the Metal HUD's
++   "Direct") only when no layer of the window paints anything of its own around it. While a
++   game's Metal view covers its whole window, winemac then keeps the window surface image
++   out of the content view's layer, leaves the black backgrounds off, and calls the content
++   view opaque so AppKit does not fill the window frame either (WoWSilicon/WoWSilicon#25).
++   Only where lullaby_direct_display is set (macdrv_main.c). */
++extern int lullaby_direct_display;
++
++static BOOL lullaby_metal_covers(NSView *view)
++{
++    if (!lullaby_direct_display || !view) return NO;
++    for (NSView *sub in view.subviews)
++    {
++        NSRect frame;
++        if (sub.isHidden) continue;
++        frame = [view convertRect:sub.bounds fromView:sub];
++        if (fabs(frame.origin.x - view.bounds.origin.x) > 0.5 || fabs(frame.origin.y - view.bounds.origin.y) > 0.5 ||
++            fabs(frame.size.width - view.bounds.size.width) > 0.5 || fabs(frame.size.height - view.bounds.size.height) > 0.5)
++            continue;
++        if ([sub isKindOfClass:NSClassFromString(@"WineMetalView")]) return YES;
++        if (lullaby_metal_covers(sub)) return YES;
++    }
++    return NO;
++}
++
+ @implementation WineContentView
+ 
+ @synthesize everHadGLContext = _everHadGLContext;
+@@ -723,6 +748,13 @@ - (BOOL) isFlipped
+         return YES;
+     }
+ 
++    /* Opaque to AppKit while a game's Metal view covers it (lullaby_metal_covers), so the
++       window frame is not filled behind it. */
++    - (BOOL) isOpaque
++    {
++        return lullaby_metal_covers(self) || [super isOpaque];
++    }
++
+     - (BOOL) wantsUpdateLayer
+     {
+         return YES /*!_everHadGLContext*/;
+@@ -741,6 +773,14 @@ - (void) updateLayer
+         if (window.closing)
+             return;
+ 
++        if (lullaby_metal_covers(self))
++        {
++            layer.contents = nil;
++            layer.backgroundColor = NULL;
++            [window windowDidDrawContent];
++            return;
++        }
++
+         imageRect = layer.bounds;
+         imageRect.origin.x *= layer.contentsScale;
+         imageRect.origin.y *= layer.contentsScale;
+@@ -834,7 +874,8 @@ - (void) addGLContext:(WineOpenGLContext*)context
+            frame, which is what Windows shows. A game that preloads before its
+            first present otherwise has no visible window for as long as that
+            takes. */
+-        [[(WineWindow*)[self window] wineContentView] layer].backgroundColor = CGColorGetConstantColor(kCGColorBlack);
++        if (!lullaby_direct_display)
++            [[(WineWindow*)[self window] wineContentView] layer].backgroundColor = CGColorGetConstantColor(kCGColorBlack);
+         [(WineWindow*)[self window] windowDidDrawContent];
+     }
+ 
+@@ -968,7 +1009,8 @@ - (WineMetalView*) newMetalViewWithDevice:(id<MTLDevice>)device
+         _metalView = view;
+         [self applyPresentationFilters];
+ 
+-        [[(WineWindow*)self.window wineContentView] layer].backgroundColor = CGColorGetConstantColor(kCGColorBlack);
++        if (!lullaby_direct_display)
++            [[(WineWindow*)self.window wineContentView] layer].backgroundColor = CGColorGetConstantColor(kCGColorBlack);
+         [(WineWindow*)self.window windowDidDrawContent];
+ 
+         return _metalView;
+@@ -1320,7 +1362,10 @@ - (CALayer*) makeBackingLayer
+         layer.device = _device;
+         layer.framebufferOnly = YES;
+         layer.magnificationFilter = kCAFilterNearest;
+-        layer.backgroundColor = CGColorGetConstantColor(kCGColorBlack);
++        if (lullaby_direct_display)
++            layer.opaque = YES;
++        else
++            layer.backgroundColor = CGColorGetConstantColor(kCGColorBlack);
+         layer.contentsScale = retina_on ? 2.0 : 1.0;
+         if (!presenter_on) return layer;
+ 
+@@ -1964,8 +2009,11 @@ - (void) adjustFullScreenBehavior:(NSWindowCollectionBehavior)behavior
+     {
+         NSUInteger style = [self styleMask];
+ 
++        /* Lullaby (lullaby_direct_display): a window already in full screen stays there when
++           the program makes it borderless, as RE9 does once its window fills the screen. */
+         if (behavior & NSWindowCollectionBehaviorParticipatesInCycle &&
+-            style & NSWindowStyleMaskResizable && !(style & NSWindowStyleMaskUtilityWindow) && !maximized &&
++            ((style & NSWindowStyleMaskResizable && !(style & NSWindowStyleMaskUtilityWindow) && !maximized) ||
++             (lullaby_direct_display && (style & NSWindowStyleMaskFullScreen))) &&
+             !(self.parentWindow || self.latentParentWindow))
+         {
+             behavior |= NSWindowCollectionBehaviorFullScreenPrimary;
+@@ -1984,6 +2032,8 @@ - (void) adjustFullScreenBehavior:(NSWindowCollectionBehavior)behavior
+             [self setCollectionBehavior:behavior];
+             [self adjustFeaturesForState];
+         }
++        if ([self isVisible])
++            [self lullabyEnterNativeFullScreenSoon];
+     }
+ 
+     - (void) setWindowFeatures:(const struct macdrv_window_features*)wf
+@@ -2681,6 +2731,9 @@ - (void) orderBelow:(WineWindow*)prev orAbove:(WineWindow*)next activate:(BOOL)a
+             }
+             pendingOrderOut = FALSE;
+ 
++            if (!wasVisible)
++                [self lullabyEnterNativeFullScreenSoon];
++
+             if ([self becameEligibleParentOrChild])
+                 needAdjustWindowLevels = TRUE;
+ 
+@@ -3996,6 +4049,26 @@ - (void) windowDidEndLiveResize:(NSNotification *)notification
+         }
+     }
+ 
++    /* Lullaby (lullaby_direct_display): the game's window goes into macOS's full screen the
++       first time it can, as its green button would. The game then draws at the size of the
++       full-screen window (below the camera housing), which nothing scales. */
++    - (void) lullabyEnterNativeFullScreenSoon
++    {
++        static BOOL done;
++
++        if (!lullaby_direct_display || done) return;
++        if (!([self collectionBehavior] & NSWindowCollectionBehaviorFullScreenPrimary)) return;
++        if ([self styleMask] & NSWindowStyleMaskFullScreen) return;
++        done = YES;
++        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
++            if (![self isVisible] || ([self styleMask] & NSWindowStyleMaskFullScreen)) return;
++            fprintf(stderr, "lullaby: direct display: entering full screen\n");
++            [NSApp activateIgnoringOtherApps:YES];
++            [self makeKeyAndOrderFront:nil];
++            [super toggleFullScreen:nil];
++        });
++    }
++
+     - (void) windowDidEnterFullScreen:(NSNotification*)notification
+     {
+         enteringFullScreen = FALSE;
+diff --git a/dlls/winemac.drv/macdrv_main.c b/dlls/winemac.drv/macdrv_main.c
+index 83ea1bedb43..d0cf6c6a782 100644
+--- a/dlls/winemac.drv/macdrv_main.c
++++ b/dlls/winemac.drv/macdrv_main.c
+@@ -616,6 +616,29 @@ static void load_strings(struct localized_string *str)
+    (d3dmetal_objc.m). Read here, on a Wine thread, for the renderer's threads have no TEB. */
+ unsigned int lullaby_windows_pid;
+ 
++/* Lullaby: whether a game's picture may go straight to the display (cocoa_window.m,
++   lullaby_direct_display). Only Resident Evil Requiem for now, or LULLABY_DIRECT_DISPLAY=1. */
++int lullaby_direct_display;
++
++static void lullaby_init_direct_display(void)
++{
++    const UNICODE_STRING *image = &NtCurrentTeb()->Peb->ProcessParameters->ImagePathName;
++    const char *value = getenv("LULLABY_DIRECT_DISPLAY");
++    static const WCHAR re9[] = {'r','e','9','.','e','x','e'};
++    unsigned int len = image->Length / sizeof(WCHAR), start = len, i;
++
++    if (value && value[0]) { lullaby_direct_display = value[0] == '1'; return; }
++    while (start && image->Buffer[start - 1] != '\\' && image->Buffer[start - 1] != '/') start--;
++    if (len - start != ARRAY_SIZE(re9)) return;
++    for (i = 0; i < ARRAY_SIZE(re9); i++)
++    {
++        WCHAR c = image->Buffer[start + i];
++        if (c >= 'A' && c <= 'Z') c += 'a' - 'A';
++        if (c != re9[i]) return;
++    }
++    lullaby_direct_display = 1;
++}
++
+ static NTSTATUS macdrv_init(void *arg)
+ {
+     struct init_params *params = arg;
+@@ -623,6 +646,8 @@ static NTSTATUS macdrv_init(void *arg)
+     OSStatus status;
+ 
+     lullaby_windows_pid = HandleToULong(NtCurrentTeb()->ClientId.UniqueProcess);
++    lullaby_init_direct_display();
++    if (lullaby_direct_display) fprintf(stderr, "lullaby: direct display: on for this program\n");
+     app_icon_callback = params->app_icon_callback;
+     app_quit_request_callback = params->app_quit_request_callback;
+     regcreateopenkeyexa_callback = params->regcreateopenkeyexa_callback;
