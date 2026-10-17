@@ -255,6 +255,12 @@ static NV_FRAME_REPORT reports[RING];
 #define FRAMES 8
 static uint64_t frame_no;
 static uint64_t acquired_at_release[FRAMES];
+/* Whether a released frame was held for the pacing. Only an unheld frame's interval on the
+   screen is the GPU's own: a held one's is the pacing's, and averaging those would let a
+   late frame (one refresh missed) push the next ones later still. Every PROBE-th frame
+   goes unheld so the estimate keeps up when the GPU gets quicker. */
+#define PROBE 8
+static BOOL held[FRAMES];
 static uint64_t release_of_game_id[RING];   /* by the game's frame id: when its Sleep returned */
 static uint64_t prev_done;                  /* when the previous wait's frame reached the screen */
 static double gpu_ns, cpu_ns;               /* averages: frame interval on screen, CPU time to Present */
@@ -391,8 +397,11 @@ static NvAPI_Status __cdecl lb_Sleep(void *dev)
             {
                 uint64_t off = (shown - prev_done) % refresh_ns;
                 double dev = (double)(shown - prev_done) - gpu_ns;
-                if (gpu_ns) gpu_dev_ns = gpu_dev_ns * 0.9 + (dev < 0 ? -dev : dev) * 0.1;
-                average(&gpu_ns, (double)(shown - prev_done));
+                if (!held[(frame_no - 1) % FRAMES])
+                {
+                    if (gpu_ns) gpu_dev_ns = gpu_dev_ns * 0.9 + (dev < 0 ? -dev : dev) * 0.1;
+                    average(&gpu_ns, (double)(shown - prev_done));
+                }
                 synced = synced * 0.95 + (off < 500000 || refresh_ns - off < 500000 ? 0.05 : 0.0);
             }
             prev_done = shown;
@@ -400,13 +409,14 @@ static NvAPI_Status __cdecl lb_Sleep(void *dev)
                starts its CPU part that long before, less a margin against a bubble. */
             {
                 double slack = synced > 0.7 ? (double)refresh_ns : 0;
-                if (gpu_ns && cpu_ns && cpu_ns + slack < gpu_ns)
+                if (gpu_ns && cpu_ns && cpu_ns + slack < gpu_ns && frame_no % PROBE)
                     /* A margin of two average deviations: a frame the GPU is quick with
                        then rarely finds it idle. */
                     target = shown + (uint64_t)(gpu_ns - cpu_ns - slack - 1000000 - 2 * gpu_dev_ns);
             }
             ReleaseSRWLockExclusive(&reflex_lock);
             if (target > now_ns()) wait_until(target);
+            else target = 0;
         }
     }
     if (interval && last_release) wait_until(last_release + (uint64_t)interval * 1000);
@@ -416,6 +426,7 @@ static NvAPI_Status __cdecl lb_Sleep(void *dev)
     if (f) measure_shown(f);
     frame_no++;
     acquired_at_release[frame_no % FRAMES] = f ? f->acquired : 0;
+    held[frame_no % FRAMES] = target != 0;
     last_release = t;
     stat_frames++;
     stat_wait_ns += t - start;
