@@ -7,8 +7,9 @@
  * the present feed the D3DMetal layer writes (winemac.so fix 0003): a drawable is
  * taken at Present and shown when the GPU is done with it.
  *
- * Usage: [SIM_GPU_MS=20] [SIM_CPU_MS=8] reflex-sim.exe [0|1]   1 (default) turns low
- * latency mode on; the variables set the frame costs.
+ * Usage: [SIM_GPU_MS=20] [SIM_CPU_MS=8] [SIM_VSYNC_HZ=0] reflex-sim.exe [0|1]   1 (default)
+ * turns low latency mode on; the variables set the frame costs and a display the frames
+ * wait for (V-Sync: shown on its next refresh).
  * Prints "frames N fps F latency L ms" over the last half of the run. */
 
 #define WIN32_LEAN_AND_MEAN
@@ -18,8 +19,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
-static int GPU_MS = 20, CPU_MS = 8;
+static int GPU_MS = 20, CPU_MS = 8, VSYNC_HZ = 0;
 #define QUEUE 3
 #define FRAMES 300
 
@@ -70,6 +72,22 @@ static void open_feed(void)
 
 static void spin(double ms) { double end = now_ms() + ms; while (now_ms() < end) ; }
 
+static double shown_at[FRAMES], last_shown;
+static HANDLE to_display;
+
+/* With V-Sync: shows each frame the GPU finished on its refresh. */
+static DWORD WINAPI display(void *arg)
+{
+    for (int i = 0; i < FRAMES; i++)
+    {
+        WaitForSingleObject(to_display, INFINITE);
+        while (now_ms() < shown_at[i]) Sleep(0);
+        gpu_done[i] = shown_at[i];
+        if (feed) { feed->ring[i % 256].present_ns = now_ns(); MemoryBarrier(); feed->presented++; }
+    }
+    return 0;
+}
+
 static DWORD WINAPI gpu(void *arg)
 {
     for (int i = 0; i < FRAMES; i++)
@@ -77,7 +95,16 @@ static DWORD WINAPI gpu(void *arg)
         WaitForSingleObject(work, INFINITE);
         Sleep(GPU_MS);
         gpu_done[i] = now_ms();
-        if (feed) { feed->ring[i % 256].present_ns = now_ns(); MemoryBarrier(); feed->presented++; }
+        if (VSYNC_HZ)
+        {
+            /* The display shows it on its next refresh, while the GPU goes on. */
+            double period = 1000.0 / VSYNC_HZ, at = ceil(gpu_done[i] / period) * period;
+            if (at < last_shown + period) at = last_shown + period;
+            last_shown = at;
+            shown_at[i] = at;
+            ReleaseSemaphore(to_display, 1, NULL);
+        }
+        else if (feed) { feed->ring[i % 256].present_ns = now_ns(); MemoryBarrier(); feed->presented++; }
         ReleaseSemaphore(slots, 1, NULL);
     }
     return 0;
@@ -88,6 +115,7 @@ int main(int argc, char **argv)
     int on = argc > 1 ? atoi(argv[1]) : 1;
     if (getenv("SIM_GPU_MS")) GPU_MS = atoi(getenv("SIM_GPU_MS"));
     if (getenv("SIM_CPU_MS")) CPU_MS = atoi(getenv("SIM_CPU_MS"));
+    if (getenv("SIM_VSYNC_HZ")) VSYNC_HZ = atoi(getenv("SIM_VSYNC_HZ"));
     HMODULE nv = LoadLibraryA("nvapi64.dll");
     query_fn q = nv ? (query_fn)GetProcAddress(nv, "nvapi_QueryInterface") : NULL;
     set_sleep_mode_fn set_mode = q ? (set_sleep_mode_fn)q(0xac1ca9e0) : NULL;
@@ -104,7 +132,9 @@ int main(int argc, char **argv)
 
     slots = CreateSemaphoreA(NULL, QUEUE, QUEUE, NULL);
     work = CreateSemaphoreA(NULL, 0, FRAMES, NULL);
+    to_display = CreateSemaphoreA(NULL, 0, FRAMES, NULL);
     CreateThread(NULL, 0, gpu, NULL, 0, NULL);
+    if (VSYNC_HZ) CreateThread(NULL, 0, display, NULL, 0, NULL);
 
     for (int i = 0; i < FRAMES; i++)
     {

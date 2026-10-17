@@ -9,7 +9,7 @@ here=$(cd "$(dirname "$0")" && pwd)
 out=${1:?output dll}
 x86_64-w64-mingw32-gcc -shared -O2 -Wall -Wextra -Wno-unused-parameter -Wno-cast-function-type \
   -o "$out" "$here/lullaby_nvapi.c" "$here/nvapi64.def" \
-  -static-libgcc -Wl,--no-insert-timestamp -lntdll
+  -static-libgcc -Wl,--no-insert-timestamp -lntdll -luser32
 x86_64-w64-mingw32-strip "$out"
 python3 -I - "$out" <<'PY'
 import struct, sys

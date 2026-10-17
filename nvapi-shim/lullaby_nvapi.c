@@ -101,6 +101,11 @@ static direct_fn real_direct;
 static BOOL reflex_here = TRUE;
 static HANDLE log_file = INVALID_HANDLE_VALUE;
 static SRWLOCK log_lock = SRWLOCK_INIT;
+/* One refresh of the display. With V-Sync a frame reaches the screen on the refresh after
+   the GPU is done with it, up to this much later, so the pacing then counts from that much
+   earlier. V-Sync shows in the frames: their intervals on the screen are whole refreshes. */
+static uint64_t refresh_ns;
+static double synced; /* average of "this interval was whole refreshes", 0..1 */
 
 static void log_line(const char *fmt, ...)
 {
@@ -138,8 +143,8 @@ static BOOL CALLBACK init(INIT_ONCE *once, void *param, void **ctx)
                                OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (GetEnvironmentVariableA("LULLABY_REFLEX", value, sizeof(value)) && !strcmp(value, "0"))
         reflex_here = FALSE;
-    log_line("=== lullaby nvapi64 (pid %lu): Reflex %s", GetCurrentProcessId(),
-             reflex_here ? "paced by Lullaby" : "left to D3DMetal");
+    log_line("=== lullaby nvapi64 (pid %lu): Reflex %s, display refresh %.2f ms", GetCurrentProcessId(),
+             reflex_here ? "paced by Lullaby" : "left to D3DMetal", refresh_ns / 1e6);
     if (!(real = LoadLibraryW(L"nvapimt.dll")))
     {
         log_line("D3DMetal's nvapimt.dll did not load (error %lu): every function is missing", GetLastError());
@@ -253,6 +258,7 @@ static uint64_t acquired_at_release[FRAMES];
 static uint64_t release_of_game_id[RING];   /* by the game's frame id: when its Sleep returned */
 static uint64_t prev_done;                  /* when the previous wait's frame reached the screen */
 static double gpu_ns, cpu_ns;               /* averages: frame interval on screen, CPU time to Present */
+static double gpu_dev_ns;                   /* average distance of an interval from gpu_ns */
 
 /* stats for the log */
 static uint64_t stat_since, stat_frames, stat_wait_ns, stat_timeouts;
@@ -382,12 +388,23 @@ static NvAPI_Status __cdecl lb_Sleep(void *dev)
             if (!shown || shown > now_ns()) shown = now_ns();
             AcquireSRWLockExclusive(&reflex_lock);
             if (prev_done && shown > prev_done && shown - prev_done < 100000000ull)
+            {
+                uint64_t off = (shown - prev_done) % refresh_ns;
+                double dev = (double)(shown - prev_done) - gpu_ns;
+                if (gpu_ns) gpu_dev_ns = gpu_dev_ns * 0.9 + (dev < 0 ? -dev : dev) * 0.1;
                 average(&gpu_ns, (double)(shown - prev_done));
+                synced = synced * 0.95 + (off < 500000 || refresh_ns - off < 500000 ? 0.05 : 0.0);
+            }
             prev_done = shown;
             /* Frame N-1 leaves the GPU about one frame interval after N-2 showed; frame N
                starts its CPU part that long before, less a margin against a bubble. */
-            if (gpu_ns && cpu_ns && cpu_ns < gpu_ns)
-                target = shown + (uint64_t)(gpu_ns - cpu_ns - 1000000 - gpu_ns * 0.05);
+            {
+                double slack = synced > 0.7 ? (double)refresh_ns : 0;
+                if (gpu_ns && cpu_ns && cpu_ns + slack < gpu_ns)
+                    /* A margin of two average deviations: a frame the GPU is quick with
+                       then rarely finds it idle. */
+                    target = shown + (uint64_t)(gpu_ns - cpu_ns - slack - 1000000 - 2 * gpu_dev_ns);
+            }
             ReleaseSRWLockExclusive(&reflex_lock);
             if (target > now_ns()) wait_until(target);
         }
@@ -407,11 +424,11 @@ static NvAPI_Status __cdecl lb_Sleep(void *dev)
     else if (t - stat_since >= 5000000000ull)
     {
         double secs = (t - stat_since) / 1e9;
-        log_line("reflex: %s, %.1f fps (game frames, %.1f shown each), held %.2f ms a frame, PC latency %.1f ms, GPU %.2f ms, CPU %.2f ms, %llu frames not shown in time",
+        log_line("reflex: %s, %.1f fps (game frames, %.1f shown each), held %.2f ms a frame, PC latency %.1f ms, GPU %.2f ms, CPU %.2f ms, GPU spread %.2f ms, V-Sync %.0f%%, %llu frames not shown in time",
                  on ? (f ? "low latency" : "low latency without a feed") : (f ? "off (measured)" : "off"),
                  stat_frames / secs, per_frame, stat_wait_ns / 1e6 / stat_frames,
                  stat_latency_samples ? stat_latency_ns / 1e6 / stat_latency_samples : -1.0,
-                 gpu_ns / 1e6, cpu_ns / 1e6, stat_timeouts);
+                 gpu_ns / 1e6, cpu_ns / 1e6, gpu_dev_ns / 1e6, synced * 100, stat_timeouts);
         stat_since = t;
         stat_frames = stat_wait_ns = stat_timeouts = 0;
         stat_latency_ns = stat_latency_samples = 0;
@@ -549,8 +566,13 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, void *reserved)
 {
     if (reason == DLL_PROCESS_ATTACH)
     {
+        DEVMODEW mode = { .dmSize = sizeof(mode) };
         DisableThreadLibraryCalls(instance);
         QueryPerformanceFrequency(&qpc_freq);
+        if (EnumDisplaySettingsW(NULL, ENUM_CURRENT_SETTINGS, &mode) && mode.dmDisplayFrequency > 1)
+            refresh_ns = 1000000000ull / mode.dmDisplayFrequency;
+        else
+            refresh_ns = 1000000000ull / 60;
     }
     return TRUE;
 }
