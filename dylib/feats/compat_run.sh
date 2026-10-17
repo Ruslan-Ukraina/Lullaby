@@ -1077,7 +1077,7 @@ if [ "${LULLABY_HIDE_LAUNCHER_TILE:-0}" = "1" ]; then
   uielement_arg="  <key>LSUIElement</key><true/>"
   echo "launcher tile hidden by LULLABY_HIDE_LAUNCHER_TILE" >> "$log" 2>&1 || true
 fi
-# macOS Game Mode (Performance › macOS Game Mode): off, the bundle opts out, so apps in
+# macOS Game Mode (Performance > macOS Game Mode): off, the bundle opts out, so apps in
 # the background (OBS, a VTuber model) keep their share of the CPU and GPU while streaming.
 gamemode_arg=""
 if [ "$(env_value LULLABY_GAME_MODE)" = "0" ]; then
