@@ -155,6 +155,13 @@ int main(int argc, char **argv)
     int n = 0;
     for (int i = FRAMES / 2; i < FRAMES; i++) if (gpu_done[i] > 0) { lat += gpu_done[i] - sim_start[i]; n++; }
     double secs = (gpu_done[FRAMES - 1] - gpu_done[FRAMES / 2]) / 1000.0;
+    /* Pacing: how far the intervals between shown frames stray from their mean. */
+    double sum = 0, sq = 0;
+    int count = 0;
+    for (int i = FRAMES / 2 + 1; i < FRAMES; i++)
+        if (gpu_done[i] > 0 && gpu_done[i - 1] > 0) { double d = gpu_done[i] - gpu_done[i - 1]; sum += d; sq += d * d; count++; }
+    double mean = count ? sum / count : 0, jitter = count ? sqrt(sq / count - mean * mean) : 0;
+    printf("pacing jitter %.2f ms, ", jitter);
     printf("gpu %d cpu %d low latency %d: frames %d fps %.1f latency %.1f ms\n", GPU_MS, CPU_MS, on, n, (FRAMES / 2 - 1) / secs, lat / n);
     return 0;
 }
