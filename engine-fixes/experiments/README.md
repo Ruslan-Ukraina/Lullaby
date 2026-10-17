@@ -35,3 +35,12 @@ workflow applies them. Each applies on top of `patches/winemac.so/0001..0003`.
   the NSToolbarFullScreenWindow (alpha 0, 1512×32) stays. Metal HUD: still "Composited".
   Left to rule out: the game's HDR output (RGB10A2, ITU-R 2100 PQ, EDR) — needs HDR off in
   RE9's own menu.
+- `0004-winemac-lullaby-re9-native-fullscreen-direct-v5.patch` — with the owner, RE9 in
+  Borderless with HDR off (2026-10-17): native full screen, 3024×1898; additionally the
+  full-screen toolbar window ordered out, rounded/masked corners off (there were none), and
+  EDR refused for an sRGB picture (D3DMetal asks for EDR even in SDR). Final state of the
+  game's layer: RGB10A2Unorm (90), 3024×1898, opaque, framebufferOnly, no EDR, sRGB,
+  identity transforms; everything around it hidden. Metal HUD: still "Composited".
+  Remaining suspect: the pixel format — D3DMetal presents RE9's 10-bit swapchain as
+  RGB10A2Unorm, which the display may not scan out (BGRA8/BGR10A2/RGBA16Float are the
+  usual direct formats). Changing it means intercepting how D3DMetal draws into the drawable.
