@@ -104,6 +104,7 @@ public enum ConfigMaterializer {
         ("MTL_HUD_ENABLED", \.fps),
         ("SEVO_LARGE_ADDRESS_AWARE", \.largeAddressAware),
         ("ROSETTA_ADVERTISE_AVX", \.avx),
+        ("LULLABY_GAME_MODE", \.gameMode),
         ("SEVO_FORCE_UMA", \.unifiedMemory),
         ("LULLABY_FORCE_VSYNC", \.forceVsync),
         ("LULLABY_LOW_LATENCY", \.lowLatency),

@@ -1515,3 +1515,8 @@ PEAK, DXMT, меню; `perf/peak-ab.sh` чередует «исходно → и
 
 - Владелец: игра намертво зависает (картинка, Metal HUD, ввод; звук идёт) на ~30 с, только с DLSS-G, «появилось вместе с Reflex». Журнал Reflex: удержание 0, время release → PRESENT_END ~30 с. Сторож (кадры игры по журналу DLL) снял `sample` во время двух зависаний: обе очереди `com.Metal4.SubmissionQueue` стоят в `IOGPUCommandQueueWaitMTLEvent` все выборки.
 - Причина (по коду DLL): у D3DMetal есть свои `SetSleepMode/Sleep/SetLatencyMarker/SetAsyncFrameMarker/NotifyOutOfBandCommandQueue`, а наша DLL отвечала сама и не передавала их. Через них Streamline сообщает D3DMetal очередь DLSS-G (out-of-band) и границы кадров. pre.22: эти вызовы передаются в D3DMetal (OOB и async markers — целиком ему). Симуляция с настоящим устройством D3D12 через D3DMetal: без падений, 42,8/93 → 42,4/36–40 мс. Подтверждение — игрой владельца.
+- **Итог по зависаниям (на сейчас):** исключены Reflex, наш V-Sync, потерянные пробуждения msync (`kill -USR2 wineserver` во время зависания: `lost-wakes=0`); во время зависания игра рисует (~84 кадра/с) и звук идёт, очереди Metal 4 ждут события. Главный оставшийся подозреваемый — патч HAGS (`win32u`), затем GPTK beta 3 + r6. Владелец устал от поисков: V-Sync, Reflex, DLSS возвращены; зависания считаются по журналу Reflex (строки с CPU > 1000 мс) после его игр.
+
+## 2026-10-17 ~22:10 CEST — «Ігровий режим macOS» (pre.23)
+
+- Владелец: при стриме VTuber-модель шла ~10 кадров, вероятно из-за Game Mode. Новый переключатель «Продуктивність» → «Ігровий режим macOS» (`gameMode`, по умолчанию вкл.): выкл. — `compat_run.sh` пишет в `Info.plist` пакета игры `LSSupportsGameMode = false`. app-tests 441, panel-behavior, runcheck/scriptcheck/launch-shell — 0.

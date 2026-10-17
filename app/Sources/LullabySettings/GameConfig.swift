@@ -163,6 +163,8 @@ public struct ConfigValues: Codable, Equatable, Sendable {
     public var unifiedMemory: Bool?
     public var largeAddressAware: Bool?
     public var avx: Bool?
+    /// macOS Game Mode for the game's bundle; off keeps streaming apps at full speed.
+    public var gameMode: Bool?
     /// Game level only, a debugging switch: msync+ stays on otherwise.
     public var msync: Bool?
     /// The D3DMetal layer stays in step with the display (winemac.so fix 0003).
@@ -207,6 +209,7 @@ public enum ConfigDefaults {
         v.unifiedMemory = false
         v.largeAddressAware = false
         v.avx = false
+        v.gameMode = true
         v.msync = true
         v.forceVsync = false
         v.lowLatency = false

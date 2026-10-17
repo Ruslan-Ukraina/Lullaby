@@ -411,6 +411,16 @@ extension SettingCopy {
                     ru: "Игра, которая выбирает более медленный путь с AVX, может работать лучше без этого.")),
             ]))
 
+    static let gameMode = SettingCopy(
+        L10n("macOS Game Mode", uk: "Ігровий режим macOS", ru: "Игровой режим macOS"),
+        caption: L10n("Gives the game priority in full screen. Turn off while streaming.",
+                      uk: "Дає грі пріоритет на весь екран. Вимикайте під час стріму.",
+                      ru: "Даёт игре приоритет на весь экран. Выключайте во время стрима."),
+        help: SettingHelp(
+            L10n("In full screen macOS gives a game Game Mode: the CPU and GPU go to it first and apps in the background are held back. While you stream or record, that slows OBS, a VTuber model and the like. Off, the game's bundle opts out of Game Mode. Takes effect at the next launch.",
+                 uk: "На весь екран macOS вмикає для гри ігровий режим: процесор і відеокарта дістаються їй першою, а програми у фоні притримуються. Під час стріму чи запису це гальмує OBS, VTuber-модель тощо. Вимкнено — пакет гри відмовляється від ігрового режиму. Діє з наступного запуску.",
+                 ru: "На весь экран macOS включает для игры игровой режим: процессор и видеокарта достаются ей первой, а программы в фоне придерживаются. Во время стрима или записи это тормозит OBS, VTuber-модель и т. п. Выключено — пакет игры отказывается от игрового режима. Действует со следующего запуска.")))
+
     static let forceVsync = SettingCopy(
         L10n("No frame tearing", uk: "Без розривів кадру", ru: "Без разрывов кадра"),
         caption: L10n("Keeps D3DMetal's picture in step with the display, even with frame generation on.",

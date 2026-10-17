@@ -11,7 +11,7 @@ public enum SettingID: String, CaseIterable, Sendable, Codable {
     case renderer, retina, metalfx, upscaler, fps
     case windows, filter, dlss
     case mouse
-    case tuning, unifiedMemory, avx
+    case tuning, unifiedMemory, avx, gameMode
     case emulateModeset, largeAddressAware
     case msync
     case forceVsync, lowLatency
@@ -221,6 +221,8 @@ public enum SettingCatalog {
         .flag(.unifiedMemory, in: .performance, experimental: true, key: \.unifiedMemory, copy: .unifiedMemory,
               carrier: .environment(["SEVO_FORCE_UMA"])),
         .flag(.avx, in: .performance, key: \.avx, copy: .avx, carrier: .environment(["ROSETTA_ADVERTISE_AVX"])),
+        // The run script writes the game's bundle (compat_run.sh): LSSupportsGameMode.
+        .flag(.gameMode, in: .performance, key: \.gameMode, copy: .gameMode, carrier: .environment(["LULLABY_GAME_MODE"])),
         .flag(.emulateModeset, in: .oldGames, key: \.emulateModeset, copy: .emulateModeset,
               carrier: .registry(values: ["EmulateModeset"], marker: "LULLABY_EMULATE_MODESET")),
         .flag(.largeAddressAware, in: .oldGames, key: \.largeAddressAware, copy: .largeAddressAware,
