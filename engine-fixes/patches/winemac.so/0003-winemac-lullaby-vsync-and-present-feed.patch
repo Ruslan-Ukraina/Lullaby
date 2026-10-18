@@ -1,3 +1,21 @@
+ENG-07  D3DMetal layer: V-Sync kept on, and a page that tells when each frame reached the screen.
+
+dlls/winemac.drv/d3dmetal_objc.m (WineMetalLayer), macdrv_main.c (winemac.so). Lullaby, 2026-10-17
+(commits 91cd3eb, cc2a16b). LGPL-2.1-or-later like Wine.
+
+What, both read once per process from the env files and off by default:
+ LULLABY_FORCE_VSYNC=1  the layer stays in step with the display (games with frame generation switch
+                        V-Sync off and tear); with it the layer keeps at least three drawables, so that a
+                        frame waiting for a refresh does not starve the GPU of drawables.
+ LULLABY_PRESENT_FEED=1 <prefix>/.sevo/run/<Windows pid>.present: every drawable handed out and the moment
+                        it reached the screen (addPresentedHandler), a ring of 256 in a shared page
+                        (magic "LBPRSENT"). lullaby-nvapi64.dll (nvapi-shim, Reflex by Lullaby) reads it.
+Without the variables the patch changes nothing.
+Requires: nothing in the patch; Reflex needs nvapi-shim (CMP-04).
+Other bases: FAIL on every WineForge release; it patches Dormison's WineMetalLayer, WineForge's
+d3dmetal_objc.m is different code. Needs rewriting for it; Reflex and V-Sync depend on it.
+Test: make reflex-sim (the feed is simulated there); in a game, lullaby-nvapi.log.
+
 diff --git a/dlls/winemac.drv/d3dmetal_objc.m b/dlls/winemac.drv/d3dmetal_objc.m
 index 777a351e975..7942d075858 100644
 --- a/dlls/winemac.drv/d3dmetal_objc.m

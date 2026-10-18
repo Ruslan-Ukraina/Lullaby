@@ -1,3 +1,16 @@
+ENG-05  ntdll answers D3DMetal 4.0 beta 3's FindBestWindowHWND.
+
+dlls/ntdll/unix/loader.c (ntdll.so). Lullaby, 2026-10-16 (commit fe14e47). LGPL-2.1-or-later like Wine.
+Base: Dormison r6, after ENG-04.
+
+What: beta 3's own pack_FindBestWindowHWND forwards to a host callback winemac.drv does not provide and
+returns an uninitialised HWND. This puts a function of ours in that slot (0x148 of the dispatch table); it
+is called with the ms_abi convention, possibly on the PE user stack, so the window search (win32u calls)
+runs on a syscall frame, as NtUserEnumDisplayMonitors does. The search itself is ENG-06 in winemac.so.
+Switch: none. Requires: ENG-04 (table layout), ENG-06 (the exported __wine_d3dmetal_find_best_window).
+Other bases: FAIL on every WineForge release (needs ENG-04's code).
+Test: engine-fixes/tests/d3dmetal-composition-swapchain.c.
+
 --- a/dlls/ntdll/unix/loader.c
 +++ b/dlls/ntdll/unix/loader.c
 @@ -1668,8 +1668,35 @@

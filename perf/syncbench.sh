@@ -4,7 +4,7 @@
 # load hit every mode alike. One CSV row per case, round and mode.
 #
 #   perf/syncbench.sh [--engine-env FILE] [--runs N] [--mode LABEL:VAR=v,VAR=v]... [--out CSV]
-#                     [--wait-quiet LOAD]
+#                     [--wait-quiet PERCENT]
 #
 #   --engine-env  a lullaby-engine.env (see perf/common.sh); default: the installed engine
 #   --runs        rounds per mode, default 3
@@ -12,7 +12,7 @@
 #                 "server:" (the wineserver does the waiting) and "msync:WINEMSYNC=1".
 #                 WineForge: "wfusync:WINEWFUSYNC=1".
 #   --out         CSV to append to, default scratch/perf/syncbench.csv
-#   --wait-quiet  wait (up to 10 minutes) until the 1-minute load average is under LOAD
+#   --wait-quiet  wait (up to 10 minutes) until at least PERCENT of the processors are idle (this Mac idles at 80 % with nothing of ours running)
 #
 # Round 0 of each mode is a warm-up: it is written to the CSV (round 0) and report.py leaves
 # it out. Refuses to run while a Wine server is alive: a game or a session would make the

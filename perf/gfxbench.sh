@@ -5,12 +5,14 @@
 # in the Mac's load hits all alike. A window opens on the screen for each run.
 #
 #   perf/gfxbench.sh [--engine-env FILE] [--runs N] [--config LABEL:VAR=v,VAR=v]...
-#                    [--bench cpu|gpu]... [--seconds S] [--out CSV] [--wait-quiet LOAD]
-#                    [--min-idle S] [--no-threads] [--no-tap]
+#                    [--bench cpu|gpu]... [--seconds S] [--out CSV] [--wait-quiet PERCENT]
+#                    [--min-idle S] [--no-threads] [--no-tap] [--renderer dxmt|d3dmetal]
 #
 #   --config      a label and the environment of that configuration; default
 #                 "dxmt-msync:WINEMSYNC=1". WineForge: "dxmt-wfusync:WINEWFUSYNC=1".
 #                 BENCH_DRAWS, BENCH_FILL, BENCH_VSYNC ... go here too (see d3d11bench.c).
+#   --renderer    dxmt (default) or d3dmetal: Apple's D3DMetal from the Game Porting Toolkit Lullaby holds
+#                 (LB_D3DMETAL), for a Dormison or a WineForge engine (LB_ENGINE_KIND in its env file)
 #   --bench       cpu (many small draws), gpu (heavy pixels); default both
 #   --seconds     measured seconds a run, default 12 (after 3 s of warm-up)
 #   --out         CSV to append to, default scratch/perf/gfxbench.csv; the thread rows go to
@@ -39,6 +41,7 @@ quiet=""
 min_idle=20
 threads=1
 tap=1
+renderer=dxmt
 
 while [ $# -gt 0 ]; do
   case $1 in
@@ -53,6 +56,7 @@ $2"; shift 2 ;;
     --min-idle) min_idle=$2; shift 2 ;;
     --no-threads) threads=0; shift ;;
     --no-tap) tap=0; shift ;;
+    --renderer) renderer=$2; shift 2 ;;
     *) echo "gfxbench: unknown option $1" >&2; exit 2 ;;
   esac
 done
@@ -69,14 +73,18 @@ if [ "${perf_idle:-0}" -lt "$min_idle" ] 2> /dev/null; then
   echo "gfxbench: the user was active ${perf_idle:-0} s ago (need $min_idle s idle): a window pops up and input disturbs the numbers" >&2
   exit 2
 fi
-echo "==> gfxbench: engine $perf_engine, $runs rounds, benches:$benches, $seconds s a run"
+echo "==> gfxbench: engine $perf_engine, renderer $renderer, $runs rounds, benches:$benches, $seconds s a run"
 
 trap perf_cleanup EXIT INT TERM
 tc=$root/out/threadcpu
 tapdylib=$root/out/frametap.dylib
 if [ ! -x "$tc" ] || [ ! -f "$tapdylib" ]; then "$here/build.sh"; fi
 perf_prefix_init
-perf_stage_dxmt
+case $renderer in
+  dxmt) perf_stage_dxmt ;;
+  d3dmetal) perf_stage_d3dmetal ;;
+  *) echo "gfxbench: --renderer is dxmt or d3dmetal" >&2; exit 2 ;;
+esac
 x86_64-w64-mingw32-gcc -O2 -Wall -Wextra -Wno-unused-parameter -o "$perf_tmp/d3d11bench.exe" "$here/d3d11bench.c" \
   -ld3d11 -ldxgi -ld3dcompiler_47 -luuid -static-libgcc
 
@@ -107,8 +115,9 @@ while [ "$round" -le "$runs" ]; do
       (
         # shellcheck disable=SC2086 # the configuration's VAR=value pairs, one word each, by design
         # shellcheck disable=SC2086 # tapenv is VAR=value pairs, one word each, by design
-        env WINEDLLPATH_PREPEND="$perf_prepend" WINEDLLOVERRIDES="$perf_overrides;$WINEDLLOVERRIDES" \
-          BENCH_MODE="$bench" BENCH_SECONDS="$seconds" BENCH_WARMUP="$warmup" $tapenv $spaced \
+        # shellcheck disable=SC2086 # perf_renderer_env: VAR=value words, by design
+        env ${perf_prepend:+WINEDLLPATH_PREPEND="$perf_prepend"} WINEDLLOVERRIDES="$perf_overrides;$WINEDLLOVERRIDES" \
+          $perf_renderer_env BENCH_MODE="$bench" BENCH_SECONDS="$seconds" BENCH_WARMUP="$warmup" $tapenv $spaced \
           "$perf_wine" "$perf_tmp/d3d11bench.exe" > "$result" 2> "$perf_tmp/stderr.txt"
       ) &
       bench_pid=$!

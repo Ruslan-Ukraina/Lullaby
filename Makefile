@@ -65,7 +65,7 @@ TARGET      := $(OUT_DIR)/lullaby.dylib
 OBJS := $(patsubst %.c,$(OUT_DIR)/%.o,$(SRCS)) $(patsubst %.m,$(OUT_DIR)/%.o,$(OBJC_SRCS))
 DEPS := $(OBJS:.o=.d)
 
-.PHONY: all nvapi-shim reflex-sim clean rebuild dobby deploy dylib-install sigcheck app-payload app app-zip app-config \
+.PHONY: all nvapi-shim reflex-sim patchcheck clean rebuild dobby deploy dylib-install sigcheck app-payload app app-zip app-config \
         anchorcheck callscheck sigdb-fixtures webpatch-fixtures peicon-fixtures panel-behavior app-tests launch-shell \
         tests-list overlay-shim overlay-shim-install overlay-shim-tests \
         overlay-shim-bench iconmaker icon \
@@ -109,6 +109,10 @@ scriptcheck:
 		sh -n "$$s" || exit 1; \
 	done; \
 	echo "==> scriptcheck: $(words $(SCRIPTS)) scripts lint and parse clean"
+
+# Every engine patch is in docs/PATCH_REGISTRY.md and has a header, and the registry names no missing one.
+patchcheck:
+	engine-fixes/check-registry.sh
 
 COMPATCHECK := $(OUT_DIR)/compatcheck
 

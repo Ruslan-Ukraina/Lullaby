@@ -19,6 +19,9 @@ clone=${1:?usage: rehearse.sh CLONE PATCH_DIR [TAG...]}
 patches=${2:?usage: rehearse.sh CLONE PATCH_DIR [TAG...]}
 shift 2
 [ -d "$clone/.git" ] || { echo "rehearse: $clone is not a git clone" >&2; exit 2; }
+[ -d "$patches" ] || { echo "rehearse: $patches is not a folder" >&2; exit 2; }
+# absolute: every patch is applied from inside the clone
+patches=$(cd "$patches" && pwd)
 if [ $# -gt 0 ]; then tags="$*"; else tags=$(git -C "$clone" tag | sort -V); fi
 [ -n "$tags" ] || { echo "rehearse: no tags" >&2; exit 2; }
 
