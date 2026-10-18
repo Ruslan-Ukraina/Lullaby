@@ -123,3 +123,25 @@ struct GameFixWiringTests {
         #expect(store.stack(for: 5).recipe == .empty)
     }
 }
+
+@Suite("Game fix importer output")
+struct GameFixImporterTests {
+    /// tools/fixtures/umu-expected.json is what tools/import-umu.py makes of tools/fixtures/umu.
+    @Test("The importer's output decodes in the app's validator")
+    func fixtureDecodes() throws {
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appending(path: "../../../tools/fixtures/umu-expected.json").standardized
+        let catalog = try GameFixCatalog.decode(Data(contentsOf: url))
+        let fix = try #require(catalog.fix(appID: 111, exes: nil, engine: nil, gptk: nil))
+        #expect(fix.env == ["WINE_FOO": "1"] && fix.dllOverrides == ["xaudio2_9": "n,b"])
+        #expect(fix.registry.count == 1 && fix.source.kind == "umu-protonfixes")
+    }
+
+    /// Set UMU_DRAFT to a file made from the whole upstream checkout to check it too.
+    @Test("A full draft passes the validator when one is given")
+    func fullDraft() throws {
+        guard let path = ProcessInfo.processInfo.environment["UMU_DRAFT"] else { return }
+        let catalog = try GameFixCatalog.decode(Data(contentsOf: URL(fileURLWithPath: path)))
+        #expect(!catalog.entries.isEmpty)
+    }
+}

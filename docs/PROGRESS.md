@@ -1595,3 +1595,10 @@ PEAK, DXMT, меню; `perf/peak-ab.sh` чередует «исходно → и
 - Шаг 2: каталог подключён. `SettingsStore.stack(for:)` берёт запись из `settings/game-fixes.json` (только `fits`), иначе встроенные `GameRecipes`; `backend` → уровень `recipe`, `env` и `WINEDLLOVERRIDES` → строки файла программы (`ConfigStack.fixLines`). `app-tests`: 451 зелёный.
 - **Не сделано:** (а) запись ключей реестра Wine из `registry` в префикс; (б) загрузка и проверка подписи каталога приложением (`ReleaseFeed.fetch`, файл `game-fixes.json` в кэш); (в) фильтры `needsEngine`/`notNeededFromGPTK` в `stack(for:)` передают nil: нужна версия движка/GPTK; (г) `WINEDLLOVERRIDES` в `.sevo/apps/<exe>.env` на живом движке не проверен (игры без владельца не запускал).
 - Дальше: импортёр `umu-protonfixes` (черновик записей из текста, без запуска чужого кода).
+
+## 2026-10-18 (ночь) — Этап 8, шаг 3: импортёр umu-protonfixes
+
+- `tools/import-umu.py` (только stdlib, `python3 -I`): читает `gamefixes-steam/<appid>.py` через `ast.parse`, не импортирует и не запускает. Берёт литеральные вызовы верхнего уровня `main()`: `set_environment`, `winedll_override`, `regedit_add` (только `HKCU\Software\Wine\`). Остальное считает и пропускает (`protontricks`, копирование, ini, условия).
+- Прогон на umu-protonfixes `e89ce7b43800` (клон в `scratch/src/`, не в git): 39 записей из 315 файлов; отчёт — `scratch/umu-report.txt`. Полный черновик `scratch/umu-draft.json` проходит валидатор приложения (тест с `UMU_DRAFT=путь`).
+- Фикстура `tools/fixtures/umu` + `umu-expected.json` + тест; файл-ловушка с `os.system` не исполняется.
+- **Что дальше с черновиком:** записи не проверены на Dormison (Proton-переменные отброшены, остальное — как у Proton). В каталог идут только после твоего просмотра. Не сделано: подпись и публикация каталога в CI, загрузка приложением.
