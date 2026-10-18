@@ -1588,3 +1588,10 @@ PEAK, DXMT, меню; `perf/peak-ab.sh` чередует «исходно → и
 - `engine-fixes/rehearse.sh`: проверка применимости патчей к тегам клона Wine. На 8 релизах WineForge (Wine 11.12–11.20): без правок применяются `commit charge`, HAGS, `retina horzres`, серверный коммит arm64 (3b55f4eac). На всех 8 не подходят (то есть не «гниют», а написаны под код Dormison): три патча D3DMetal 4b3, патч 0003 (V-Sync, лента показа), два серверных коммита Dormison. Подробности и churn файлов — `docs/STACK_PLAN.md` §8.
 - WFUSync по коду: «spin» — пустой счётчик до 32 без перечитывания состояния; ожидание нескольких объектов идёт через запросы к серверу (отсюда задержка ≈ серверной); настроек, кроме `WINEWFUSYNC`, нет. Что можно приблизить к msync+ — `STACK_PLAN.md` §9.
 - Контракт D3DMetal у WineForge: `GRAPHICS_BACKEND=d3dmetal|dxmt`, `D3DMETAL_RUNTIME_DIR=<каталог с wine/x86_64-windows и wine/x86_64-unix>`; ваш GPTK подходит как `<GPTK>/lib` без перепаковки.
+
+## 2026-10-18 (ночь) — Этап 8, шаги 1–2: каталог исправлений игр (ветка main по слову владельца)
+
+- Шаг 1 (`a0266bc`): `docs/GAME_FIXES.md`, `GameFixCatalog.swift` (схема 1, валидатор), 8 тестов.
+- Шаг 2: каталог подключён. `SettingsStore.stack(for:)` берёт запись из `settings/game-fixes.json` (только `fits`), иначе встроенные `GameRecipes`; `backend` → уровень `recipe`, `env` и `WINEDLLOVERRIDES` → строки файла программы (`ConfigStack.fixLines`). `app-tests`: 451 зелёный.
+- **Не сделано:** (а) запись ключей реестра Wine из `registry` в префикс; (б) загрузка и проверка подписи каталога приложением (`ReleaseFeed.fetch`, файл `game-fixes.json` в кэш); (в) фильтры `needsEngine`/`notNeededFromGPTK` в `stack(for:)` передают nil: нужна версия движка/GPTK; (г) `WINEDLLOVERRIDES` в `.sevo/apps/<exe>.env` на живом движке не проверен (игры без владельца не запускал).
+- Дальше: импортёр `umu-protonfixes` (черновик записей из текста, без запуска чужого кода).

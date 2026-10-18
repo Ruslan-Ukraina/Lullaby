@@ -91,3 +91,35 @@ struct GameFixCatalogTests {
         #expect(Self.rejects(Self.catalog(Self.entry(match: #""exes":["a/b.exe"]"#)), "bad exe name"))
     }
 }
+
+@Suite("Game fix catalog in the settings")
+struct GameFixWiringTests {
+    static func store(catalog: String?) throws -> SettingsStore {
+        let dir = FileManager.default.temporaryDirectory.appending(path: "fixes-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        if let catalog { try Data(catalog.utf8).write(to: dir.appending(path: "game-fixes.json")) }
+        return SettingsStore(root: dir)
+    }
+
+    @Test("The catalog's fix becomes the game's recipe and adds its lines to the program's file")
+    func applies() throws {
+        let entry = GameFixCatalogTests.entry(
+            id: "x", match: #""appIDs":[777]"#,
+            more: #","env":{"WINE_FOO":"1"},"dllOverrides":{"b_dll":"n","a_dll":"b"}"#)
+        let store = try Self.store(catalog: String(decoding: GameFixCatalogTests.catalog(entry), as: UTF8.self))
+        let stack = store.stack(for: 777)
+        #expect(stack.value(\.renderer) == (.dxmt, .recipe))
+        let lines = ConfigMaterializer.gameLines(appID: 777, stack: stack)
+        #expect(lines.suffix(2) == ["WINE_FOO=1", "WINEDLLOVERRIDES=a_dll=b;b_dll=n"])
+    }
+
+    @Test("No catalog, a broken catalog or an unfit verdict leaves the built-in recipes")
+    func fallsBack() throws {
+        #expect(try Self.store(catalog: nil).stack(for: 3527290).value(\.renderer) == (.dxmt, .recipe))
+        #expect(try Self.store(catalog: "{broken").stack(for: 3527290).fixLines.isEmpty)
+        let unfit = GameFixCatalogTests.entry(id: "u", match: #""appIDs":[5]"#)
+            .replacingOccurrences(of: "\"fits\"", with: "\"unfit\"")
+        let store = try Self.store(catalog: String(decoding: GameFixCatalogTests.catalog(unfit), as: UTF8.self))
+        #expect(store.stack(for: 5).recipe == .empty)
+    }
+}

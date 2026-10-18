@@ -242,11 +242,15 @@ public struct ConfigStack: Sendable, Equatable {
     /// Lullaby's recipe for the game (GameRecipes), between its own values and global.
     public var recipe: ConfigValues
     public var game: ConfigValues
+    /// Extra lines of the catalog's fix (variables, DLL overrides) for the program's file.
+    public var fixLines: [String]
 
-    public init(global: ConfigValues, recipe: ConfigValues = .empty, game: ConfigValues = .empty) {
+    public init(global: ConfigValues, recipe: ConfigValues = .empty, game: ConfigValues = .empty,
+                fixLines: [String] = []) {
         self.global = global
         self.recipe = recipe
         self.game = game
+        self.fixLines = fixLines
     }
 
     public func value<T>(_ key: KeyPath<ConfigValues, T?>) -> (value: T, level: ConfigLevel) {

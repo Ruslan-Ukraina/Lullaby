@@ -37,6 +37,23 @@ public struct GameFix: Sendable, Equatable {
     public let registry: [RegistryValue]
     public let source: Source
     public let reason: String
+
+    /// The renderer as recipe values (the level between the game's own and for-all-games).
+    public var recipeValues: ConfigValues {
+        var v = ConfigValues()
+        v.renderer = backend
+        return v
+    }
+
+    /// Lines for the program's .env file, in a fixed order. Registry values are not
+    /// lines: they are written into the prefix by the settings service.
+    public var envLines: [String] {
+        var lines = env.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }
+        if !dllOverrides.isEmpty {
+            lines.append("WINEDLLOVERRIDES=" + dllOverrides.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }.joined(separator: ";"))
+        }
+        return lines
+    }
 }
 
 public struct GameFixCatalog: Sendable, Equatable {
@@ -54,6 +71,13 @@ public struct GameFixCatalog: Sendable, Equatable {
     ]
     static let forbiddenEnvPrefixes = ["DYLD_", "LD_", "LULLABY_", "SEVO_", "WINEDLLPATH"]
     static let wineKeyPrefix = "HKCU\\Software\\Wine\\"
+
+    /// The cached catalog (written by the app only after its signature was checked);
+    /// a missing or invalid file means no catalog, never a partial one.
+    public static func load(from url: URL) -> GameFixCatalog? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return try? decode(data)
+    }
 
     /// Parses and validates; throws `Invalid` naming the entry and the reason.
     public static func decode(_ data: Data) throws -> GameFixCatalog {

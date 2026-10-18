@@ -98,6 +98,7 @@ public enum ConfigMaterializer {
             lines.append(dlss ? "D3DM_ENABLE_METALFX=1" : "D3DM_ENABLE_METALFX=")
         }
         lines += markers.compactMap { key, path in game[keyPath: path].map { "\(key)=\($0 ? "1" : "0")" } }
+        lines += stack.fixLines
         return lines
     }
 

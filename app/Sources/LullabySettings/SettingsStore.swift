@@ -31,8 +31,22 @@ public struct SettingsStore: Sendable {
 
     public func stack(for appID: Int?) -> ConfigStack {
         let own = appID.map(game) ?? .empty
-        let recipe = appID == nil ? nil : GameRecipes.recipe(appID: appID, exes: own.exes)
+        guard appID != nil else { return ConfigStack(global: global(), game: own) }
+        // The signed catalog first, the built-in recipes when it has nothing for the game.
+        if let fix = gameFix(appID: appID, exes: own.exes) {
+            return ConfigStack(global: global(), recipe: fix.recipeValues, game: own, fixLines: fix.envLines)
+        }
+        let recipe = GameRecipes.recipe(appID: appID, exes: own.exes)
         return ConfigStack(global: global(), recipe: recipe?.values ?? .empty, game: own)
+    }
+
+    var catalogURL: URL { root.appending(path: "game-fixes.json") }
+
+    /// The catalog's fix for a game; `unfit` entries are shown, never applied.
+    public func gameFix(appID: Int?, exes: [String]?) -> GameFix? {
+        guard let fix = GameFixCatalog.load(from: catalogURL)?
+            .fix(appID: appID, exes: exes, engine: nil, gptk: nil), fix.verdict == .fits else { return nil }
+        return fix
     }
 
     /// Every game with a file, by app id.
