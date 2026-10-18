@@ -19,7 +19,10 @@ What this does:
    why its latency equals the wineserver's; a signal that arrives inside the spin never reaches them.
  - Both numbers are read once, with WINEWFUSYNC, capped at 1000000.
 Nothing else changes: no protocol.def change, no server change, the fallbacks to the server stay.
-Try 256, 1024, 4096 on syncbench (perf/syncbench.sh): the cost of a larger budget is processor time.
+Try 256 and 1024 on syncbench (perf/syncbench.sh): the cost of a larger budget is processor time.
+KNOWN FAULT: with WINEWFUSYNC_SPIN(_MULTI)=4096 a full syncbench run hung in 3 of 8 tries (the wineserver
+spins in lock_state of server/wfusync.c, waiting for a state lock a client holds); 0 of 8 at 1024 and below,
+and 0 of 8 without this patch. Not root-caused. Keep the budget at 1024 or less and do not ship a larger default.
 
 diff --git a/dlls/ntdll/unix/wfusync.c b/dlls/ntdll/unix/wfusync.c
 index b83c406e..ac3ce633 100644
