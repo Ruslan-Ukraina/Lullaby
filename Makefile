@@ -105,7 +105,7 @@ scriptcheck:
 		$(call SKIP,scriptcheck,shellcheck); exit 0; fi; \
 	if [ -z "$(strip $(SCRIPTS))" ]; then $(call SKIP,scriptcheck,a git checkout); exit 0; fi; \
 	for s in $(SCRIPTS); do \
-		shellcheck "$$s" || exit 1; \
+		shellcheck -x "$$s" || exit 1; \
 		sh -n "$$s" || exit 1; \
 	done; \
 	echo "==> scriptcheck: $(words $(SCRIPTS)) scripts lint and parse clean"
