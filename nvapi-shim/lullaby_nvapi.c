@@ -4,13 +4,18 @@
  *
  * - Every function a game asks for goes to D3DMetal's, and the first request for each is
  *   logged by name (LULLABY_NVAPI_LOG, a Windows path), with whether D3DMetal has it.
- * - NVIDIA Reflex, which D3DMetal leaves as stubs, is answered here, the way Korthos
- *   Software's low_latency_layer does it for Vulkan (https://github.com/Korthos-Software/
- *   low_latency_layer, MIT): with low latency mode on, the game's NvAPI_D3D_Sleep holds
- *   each frame until no frame is queued in front of it, then the game's minimum frame
- *   interval. Waiting for the previous frame outright leaves the GPU idle while the CPU
- *   builds the next one, so frame N goes once frame N-2 is on the screen and its CPU part
- *   (averaged) would end as frame N-1 leaves the GPU (averaged): no queue and no bubble. "On the screen" comes from the D3DMetal layer's present feed (winemac.so
+ * - NVIDIA Reflex, which D3DMetal leaves as stubs, is answered here. The idea, that the
+ *   game's NvAPI_D3D_Sleep holds a frame back so none waits in a queue in front of the GPU,
+ *   is the one of Korthos Software's low_latency_layer for Vulkan (https://github.com/
+ *   Korthos-Software/low_latency_layer, MIT). The pacing is Lullaby's own: that layer's
+ *   delay controller (src/delay_controller.cc) works from CPU timestamps alone, probing
+ *   the frame time with a small injected delay and following the gradient, and only for
+ *   games whose simulation runs apart from rendering; here a frame is released by when
+ *   the screen shows. Waiting for the previous frame outright
+ *   leaves the GPU idle while the CPU builds the next one, so frame N goes once frame N-2
+ *   is on the screen and its CPU part (averaged) would end as frame N-1 leaves the GPU
+ *   (averaged): no queue and no bubble, then the game's minimum frame interval. "On the
+ *   screen" comes from the D3DMetal layer's present feed (winemac.so
  *   fix 0003, <prefix>/.sevo/run/<Windows pid>.present). LULLABY_REFLEX=0 leaves Reflex
  *   to D3DMetal.
  */
@@ -111,9 +116,12 @@ static queue_type_fn real_notify_out_of_band;
 static BOOL reflex_here = TRUE;
 static HANDLE log_file = INVALID_HANDLE_VALUE;
 static SRWLOCK log_lock = SRWLOCK_INIT;
-/* One refresh of the display. With V-Sync a frame reaches the screen on the refresh after
-   the GPU is done with it, up to this much later, so the pacing then counts from that much
-   earlier. V-Sync shows in the frames: their intervals on the screen are whole refreshes. */
+/* One refresh of the display, as Wine reports it: macOS's CGDisplayModeGetRefreshRate, and
+   60 where that is 0, so a display that gives no rate is taken for 60 Hz (the owner's
+   120 Hz screen is reported right in every logged session). With V-Sync a frame reaches the
+   screen on the refresh after the GPU is done with it, up to this much later, so the pacing
+   then counts from that much earlier. V-Sync shows in the frames: their intervals on the
+   screen are whole refreshes. */
 static uint64_t refresh_ns;
 static double synced; /* average of "this interval was whole refreshes", 0..1 */
 
@@ -384,6 +392,7 @@ static NvAPI_Status __cdecl lb_Sleep(void *dev)
     present_feed *f;
     BOOL on, timed_out = FALSE;
     UINT32 interval;
+    unsigned int back = 1; /* frames up to N-1-back are waited for to be on the screen */
 
     if (!dev) return NVAPI_INVALID_ARGUMENT;
     AcquireSRWLockExclusive(&reflex_lock);
@@ -401,8 +410,10 @@ static NvAPI_Status __cdecl lb_Sleep(void *dev)
        refresh and macOS's compositor after the GPU, and two in flight would leave the GPU
        idle and the display at half its rate (RE9's menu sat at 60 on a 120 Hz screen). */
     if (on && f && frame_no)
-        need = synced > 0.7 && frame_no > 1 ? acquired_at_release[(frame_no - 1) % FRAMES]
-                                            : acquired_at_release[frame_no % FRAMES];
+    {
+        back = synced > 0.7 && frame_no > 1 ? 2 : 1;
+        need = acquired_at_release[(frame_no + 1 - back) % FRAMES];
+    }
     ReleaseSRWLockExclusive(&reflex_lock);
 
     start = now_ns();
@@ -422,7 +433,8 @@ static NvAPI_Status __cdecl lb_Sleep(void *dev)
             {
                 uint64_t off = (shown - prev_done) % refresh_ns;
                 double dev = (double)(shown - prev_done) - gpu_ns;
-                if (!held[(frame_no - 1) % FRAMES])
+                /* The frame that was just shown: N-2, or N-3 with V-Sync. */
+                if (!held[(frame_no - back) % FRAMES])
                 {
                     if (gpu_ns) gpu_dev_ns = gpu_dev_ns * 0.9 + (dev < 0 ? -dev : dev) * 0.1;
                     average(&gpu_ns, (double)(shown - prev_done));
@@ -436,9 +448,13 @@ static NvAPI_Status __cdecl lb_Sleep(void *dev)
             {
                 double slack = synced > 0.7 ? (double)refresh_ns : 0;
                 if (gpu_ns && cpu_ns && cpu_ns + slack < gpu_ns)
+                {
                     /* A margin of two average deviations: a frame the GPU is quick with
-                       then rarely finds it idle. */
-                    target = shown + (uint64_t)(gpu_ns - cpu_ns - slack - 1000000 - 2 * gpu_dev_ns);
+                       then rarely finds it idle. A margin bigger than the room there is
+                       holds nothing (a negative double must not become a time). */
+                    double hold = gpu_ns - cpu_ns - slack - 1000000 - 2 * gpu_dev_ns;
+                    if (hold > 0) target = shown + (uint64_t)hold;
+                }
             }
             ReleaseSRWLockExclusive(&reflex_lock);
             if (target > now_ns()) wait_until(target);

@@ -65,7 +65,7 @@ TARGET      := $(OUT_DIR)/lullaby.dylib
 OBJS := $(patsubst %.c,$(OUT_DIR)/%.o,$(SRCS)) $(patsubst %.m,$(OUT_DIR)/%.o,$(OBJC_SRCS))
 DEPS := $(OBJS:.o=.d)
 
-.PHONY: all nvapi-shim clean rebuild dobby deploy dylib-install sigcheck app-payload app app-zip app-config \
+.PHONY: all nvapi-shim reflex-sim clean rebuild dobby deploy dylib-install sigcheck app-payload app app-zip app-config \
         anchorcheck callscheck sigdb-fixtures webpatch-fixtures peicon-fixtures panel-behavior app-tests launch-shell \
         tests-list overlay-shim overlay-shim-install overlay-shim-tests \
         overlay-shim-bench iconmaker icon \
@@ -509,6 +509,12 @@ $(APPINFO): helpers/appinfo.swift
 NVAPI_SHIM := $(OUT_DIR)/lullaby-nvapi64.dll
 
 nvapi-shim: $(NVAPI_SHIM)
+
+# What Reflex by Lullaby is meant to do, in a simulated game under the installed engine's Wine
+# (nvapi-shim/tests/run-sim.sh): shorter latency GPU-bound, nothing changed CPU-bound.
+# Skips, exit 0, where no engine is installed.
+reflex-sim: $(NVAPI_SHIM)
+	nvapi-shim/tests/run-sim.sh $(NVAPI_SHIM)
 
 $(NVAPI_SHIM): nvapi-shim/lullaby_nvapi.c nvapi-shim/nvapi_names.h nvapi-shim/nvapi64.def nvapi-shim/build.sh
 	@mkdir -p $(OUT_DIR)
