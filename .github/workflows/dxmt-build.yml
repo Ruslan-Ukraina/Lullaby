@@ -1,0 +1,117 @@
+name: dxmt-build
+
+# DXMT from a pinned commit of 3Shain/dxmt (docs/DXMT_PIN.md, STACK_PLAN stage 7): the same
+# recipe as DXMT's own CI for the v0.80 release (gcc, release, x86_64 and x86, D3D12 off),
+# so the result is a drop-in for the dxmt/ folder of the engine. Nothing is published:
+# the run's artifact is a candidate for the A/B on the bench (perf/gfxbench.sh), and
+# v0.80 stays the fallback until the owner accepts it.
+# Manual only. DXMT is LGPL; we build it, we do not send code to it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: DXMT commit to build (the pin)
+        type: string
+        default: 50102f994b406f58f56d5d09f2ad20f9b90390a2
+
+permissions:
+  contents: read
+
+env:
+  LLVM_VERSION: llvmorg-15.0.7
+  WINE_VERSION: v8.16-3shain
+  WINE_URL: https://github.com/3Shain/wine/releases/download/v8.16-3shain/wine.tar.gz
+  MESON_VERSION: 1.10.0
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          repository: 3Shain/dxmt
+          ref: ${{ inputs.commit }}
+          submodules: true
+          path: dxmt
+
+      - name: Is it the pinned commit
+        working-directory: dxmt
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ inputs.commit }}" || { echo "::error::checked out $(git rev-parse HEAD)"; exit 1; }
+
+      - name: Cache Wine toolchain
+        id: wine
+        uses: actions/cache@v4
+        with:
+          key: wine-x86_64-${{ env.WINE_VERSION }}-macos
+          path: dxmt/toolchains/wine
+
+      - name: Fetch Wine toolchain
+        if: steps.wine.outputs.cache-hit != 'true'
+        working-directory: dxmt
+        run: |
+          mkdir -p toolchains/wine
+          curl -fSL "$WINE_URL" -o wine.tar.gz
+          tar -xzf wine.tar.gz -C toolchains/wine
+          rm wine.tar.gz
+
+      - name: Cache LLVM (Darwin x86_64)
+        id: llvm
+        uses: actions/cache@v4
+        with:
+          key: llvm-darwin-${{ env.LLVM_VERSION }}-x86_64-macos
+          path: dxmt/toolchains/llvm-darwin
+
+      - name: Build LLVM (Darwin x86_64)
+        if: steps.llvm.outputs.cache-hit != 'true'
+        working-directory: dxmt
+        run: |
+          git clone --depth 1 --branch "$LLVM_VERSION" https://github.com/llvm/llvm-project.git toolchains/llvm-project
+          cmake -B toolchains/llvm-darwin-build -S toolchains/llvm-project/llvm \
+            -DCMAKE_INSTALL_PREFIX="$PWD/toolchains/llvm-darwin" \
+            -DCMAKE_OSX_ARCHITECTURES=x86_64 -DLLVM_HOST_TRIPLE=x86_64-apple-darwin \
+            -DLLVM_ENABLE_ASSERTIONS=On -DLLVM_ENABLE_ZSTD=Off -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_FLAGS="-D_LIBCPP_KEEP_TRANSITIVE_INCLUDES_LLVM23" \
+            -DLLVM_TARGETS_TO_BUILD="" -DLLVM_BUILD_TOOLS=Off -DLLVM_INCLUDE_BENCHMARKS=Off \
+            -DBUG_REPORT_URL="https://github.com/3Shain/dxmt" -DPACKAGE_VENDOR="DXMT" \
+            -DLLVM_VERSION_PRINTER_SHOW_HOST_TARGET_INFO=Off -G Ninja
+          cmake --build toolchains/llvm-darwin-build
+          cmake --install toolchains/llvm-darwin-build
+          rm -rf toolchains/llvm-project toolchains/llvm-darwin-build
+
+      - name: Tools
+        run: |
+          brew install mingw-w64
+          pip3 install "meson==$MESON_VERSION" --break-system-packages
+
+      - name: Build x86_64 (release, D3D12 off)
+        working-directory: dxmt
+        run: |
+          meson setup --cross-file build-win64.txt -Denable_nvapi=true -Denable_nvngx=true \
+            -Dnative_llvm_path=toolchains/llvm-darwin -Dwine_install_path=toolchains/wine \
+            build64 --buildtype release --prefix "$PWD/install" --strip
+          meson compile -C build64
+          meson install -C build64
+
+      - name: Build x86 (release)
+        working-directory: dxmt
+        run: |
+          meson setup --cross-file build-win32.txt -Dwine_install_path=toolchains/wine \
+            build32 --buildtype release --prefix "$PWD/install" --strip
+          meson compile -C build32
+          meson install -C build32
+
+      - name: Lay out and list hashes
+        working-directory: dxmt
+        run: |
+          find install -name '*.a' -delete
+          (cd install && find . -type f | sort | xargs shasum -a 256) > install/SHA256SUMS
+          printf 'commit=%s\n' "${{ inputs.commit }}" > install/PIN
+          cat install/SHA256SUMS
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: dxmt-${{ inputs.commit }}
+          path: dxmt/install
