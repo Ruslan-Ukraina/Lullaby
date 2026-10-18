@@ -81,7 +81,7 @@ x86_64-w64-mingw32-gcc -O2 -Wall -Wextra -Wno-unused-parameter -o "$perf_tmp/d3d
   -ld3d11 -ldxgi -ld3dcompiler_47 -luuid -static-libgcc
 
 mkdir -p "$(dirname "$out")"
-[ -s "$out" ] || echo "engine,config,bench,round,frames,fps,avg_ms,p50_ms,p95_ms,p99_ms,p999_ms,low1_fps,low01_fps,tap_fps,tap_p99_ms,tap_low1_fps,tap_low01_fps,tap_dropped,idle_s,load" > "$out"
+[ -s "$out" ] || echo "engine,config,bench,round,frames,fps,avg_ms,p50_ms,p95_ms,p99_ms,p999_ms,low1_fps,low01_fps,tap_fps,tap_p99_ms,tap_low1_fps,tap_low01_fps,tap_dropped,idle_s,load_before,load_after" > "$out"
 [ "$threads" -eq 0 ] || [ -s "$threads_csv" ] || echo "engine,config,bench,round,group,threads,cpu_pct" > "$threads_csv"
 
 # field NAME LINE: the value of NAME=value in a d3d11bench result line
@@ -97,6 +97,7 @@ while [ "$round" -le "$runs" ]; do
     spaced=$(printf '%s' "$vars" | tr ',' ' ')
     for bench in $benches; do
       perf_stop_server
+      load_before=$(sysctl -n vm.loadavg | awk '{gsub(",", ".", $2); print $2}')
       result="$perf_tmp/result.txt"
       : > "$result"
       rm -rf "$perf_tmp/ft"
@@ -125,6 +126,7 @@ while [ "$round" -le "$runs" ]; do
         fi
       fi
       wait "$bench_pid" || true
+      load_after=$(sysctl -n vm.loadavg | awk '{gsub(",", ".", $2); print $2}')
       line=$(grep '^d3d11bench ' "$result" | tail -1 || true)
       if [ -z "$line" ]; then
         echo "gfxbench: round $round, $label, $bench: no result" >&2
@@ -136,7 +138,7 @@ while [ "$round" -le "$runs" ]; do
         tapline=$(python3 -I "$here/frametap-stats.py" "$perf_tmp"/ft/*.csv --skip "$warmup" 2> /dev/null || true)
         [ -n "$tapline" ] || echo "gfxbench: the frame tap saw no frames (DYLD_INSERT_LIBRARIES refused, or no CAMetalLayer drawable)" >&2
       fi
-      echo "$perf_engine,$label,$bench,$round,$(field frames "$line"),$(field fps "$line"),$(field avg_ms "$line"),$(field p50_ms "$line"),$(field p95_ms "$line"),$(field p99_ms "$line"),$(field p999_ms "$line"),$(field low1_fps "$line"),$(field low01_fps "$line"),$(field tap_fps "$tapline"),$(field tap_p99_ms "$tapline"),$(field tap_low1_fps "$tapline"),$(field tap_low01_fps "$tapline"),$(field tap_dropped "$tapline"),${perf_idle:-},${perf_load:-}" >> "$out"
+      echo "$perf_engine,$label,$bench,$round,$(field frames "$line"),$(field fps "$line"),$(field avg_ms "$line"),$(field p50_ms "$line"),$(field p95_ms "$line"),$(field p99_ms "$line"),$(field p999_ms "$line"),$(field low1_fps "$line"),$(field low01_fps "$line"),$(field tap_fps "$tapline"),$(field tap_p99_ms "$tapline"),$(field tap_low1_fps "$tapline"),$(field tap_low01_fps "$tapline"),$(field tap_dropped "$tapline"),${perf_idle:-},$load_before,$load_after" >> "$out"
       if [ "$round" -eq 0 ]; then
         echo "    warm-up, $label, $bench: $(field fps "$line") fps"
       else

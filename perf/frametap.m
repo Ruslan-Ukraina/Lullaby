@@ -47,6 +47,9 @@ static char label[128];
 static const char *directory;
 static atomic_bool started;
 static NSMutableSet<NSValue *> *wrapped;
+/* A wrapped override that calls its wrapped super nests: only the outermost call taps, or every
+   drawable would be counted twice (seen: each presented time twice in the file). */
+static __thread int depth;
 
 static uint64_t now_ns(void)
 {
@@ -118,8 +121,10 @@ static void wrap_class(Class cls)
     if ([wrapped containsObject:key]) return;
     IMP orig = method_getImplementation(own);
     IMP replacement = imp_implementationWithBlock(^id(id self) {
+        depth++;
         id d = ((id (*)(id, SEL))orig)(self, sel);
-        tap(d);
+        depth--;
+        if (depth == 0) tap(d);
         return d;
     });
     method_setImplementation(own, replacement);
@@ -145,9 +150,19 @@ static void sweep(void)
 static void *worker(void *arg)
 {
     pthread_setname_np("lullaby-frametap");
+    uint32_t images = 0;
+    int ticks = 0;
     for (;;)
     {
-        @autoreleasepool { sweep(); }
+        /* The class list is walked when a library has been loaded since the last time, and
+           every ten seconds otherwise: walking it twice a second cost 2-5 % of a core. */
+        uint32_t now = _dyld_image_count();
+        if (now != images || ticks % 20 == 0)
+        {
+            images = now;
+            @autoreleasepool { sweep(); }
+        }
+        ticks++;
         usleep(500000);
         os_unfair_lock_lock(&lock);
         flush_locked();
