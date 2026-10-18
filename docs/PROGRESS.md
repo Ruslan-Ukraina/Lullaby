@@ -1582,3 +1582,9 @@ PEAK, DXMT, меню; `perf/peak-ab.sh` чередует «исходно → и
 - Движок `WineForgeCore` (Wine 11.20, 722 МБ) достан из `.dmg` в `scratch/engines/wineforge-0.6.0.7/` (не в git), хеш образа совпал; `wine --version` — `wine-11.20 (WineForge 0.6.0.7)`.
 - `syncbench` на нём: WFUSync против серверной синхронизации — 2,7× пинг-понг, 109× семафор, 35× мьютекс, 1,08× `multi`, 2,1× `waitall`. Против msync Dormison: лучше на семафоре и мьютексе, **хуже на ожидании нескольких объектов**. Серверная синхронизация у двух движков совпадает в пределах 1–2 % (подтверждение паритета нативного arm64-`wineserver`).
 - Дальше: графическая сцена на WineForge (нужен простой Mac), затем RE9 с D3DMetal (раскладка D3DMetal у WineForge другая, чем у Dormison).
+
+## 2026-10-18 (вечер) — репетиция обновлений и разведка WineForge
+
+- `engine-fixes/rehearse.sh`: проверка применимости патчей к тегам клона Wine. На 8 релизах WineForge (Wine 11.12–11.20): без правок применяются `commit charge`, HAGS, `retina horzres`, серверный коммит arm64 (3b55f4eac). На всех 8 не подходят (то есть не «гниют», а написаны под код Dormison): три патча D3DMetal 4b3, патч 0003 (V-Sync, лента показа), два серверных коммита Dormison. Подробности и churn файлов — `docs/STACK_PLAN.md` §8.
+- WFUSync по коду: «spin» — пустой счётчик до 32 без перечитывания состояния; ожидание нескольких объектов идёт через запросы к серверу (отсюда задержка ≈ серверной); настроек, кроме `WINEWFUSYNC`, нет. Что можно приблизить к msync+ — `STACK_PLAN.md` §9.
+- Контракт D3DMetal у WineForge: `GRAPHICS_BACKEND=d3dmetal|dxmt`, `D3DMETAL_RUNTIME_DIR=<каталог с wine/x86_64-windows и wine/x86_64-unix>`; ваш GPTK подходит как `<GPTK>/lib` без перепаковки.
