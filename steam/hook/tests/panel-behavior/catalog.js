@@ -111,8 +111,8 @@ for (const lang of ['en', 'uk', 'ru']) {
   const tree = api.view(ctx);
   const quick = catalog.settings.filter(s => s.quick !== undefined).sort((a, b) => a.quick - b.quick);
   const titles = rowsOf(tree).map(n => text(n.props.label));
-  t.ok(quick.length === 4 && quick.every((s, i) => titles[i] && titles[i].startsWith(s.title[lang])),
-    `${lang}: the four quick rows in the catalog's order (${titles.join(' | ')})`);
+  t.ok(quick.length === 3 && quick.every((s, i) => titles[i] && titles[i].startsWith(s.title[lang])),
+    `${lang}: the three quick rows in the catalog's order (${titles.join(' | ')})`);
   t.ok(text(tree).includes(catalog.text.section[lang]), `${lang}: the header is the catalog's`);
   t.ok(text(tree).includes(catalog.text.advanced[lang]), `${lang}: Advanced settings button`);
   const extra = foreign(tree, lang, ['peak.exe', 'PEAK', 'Lullaby']);
@@ -120,15 +120,8 @@ for (const lang of ['en', 'uk', 'ru']) {
   t.ok(!text(tree).includes('Dormison'), `${lang}: no engine name by the header`);
 }
 
-// ---- a row for one renderer ------------------------------------------------------------
-
-{
-  t.ok(!!rowFor(api.view(ctxFor(clone(dxmtState), 'en')), 'metalfx', 'en'), 'MetalFX upscaling is there on DXMT');
-  t.ok(!rowFor(api.view(ctxFor(clone(gameState), 'en')), 'metalfx', 'en'), 'and gone on DXVK, as in NotProton');
-  const metal = clone(dxmtState);
-  metal.values.renderer.effective = 'd3dmetal';
-  t.ok(!rowFor(api.view(ctxFor(metal, 'en')), 'metalfx', 'en'), 'and on D3DMetal');
-}
+// No row is limited to one renderer now (MetalFX upscaling on DXMT is gone); the catalog's `renderers` field stays for one.
+t.ok(catalog.settings.every(x => !x.renderers || x.renderers.length === 0), 'no row is limited to one renderer');
 
 // ---- inheritance, Reset and changes -----------------------------------------------------
 
@@ -138,9 +131,6 @@ for (const lang of ['en', 'uk', 'ru']) {
   const renderer = rowFor(tree, 'renderer', 'ru');
   t.ok(text(renderer.props.description).includes(catalog.text.defaultValue.ru.replace('%@', 'DXMT')),
     'a game-only row of its own names Lullaby\'s default');
-  const up = rowFor(tree, 'metalfx', 'ru');
-  t.ok(!walk(up.props.description).some(n => n.props && n.props.className === 'LBInherit'),
-    'an inherited row has no line under it');
   const retina = rowFor(tree, 'retina', 'ru');
   t.ok(retina.props.checked === true && !text(retina.props.description).includes(catalog.text.inherited.ru.split('%@')[0]),
     'a toggle shows the value for all games it inherits, without a line');
@@ -152,12 +142,11 @@ for (const lang of ['en', 'uk', 'ru']) {
     'lists are as wide as their choices');
   t.ok(!walk(tree).some(n => n.props && n.props.className === 'LBLink'), 'no Reset in the rows');
   fps.props.onChange(false);
-  const upscaler = rowFor(tree, 'metalfx', 'ru');
-  upscaler.props.onChange({ data: JSON.stringify('2') });
+  renderer.props.onChange({ data: JSON.stringify('dxvk') });
   const resetGame = walk(tree).filter(n => n.type === 'Button' && text(n) === catalog.text.resetGame.ru);
   t.ok(resetGame.length === 1, 'one "Reset game settings" under the block');
   resetGame[0].props.onClick();
-  t.ok(JSON.stringify(ctx.calls) === JSON.stringify([['set', 'fps', false], ['set', 'metalfx', '2'], ['reset']]),
+  t.ok(JSON.stringify(ctx.calls) === JSON.stringify([['set', 'fps', false], ['set', 'renderer', 'dxvk'], ['reset']]),
     `a toggle and a list set values, the button resets the game (${JSON.stringify(ctx.calls)})`);
   const css = text(walk(tree).find(n => n.type === 'style'));
   const z = Number((/\.LBOverlay\{[^}]*z-index:(\d+)/.exec(css) || [])[1]);
@@ -207,7 +196,7 @@ for (const lang of ['en', 'uk', 'ru']) {
   const tree = api.view(ctx);
   const titles = rowsOf(tree).map(n => text(n.props.label));
   t.ok(!titles.some(l => l.startsWith(titleOf('renderer', 'ru'))), 'no renderer for all games');
-  t.ok(titles.length === 3, `three quick rows for all games (${titles.join(' | ')})`);
+  t.ok(titles.length === 2, `two quick rows for all games (${titles.join(' | ')})`);
   t.ok(text(tree).includes(catalog.text.globalSection.ru), 'its own header');
   const retina = rowFor(tree, 'retina', 'ru');
   t.ok(text(retina.props.description).includes(catalog.text.defaultValue.ru.replace('%@', '\u0412\u044b\u043a\u043b.')),
@@ -216,7 +205,7 @@ for (const lang of ['en', 'uk', 'ru']) {
   t.ok(!walk(fps.props.description).some(n => n.props && n.props.className === 'LBInherit'), 'an unchanged one has no line');
   const dialog = walk(api.view(ctxFor(clone(globalState), 'ru', { advanced: true })))
     .find(n => n.props && n.props.className === 'LBOverlay');
-  t.ok(!rowsOf(dialog).some(n => text(n.props.label).startsWith(titleOf('msync', 'ru'))), 'msync+ is a game\'s alone');
+  t.ok(!rowsOf(dialog).some(n => text(n.props.label).startsWith(titleOf('renderer', 'ru'))), 'the renderer is a game\'s alone');
   t.ok(text(dialog).includes(catalog.text.resetGlobal.ru), 'reset to Lullaby\'s defaults');
 }
 
@@ -262,6 +251,26 @@ for (const lang of ['en', 'uk', 'ru']) {
   t.ok(run({ strCompatToolName: '', vecPlatforms: ['windows'] }), 'a Windows-only game');
   t.ok(!run({ strCompatToolName: '', vecPlatforms: ['windows', 'osx'] }), 'not a game with a macOS build');
   t.ok(!run({ strCompatToolName: 'proton_9', vecPlatforms: ['windows'] }), 'not another tool');
+}
+
+// ---- the dialog's list keeps its scroll position through a re-render --------------------------
+
+{
+  const effects = [];
+  R.useEffect = f => { effects.push(f); };
+  const dialog = walk(api.view(ctxFor(clone(gameState), 'en', { advanced: true })))
+    .find(n => n.props && n.props.className === 'LBOverlay');
+  const body = walk(dialog).find(n => n.props && n.props.className === 'LBDialogBody');
+  t.ok(body && typeof body.props.onScroll === 'function' && body.props.ref, 'the dialog list tracks its scroll position');
+  body.props.onScroll({ currentTarget: { scrollHeight: 1200, clientHeight: 500, scrollTop: 340 } });
+  const fresh = { scrollTop: 0 };   // the list drawn again after a change starts at the top
+  body.props.ref.current = fresh;
+  effects.forEach(f => f());
+  t.ok(fresh.scrollTop === 340, `the position is put back after the render (${fresh.scrollTop})`);
+  body.props.onScroll({ currentTarget: { scrollHeight: 300, clientHeight: 500, scrollTop: 0 } });
+  fresh.scrollTop = 0;
+  effects.forEach(f => f());
+  t.ok(fresh.scrollTop === 340, 'a list with nothing to scroll does not make it forget the position');
 }
 
 if (t.failed) { console.log(`catalog panel: ${t.failed} failed`); process.exit(1); }
