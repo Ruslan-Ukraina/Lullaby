@@ -56,7 +56,7 @@ jobs:
         run: make dobby
 
       - name: Build the dylib, the shim and the helpers
-        run: make all overlay-shim iconmaker appinfo out/sigslice
+        run: make all overlay-shim iconmaker windowstate appinfo out/sigslice
 
       - name: No debug channel in the dylib (BACKLOG 20)
         run: |
@@ -67,7 +67,8 @@ jobs:
       - name: Hermetic C suites
         run: |
           make -s sigcheck callscheck webpatch-fixtures peicon-fixtures panel-behavior spawn-env \
-            compatcheck compatsvc-check updategate-check settingsbridge-check steamwin-check
+            compatcheck compatsvc-check updategate-check settingsbridge-check steamwin-check \
+            iconmaker-tests windowstate-tests
 
       - name: Swift tests
         run: make -s app-tests

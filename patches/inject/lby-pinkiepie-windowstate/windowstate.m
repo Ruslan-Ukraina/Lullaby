@@ -60,20 +60,27 @@ static BOOL isNative(NSWindow *w) { return ([w styleMask] & NSWindowStyleMaskFul
 
 static void load(void)
 {
-    NSData *data = [NSData dataWithContentsOfFile:gPath];
-    if (!data) return;
-    id obj = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
-    if (![obj isKindOfClass:[NSDictionary class]]) return;
-    NSDictionary *d = obj;
-    lbws_state s;
-    if (!lbws_parse([[d objectForKey:@"state"] UTF8String], &s)) return;
-    gSavedState = s;
-    gSavedW = [[d objectForKey:@"width"] doubleValue];
-    gSavedH = [[d objectForKey:@"height"] doubleValue];
-    gWinW = gSavedW;
-    gWinH = gSavedH;
-    gHaveSaved = YES;
-    say("saved state %s, window %.0fx%.0f", lbws_name(s), gSavedW, gSavedH);
+    @try {
+        NSData *data = [NSData dataWithContentsOfFile:gPath];
+        if (!data) return;
+        id obj = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+        if (![obj isKindOfClass:[NSDictionary class]]) return;
+        NSDictionary *d = obj;
+        // A file somebody edited or half wrote: every field is checked for its type, none is trusted.
+        id name = [d objectForKey:@"state"], width = [d objectForKey:@"width"], height = [d objectForKey:@"height"];
+        lbws_state s;
+        if (![name isKindOfClass:[NSString class]] || !lbws_parse([name UTF8String], &s)) return;
+        gSavedState = s;
+        gSavedW = [width isKindOfClass:[NSNumber class]] ? [width doubleValue] : 0;
+        gSavedH = [height isKindOfClass:[NSNumber class]] ? [height doubleValue] : 0;
+        if (!(gSavedW >= 0 && gSavedW < 20000 && gSavedH >= 0 && gSavedH < 20000)) gSavedW = gSavedH = 0;   // also NaN
+        gWinW = gSavedW;
+        gWinH = gSavedH;
+        gHaveSaved = YES;
+        say("saved state %s, window %.0fx%.0f", lbws_name(s), gSavedW, gSavedH);
+    } @catch (NSException *e) {
+        say("the state file could not be read: %s", [[e reason] UTF8String]);
+    }
 }
 
 static void save(void)

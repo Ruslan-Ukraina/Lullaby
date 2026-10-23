@@ -26,7 +26,7 @@
 | Что | Где берём | Р/С | Закреплено? | Если исчезнет |
 |---|---|---|---|---|
 | Исходники Proton (lsteamclient) | `codeload.github.com/ValveSoftware/Proton/tar.gz/164e0cc…` (121 МБ архив, нужен только `bridge/lsteamclient/` ~66 МБ) | С | коммит + sha256 по дереву (`bridge/lsteamclient/fetch.sh`) | Не собрать мост. Valve старые коммиты не удаляет, но репозиторий — чужой |
-| Заголовки openvr/wine для шима | `raw.githubusercontent.com/ValveSoftware/…` | С | коммит + sha256 каждого файла (`bridge/steam-shim/fetch-headers.sh`) | Не собрать шим. Файлов мало (несколько КБ) |
+| Заголовок wine (heap.h) для шима | `raw.githubusercontent.com/ValveSoftware/…` | С | коммит + sha256 каждого файла (`bridge/steam-shim/fetch-headers.sh`) | Не собрать шим. Файлов мало (несколько КБ) |
 | mingw-w64, bison, flex | CI: `brew install mingw-w64 bison flex`; у вас — Homebrew (`gcc 16.2.0`) | С | **нет** | Обновление Homebrew может поменять компилятор → мост соберётся иначе или не соберётся. Невоспроизводимость (P6-2) |
 
 ### 1.3 Steam (Valve)
@@ -42,7 +42,7 @@
 |---|---|---|---|---|
 | Sparkle 2.10.0 | Swift Package с GitHub | С | `exact` + ревизия в `Package.resolved` | `make app` не скачает пакет на новой машине (кеш SPM у вас есть) |
 | Dobby | CI: `git clone jmpews/Dobby`; у вас — `build/dobby` | С | коммит `5dfc854…` | CI не соберёт dylib (кеш Actions держит неделю) |
-| cJSON, jsoncpp | **уже в репозитории** (`vendor/`, `bridge/steam-shim/`) | С | да | Не зависит |
+| cJSON | **уже в репозитории** (`vendor/`) | С | да | Не зависит |
 | Xcode 27, SDK macOS 27 | у вас; CI — образ `xcode-27` (public preview, R51) | С | имя образа | Пропал образ → все macOS-задачи CI встают |
 | shellcheck | CI — релиз GitHub по версии | С | версия, **без** sha256 | Только lint |
 | python3, node | Homebrew / образ | С | нет | Только тесты и скрипты, стандартные функции |
@@ -118,5 +118,5 @@
 
 - Движок: подпись Dormison (Ed25519) + sha256 + размер; мост и сигнатуры — наш ключ (Фаза 6).
 - Proton-исходники, заголовки шима, пакеты Valve — по коммиту/имени и sha256.
-- Sparkle — точная версия и ревизия; Dobby — коммит; cJSON/jsoncpp и патчи Highball — в репозитории.
+- Sparkle — точная версия и ревизия; Dobby — коммит; cJSON и патчи Highball — в репозитории.
 - Новый движок без моста не ставится (P8-17) — смена у апстрима не ломает игроков.

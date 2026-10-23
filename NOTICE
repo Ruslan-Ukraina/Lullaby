@@ -111,3 +111,5 @@ queue comes from Korthos Software's low_latency_layer
 (https://github.com/Korthos-Software/low_latency_layer, MIT, Copyright (c) 2026 Korthos
 Software Pty Ltd); the pacing itself (release by when the screen shows frames) is Lullaby's
 own, and no code is taken.
+
+From upstream NotProton 1.2.0 (GPL-3.0, the same licence as this repository) Lullaby took, written again for its own tree: no std handles for a program that gets a console of its own (bridge/steam-shim/steam.cpp), the microphone, camera and local network usage keys and `caffeinate` in the launcher bundle, and the `Steam.dll` link for Prey with its removal in Uninstall (steam/hook/feats/compat_run.sh, app/Sources/LullabyApp/Model/Uninstall.swift).

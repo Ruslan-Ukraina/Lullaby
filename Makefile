@@ -506,6 +506,10 @@ windowstate-tests: $(WINDOWSTATE)
 		f=$$(mktemp -d "$${TMPDIR:-/tmp}/windowstate.XXXXXX")/state.json; \
 		MallocScribble=1 MallocPreScribble=1 NSZombieEnabled=YES LULLABY_WINDOWSTATE_DYLIB=$(WINDOWSTATE) $(OUT_DIR)/wine-windowstate-test.$$a save "$$f" 1000 640 2>/dev/null; \
 		MallocScribble=1 MallocPreScribble=1 NSZombieEnabled=YES LULLABY_WINDOWSTATE_DYLIB=$(WINDOWSTATE) $(OUT_DIR)/wine-windowstate-test.$$a restore "$$f" 1000 640 2>/dev/null; \
+		for bad in '{"state":5,"width":"x","height":[]}' '{"state":"window","width":1e999,"height":-3}' '[1,2]' 'not json'; do \
+			printf '%s' "$$bad" > "$$f"; \
+			MallocScribble=1 MallocPreScribble=1 NSZombieEnabled=YES LULLABY_WINDOWSTATE_DYLIB=$(WINDOWSTATE) $(OUT_DIR)/wine-windowstate-test.$$a damaged "$$f" 0 0 2>/dev/null; \
+		done; \
 		rm -rf "$$(dirname "$$f")"; \
 	done
 	@echo "==> windowstate tests: decisions, saving and putting back a window size, arm64 and x86_64"

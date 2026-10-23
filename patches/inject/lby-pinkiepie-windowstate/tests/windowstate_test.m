@@ -37,6 +37,14 @@ int main(int argc, char **argv)
         [win orderFrontRegardless];
         NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
         [nc postNotificationName:NSWindowDidBecomeMainNotification object:win];
+        if (!strcmp(phase, "damaged")) {
+            // The state file holds the wrong types: the library must come up and leave the window alone.
+            spin(2.0);
+            NSSize c = [win contentRectForFrameRect:[win frame]].size;
+            BOOL ok = c.width == 640 && c.height == 480;
+            printf("%s: a damaged file leaves the window at %.0fx%.0f\n", ok ? "ok" : "FAIL", c.width, c.height);
+            return ok ? 0 : 1;
+        }
         if (!strcmp(phase, "save")) {
             spin(0.3);
             /* Several changes with a save after each, the autorelease pool drained between them: what the library
