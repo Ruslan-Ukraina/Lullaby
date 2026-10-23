@@ -491,20 +491,20 @@ ICONMAKER := $(OUT_DIR)/iconmaker
 
 iconmaker: $(ICONMAKER)
 
-$(ICONMAKER): helpers/iconmaker.swift steam/hook/util/peicon.c steam/hook/util/peicon.h
+$(ICONMAKER): app/helpers/iconmaker.swift steam/hook/util/peicon.c steam/hook/util/peicon.h
 	@mkdir -p $(OUT_DIR)
 	$(CC) -c -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -O2 \
 		-Wall -Wextra -o $(OUT_DIR)/peicon-host.o steam/hook/util/peicon.c
 	swiftc -O -target $(ARCH)-apple-macos$(MIN_VER) \
 		-framework AppKit -import-objc-header steam/hook/util/peicon.h \
-		-o $@ helpers/iconmaker.swift $(OUT_DIR)/peicon-host.o
+		-o $@ app/helpers/iconmaker.swift $(OUT_DIR)/peicon-host.o
 	@echo "==> Built $@"
 
 APPINFO := $(OUT_DIR)/appinfo
 
 appinfo: $(APPINFO)
 
-$(APPINFO): helpers/appinfo.swift
+$(APPINFO): app/helpers/appinfo.swift
 	@mkdir -p $(OUT_DIR)
 	swiftc -O -target $(ARCH)-apple-macos$(MIN_VER) -o $@ $<
 	@echo "==> Built $@"
@@ -662,7 +662,7 @@ ICON_ICNS := $(ICON_DIR)/Lullaby.icns
 
 icon: $(ICON_CAR) $(ICON_ICNS)
 
-$(ICONGEN): helpers/icon.swift
+$(ICONGEN): app/helpers/icon.swift
 	@mkdir -p $(OUT_DIR)
 	swiftc -O -o $@ $<
 	@echo "==> Built $@"

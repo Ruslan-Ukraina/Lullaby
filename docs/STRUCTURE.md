@@ -1,40 +1,28 @@
 # Repository map
 
-Paths in the column "Было" are today's locations; moves follow the protocol at the end (one logical move per commit).
+Rule: a directory or link that is not in this table is not created; a new one is added here first. `tools/check-structure` fails when the tree and this table differ (exceptions: `tools/check-structure.allow`).
 
+| Path | Purpose | Put here | Not here | Stream |
+|---|---|---|---|---|
+| `app/` | Lullaby.app, `lullaby-settings`, `helpers/` (icon maker, app info) | Swift sources, tests, `Info.plist`, icons | built payload (git-ignored), machine paths | App |
+| `bridge/` | Steam bridge: `lsteamclient/` (lby-applejack-steambridge), `steam-shim/` (lby-bigmack-steamexe), build scripts, `bridge-manifest.json` | sources, build/verify scripts | engine patches, VR/Vulkan code without a recorded reason | Bridge |
+| `engine/` | fetching and verifying the Dormison release | scripts, signature check | engine files, patches | Engine |
+| `patches/` | everything added to other people's code (see PROJECT_RULES) | see below | | Patches |
+| `patches/REGISTRY.md` | the single registry: ID, origin, verified releases, switch | | | Patches |
+| `patches/engine/` | patches to Dormison modules per module, `lby-discord-ntdllhook`, rebuild/rehearsal tools, probe programs | `.patch` with header, tests | whole foreign sources | Patches |
+| `patches/inject/` | components injected without rebuilding the engine (`lby-rainbowdash-reflex`) | one directory per component | | Patches |
+| `patches/steam/` | links to the components that patch Steam: `lby-luna-steamhook` -> `steam/hook`, `lby-spike-overlay` -> `steam/overlay` | links only | real files | Patches |
+| `steam/hook/` | library loaded into Steam: hooks, resolver, Steam Play entry, panel, game launch script | C/ObjC/JS/sh, tests, fixtures | | App |
+| `steam/overlay/` | Steam overlay in games | `.m`, tests | | Patches |
+| `steam/signatures/` | signature databases per Steam build | JSON, `manifest.json` | hand edits | Release |
+| `release/` | signing, feeds, publishing, CI scripts | scripts | keys, tokens | Release |
+| `tools/` | developer tools: `perf/` bench stand, importers, `check-structure` | scripts, fixtures | personal or machine-specific scripts | Release |
+| `vendor/` | pinned third-party files | cJSON, how to fetch Dobby/Sparkle | fetched trees (ignored) | Release |
+| `docs/` | documentation for people | | agent journals, reports | all |
+| `.github/` | CI | workflows | | Release |
+| `LICENSE*`, `NOTICE`, `README.md`, `Makefile`, `.gitignore` | licences, attribution, entry, build | | | |
 
-| Каталог | Назначение | Что класть | Чего нельзя | Поток | Было |
-|---|---|---|---|---|---|
-| `app/` | Lullaby.app и `lullaby-settings` (Swift) | исходники, тесты, `Info.plist`, иконка | двоичные payload (они в `.gitignore`), пути на конкретную машину | App | `app/` (без `NotProtonApp/`) |
-| `steam/hook/` | библиотека, которая грузится в Steam (`lby-luna-steamhook`): Mach-O, хуки, резолвер сигнатур, окна Steam, панель | C/ObjC/JS, тесты и фикстуры | логику игры (она в `launch/`) | App/Patches | `steam/hook/` кроме `feats/compat_run.sh` |
-| `steam/launch/` | скрипт запуска игры, разрезанный на части (пакет игры, окружение, рендерер, Game Mode, лог) | `.sh` модули, `embed_script.py`, тесты | пересчёт настроек (они в `app/`) | App | `steam/hook/feats/compat_run.sh` |
-| `steam/overlay/` | оверлей Steam в игре (`lby-spike-overlay`) | `.m`, тесты | | Patches | `overlay-shim/` |
-| `steam/signatures/` | база сигнатур Steam | JSON по билдам, `manifest.json` | ручные правки | Release | `signatures/` |
-| `bridge/` | мост Steam: `lby-applejack-steambridge` (lsteamclient), `lby-bigmack-steamexe` (steam.exe) | исходники, скрипты сборки, `bridge-manifest.json` | VR/Vulkan без записанной причины; пересборку модулей Dormison (это `patches/`) | Bridge | `lsteamclient/`, `steam-shim/`, `bridge/` |
-| `engine/` | как получить и проверить Dormison (r8): скрипты загрузки, подпись Ed25519, описание пары | скрипты, проверка | сами файлы движка, патчи | Engine | `engine/` |
-| `patches/` | **всё, что мы добавляем к чужому коду** (§1.6) | см. ниже | | Patches | `patches/engine/`, `patches/engine/lby-discord-ntdllhook/`, `patches/inject/lby-rainbowdash-reflex/` |
-| `patches/REGISTRY.md` | единый реестр: ID, заголовок, на каких релизах проверен, переключатель | | | Patches | `patches/REGISTRY.md` |
-| `patches/engine/` | патчи Dormison, серия на основу (`dormison/ntdll.so/NNNN-….patch` и т.д.) | `.patch` с заголовком, `tests/` | чужой исходник целиком | Patches | `patches/engine/patches` |
-| `patches/inject/` | инжекты без пересборки движка: Reflex, пейсер, GCMouse, состояние окна | каждый — каталог `lby-<имя>-<роль>/` | | Patches | `patches/inject/lby-rainbowdash-reflex/` и новые |
-| `patches/steam/` | ссылка на `steam/hook` и `steam/overlay` (они — тоже патчи Steam) | только ссылки (§1.6) | | Patches | — |
-| `patches/tools/` | `rehearse`, `build-fixes`, `check-registry`, `make patchcheck` | скрипты | | Patches | `patches/engine/*.sh` |
-| `release/` | подпись, ленты, CI-скрипты | | ключи, токены | Release | `release/` |
-| `tools/` | `check-structure`, импорт данных игр, перф-стенд (`tools/perf/`) | скрипты, фикстуры | личные сценарии (они в рабочей папке ИИ) | Release | `tools/`, `perf/` (часть) |
-| `vendor/` | закреплённые чужие файлы (cJSON), как их получать | | Dobby/Sparkle (скачиваются) | Release | `vendor/` |
-| `docs/` | для людей: `STRUCTURE`, `NAMING`, `PROJECT_RULES`, `DECISIONS`, `RELEASING`, `DXMT_PIN`, `GAME_FIXES`, … | | журналы, планы ИИ, отчёты | все | `docs/` (разобран) |
-| `.github/` | CI | | | Release | `.github/` |
-| `LICENSE*`, `NOTICE`, `README.md` | лицензии, атрибуция, вход | | | — | |
+Git-ignored work directories used by build scripts: `build/`, `out/`, `scratch/` (disposable, never published).
 
-**Ссылки (§1.6).** Реальное место → ссылка в `patches/`:
-`steam/hook` → `patches/steam/lby-luna-steamhook`, `steam/overlay` → `patches/steam/lby-spike-overlay`. Если ссылка ломает сборку — файл-указатель `*.ptr` с тем же именем.
-**Исключения проверок (`tools/check-structure.allow`):** ссылки выше, `app/Sources/*/Resources/payload/` (генерируется), `scratch/` (если останется, в `.gitignore`).
-
-Скрипт `tools/check-structure` сверяет каталоги первого уровня и ссылки с таблицей; только чтение.
-
-### Что переносится и в каком порядке (протокол «Гигиена», п. 4)
-1. S2: создать ветку, перенести `engine-fixes → patches` одним коммитом (`git mv`), правки `Makefile` и `.github` в том же коммите, до и после — `make patchcheck`, сборка моста.
-2. Затем `patches/inject/lby-rainbowdash-reflex → patches/inject`, `patches/engine/lby-discord-ntdllhook → patches/engine/…` (если B1 остаётся), `perf/ → tools/perf`.
-3. `steam/hook/ → steam/hook`, `overlay-shim → steam/overlay`, `lsteamclient`+`steam-shim` под `bridge/` — **последними**, потому что `Makefile` и `embed_script.py` завязаны на пути.
-Файлы из рантайма (бандл, `~/Library/Application Support/lullaby`) не двигаются.
-
-
+## Moving files (protocol)
+Map first, then `git mv`, one logical move per commit, all references updated in that commit, build and tests of the affected component before and after; if not green after, revert the move. Files the app or engine read at run time (bundle layout, `~/Library/Application Support/lullaby/*`, `.sevo/*.env`, names inside signed releases) are not moved without the owner's approval.

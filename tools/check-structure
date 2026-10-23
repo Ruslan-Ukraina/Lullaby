@@ -1,0 +1,29 @@
+#!/bin/sh
+# Compares the tree with docs/STRUCTURE.md. Read-only. Exit 1 on a difference.
+#   tools/check-structure
+# Top-level tracked directories must appear in the table as `dir/`; every symlink in
+# the tree must appear in the table; table entries for top-level directories must exist.
+# Exceptions (one per line, a path or a symlink): tools/check-structure.allow
+set -eu
+repo=$(cd "$(dirname "$0")/.." && pwd); cd "$repo"
+map=docs/STRUCTURE.md; allow=tools/check-structure.allow
+[ -f "$map" ] || { echo "check-structure: $map is missing" >&2; exit 1; }
+[ -f "$allow" ] || : > "$allow"
+fail=0
+dirs=$(git ls-files | awk -F/ 'NF>1 {print $1}' | sort -u)
+for d in $dirs; do
+  grep -qxF "$d" "$allow" && continue
+  grep -qF "\`$d/" "$map" || { echo "check-structure: $d/ is not in $map" >&2; fail=1; }
+done
+git ls-files -s | awk '$1=="120000" {print $4}' | while read -r l; do
+  grep -qxF "$l" "$allow" && continue
+  n=$(basename "$l"); grep -qF "$n" "$map" || echo "check-structure: link $l is not in $map" >&2
+done > /tmp/lby-cs.$$ 2>&1 || true
+if [ -s /tmp/lby-cs.$$ ]; then cat /tmp/lby-cs.$$ >&2; fail=1; fi; rm -f /tmp/lby-cs.$$
+# table -> tree: first-column entries of the form `name/`
+# shellcheck disable=SC2016 # the backticks are literal Markdown
+for d in $(grep -oE '^\| `[a-zA-Z0-9._/-]+/`' "$map" | tr -d '|` '); do
+  [ -e "$d" ] || { echo "check-structure: $map lists $d/, which does not exist" >&2; fail=1; }
+done
+[ "$fail" -eq 0 ] && echo "==> check-structure: tree and map agree"
+exit "$fail"
