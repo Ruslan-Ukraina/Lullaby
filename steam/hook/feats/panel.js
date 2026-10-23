@@ -7,9 +7,9 @@
 // React (R) and React DOM (D, may be null). Everything the panel shows comes from the catalog lullaby-settings answers
 // with (LullabySettings): it names no setting, key or text of its own, except the three
 // lines below for when the catalog cannot be reached. Requests travel as virtual files
-// under steamloopback.host (dylib/feats/settingsbridge.c); the dylib puts its token in.
+// under steamloopback.host (steam/hook/feats/settingsbridge.c); the dylib puts its token in.
 //
-// Kept to ASCII: dylib/embed_js.py embeds it as a C string.
+// Kept to ASCII: steam/hook/embed_js.py embeds it as a C string.
 (function (J, B, R, D) {
   "use strict";
   var TOKEN = "__NP_SETTINGS_TOKEN__";

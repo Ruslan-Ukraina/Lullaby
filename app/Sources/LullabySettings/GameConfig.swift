@@ -53,7 +53,7 @@ public enum UpscalerChoice: String, Codable, CaseIterable, Sendable {
 /// `d3d11.metalSpatialUpscaleFactor`, dxmt `src/d3d11/d3d11_swapchain.cpp`): the game
 /// draws at its own size and the window gets that picture enlarged by the factor.
 public enum SwapchainUpscale: String, Codable, CaseIterable, Sendable {
-    // NotProton's choices (dylib/feats/webpatch.c upstream, "MetalFX Upscaling").
+    // NotProton's choices (steam/hook/feats/webpatch.c upstream, "MetalFX Upscaling").
     case off
     case x1_5 = "1.5"
     case x1_72 = "1.72"

@@ -15,7 +15,7 @@ struct ShimAgreementTests {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
         return try String(
-            contentsOf: repo.appending(path: "dylib/feats/compat_run.sh"), encoding: .utf8)
+            contentsOf: repo.appending(path: "steam/hook/feats/compat_run.sh"), encoding: .utf8)
     }
 
     private static func verifyRunnerBlock() throws -> String {

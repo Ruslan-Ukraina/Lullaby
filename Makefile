@@ -5,7 +5,7 @@ MIN_VER  := 15.0
 CFLAGS   := -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) \
             -std=c17 -O2 -Wall -Wextra -Wno-unused-parameter \
             -fPIC -MMD -MP \
-            -Idylib -Ivendor -Ivendor/dobby/include
+            -Isteam/hook -Ivendor -Ivendor/dobby/include
 LDFLAGS  := -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) \
             -dynamiclib -install_name @rpath/lullaby.dylib
 
@@ -21,35 +21,35 @@ DOBBY_LIBS := $(DOBBY_DIR)/libdobby.a \
               $(DOBBY_DIR)/external/logging/liblogging.a
 
 SRCS := \
-	dylib/core/loader.c \
-	dylib/core/macho.c \
-	dylib/resolver/anchor.c \
-	dylib/resolver/aob.c \
-	dylib/resolver/resolver.c \
-	dylib/resolver/sigdb.c \
-	dylib/util/log.c \
-	dylib/util/file.c \
-	dylib/util/peicon.c \
-	dylib/hooks/hooks.c \
-	dylib/hooks/hook_compat.c \
-	dylib/hooks/hook_shortcut.c \
-	dylib/hooks/hook_icon.c \
-	dylib/hooks/hook_webui.c \
-	dylib/hooks/hook_webpatch.c \
-	dylib/hooks/hook_spawn.c \
-	dylib/hooks/hook_launch.c \
-	dylib/feats/compat.c \
-	dylib/feats/webui.c \
-	dylib/feats/compatsvc.c \
-	dylib/feats/webpatch.c \
-	dylib/feats/settingsbridge.c \
-	dylib/feats/steamwin_css.c \
-	dylib/feats/updategate.c \
-	dylib/feats/input_access.c \
+	steam/hook/core/loader.c \
+	steam/hook/core/macho.c \
+	steam/hook/resolver/anchor.c \
+	steam/hook/resolver/aob.c \
+	steam/hook/resolver/resolver.c \
+	steam/hook/resolver/sigdb.c \
+	steam/hook/util/log.c \
+	steam/hook/util/file.c \
+	steam/hook/util/peicon.c \
+	steam/hook/hooks/hooks.c \
+	steam/hook/hooks/hook_compat.c \
+	steam/hook/hooks/hook_shortcut.c \
+	steam/hook/hooks/hook_icon.c \
+	steam/hook/hooks/hook_webui.c \
+	steam/hook/hooks/hook_webpatch.c \
+	steam/hook/hooks/hook_spawn.c \
+	steam/hook/hooks/hook_launch.c \
+	steam/hook/feats/compat.c \
+	steam/hook/feats/webui.c \
+	steam/hook/feats/compatsvc.c \
+	steam/hook/feats/webpatch.c \
+	steam/hook/feats/settingsbridge.c \
+	steam/hook/feats/steamwin_css.c \
+	steam/hook/feats/updategate.c \
+	steam/hook/feats/input_access.c \
 	vendor/cJSON.c
 
 # Objective-C: AppKit through the runtime, for Steam Helper's windows.
-OBJC_SRCS := dylib/feats/steamwin.m dylib/feats/steamfocus.m
+OBJC_SRCS := steam/hook/feats/steamwin.m steam/hook/feats/steamfocus.m
 
 OUT_DIR     := out
 
@@ -81,7 +81,7 @@ all: $(TARGET) $(APP_PAYLOAD)
 $(APP_PAYLOAD):
 	@mkdir -p $(APP_PAYLOAD)
 
-TEST_PATHS := dylib/tests steam/overlay/tests app/Tests
+TEST_PATHS := steam/hook/tests steam/overlay/tests app/Tests
 
 tests-list:
 	@for p in $(TEST_PATHS); do echo $$p; done
@@ -92,13 +92,13 @@ SKIP = echo "==> $(1): $(2) not present, skipped"
 runcheck:
 	@if ! command -v shellcheck >/dev/null 2>&1; then \
 		$(call SKIP,runcheck,shellcheck); exit 0; fi; \
-	shellcheck dylib/feats/compat_run.sh && sh -n dylib/feats/compat_run.sh && \
-	shellcheck dylib/tests/termcheck.sh dylib/tests/stubcheck.sh dylib/tests/watchdogcheck.sh dylib/tests/routecheck.sh dylib/tests/settingscheck.sh && sh dylib/tests/termcheck.sh && sh dylib/tests/stubcheck.sh && sh dylib/tests/watchdogcheck.sh && sh dylib/tests/routecheck.sh dylib/feats/compat_run.sh && sh dylib/tests/settingscheck.sh dylib/feats/compat_run.sh && \
+	shellcheck steam/hook/feats/compat_run.sh && sh -n steam/hook/feats/compat_run.sh && \
+	shellcheck steam/hook/tests/termcheck.sh steam/hook/tests/stubcheck.sh steam/hook/tests/watchdogcheck.sh steam/hook/tests/routecheck.sh steam/hook/tests/settingscheck.sh && sh steam/hook/tests/termcheck.sh && sh steam/hook/tests/stubcheck.sh && sh steam/hook/tests/watchdogcheck.sh && sh steam/hook/tests/routecheck.sh steam/hook/feats/compat_run.sh && sh steam/hook/tests/settingscheck.sh steam/hook/feats/compat_run.sh && \
 	echo "==> runcheck: the run script lints and parses clean"
 
 # runcheck owns compat_run.sh, whose warnings wait for a change that can move
 # the embedded __text baseline
-SCRIPTS := $(shell git ls-files '*.sh' 2>/dev/null | grep -v '^dylib/feats/compat_run\.sh$$')
+SCRIPTS := $(shell git ls-files '*.sh' 2>/dev/null | grep -v '^steam/hook/feats/compat_run\.sh$$')
 
 scriptcheck:
 	@if ! command -v shellcheck >/dev/null 2>&1; then \
@@ -117,74 +117,74 @@ patchcheck:
 COMPATCHECK := $(OUT_DIR)/compatcheck
 
 compatcheck: $(RUN_SCRIPT_H)
-	@if [ ! -f dylib/tests/compatcheck.c ]; then $(call SKIP,compatcheck,dylib/tests/compatcheck.c); exit 0; fi; \
+	@if [ ! -f steam/hook/tests/compatcheck.c ]; then $(call SKIP,compatcheck,steam/hook/tests/compatcheck.c); exit 0; fi; \
 	mkdir -p $(OUT_DIR) && \
 	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -g \
-	  -Wall -Wextra -Wno-unused-parameter -Idylib -I$(GENERATED_DIR) \
-	  -o $(COMPATCHECK) dylib/tests/compatcheck.c && \
+	  -Wall -Wextra -Wno-unused-parameter -Isteam/hook -I$(GENERATED_DIR) \
+	  -o $(COMPATCHECK) steam/hook/tests/compatcheck.c && \
 	$(COMPATCHECK)
 
 COMPATSVC_CHECK := $(OUT_DIR)/compatsvc-check
 
 compatsvc-check:
-	@if [ ! -f dylib/tests/compatsvc-check.c ]; then $(call SKIP,compatsvc-check,dylib/tests/compatsvc-check.c); exit 0; fi; \
+	@if [ ! -f steam/hook/tests/compatsvc-check.c ]; then $(call SKIP,compatsvc-check,steam/hook/tests/compatsvc-check.c); exit 0; fi; \
 	mkdir -p $(OUT_DIR) && \
 	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -g \
-	  -Wall -Wextra -Wno-unused-parameter -Idylib \
-	  -o $(COMPATSVC_CHECK) dylib/tests/compatsvc-check.c && \
+	  -Wall -Wextra -Wno-unused-parameter -Isteam/hook \
+	  -o $(COMPATSVC_CHECK) steam/hook/tests/compatsvc-check.c && \
 	$(COMPATSVC_CHECK)
 
 sigcheck:
-	@if [ ! -f dylib/tests/sigcheck.py ]; then $(call SKIP,sigcheck,dylib/tests/sigcheck.py); exit 0; fi; \
-	python3 dylib/tests/sigcheck.py
+	@if [ ! -f steam/hook/tests/sigcheck.py ]; then $(call SKIP,sigcheck,steam/hook/tests/sigcheck.py); exit 0; fi; \
+	python3 steam/hook/tests/sigcheck.py
 
 # Validates anchors against a real dlopen'd steamclient.dylib
 ANCHORCHECK := $(OUT_DIR)/anchorcheck
-ANCHORCHECK_SRCS := dylib/tests/anchorcheck.c \
-	dylib/core/macho.c dylib/resolver/aob.c dylib/resolver/anchor.c \
-	dylib/resolver/resolver.c dylib/resolver/sigdb.c \
-	dylib/util/log.c dylib/util/file.c vendor/cJSON.c
+ANCHORCHECK_SRCS := steam/hook/tests/anchorcheck.c \
+	steam/hook/core/macho.c steam/hook/resolver/aob.c steam/hook/resolver/anchor.c \
+	steam/hook/resolver/resolver.c steam/hook/resolver/sigdb.c \
+	steam/hook/util/log.c steam/hook/util/file.c vendor/cJSON.c
 
 $(ANCHORCHECK): $(ANCHORCHECK_SRCS)
 	@mkdir -p $(dir $@)
 	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -g -O1 \
-	  -Wall -Wextra -Wno-unused-parameter -Idylib -Ivendor \
+	  -Wall -Wextra -Wno-unused-parameter -Isteam/hook -Ivendor \
 	  -o $@ $(ANCHORCHECK_SRCS)
 
 anchorcheck:
-	@if [ ! -f dylib/tests/anchorcheck.c ]; then $(call SKIP,anchorcheck,dylib/tests/anchorcheck.c); exit 0; fi; \
+	@if [ ! -f steam/hook/tests/anchorcheck.c ]; then $(call SKIP,anchorcheck,steam/hook/tests/anchorcheck.c); exit 0; fi; \
 	$(MAKE) -s $(ANCHORCHECK) && $(ANCHORCHECK)
 
 # Cuts a database for a new client build from an older one (docs/BACKLOG.md 22):
 # out/sigslice <base.json> <build> <out.json>, with HOME as for anchorcheck.
 SIGSLICE := $(OUT_DIR)/sigslice
 
-$(SIGSLICE): dylib/tests/sigslice.c $(filter-out dylib/tests/anchorcheck.c,$(ANCHORCHECK_SRCS))
+$(SIGSLICE): steam/hook/tests/sigslice.c $(filter-out steam/hook/tests/anchorcheck.c,$(ANCHORCHECK_SRCS))
 	@mkdir -p $(dir $@)
 	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -g -O1 \
-	  -Wall -Wextra -Wno-unused-parameter -Idylib -Ivendor \
+	  -Wall -Wextra -Wno-unused-parameter -Isteam/hook -Ivendor \
 	  -o $@ $^
 
 sigslice: $(SIGSLICE)
 
 CALLSCHECK := $(OUT_DIR)/callscheck
-CALLSCHECK_SRCS := dylib/tests/callscheck.c $(filter-out dylib/tests/anchorcheck.c,$(ANCHORCHECK_SRCS))
+CALLSCHECK_SRCS := steam/hook/tests/callscheck.c $(filter-out steam/hook/tests/anchorcheck.c,$(ANCHORCHECK_SRCS))
 
 $(CALLSCHECK): $(CALLSCHECK_SRCS)
 	@mkdir -p $(dir $@)
 	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -g -O1 \
-	  -Wall -Wextra -Wno-unused-parameter -Idylib -Ivendor \
+	  -Wall -Wextra -Wno-unused-parameter -Isteam/hook -Ivendor \
 	  -fsanitize=address,undefined -fno-sanitize-recover=all \
 	  -o $@ $(CALLSCHECK_SRCS)
 
 callscheck:
-	@if [ ! -f dylib/tests/callscheck.c ]; then $(call SKIP,callscheck,dylib/tests/callscheck.c); exit 0; fi; \
+	@if [ ! -f steam/hook/tests/callscheck.c ]; then $(call SKIP,callscheck,steam/hook/tests/callscheck.c); exit 0; fi; \
 	$(MAKE) -s $(CALLSCHECK) && $(CALLSCHECK)
 
-SIGDB_FIXTURES := dylib/tests/sigdb-fixtures
+SIGDB_FIXTURES := steam/hook/tests/sigdb-fixtures
 
 sigdb-fixtures:
-	@if [ ! -d $(SIGDB_FIXTURES) ] || [ ! -f dylib/tests/anchorcheck.c ]; then \
+	@if [ ! -d $(SIGDB_FIXTURES) ] || [ ! -f steam/hook/tests/anchorcheck.c ]; then \
 		$(call SKIP,sigdb-fixtures,$(SIGDB_FIXTURES)); exit 0; fi; \
 	$(MAKE) -s $(ANCHORCHECK) || exit 1; \
 	fail=0; n=0; \
@@ -206,15 +206,15 @@ sigdb-fixtures:
 
 PEICON_CHECK := $(OUT_DIR)/peicon-check
 
-$(PEICON_CHECK): dylib/tests/peicon-check.c dylib/util/peicon.c dylib/util/peicon.h
+$(PEICON_CHECK): steam/hook/tests/peicon-check.c steam/hook/util/peicon.c steam/hook/util/peicon.h
 	@mkdir -p $(dir $@)
 	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -g -O1 \
-	  -Wall -Wextra -Wno-unused-parameter -Idylib \
-	  -o $@ dylib/tests/peicon-check.c dylib/util/peicon.c
+	  -Wall -Wextra -Wno-unused-parameter -Isteam/hook \
+	  -o $@ steam/hook/tests/peicon-check.c steam/hook/util/peicon.c
 
 peicon-fixtures:
-	@if [ ! -f dylib/tests/peicon-check.c ]; then \
-		$(call SKIP,peicon-fixtures,dylib/tests/peicon-check.c); exit 0; fi; \
+	@if [ ! -f steam/hook/tests/peicon-check.c ]; then \
+		$(call SKIP,peicon-fixtures,steam/hook/tests/peicon-check.c); exit 0; fi; \
 	$(MAKE) -s $(PEICON_CHECK) || exit 1; \
 	tmp=$$(mktemp -d); \
 	$(PEICON_CHECK) "$$tmp"; rc=$$?; \
@@ -224,15 +224,15 @@ peicon-fixtures:
 	exit $$rc
 
 GATECHECK         := $(OUT_DIR)/gatecheck
-WEBPATCH_FIXTURES := dylib/tests/webpatch-fixtures
+WEBPATCH_FIXTURES := steam/hook/tests/webpatch-fixtures
 
-$(GATECHECK): dylib/tests/gatecheck.c dylib/feats/webpatch.c dylib/feats/webpatch.h $(PANEL_JS_H)
+$(GATECHECK): steam/hook/tests/gatecheck.c steam/hook/feats/webpatch.c steam/hook/feats/webpatch.h $(PANEL_JS_H)
 	@mkdir -p $(dir $@)
 	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -g -O1 \
-	  -Wall -Wextra -Wno-unused-parameter -Idylib -I$(GENERATED_DIR) -o $@ dylib/tests/gatecheck.c
+	  -Wall -Wextra -Wno-unused-parameter -Isteam/hook -I$(GENERATED_DIR) -o $@ steam/hook/tests/gatecheck.c
 
 webpatch-fixtures:
-	@if [ ! -d $(WEBPATCH_FIXTURES) ] || [ ! -f dylib/tests/gatecheck.c ]; then \
+	@if [ ! -d $(WEBPATCH_FIXTURES) ] || [ ! -f steam/hook/tests/gatecheck.c ]; then \
 		$(call SKIP,webpatch-fixtures,$(WEBPATCH_FIXTURES)); exit 0; fi; \
 	$(MAKE) -s $(GATECHECK) || exit 1; \
 	$(GATECHECK) || exit 1; \
@@ -256,10 +256,10 @@ webpatch-fixtures:
 
 STEAMWINCHECK := $(OUT_DIR)/steamwincheck
 
-$(STEAMWINCHECK): dylib/tests/steamwincheck.c dylib/feats/steamwin_css.c dylib/feats/steamwin_css.h
+$(STEAMWINCHECK): steam/hook/tests/steamwincheck.c steam/hook/feats/steamwin_css.c steam/hook/feats/steamwin_css.h
 	@mkdir -p $(dir $@)
 	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -g -O1 \
-	  -Wall -Wextra -Wno-unused-parameter -Idylib -o $@ dylib/tests/steamwincheck.c
+	  -Wall -Wextra -Wno-unused-parameter -Isteam/hook -o $@ steam/hook/tests/steamwincheck.c
 
 steamwin-check:
 	@$(MAKE) -s $(STEAMWINCHECK) && $(STEAMWINCHECK)
@@ -271,9 +271,9 @@ UPDATEGATE_CHECK := $(OUT_DIR)/updategate-check
 updategate-check:
 	@mkdir -p $(OUT_DIR) && \
 	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -g -O1 \
-	  -Wall -Wextra -Wno-unused-parameter -Idylib -Ivendor -o $(UPDATEGATE_CHECK) \
-	  dylib/tests/updategate-check.c dylib/feats/updategate.c dylib/resolver/sigdb.c \
-	  dylib/util/file.c vendor/cJSON.c && \
+	  -Wall -Wextra -Wno-unused-parameter -Isteam/hook -Ivendor -o $(UPDATEGATE_CHECK) \
+	  steam/hook/tests/updategate-check.c steam/hook/feats/updategate.c steam/hook/resolver/sigdb.c \
+	  steam/hook/util/file.c vendor/cJSON.c && \
 	$(UPDATEGATE_CHECK)
 
 SETTINGSBRIDGE_CHECK := $(OUT_DIR)/settingsbridge-check
@@ -281,8 +281,8 @@ SETTINGSBRIDGE_CHECK := $(OUT_DIR)/settingsbridge-check
 settingsbridge-check:
 	@mkdir -p $(OUT_DIR) && \
 	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -g -O1 \
-	  -Wall -Wextra -Wno-unused-parameter -Idylib -o $(SETTINGSBRIDGE_CHECK) \
-	  dylib/tests/settingsbridge-check.c dylib/feats/settingsbridge.c dylib/util/file.c dylib/util/log.c && \
+	  -Wall -Wextra -Wno-unused-parameter -Isteam/hook -o $(SETTINGSBRIDGE_CHECK) \
+	  steam/hook/tests/settingsbridge-check.c steam/hook/feats/settingsbridge.c steam/hook/util/file.c steam/hook/util/log.c && \
 	$(SETTINGSBRIDGE_CHECK)
 
 # The webpatch on the Steam chunks of this Mac, checked by node as JavaScript: the
@@ -294,15 +294,15 @@ webpatch-syntax: $(PANEL_JS_H)
 		echo "==> webpatch-syntax: no node or no Steam, skipped"; exit 0; fi; \
 	mkdir -p $(OUT_DIR) && \
 	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -g -O1 \
-	  -Wall -Wextra -Wno-unused-parameter -Idylib -I$(GENERATED_DIR) -o $(OUT_DIR)/webpatch-apply \
-	  dylib/tests/webpatch-apply.c dylib/feats/webpatch.c dylib/feats/settingsbridge.c \
-	  dylib/util/file.c dylib/util/log.c && \
+	  -Wall -Wextra -Wno-unused-parameter -Isteam/hook -I$(GENERATED_DIR) -o $(OUT_DIR)/webpatch-apply \
+	  steam/hook/tests/webpatch-apply.c steam/hook/feats/webpatch.c steam/hook/feats/settingsbridge.c \
+	  steam/hook/util/file.c steam/hook/util/log.c && \
 	tmp=$$(mktemp -d) && n=0 && \
 	for f in "$(STEAMUI_DIR)"/chunk~*.js "$(STEAMUI_DIR)"/library.js "$(STEAMUI_DIR)"/sp.js; do \
 		[ -f "$$f" ] && grep -q 'AppProperties_Compat' "$$f" || continue; \
 		$(OUT_DIR)/webpatch-apply "$$f" "$$tmp/patched.js" || { rm -rf "$${tmp:?}"; exit 1; }; \
 		node --check "$$tmp/patched.js" || { echo "webpatch-syntax: $$f does not parse after the webpatch"; rm -rf "$${tmp:?}"; exit 1; }; \
-		node dylib/tests/lbselp-check.js "$$tmp/patched.js" || { rm -rf "$${tmp:?}"; exit 1; }; \
+		node steam/hook/tests/lbselp-check.js "$$tmp/patched.js" || { rm -rf "$${tmp:?}"; exit 1; }; \
 		n=$$((n + 1)); \
 	done; \
 	rm -rf "$${tmp:?}"; \
@@ -310,24 +310,24 @@ webpatch-syntax: $(PANEL_JS_H)
 
 LAUNCH_SHELL := $(OUT_DIR)/launch-shell
 
-# Launch options through a shell, as on Linux (dylib/hooks/hook_launch.c, upstream 1.1.0).
+# Launch options through a shell, as on Linux (steam/hook/hooks/hook_launch.c, upstream 1.1.0).
 launch-shell:
-	@if [ ! -f dylib/tests/launch-shell.c ]; then $(call SKIP,launch-shell,dylib/tests/launch-shell.c); exit 0; fi; \
+	@if [ ! -f steam/hook/tests/launch-shell.c ]; then $(call SKIP,launch-shell,steam/hook/tests/launch-shell.c); exit 0; fi; \
 	mkdir -p $(OUT_DIR) && \
 	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -g -O1 \
-	  -Wall -Wextra -Wno-unused-parameter -Idylib -o $(LAUNCH_SHELL) dylib/tests/launch-shell.c && \
+	  -Wall -Wextra -Wno-unused-parameter -Isteam/hook -o $(LAUNCH_SHELL) steam/hook/tests/launch-shell.c && \
 	$(LAUNCH_SHELL)
 
 SPAWN_ENV := $(OUT_DIR)/spawn-env
 
 spawn-env:
-	@if [ ! -f dylib/tests/spawn-env.c ]; then $(call SKIP,spawn-env,dylib/tests/spawn-env.c); exit 0; fi; \
+	@if [ ! -f steam/hook/tests/spawn-env.c ]; then $(call SKIP,spawn-env,steam/hook/tests/spawn-env.c); exit 0; fi; \
 	mkdir -p $(OUT_DIR) && \
 	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -g -O1 \
-	  -Wall -Wextra -Wno-unused-parameter -Idylib -o $(SPAWN_ENV) dylib/tests/spawn-env.c && \
+	  -Wall -Wextra -Wno-unused-parameter -Isteam/hook -o $(SPAWN_ENV) steam/hook/tests/spawn-env.c && \
 	$(SPAWN_ENV)
 
-SPAWN_LIVE := dylib/tests/spawn-live
+SPAWN_LIVE := steam/hook/tests/spawn-live
 
 # HOME points into the scratch folder: the dylib logs to <HOME>/Library/Application
 # Support/lullaby, and a run here must not create that folder on the developer's Mac.
@@ -362,7 +362,7 @@ app-tests:
 	@if [ ! -d $(APP_TESTS) ]; then $(call SKIP,app-tests,$(APP_TESTS)); exit 0; fi; \
 	touch app/Package.swift; cd app && swift test --no-parallel
 
-PANEL_TESTS := dylib/tests/panel-behavior
+PANEL_TESTS := steam/hook/tests/panel-behavior
 
 panel-behavior:
 	@if [ ! -d $(PANEL_TESTS) ]; then $(call SKIP,panel-behavior,$(PANEL_TESTS)); exit 0; fi; \
@@ -371,7 +371,7 @@ panel-behavior:
 	mkdir -p $(OUT_DIR) && \
 	$(MAKE) -s $(PANEL_JS_H) && \
 	$(CC) -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -g -O1 \
-	  -Wall -Wextra -Wno-unused-parameter -Idylib -I$(GENERATED_DIR) -o $(OUT_DIR)/panel-emit \
+	  -Wall -Wextra -Wno-unused-parameter -Isteam/hook -I$(GENERATED_DIR) -o $(OUT_DIR)/panel-emit \
 	  $(PANEL_TESTS)/emit.c && \
 	node $(PANEL_TESTS)/catalog.js $(OUT_DIR)/panel-emit $(PANEL_TESTS)/fixtures && \
 	node $(PANEL_TESTS)/behavior.js $(OUT_DIR)/panel-emit && \
@@ -383,7 +383,7 @@ $(ARM64_DYLIB): $(OBJS)
 	@mkdir -p $(dir $@)
 	$(CC) $(LDFLAGS) -o $@ $^ $(DOBBY_LIBS) $(FRAMEWORKS) -lc++
 
-$(X86_STUB): dylib/stub_x86_64.c
+$(X86_STUB): steam/hook/stub_x86_64.c
 	@mkdir -p $(dir $@)
 	$(CC) -arch x86_64 -mmacosx-version-min=$(MIN_VER) \
 		-dynamiclib -install_name @rpath/lullaby.dylib \
@@ -409,17 +409,17 @@ $(OUT_DIR)/%.o: %.m
 	@mkdir -p $(dir $@)
 	$(CC) $(OBJCFLAGS) -c $< -o $@
 
-$(RUN_SCRIPT_H): dylib/feats/compat_run.sh dylib/embed_script.py
+$(RUN_SCRIPT_H): steam/hook/feats/compat_run.sh steam/hook/embed_script.py
 	@mkdir -p $(GENERATED_DIR)
-	python3 dylib/embed_script.py $< $@ RUN_SCRIPT
+	python3 steam/hook/embed_script.py $< $@ RUN_SCRIPT
 
-$(OUT_DIR)/dylib/feats/compat.o: $(RUN_SCRIPT_H)
+$(OUT_DIR)/steam/hook/feats/compat.o: $(RUN_SCRIPT_H)
 
-$(PANEL_JS_H): dylib/feats/panel.js dylib/embed_js.py
+$(PANEL_JS_H): steam/hook/feats/panel.js steam/hook/embed_js.py
 	@mkdir -p $(GENERATED_DIR)
-	python3 dylib/embed_js.py $< $@ LB_PANEL_JS
+	python3 steam/hook/embed_js.py $< $@ LB_PANEL_JS
 
-$(OUT_DIR)/dylib/feats/webpatch.o: $(PANEL_JS_H)
+$(OUT_DIR)/steam/hook/feats/webpatch.o: $(PANEL_JS_H)
 
 SUPPORT_DIR        := $(HOME)/Library/Application Support/lullaby
 OVERLAY_SHIM_SRC   := steam/overlay/overlay_shim.m
@@ -491,12 +491,12 @@ ICONMAKER := $(OUT_DIR)/iconmaker
 
 iconmaker: $(ICONMAKER)
 
-$(ICONMAKER): helpers/iconmaker.swift dylib/util/peicon.c dylib/util/peicon.h
+$(ICONMAKER): helpers/iconmaker.swift steam/hook/util/peicon.c steam/hook/util/peicon.h
 	@mkdir -p $(OUT_DIR)
 	$(CC) -c -arch $(ARCH) -mmacosx-version-min=$(MIN_VER) -std=c17 -O2 \
-		-Wall -Wextra -o $(OUT_DIR)/peicon-host.o dylib/util/peicon.c
+		-Wall -Wextra -o $(OUT_DIR)/peicon-host.o steam/hook/util/peicon.c
 	swiftc -O -target $(ARCH)-apple-macos$(MIN_VER) \
-		-framework AppKit -import-objc-header dylib/util/peicon.h \
+		-framework AppKit -import-objc-header steam/hook/util/peicon.h \
 		-o $@ helpers/iconmaker.swift $(OUT_DIR)/peicon-host.o
 	@echo "==> Built $@"
 
@@ -601,7 +601,7 @@ app-payload: $(TARGET) $(OVERLAY_SHIM) $(ICONMAKER) $(APPINFO) $(NVAPI_SHIM)
 	swift build --package-path app -c release --product lullaby-settings
 	cp -f "$$(swift build --package-path app -c release --show-bin-path)/lullaby-settings" \
 		"$(APP_PAYLOAD)/lullaby-settings"
-	cp -f dylib/feats/compat_run.sh "$(APP_PAYLOAD)/compat_run.sh"
+	cp -f steam/hook/feats/compat_run.sh "$(APP_PAYLOAD)/compat_run.sh"
 	cp -f steam/signatures/macos.arm64/*.json "$(APP_PAYLOAD)/signatures/macos.arm64/"
 ifeq ($(BRIDGE_FEED_DIR),)
 	@set -e; for spec in $(BRIDGE_FILES); do \
@@ -622,7 +622,7 @@ APP_BUNDLE  := $(OUT_DIR)/Lullaby.app
 ROSETTA_CHECK := $(APP_BUNDLE)/Contents/Helpers/Lullaby Rosetta Check.app
 APP_BUNDLE_PAYLOAD := $(APP_BUNDLE)/Contents/Resources/LullabyApp_LullabyApp.bundle/Contents/Resources/payload
 APP_ZIP     := $(OUT_DIR)/Lullaby.zip
-APP_VERSION ?= $(shell sed -n 's/^\#define LULLABY_VERSION "\(.*\)"/\1/p' dylib/version.h)
+APP_VERSION ?= $(shell sed -n 's/^\#define LULLABY_VERSION "\(.*\)"/\1/p' steam/hook/version.h)
 # CFBundleVersion, what Sparkle compares. The release workflow passes a number that
 # only grows (the commit count); a local build keeps the marketing version.
 APP_BUILD   ?= $(APP_VERSION)

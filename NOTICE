@@ -71,7 +71,7 @@ and Core/GPUEquivalence.swift: which cards stand in for an Apple chip, their PCI
 driver version strings and the variables each renderer reads. Same MIT license as above,
 Copyright (c) 2026 kageroumado.
 
-dylib/hooks/hook_launch.c, np_rebind_import in dylib/core/macho.c, dylib/tests/launch-shell.c
+steam/hook/hooks/hook_launch.c, np_rebind_import in steam/hook/core/macho.c, steam/hook/tests/launch-shell.c
 and the LaunchBuilder::SteamVRSupportCheck signature come from upstream NotProton 1.1.0
 (https://github.com/NotProtonNot/NotProton, GPL-3.0, the project this one is a fork of),
 written there by NotProtonNot with Logan (LaganYT); NotProton's own change records the

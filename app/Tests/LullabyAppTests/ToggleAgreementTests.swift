@@ -43,8 +43,8 @@ struct ToggleAgreementTests {
 
     @Test("Every Compatibility page toggle is exported rather than passed to the game")
     func togglesAreNamespaced() throws {
-        let names = try Self.toggleNames(in: try Self.source("dylib/feats/webpatch.c"))
-        let patterns = try Self.allowedPatterns(in: try Self.source("dylib/feats/compat_run.sh"))
+        let names = try Self.toggleNames(in: try Self.source("steam/hook/feats/webpatch.c"))
+        let patterns = try Self.allowedPatterns(in: try Self.source("steam/hook/feats/compat_run.sh"))
 
         #expect(names.contains("LULLABY_RENDERER"), "found \(names.sorted()), the parse looks wrong")
         #expect(!patterns.isEmpty)

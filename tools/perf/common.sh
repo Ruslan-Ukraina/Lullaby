@@ -91,7 +91,7 @@ perf_cleanup() {
 # perf_stage_dxmt: DXMT out of this engine's own files. Sets perf_prepend (for
 # WINEDLLPATH_PREPEND) and perf_overrides (for WINEDLLOVERRIDES). Wine takes a builtin off the
 # dll path only for a name the prefix holds a file for, and winemetal is not one of Wine's, so
-# its PE goes into system32 too (dylib/feats/compat_run.sh, stage_renderer, says the same).
+# its PE goes into system32 too (steam/hook/feats/compat_run.sh, stage_renderer, says the same).
 perf_stage_dxmt() {
   perf_renderer_env=""
   if [ "${LB_ENGINE_KIND:-dormison}" = wineforge ]; then

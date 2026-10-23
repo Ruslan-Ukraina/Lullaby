@@ -48,13 +48,13 @@ jobs:
 
       - name: Version
         run: |
-          base=$(sed -n 's/^#define LULLABY_VERSION "\(.*\)"/\1/p' dylib/version.h)
+          base=$(sed -n 's/^#define LULLABY_VERSION "\(.*\)"/\1/p' steam/hook/version.h)
           if [ "$DRY_RUN" = true ]; then
             version="$base-dryrun.$GITHUB_RUN_NUMBER"; kind=test; pre=true
           else
             version=${GITHUB_REF_NAME#v}; kind=release
             case "$version" in *-*) pre=true ;; *) pre=false ;; esac
-            [ "${version%%-*}" = "$base" ] || { echo "tag $GITHUB_REF_NAME, but dylib/version.h says $base"; exit 1; }
+            [ "${version%%-*}" = "$base" ] || { echo "tag $GITHUB_REF_NAME, but steam/hook/version.h says $base"; exit 1; }
           fi
           # Sparkle compares CFBundleVersion: the commit count only grows on this branch.
           build=$(git rev-list --count HEAD)

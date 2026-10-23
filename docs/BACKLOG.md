@@ -54,7 +54,7 @@
 
 **Что видно.** В `notproton-run.log` после `=== bundle exited status=0 ===` нет строк `=== game exited … ===` и `=== wine prefix killed, session ending ===`. `spike-check.sh` пишет «the session has not ended», хотя процессов Wine уже нет.
 
-**Причин две.** Обе в коде апстрима: `terminate()`, `wait_prefix_idle()` и цикл ожидания в `dylib/feats/compat_run.sh` (строки 824–858 и 895–924) такие же в `main` и `upstream/dev`.
+**Причин две.** Обе в коде апстрима: `terminate()`, `wait_prefix_idle()` и цикл ожидания в `steam/hook/feats/compat_run.sh` (строки 824–858 и 895–924) такие же в `main` и `upstream/dev`.
 
 1. **Игру останавливает Steam, и скрипт убивают до финала.** Так было в PEAK (сессии 02:58 и 03:00) и в RE9 (03:23).
    - Steam шлёт run-скрипту сигнал, в логе появляется `=== termination signal received, killing wine prefix ===`. `terminate()` гасит префикс и `open`, но сам скрипт не завершает.
@@ -441,7 +441,7 @@
 - `WINEMSYNC=0` (осознанное отключение для отладки) и все остальные параметры остаются, `%command%` — последним;
 - если устаревших параметров нет, ничего не записывается. Mac-игры, которые Steam запускает сам, не трогаются.
 
-**Тесты:** `dylib/tests/panel-behavior/cleanup.js` (оба вида панели), `switching.js`, `behavior.js` — `make panel-behavior`.
+**Тесты:** `steam/hook/tests/panel-behavior/cleanup.js` (оба вида панели), `switching.js`, `behavior.js` — `make panel-behavior`.
 
 **У тебя** (чтение `localconfig.vdf`, без изменений): устаревшие параметры только у ETS2 (227300): `WINEMSYNC=1 CX_GRAPHICS_BACKEND=dxmt` → станет `NOTPROTON_RENDERER=dxmt`, как только ты откроешь её «Свойства → Совместимость». Deadlock (`-dx11 NOTPROTON_RENDERER=dxmt`) и Inscryption не меняются.
 
@@ -454,7 +454,7 @@
 **Чего нет.** Инструмента, который режет новую базу: записанные адреса (`func_addr_this_build`) из якорей и новые AOB-шаблоны там, где старые не совпадают. Апстрим делал это вручную (коммит `c63a9f1`).
 
 **Сделано (Фаза 6, P6-3, P6-4).**
-- `out/sigslice <база> <билд> <выход>` (`dylib/tests/sigslice.c`): адрес каждой функции — по якорю тем же кодом, что в dylib; шаблон — старый, если он сам находит этот адрес, иначе новый из байтов билда с `??` на PC-относительных инструкциях. Якорь не разрешился — «нужен человек», база не пишется.
+- `out/sigslice <база> <билд> <выход>` (`steam/hook/tests/sigslice.c`): адрес каждой функции — по якорю тем же кодом, что в dylib; шаблон — старый, если он сам находит этот адрес, иначе новый из байтов билда с `??` на PC-относительных инструкциях. Якорь не разрешился — «нужен человек», база не пишется.
 - `release/steam-client.sh` — клиент канала как его ставит Steam (sha256 пакетов из манифеста Valve, подпись Valve по срезам, x86_64).
 - `release/steam-signatures.sh` — оба канала: уже поддержан → пропуск; иначе нарезка из самой новой подходящей базы, приёмка `anchorcheck` только по новой базе (код 0), манифест serial + 1.
 - `steam-signatures.yml` — каждые 3 часа, публикация или issue.
@@ -468,7 +468,7 @@
 
 **Что проверено на этом Mac:**
 - `steam_osx` (и в `/Applications/Steam.app`, и внутренний), `steamclient.dylib`, `steamui.dylib` — универсальные (`lipo -info`: x86_64 и arm64). У беты 1791249696 то же (`otool -L` по обоим срезам).
-- Steam уже работает как arm64: сигнатуры NotProton только `macos.arm64`, а x86_64-половина `notproton.dylib` — пустая заглушка (`dylib/stub_x86_64.c`). Steam Play работает — значит, загружен arm64-срез. Отдельной «нативной arm64-сборки», которую надо поддержать, нет: она и есть текущий клиент.
+- Steam уже работает как arm64: сигнатуры NotProton только `macos.arm64`, а x86_64-половина `notproton.dylib` — пустая заглушка (`steam/hook/stub_x86_64.c`). Steam Play работает — значит, загружен arm64-срез. Отдельной «нативной arm64-сборки», которую надо поддержать, нет: она и есть текущий клиент.
 - Если пользователь включит «Открывать в Rosetta» для Steam, Steam Play пропадёт (заглушка, нет баз `macos.x86_64`). Это стоит показывать в Status.
 
 **Главный риск — обратный: Steam только arm64.** Игра работает в x86_64-процессе Wine под Rosetta (у Dormison только `x86_64-unix`). `lsteamclient.so` (x86_64) загружает `steamclient.dylib` Steam прямо в процесс игры (`lsteamclient/unixlib.cpp:797`, путь из `STEAM_COMPAT_CLIENT_INSTALL_PATH`), то есть нужен x86_64-срез клиента. Если Valve уберёт x86_64 из `steamclient.dylib`, Steamworks в играх (ачивки, облако, оверлей, проверка владения) перестанет работать, хотя сами игры и Steam Play останутся.

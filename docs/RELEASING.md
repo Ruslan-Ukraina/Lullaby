@@ -113,7 +113,7 @@
 |---|---|---|
 | `dormison-bridge.yml` | раз в сутки (`LB_DORMISON_CHECK_HOURS`); вручную | Подписанный `engine.json` Dormison → версия канала без моста (или вход `engine`, напр. `dormison-r5`: адрес и sha256 — из `engineRelease` записи моста) → mingw GCC ровно 16.2.0 (I4) → движок (подпись, sha256, каждый файл) → исходники Dormison того же коммита → `setup-wine-tree.sh`, `build-b1.sh --check-base` (непропатченный код совпадает с релизным инструкция в инструкцию), lsteamclient, `steam.exe` → `strip --strip-debug` (O1) → `test-b1.sh` в Wine: x86_64 и i386 OK, а релизный `ntdll.dll` обязан провалить тот же тест → тарбол, `bridge-manifest.json`, подписи → публикация и чтение обратно. Ошибка — issue. **По расписанию — только кандидат** (тестовые ключи, артефакт, issue «candidate … not published»); публикует «Run workflow» с `promote_run` = id проверенного run: те же байты подписываются боевым ключом, без пересборки |
 | `steam-signatures.yml` | каждые 6 часов (`LB_STEAM_CHECK_HOURS`); вручную | Раз в сутки (05:23 UTC) Linux-ворота проверяют, что Valve отдаёт закреплённые пакеты (`release/valve-check.sh`, I5; пропажа — issue). Дальше: Манифесты Valve stable и publicbeta → новый билд → пакеты Valve (sha256 из манифеста Valve, подпись Valve `MXGJJ98X76` по каждому срезу, наличие x86_64 — BACKLOG 24) → `out/sigslice` режет базу из самой новой подходящей → `out/anchorcheck` только по новой базе обязан дать 0 → `signatures-manifest.json`, подпись → публикация. Не режется или нет x86_64 — issue |
-| `release.yml` | тег `v*` | Версия из тега (база должна совпасть с `dylib/version.h`), CFBundleVersion = число коммитов → мост из опубликованного артефакта (sha256 из `bridge/bridge-manifest.json` + подпись) → `make app LB_BUILD_KIND=release` → проверки релиза → C-тесты и Swift-тесты (с `LB_REQUIRE_PAYLOAD=1`) → собранное приложение читает опубликованный фид (`--release check`) → zip, подпись Sparkle, appcast (старые записи сохраняются; пре-релиз — канал `beta`) → релиз GitHub, затем appcast; оба читаются обратно |
+| `release.yml` | тег `v*` | Версия из тега (база должна совпасть с `steam/hook/version.h`), CFBundleVersion = число коммитов → мост из опубликованного артефакта (sha256 из `bridge/bridge-manifest.json` + подпись) → `make app LB_BUILD_KIND=release` → проверки релиза → C-тесты и Swift-тесты (с `LB_REQUIRE_PAYLOAD=1`) → собранное приложение читает опубликованный фид (`--release check`) → zip, подпись Sparkle, appcast (старые записи сохраняются; пре-релиз — канал `beta`) → релиз GitHub, затем appcast; оба читаются обратно |
 | `app.yml` (macOS), `lint.yml` (Linux) | PR, «Run workflow»; push в `main` без изменений только в документации — `lint` всегда, `app` при `LB_CI_ON_PUSH=true` | dylib, шим, помощники, C-тесты, Swift-тесты (без собранного payload часть пропускается), shellcheck |
 
 **Dry-run** — тег `dryrun-bridge-*`, `dryrun-signatures-*`, `dryrun-app-*` (или «Run workflow» с галочкой `dry_run`):
@@ -213,7 +213,7 @@ gh variable set SPARKLE_PUBLIC_KEY   -R Ruslan-Ukraina/Lullaby --body "$(swift r
 
 ## 3. Обычный выпуск
 
-- **Новая версия приложения:** поменять `LULLABY_VERSION` в `dylib/version.h` (например, `1.1.0`), коммит, тег:
+- **Новая версия приложения:** поменять `LULLABY_VERSION` в `steam/hook/version.h` (например, `1.1.0`), коммит, тег:
   ```sh
   git tag -a v1.1.0 -m "Что нового — это текст в окне обновления"
   git push origin v1.1.0

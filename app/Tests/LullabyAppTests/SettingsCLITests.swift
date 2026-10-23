@@ -155,11 +155,11 @@ struct SettingsCLITests {
         #expect(fixture.service.store.game(1422450).exes == ["deadlock.exe", "vconsole2.exe"])
     }
 
-    /// dylib/tests/panel-behavior/fixtures: what the panel tests draw.
+    /// steam/hook/tests/panel-behavior/fixtures: what the panel tests draw.
     static var panelFixtures: URL {
         URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent()
-            .appending(path: "dylib/tests/panel-behavior/fixtures")
+            .appending(path: "steam/hook/tests/panel-behavior/fixtures")
     }
 
     @Test("the panel's fixtures are what the CLI prints today")
@@ -174,7 +174,7 @@ struct SettingsCLITests {
         let catalog = try JSONValue.parse(String(
             contentsOf: Self.panelFixtures.appending(path: "catalog.json"), encoding: .utf8))
         #expect(catalog == fixture.service.catalogJSON(),
-                "regenerate dylib/tests/panel-behavior/fixtures/catalog.json with lullaby-settings catalog")
+                "regenerate steam/hook/tests/panel-behavior/fixtures/catalog.json with lullaby-settings catalog")
         for (file, level) in [("state-game.json", SettingLevel.game), ("state-global.json", .global)] {
             let state = try JSONValue.parse(String(
                 contentsOf: Self.panelFixtures.appending(path: file), encoding: .utf8))

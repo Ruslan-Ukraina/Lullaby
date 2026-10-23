@@ -3,7 +3,7 @@
 #include "sigdb.h"
 #include "../util/log.h"
 #include "../util/file.h"
-#include "../../vendor/cJSON.h"
+#include "../../../vendor/cJSON.h"
 
 #include <dirent.h>
 #include <stdio.h>

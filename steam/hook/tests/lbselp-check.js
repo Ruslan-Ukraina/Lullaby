@@ -1,5 +1,5 @@
 // webpatch-syntax: the selecttool page's panel finds React through webpack's runtime
-// (LBSelP in dylib/feats/webpatch.c): from the module cache, from the factories, and
+// (LBSelP in steam/hook/feats/webpatch.c): from the module cache, from the factories, and
 // null without webpack (the renderer list stays).
 const fs=require("fs");const src=fs.readFileSync(process.argv[2],"utf8");
 const i=src.indexOf('function LBSelP(');const j=src.indexOf('return LBSelP.p}',i)+'return LBSelP.p}'.length;

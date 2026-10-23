@@ -275,13 +275,13 @@ struct SteamGateTests {
         #expect(support.supportedBuilds(installedIn: rig.signatures) == [1788652215, 1790904859, 1791249696])
     }
 
-    @Test("The shipped signature list matches signatures/macos.arm64 and lists the build checked live")
+    @Test("The shipped signature list matches steam/signatures/macos.arm64 and lists the build checked live")
     func shippedList() throws {
         let repo = URL(filePath: #filePath).deletingLastPathComponent().appending(path: "../../..").standardizedFileURL
-        let data = try Data(contentsOf: repo.appending(path: "signatures/manifest.json"))
+        let data = try Data(contentsOf: repo.appending(path: "steam/signatures/manifest.json"))
         let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
         let support = SignatureSupport.parse(json, feed: nil)
-        let dir = repo.appending(path: "signatures/macos.arm64")
+        let dir = repo.appending(path: "steam/signatures/macos.arm64")
         #expect(support.supports(1788652215, installedIn: dir))
         for database in support.databases {
             #expect(Digest.sha256IfPresent(dir.appending(path: database.file)) == database.sha256)

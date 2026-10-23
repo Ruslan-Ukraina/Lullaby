@@ -6,8 +6,8 @@ Paths in the column "Было" are today's locations; moves follow the protocol 
 | Каталог | Назначение | Что класть | Чего нельзя | Поток | Было |
 |---|---|---|---|---|---|
 | `app/` | Lullaby.app и `lullaby-settings` (Swift) | исходники, тесты, `Info.plist`, иконка | двоичные payload (они в `.gitignore`), пути на конкретную машину | App | `app/` (без `NotProtonApp/`) |
-| `steam/hook/` | библиотека, которая грузится в Steam (`lby-luna-steamhook`): Mach-O, хуки, резолвер сигнатур, окна Steam, панель | C/ObjC/JS, тесты и фикстуры | логику игры (она в `launch/`) | App/Patches | `dylib/` кроме `feats/compat_run.sh` |
-| `steam/launch/` | скрипт запуска игры, разрезанный на части (пакет игры, окружение, рендерер, Game Mode, лог) | `.sh` модули, `embed_script.py`, тесты | пересчёт настроек (они в `app/`) | App | `dylib/feats/compat_run.sh` |
+| `steam/hook/` | библиотека, которая грузится в Steam (`lby-luna-steamhook`): Mach-O, хуки, резолвер сигнатур, окна Steam, панель | C/ObjC/JS, тесты и фикстуры | логику игры (она в `launch/`) | App/Patches | `steam/hook/` кроме `feats/compat_run.sh` |
+| `steam/launch/` | скрипт запуска игры, разрезанный на части (пакет игры, окружение, рендерер, Game Mode, лог) | `.sh` модули, `embed_script.py`, тесты | пересчёт настроек (они в `app/`) | App | `steam/hook/feats/compat_run.sh` |
 | `steam/overlay/` | оверлей Steam в игре (`lby-spike-overlay`) | `.m`, тесты | | Patches | `overlay-shim/` |
 | `steam/signatures/` | база сигнатур Steam | JSON по билдам, `manifest.json` | ручные правки | Release | `signatures/` |
 | `bridge/` | мост Steam: `lby-applejack-steambridge` (lsteamclient), `lby-bigmack-steamexe` (steam.exe) | исходники, скрипты сборки, `bridge-manifest.json` | VR/Vulkan без записанной причины; пересборку модулей Dormison (это `patches/`) | Bridge | `lsteamclient/`, `steam-shim/`, `bridge/` |
@@ -34,7 +34,7 @@ Paths in the column "Было" are today's locations; moves follow the protocol 
 ### Что переносится и в каком порядке (протокол «Гигиена», п. 4)
 1. S2: создать ветку, перенести `engine-fixes → patches` одним коммитом (`git mv`), правки `Makefile` и `.github` в том же коммите, до и после — `make patchcheck`, сборка моста.
 2. Затем `patches/inject/lby-rainbowdash-reflex → patches/inject`, `patches/engine/lby-discord-ntdllhook → patches/engine/…` (если B1 остаётся), `perf/ → tools/perf`.
-3. `dylib/ → steam/hook`, `overlay-shim → steam/overlay`, `lsteamclient`+`steam-shim` под `bridge/` — **последними**, потому что `Makefile` и `embed_script.py` завязаны на пути.
+3. `steam/hook/ → steam/hook`, `overlay-shim → steam/overlay`, `lsteamclient`+`steam-shim` под `bridge/` — **последними**, потому что `Makefile` и `embed_script.py` завязаны на пути.
 Файлы из рантайма (бандл, `~/Library/Application Support/lullaby`) не двигаются.
 
 

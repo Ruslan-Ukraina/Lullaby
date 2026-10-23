@@ -1,7 +1,7 @@
 // Signature databases for the Steam client and the Steam builds they are known to
 // fit (Phase 5, DECISIONS P5-3). lullaby.dylib reads the databases from
 // lullaby/signatures/macos.arm64 when Steam starts, newest first, and keeps the
-// first one whose signatures all resolve (dylib/core/loader.c), so a database for
+// first one whose signatures all resolve (steam/hook/core/loader.c), so a database for
 // a newer Steam never breaks the build that is installed.
 //
 // signatures-manifest.json, signed with the release key (ReleaseFeed):

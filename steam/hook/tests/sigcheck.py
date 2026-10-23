@@ -5,10 +5,10 @@ import pathlib
 import re
 import sys
 
-root = pathlib.Path(__file__).resolve().parents[2]
+root = pathlib.Path(__file__).resolve().parents[3]
 
 wanted = {}
-for path in sorted((root / "dylib").rglob("*.c")):
+for path in sorted((root / "steam" / "hook").rglob("*.c")):
     text = path.read_text()
     for pattern in (r'\.signature\s*=\s*"([^"]+)"',
                     r'lb_resolve_find\s*\(\s*\w+\s*,\s*"([^"]+)"',
@@ -17,7 +17,7 @@ for path in sorted((root / "dylib").rglob("*.c")):
             wanted.setdefault(name, path.relative_to(root))
 
 if not wanted:
-    sys.exit("sigcheck: no signature names found in dylib/, the patterns are stale")
+    sys.exit("sigcheck: no signature names found in steam/hook/, the patterns are stale")
 
 # Databases only: signatures/manifest.json lists them and the builds they fit.
 dbs = sorted((root / "steam" / "signatures").glob("macos.*/*.json"))

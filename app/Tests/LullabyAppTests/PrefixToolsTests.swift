@@ -15,7 +15,7 @@ struct PrefixToolsTests {
             .deletingLastPathComponent()  // app
             .deletingLastPathComponent()  // repo root
         return try String(
-            contentsOf: repoRoot.appending(path: "dylib/feats/compat_run.sh"), encoding: .utf8)
+            contentsOf: repoRoot.appending(path: "steam/hook/feats/compat_run.sh"), encoding: .utf8)
     }
 
     private func samplePrefix() -> WinePrefix {
@@ -467,7 +467,7 @@ struct PrefixToolsTests {
         }
     }
 
-    // merge_user_dir in dylib/feats/compat_run.sh only copies into directories not already
+    // merge_user_dir in steam/hook/feats/compat_run.sh only copies into directories not already
     // there, since one save directory holding two sessions may make no sense. Losers are parked.
     @Test("A save directory reached more than once is carried from one place and parked from the rest")
     func rebuildTakesOneInstanceOfASaveDirectory() throws {

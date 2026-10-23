@@ -23,7 +23,7 @@
 #include "../resolver/anchor.h"
 #include "../resolver/aob.h"
 #include "../core/macho.h"
-#include "../../vendor/cJSON.h"
+#include "../../../vendor/cJSON.h"
 
 #include <dlfcn.h>
 #include <mach-o/dyld.h>

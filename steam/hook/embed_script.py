@@ -24,7 +24,7 @@ def main() -> int:
     text = src.read_text(encoding="ascii")
     guard = f"LULLABY_GENERATED_{symbol.upper()}_H"
     header = (
-        f"// Generated from {src.as_posix()} by dylib/embed_script.py. Edit that file.\n"
+        f"// Generated from {src.as_posix()} by steam/hook/embed_script.py. Edit that file.\n"
         f"#ifndef {guard}\n"
         f"#define {guard}\n"
         f"\n"

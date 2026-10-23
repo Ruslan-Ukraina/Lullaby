@@ -27,7 +27,7 @@ enum SupportPaths {
     /// Verified copies of Lullaby's signed release manifests, with their .sig files.
     static var manifests: URL { support.appending(path: "manifests") }
     /// `auto` or `manual`: who keeps Steam's update block (SteamUpdateGate). The dylib
-    /// reads it inside Steam, so the name is shared with dylib/feats/updategate.c.
+    /// reads it inside Steam, so the name is shared with steam/hook/feats/updategate.c.
     static var steamUpdateGate: URL { support.appending(path: "steam-update-gate") }
     static var runners: URL { support.appending(path: "runners") }
     static var backups: URL { support.appending(path: "backups") }

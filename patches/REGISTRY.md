@@ -100,8 +100,8 @@
 
 | ID | Функция | Файлы | Как обновляется |
 |---|---|---|---|
-| STM-01 | Хуки в клиенте Steam: пункт Steam Play, `CCompatManager::*` (Dobby) | `dylib/core`, `dylib/hooks`, `dylib/resolver` | якоря сигнатур на каждую сборку Steam |
-| STM-02 | Запись инструмента совместимости и сервис запуска | `dylib/feats/compat.c`, `compatsvc.c` | с приложением |
+| STM-01 | Хуки в клиенте Steam: пункт Steam Play, `CCompatManager::*` (Dobby) | `steam/hook/core`, `steam/hook/hooks`, `steam/hook/resolver` | якоря сигнатур на каждую сборку Steam |
+| STM-02 | Запись инструмента совместимости и сервис запуска | `steam/hook/feats/compat.c`, `compatsvc.c` | с приложением |
 | STM-03 | Настройки игры в Steam: мост и панель | `settingsbridge.c`, `panel.js` | с приложением |
 | STM-04 | Окна Steam (рамка, фокус) | `steamwin.m`, `steamfocus.m`, `steamwin_css.c` | с приложением (отложено, `BACKLOG.md` п. 15) |
 | STM-05 | Блокировка обновления Steam без сигнатур | `updategate.c`, `UpdateBlock` | подписанный манифест сигнатур |
@@ -114,7 +114,7 @@
 
 | ID | Функция | Где | Заметка |
 |---|---|---|---|
-| RUN-01 | `compat_run.sh`: запуск игры, пакет игры (имя, значок, Game Mode), настройки `.sevo/*.env`, подготовка рендерера (DXMT, DXVK, D3DMetal), `DYLD_INSERT_LIBRARIES` | `dylib/feats/compat_run.sh`, встроен в dylib (`embed_script.py`) | читает у движка `LB_ENGINE_{NAME,UNIX_DIR,WINELOADER,WINESERVER}`; **опирается на функции Dormison** (§3.1 `WINEFORGE_PORT.md`) |
+| RUN-01 | `compat_run.sh`: запуск игры, пакет игры (имя, значок, Game Mode), настройки `.sevo/*.env`, подготовка рендерера (DXMT, DXVK, D3DMetal), `DYLD_INSERT_LIBRARIES` | `steam/hook/feats/compat_run.sh`, встроен в dylib (`embed_script.py`) | читает у движка `LB_ENGINE_{NAME,UNIX_DIR,WINELOADER,WINESERVER}`; **опирается на функции Dormison** (§3.1 `WINEFORGE_PORT.md`) |
 | APP-01 | Приложение: движок, мост, сигнатуры, установка в Steam, настройки | `app/` | Sparkle |
 | APP-02 | Обновление движка, моста, сигнатур, приложения | `EngineUpdater`, `BridgeCatalog`, `SignatureCatalog`, `ReleaseFeed` | подписи Ed25519, атомарно, откат |
 

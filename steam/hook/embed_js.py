@@ -20,7 +20,7 @@ def main() -> int:
         pieces.append(f'    "{body}\\n"')
     guard = f"LULLABY_GENERATED_{macro.upper()}_H"
     header = (
-        f"// Generated from {src.as_posix()} by dylib/embed_js.py. Edit that file.\n"
+        f"// Generated from {src.as_posix()} by steam/hook/embed_js.py. Edit that file.\n"
         f"#ifndef {guard}\n"
         f"#define {guard}\n"
         f"\n"
