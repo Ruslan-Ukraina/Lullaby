@@ -1,0 +1,108 @@
+// I Love Logs
+
+import Foundation
+
+enum AppLog {
+
+    static var file: URL { SupportPaths.support.appending(path: "app.log") }
+
+    private static let sizeLimit = 512 * 1024
+
+    private static let queue = DispatchQueue(label: "lullaby.applog")
+
+    private nonisolated(unsafe) static var isOn = false
+
+    static func start() {
+        queue.async {
+            isOn = true
+            append("--- Lullaby \(AppVersion.bundled) started ---\n")
+        }
+    }
+
+    /// Waits for every line queued so far: a command without the window exits right
+    /// after its last line, and the queue would lose it (BACKLOG 16).
+    static func flush() {
+        queue.sync {}
+    }
+
+    static func note(_ message: String) {
+        let line = "\(Date().ISO8601Format()) \(message)\n"
+        queue.async { append(line) }
+    }
+
+    static func note(_ snapshot: StatusSnapshot) {
+        var lines = [
+            "state steam=\(describe(snapshot.steam))",
+            "state steamRunning=\(snapshot.steamRunning) updatesBlocked=\(snapshot.updateBlocked)",
+            "state runner=\(describe(snapshot.runner))",
+        ]
+        if let patch = snapshot.patch {
+            lines.append(
+                "state patch build=\(patch.build ?? "none") "
+                    + "installedAt=\(patch.installedAt.map { ISO8601DateFormatter().string(from: $0) } ?? "none") "
+                    + "stale=\(patch.stale.isEmpty ? "none" : patch.stale.map(\.rawValue).joined(separator: ","))"
+            )
+        }
+
+        lines.append("state engines=\(snapshot.installedEngines.map(\.tag).joined(separator: ","))")
+
+        let payload = snapshot.payload
+        lines.append(
+            "state payload staged=\(payload.present)/\(payload.expected) "
+                + "overlayShim=\(payload.overlayShimPresent) "
+                + "iconmaker=\(payload.iconmakerPresent) "
+                + "appinfo=\(payload.appinfoPresent) "
+                + "settings=\(payload.settingsCLIPresent) "
+                + "signatures=\(payload.signatureDatabase ?? "none") "
+                + "legacycompat=\(payload.legacyCompatPresent)/\(payload.legacyCompatExpected)"
+        )
+        for entry in payload.missing {
+            lines.append("state payload missing \(entry.origin) \(entry.path)")
+        }
+        if let problem = payload.manifestProblem {
+            lines.append("state payload manifest problem: \(problem)")
+        }
+
+        for line in lines { note(line) }
+    }
+
+    private static func describe(_ steam: SteamDeployment) -> String {
+        switch steam {
+        case .steamMissing: "no Steam.app"
+        case .notInstalled: "not installed"
+        case .installed(let version): "installed \(version ?? "version unknown")"
+        case .outdated(let deployed, let bundled, let stale):
+            "outdated deployed=\(deployed ?? "unknown") bundled=\(bundled) "
+                + "stale=\(stale.isEmpty ? "none" : stale.map(\.rawValue).joined(separator: ","))"
+        case .foreign(let insert): "foreign insert \(insert)"
+        }
+    }
+
+    private static func describe(_ runner: EngineState) -> String {
+        switch runner {
+        case .none: "not set up"
+        case .broken(let detail): "broken: \(detail)"
+        case .engine(let version): "engine \(version)"
+        }
+    }
+
+    private static func append(_ line: String) {
+        guard isOn else { return }
+        let fm = FileManager.default
+        try? fm.createDirectory(at: SupportPaths.support, withIntermediateDirectories: true)
+
+        let path = file.path(percentEncoded: false)
+        if let size = (try? fm.attributesOfItem(atPath: path))?[.size] as? Int, size > sizeLimit {
+            try? fm.removeItem(at: file)
+        }
+
+        guard let data = line.data(using: .utf8) else { return }
+        guard let handle = try? FileHandle(forWritingTo: file) else {
+            try? data.write(to: file)
+            return
+        }
+        defer { try? handle.close() }
+        _ = try? handle.seekToEnd()
+        try? handle.write(contentsOf: data)
+    }
+}

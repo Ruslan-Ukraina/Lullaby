@@ -1,0 +1,112 @@
+NotProton licensing
+===================
+
+NotProton has a complex licensing situation. The bulk of the project is licensed
+under GPLV3.
+
+The parts that are modifications of Valve code are licensed under the license
+that Valve released them under.
+
+lsteamclient is licensed under the Steamworks SDK License, see
+https://github.com/ValveSoftware/Proton/blob/proton_11.0/lsteamclient/LICENSE
+
+steam-shim is a port of steam_helper from Proton 9.0, which Valve released under
+BSD-3-Clause.
+
+Steam-shim compiles against Steamworks SDK headers. Those headers are licensed
+under the Steamworks SDK license whenever they are used.
+
+It also compiles against OpenVR and Wine headers, which are BSD-3-Clause and
+LGPL-V2, respectively.
+
+The app bundle embeds Sparkle, which checks for and installs updates. Sparkle is
+MIT licensed, see
+https://github.com/sparkle-project/Sparkle/blob/2.10.0/LICENSE
+
+These third party files carry their original notices from the project authors:
+
+  steam-shim/jsoncpp.cpp             JsonCpp, public domain / MIT (header)
+  steam-shim/json/json.h             JsonCpp, public domain / MIT (header)
+  steam-shim/json/json-forwards.h    JsonCpp, public domain / MIT (header)
+  vendor/cJSON.c                     cJSON, MIT (header)
+  vendor/cJSON.h                     cJSON, MIT (header)
+
+notproton.dylib, the part NotProton puts inside Steam, links Dobby (Jmpews,
+https://github.com/jmpews/Dobby, commit 5dfc8546954ce3b3198132ab13fddb89ee92cdd7)
+statically: it hooks Steam's functions. Dobby is licensed under the Apache License 2.0,
+https://github.com/jmpews/Dobby/blob/5dfc8546954ce3b3198132ab13fddb89ee92cdd7/LICENSE
+NotProton uses it unchanged; see vendor/README.md for how it is fetched and built.
+
+Parts of the game settings catalog (app/Sources/NotProtonSettings: SettingCatalog,
+SettingCopy, GameConfig, ConfigMaterializer, GameLibrary's executable filter) follow
+Sevoflurane by kageroumado: the shape of the catalog, the env file format and its
+inheritance rules, the value types and the help texts, shortened and translated into
+Ukrainian and Russian. Sevoflurane is MIT licensed:
+
+  MIT License
+
+  Copyright (c) 2026 kageroumado
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+
+The automatic graphics card (app/Sources/NotProtonSettings: GPUIdentity in GameConfig,
+ConfigMaterializer's GPU lines and dxvk.conf) follows Sevoflurane's Core/GPUIdentity.swift
+and Core/GPUEquivalence.swift: which cards stand in for an Apple chip, their PCI ids, the
+driver version strings and the variables each renderer reads. Same MIT license as above,
+Copyright (c) 2026 kageroumado.
+
+dylib/hooks/hook_launch.c, np_rebind_import in dylib/core/macho.c, dylib/tests/launch-shell.c
+and the LaunchBuilder::SteamVRSupportCheck signature come from upstream NotProton 1.1.0
+(https://github.com/NotProtonNot/NotProton, GPL-3.0, the project this one is a fork of),
+written there by NotProtonNot with Logan (LaganYT); NotProton's own change records the
+names in NOTPROTON_ENV_BASE.
+
+Dormison, the engine NotProton runs games on, is Wine with wine-staging and its own
+changes, LGPL-2.1-or-later (https://github.com/kageroumado/dormison). NotProton downloads
+it from Dormison's own signed releases. NotProton rebuilds single files of it from the
+same commit and puts them in place, the release's file kept beside each: the ntdll.dll
+loader hook (docs/DECISIONS.md P3-1) and the fixes in engine-fixes/patches (A0910-9 and
+later). Each rebuilt file is first proven equal to the release's, instruction for
+instruction, without the patches. These files stay LGPL-2.1-or-later; their sources are
+Dormison's commit plus the patches in this repository.
+
+Dormison's release carries, unchanged, DXMT (Direct3D 10/11 on Metal, Feifan He for
+CodeWeavers, LGPL-2.1-or-later), DXVK (Philip Rebohle, zlib) and MoltenVK (The Brenwill
+Workshop and The Khronos Group, Apache-2.0); each keeps the license it ships with.
+
+Two of those engine fixes are Highball's (https://github.com/gauthierpiarrette/highball-engine,
+patches to Wine, LGPL-2.1-or-later): 0018 (commit charge is the footprint) and 0020 (Retina
+HORZRES, itself from athei/wine fa43d6db2). Their headers name the source.
+
+The run script's routing by verb (EA, Ubisoft and other launchers), the Steam Input
+controller handling, the batched prefix registry import, steam.exe's std handles and
+Ubisoft Connect's install path values come from upstream NotProton 1.1.x (GPL-3.0),
+adapted to Dormison.
+
+D3DMetal is Apple's, from the Game Porting Toolkit each player downloads from Apple and
+adds; NotProton neither ships nor downloads it.
+
+Lullaby's nvapi64.dll (nvapi-shim/) stands in front of D3DMetal's and answers NVIDIA
+Reflex. Its function names come from NVIDIA's nvapi_interface.h and its structures from
+nvapi.h (https://github.com/NVIDIA/nvapi, MIT, Copyright (c) 2024 NVIDIA CORPORATION &
+AFFILIATES). The idea of holding a frame back in the game's Sleep so that none waits in a
+queue comes from Korthos Software's low_latency_layer
+(https://github.com/Korthos-Software/low_latency_layer, MIT, Copyright (c) 2026 Korthos
+Software Pty Ltd); the pacing itself (release by when the screen shows frames) is Lullaby's
+own, and no code is taken.

@@ -1,0 +1,3126 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "A game is still running. Quit it, then try again.": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A game is still running. Quit it, then try again."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Игра ещё работает. Закройте её и попробуйте ещё раз."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Гра ще працює. Закрийте її й спробуйте ще раз."
+          }
+        }
+      }
+    },
+    "A new engine is out, but Lullaby doesn't support it yet. Try again later.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A new engine is out, but Lullaby doesn't support it yet. Try again later."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вышел новый движок, но Lullaby его ещё не поддерживает. Попробуйте позже."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вийшов новий рушій, але Lullaby його ще не підтримує. Спробуйте пізніше."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Adding the Game Porting Toolkit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adding the Game Porting Toolkit"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добавление Game Porting Toolkit"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Додавання Game Porting Toolkit"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Apple's license": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple's license"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Лицензия Apple"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ліцензія Apple"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отменить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скасувати"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Checking Rosetta": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking Rosetta"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверка Rosetta"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевірка Rosetta"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Checking for running games": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking for running games"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверка запущенных игр"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевірка запущених ігор"
+          }
+        }
+      }
+    },
+    "Checking for updates…": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking for updates…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверка обновлений…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевірка оновлень…"
+          }
+        }
+      }
+    },
+    "Checking…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверка…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевірка…"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Choose the Game Porting Toolkit": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose the Game Porting Toolkit"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите Game Porting Toolkit"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оберіть Game Porting Toolkit"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Close Steam and Continue": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close Steam and Continue"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Закрыть Steam и продолжить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Закрити Steam і продовжити"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Close Steam?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close Steam?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Закрыть Steam?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Закрити Steam?"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Closing Steam": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Closing Steam"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Закрытие Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Закриття Steam"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Connects Windows games to the Mac Steam.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connects Windows games to the Mac Steam."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Соединяет игры для Windows со Steam для Mac."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "З'єднує ігри для Windows зі Steam для Mac."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't add the Game Porting Toolkit": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't add the Game Porting Toolkit"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось добавить Game Porting Toolkit"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося додати Game Porting Toolkit"
+          }
+        }
+      }
+    },
+    "Couldn't add the Game Porting Toolkit. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't add the Game Porting Toolkit. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось добавить Game Porting Toolkit. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося додати Game Porting Toolkit. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't change Steam updates": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't change Steam updates"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось изменить обновления Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося змінити оновлення Steam"
+          }
+        }
+      }
+    },
+    "Couldn't change Steam updates. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't change Steam updates. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось изменить обновления Steam. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося змінити оновлення Steam. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't check Rosetta. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't check Rosetta. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось проверить Rosetta. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося перевірити Rosetta. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't delete Lullaby": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't delete Lullaby"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось удалить Lullaby"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося видалити Lullaby"
+          }
+        }
+      }
+    },
+    "Couldn't delete Lullaby's files. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't delete Lullaby's files. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось удалить файлы Lullaby. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося видалити файли Lullaby. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't download Steam support files. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't download Steam support files. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось скачать файлы поддержки Steam. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося завантажити файли підтримки Steam. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't install Lullaby": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't install Lullaby"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось установить Lullaby"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося встановити Lullaby"
+          }
+        }
+      }
+    },
+    "Couldn't install Lullaby into Steam. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't install Lullaby into Steam. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось установить Lullaby в Steam. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося встановити Lullaby у Steam. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't install the Steam bridge. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't install the Steam bridge. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось установить мост Steam. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося встановити міст Steam. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't install the engine. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't install the engine. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось установить движок. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося встановити рушій. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't move NotProton's files to Lullaby. Details are in the log.": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't move NotProton's files to Lullaby. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось перенести файлы NotProton в Lullaby. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося перенести файли NotProton у Lullaby. Подробиці — у журналі."
+          }
+        }
+      }
+    },
+    "Couldn't reinstall Lullaby": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't reinstall Lullaby"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось переустановить Lullaby"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося перевстановити Lullaby"
+          }
+        }
+      }
+    },
+    "Couldn't return Steam to how it was. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't return Steam to how it was. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось вернуть Steam в исходное состояние. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося повернути Steam до початкового стану. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Couldn't update Lullaby": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't update Lullaby"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось обновить Lullaby"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося оновити Lullaby"
+          }
+        }
+      }
+    },
+    "Couldn't update Lullaby. Details are in the log.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't update Lullaby. Details are in the log."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не удалось обновить Lullaby. Подробности — в журнале."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не вдалося оновити Lullaby. Подробиці — у журналі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Credits and licenses": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Credits and licenses"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Авторы и лицензии"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Автори й ліцензії"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "D3DMetal %@ needs macOS 27.": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "D3DMetal %@ needs macOS 27."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "D3DMetal %@ требует macOS 27."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "D3DMetal %@ потребує macOS 27."
+          }
+        }
+      }
+    },
+    "Delete": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Видалити"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Delete Lullaby?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete Lullaby?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить Lullaby?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Видалити Lullaby?"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Delete…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Видалити…"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Deleting the engine and the Steam bridge": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deleting the engine and the Steam bridge"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удаление движка и моста Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Видалення рушія й моста Steam"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Direct3D 10 and 11 on Metal. Comes with Dormison.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct3D 10 and 11 on Metal. Comes with Dormison."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct3D 10 и 11 через Metal. Входит в Dormison."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct3D 10 і 11 через Metal. Входить у Dormison."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Direct3D 12 on Metal. You add it yourself from Apple's Game Porting Toolkit. Lullaby doesn't distribute it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct3D 12 on Metal. You add it yourself from Apple's Game Porting Toolkit. Lullaby doesn't distribute it."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct3D 12 через Metal. Вы добавляете его сами из Game Porting Toolkit от Apple. Lullaby его не распространяет."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct3D 12 через Metal. Ви додаєте його самі з Game Porting Toolkit від Apple. Lullaby його не поширює."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Direct3D 9–11 on Vulkan. Comes with Dormison.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct3D 9–11 on Vulkan. Comes with Dormison."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct3D 9–11 через Vulkan. Входит в Dormison."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct3D 9–11 через Vulkan. Входить у Dormison."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Downloaded %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloaded %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скачано %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Завантажено %@"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Downloaded %@ of %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloaded %@ of %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скачано %@ из %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Завантажено %@ з %@"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Downloading Valve's files": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloading Valve's files"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скачивание файлов Valve"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Завантаження файлів Valve"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Downloading the engine": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Downloading the engine"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Скачивание движка"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Завантаження рушія"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "For DirectX 12 games. Download it from Apple first.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For DirectX 12 games. Download it from Apple first."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Для игр на DirectX 12. Сначала скачайте его с сайта Apple."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Для ігор на DirectX 12. Спершу завантажте його з сайту Apple."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Full license texts are in the NOTICE file.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Full license texts are in the NOTICE file."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Полные тексты лицензий — в файле NOTICE."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повні тексти ліцензій — у файлі NOTICE."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Getting Steam support files": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Getting Steam support files"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Получение файлов поддержки Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отримання файлів підтримки Steam"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Headers used to build steam-shim.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Headers used to build steam-shim."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Заголовки для сборки steam-shim."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Заголовки для збирання steam-shim."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Install": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Install"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Встановити"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Install GPTK…": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Install GPTK…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установить GPTK…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Встановити GPTK…"
+          }
+        }
+      }
+    },
+    "Installed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installed"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установлено"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Встановлено"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Installed · %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installed · %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установлено · %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Встановлено · %@"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Installed: %@": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installed: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установлено: %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Встановлено: %@"
+          }
+        }
+      }
+    },
+    "Installing into Steam": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installing into Steam"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установка в Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Встановлення в Steam"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Installing the Steam bridge": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installing the Steam bridge"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установка моста Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Встановлення моста Steam"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Installs the engine and adds Lullaby to Steam.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installs the engine and adds Lullaby to Steam."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Устанавливает движок и добавляет Lullaby в Steam."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Встановлює рушій і додає Lullaby у Steam."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Made by Ruslan_Ukraina on the work of these people.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Made by Ruslan_Ukraina on the work of these people."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сделал Ruslan_Ukraina на основе труда этих людей."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зробив Ruslan_Ukraina на основі праці цих людей."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Moving from NotProton": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moving from NotProton"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перенос из NotProton"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перенесення з NotProton"
+          }
+        }
+      }
+    },
+    "New": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Новое"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нове"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "No connection to the internet. Check it, then try again.": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No connection to the internet. Check it, then try again."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет соединения с интернетом. Проверьте его и попробуйте ещё раз."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Немає з'єднання з інтернетом. Перевірте його й спробуйте ще раз."
+          }
+        }
+      }
+    },
+    "Not fully installed. Press Install to finish.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not fully installed. Press Install to finish."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Установлено не полностью. Нажмите «Установить», чтобы завершить."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Встановлено не повністю. Натисніть «Встановити», щоб завершити."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Not installed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not installed"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не установлено"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не встановлено"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Lullaby is removed from Steam, and Steam goes back to how it was. Game prefixes and their backups, game settings and the Game Porting Toolkit stay.": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lullaby is removed from Steam, and Steam goes back to how it was. Game prefixes and their backups, game settings and the Game Porting Toolkit stay."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lullaby будет убран из Steam, и Steam станет таким, как был. Префиксы игр и их резервные копии, настройки игр и Game Porting Toolkit останутся."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lullaby буде прибрано зі Steam, і Steam стане таким, як був. Префікси ігор і їхні резервні копії, налаштування ігор і Game Porting Toolkit залишаться."
+          }
+        }
+      }
+    },
+    "Lullaby lets Steam update only to versions it supports.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lullaby lets Steam update only to versions it supports."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lullaby разрешает Steam обновляться только до версий, которые поддерживает."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lullaby дозволяє Steam оновлюватися лише до версій, які підтримує."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "NotProton found. Press Install to move it to Lullaby; games and settings stay.": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NotProton found. Press Install to move it to Lullaby; games and settings stay."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Найден NotProton. «Установить» перенесёт его в Lullaby, игры и настройки останутся."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Знайдено NotProton. «Встановити» перенесе його в Lullaby, ігри й налаштування залишаться."
+          }
+        }
+      }
+    },
+    "OK": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        }
+      }
+    },
+    "Open Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Settings"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Открыть настройки"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Відкрити параметри"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Pick the .dmg you downloaded from Apple. Lullaby copies D3DMetal from it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pick the .dmg you downloaded from Apple. Lullaby copies D3DMetal from it."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите .dmg, скачанный с сайта Apple. Lullaby скопирует из него D3DMetal."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оберіть .dmg, завантажений з сайту Apple. Lullaby скопіює з нього D3DMetal."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Progress": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Progress"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ход выполнения"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Хід виконання"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Puts every part back in place.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puts every part back in place."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ставит все части заново."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ставить усі частини заново."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Reads JSON in steam-shim.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reads JSON in steam-shim."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Читает JSON в steam-shim."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Читає JSON у steam-shim."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Reads JSON inside Steam.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reads JSON inside Steam."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Читает JSON внутри Steam."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Читає JSON усередині Steam."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Reinstall": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reinstall"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Переустановить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевстановити"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Removes Lullaby from Steam. Asks first.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Removes Lullaby from Steam. Asks first."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Убирает Lullaby из Steam. Сначала спрашивает."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Прибирає Lullaby зі Steam. Спершу запитує."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Returning Steam to how it was": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Returning Steam to how it was"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Возврат Steam в исходное состояние"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Повернення Steam до початкового стану"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Runs Windows programs. Dormison is built on it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Runs Windows programs. Dormison is built on it."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запускает программы Windows. Dormison построен на нём."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запускає програми Windows. Dormison побудований на ньому."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Настройки"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Налаштування"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Starts games the way Steam on Windows does.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Starts games the way Steam on Windows does."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запускает игры так, как это делает Steam в Windows."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запускає ігри так, як це робить Steam у Windows."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Steam bridge": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam bridge"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "мост Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "міст Steam"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Steam didn't close. Quit Steam yourself, then try again.": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam didn't close. Quit Steam yourself, then try again."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam не закрылся. Закройте Steam сами и попробуйте ещё раз."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam не закрився. Закрийте Steam самі й спробуйте ще раз."
+          }
+        }
+      }
+    },
+    "Steam doesn't update at all.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam doesn't update at all."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam совсем не обновляется."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam зовсім не оновлюється."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Steam has another add-on installed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam has another add-on installed"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "В Steam установлено другое дополнение"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У Steam встановлено інше доповнення"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Steam is open. Lullaby will close it, then you can open it again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam is open. Lullaby will close it, then you can open it again."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam открыт. Lullaby закроет его, потом вы сможете открыть его снова."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam відкритий. Lullaby закриє його, потім ви зможете відкрити його знову."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Steam isn't in the Applications folder. Install Steam, then try again.": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam isn't in the Applications folder. Install Steam, then try again."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam нет в папке «Программы». Установите Steam и попробуйте ещё раз."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam немає в папці «Програми». Встановіть Steam і спробуйте ще раз."
+          }
+        }
+      }
+    },
+    "Steam isn't installed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam isn't installed"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam не установлен"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam не встановлено"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Steam patch": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam patch"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "патч Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "патч Steam"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Steam updates can break Lullaby. Lullaby already holds back Steam versions it doesn't support yet. Turn this on to stop Steam updates completely.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam updates can break Lullaby. Lullaby already holds back Steam versions it doesn't support yet. Turn this on to stop Steam updates completely."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновления Steam могут сломать Lullaby. Lullaby уже сам не пускает версии Steam, которые ещё не поддерживает. Включите, чтобы полностью остановить обновления Steam."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оновлення Steam можуть зламати Lullaby. Lullaby уже сам не пропускає версії Steam, які ще не підтримує. Увімкніть, щоб повністю зупинити оновлення Steam."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Steam was installed by another user of this Mac. Only that user can install Lullaby into it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam was installed by another user of this Mac. Only that user can install Lullaby into it."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam установил другой пользователь этого Mac. Только он может установить в него Lullaby."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam встановив інший користувач цього Mac. Лише він може встановити в нього Lullaby."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Steam won't update at all, even to versions Lullaby supports. You can turn this back on here.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam won't update at all, even to versions Lullaby supports. You can turn this back on here."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam не будет обновляться совсем, даже до версий, которые Lullaby поддерживает. Включить снова можно здесь."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Steam не оновлюватиметься зовсім, навіть до версій, які Lullaby підтримує. Увімкнути знову можна тут."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Step %@ of %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Step %@ of %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Шаг %@ из %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Крок %@ з %@"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Testing the engine": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Testing the engine"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Проверка движка"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перевірка рушія"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "The Steam bridge for this engine isn't ready yet. Try again later.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Steam bridge for this engine isn't ready yet. Try again later."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Мост Steam для этого движка ещё не готов. Попробуйте позже."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Міст Steam для цього рушія ще не готовий. Спробуйте пізніше."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "The Wine and Wine Staging authors": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Wine and Wine Staging authors"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Авторы Wine и Wine Staging"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Автори Wine і Wine Staging"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "The engine: Wine for macOS with msync and native windows.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The engine: Wine for macOS with msync and native windows."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Движок: Wine для macOS с msync и родными окнами."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Рушій: Wine для macOS з msync і рідними вікнами."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "The game settings and the graphics card list follow it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The game settings and the graphics card list follow it."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Настройки игр и список видеокарт сделаны по его образцу."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Налаштування ігор і список відеокарт зроблені за його зразком."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "The original project this app is a fork of.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The original project this app is a fork of."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оригинальный проект, форком которого является это приложение."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оригінальний проєкт, форком якого є ця програма."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "This file isn't Apple's Game Porting Toolkit. Pick the .dmg you downloaded from Apple.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This file isn't Apple's Game Porting Toolkit. Pick the .dmg you downloaded from Apple."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Это не Game Porting Toolkit от Apple. Выберите .dmg, скачанный с сайта Apple."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Це не Game Porting Toolkit від Apple. Оберіть .dmg, завантажений з сайту Apple."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "This fork: the Dormison engine, settings in Steam, this window.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This fork: the Dormison engine, settings in Steam, this window."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Этот форк: движок Dormison, настройки в Steam, это окно."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цей форк: рушій Dormison, налаштування в Steam, це вікно."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Turn Off": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn Off"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отключить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вимкнути"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Turn Off Steam Updates": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn Off Steam Updates"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отключить обновления Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вимкнути оновлення Steam"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Turn off Steam updates?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn off Steam updates?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отключить обновления Steam?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вимкнути оновлення Steam?"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Turning off Steam updates": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turning off Steam updates"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Отключение обновлений Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вимкнення оновлень Steam"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Turning on Steam updates": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turning on Steam updates"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Включение обновлений Steam"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Увімкнення оновлень Steam"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Two engine fixes: memory use and Retina resolution.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Two engine fixes: memory use and Retina resolution."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Два исправления движка: память и разрешение Retina."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Два виправлення рушія: пам'ять і роздільність Retina."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Update": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оновити"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Update available: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update available: %@"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Есть обновление: %@"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Є оновлення: %@"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Updates Lullaby itself.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updates Lullaby itself."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновляет сам Lullaby."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оновлює сам Lullaby."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Updates the engine, the Steam bridge, Steam support and Lullaby.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updates the engine, the Steam bridge, Steam support and Lullaby."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновляет движок, мост Steam, поддержку Steam и Lullaby."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оновлює рушій, міст Steam, підтримку Steam і Lullaby."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Updating Lullaby": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updating Lullaby"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Обновление Lullaby"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оновлення Lullaby"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Vulkan on Metal. Comes with Dormison.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vulkan on Metal. Comes with Dormison."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vulkan через Metal. Входит в Dormison."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vulkan через Metal. Входить у Dormison."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Windows games need Rosetta. Install it when macOS asks, then try again.": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Windows games need Rosetta. Install it when macOS asks, then try again."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Играм для Windows нужна Rosetta. Установите её, когда macOS предложит, и попробуйте ещё раз."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Іграм для Windows потрібна Rosetta. Встановіть її, коли macOS запропонує, і спробуйте ще раз."
+          }
+        }
+      }
+    },
+    "macOS didn't let Lullaby change Steam. Allow Lullaby under App Management in System Settings, then try again.": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS didn't let Lullaby change Steam. Allow Lullaby under App Management in System Settings, then try again."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS не разрешила Lullaby вносить изменения в Steam. Разрешите Lullaby в Системных настройках → «Управление приложениями» и попробуйте ещё раз."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS не дозволила Lullaby робити зміни в Steam. Дозвольте Lullaby у Системних параметрах → «Керування програмами» й спробуйте ще раз."
+          }
+        }
+      }
+    },
+    "not checked": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "not checked"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "не проверена"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "не перевірена"
+          }
+        }
+      }
+    },
+    "Hooks functions inside Steam, so Steam shows Steam Play.": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hooks functions inside Steam, so Steam shows Steam Play."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перехоплює функції всередині Steam, щоб у ньому з'явився Steam Play."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перехватывает функции внутри Steam, чтобы в нём появился Steam Play."
+          }
+        }
+      }
+    },
+    "Access Token": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Access Token"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Токен доступа"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Токен доступу"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Access Token…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Access Token…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Токен доступа…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Токен доступу…"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Save": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зберегти"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Remove Token": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove Token"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить токен"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Видалити токен"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Paste the read-only GitHub token (github_pat_…). Lullaby keeps it in the Keychain and sends it only to GitHub.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paste the read-only GitHub token (github_pat_…). Lullaby keeps it in the Keychain and sends it only to GitHub."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вставьте токен GitHub только для чтения (github_pat_…). Lullaby хранит его в Keychain и отправляет только на GitHub."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вставте токен GitHub лише для читання (github_pat_…). Lullaby зберігає його в Keychain і надсилає тільки на GitHub."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Saved in the Keychain.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved in the Keychain."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сохранён в Keychain."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Збережено в Keychain."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Needed for updates while Lullaby's releases are private.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Needed for updates while Lullaby's releases are private."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нужен для обновлений, пока релизы Lullaby приватные."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Потрібен для оновлень, поки релізи Lullaby приватні."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "The token works. Lullaby checks for updates now.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The token works. Lullaby checks for updates now."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Токен работает. Lullaby проверяет обновления."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Токен працює. Lullaby перевіряє оновлення."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "GitHub can't be reached. The token is saved; Lullaby tries it next time.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub can't be reached. The token is saved; Lullaby tries it next time."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub недоступен. Токен сохранён; Lullaby попробует его в следующий раз."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub недоступний. Токен збережено; Lullaby спробує його наступного разу."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "GitHub didn't accept this token.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub didn't accept this token."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub не принял этот токен."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub не прийняв цей токен."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "This token has no access to Lullaby's releases.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This token has no access to Lullaby's releases."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "У этого токена нет доступа к релизам Lullaby."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цей токен не має доступу до релізів Lullaby."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "GitHub didn't accept the access token. Add a new one in ⚙︎ → Access Token…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub didn't accept the access token. Add a new one in ⚙︎ → Access Token…"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub не принял токен доступа. Добавьте новый в ⚙︎ → Токен доступа…"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GitHub не прийняв токен доступу. Додайте новий у ⚙︎ → Токен доступу…"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Lullaby is updated": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lullaby is updated"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lullaby обновлена"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lullaby оновлено"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Restart Lullaby to finish. Steam and your games keep running.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restart Lullaby to finish. Steam and your games keep running."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перезапустите Lullaby, чтобы завершить. Steam и игры продолжают работать."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перезапустіть Lullaby, щоб завершити. Steam та ігри працюють далі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Restart": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restart"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перезапустить"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Перезапустити"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "Later": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Later"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Позже"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пізніше"
+          }
+        }
+      },
+      "generatesSymbol": false
+    }
+  },
+  "version": "1.0"
+}

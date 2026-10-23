@@ -1,0 +1,52 @@
+// swift-tools-version: 6.2
+import Foundation
+import PackageDescription
+let testsPath = "Tests/LullabyAppTests"
+let payloadPath = "Sources/LullabyApp/Resources/payload"
+let packageRoot = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+let hasTests = FileManager.default.fileExists(
+    atPath: packageRoot.appendingPathComponent(testsPath).path)
+
+// make app-payload stages the payload, so a checkout that has not been built does
+// not have it. A declared resource that is missing is a build error, while an app
+// missing the payload is a condition InstallPayload already reports.
+let hasPayload = FileManager.default.fileExists(
+    atPath: packageRoot.appendingPathComponent(payloadPath).path)
+let package = Package(
+    name: "LullabyApp",
+    defaultLocalization: "en",
+    platforms: [.macOS("26.0")],
+    dependencies: [
+        .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.10.0"),
+    ],
+    targets: [
+        .target(
+            name: "LullabySettings",
+            path: "Sources/LullabySettings",
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        .executableTarget(
+            name: "lullaby-settings",
+            dependencies: ["LullabySettings"],
+            path: "Sources/lullaby-settings",
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        .executableTarget(
+            name: "LullabyApp",
+            dependencies: [.product(name: "Sparkle", package: "Sparkle"), "LullabySettings"],
+            path: "Sources/LullabyApp",
+            resources: (hasPayload ? [.copy("Resources/payload")] : []) + [
+                .copy("Resources/payload.manifest"),
+                .copy("Resources/valve-packages.manifest"),
+                .process("Resources/Localizable.xcstrings"),
+            ],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+    ] + (hasTests ? [
+        .testTarget(
+            name: "LullabyAppTests",
+            dependencies: ["LullabyApp", "LullabySettings"],
+            path: testsPath
+        ),
+    ] : [])
+)

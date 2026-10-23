@@ -1,0 +1,73 @@
+name: app
+
+# Checks on a pull request or "Run workflow" (and on a push to main only when the
+# repository variable LB_CI_ON_PUSH is true): the dylib, the shim and the helpers
+# build, the hermetic C suites and the Swift tests pass. The release build itself
+# (bundle, keys, Sparkle) is release.yml, which runs the same suites.
+# Off on push by default: ~4 macOS minutes a run are ~40 of the private repository's
+# 2000 a month (Phase 6); the same tests run locally before every commit.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["docs/**", "**/*.md"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOBBY_COMMIT: "5dfc8546954ce3b3198132ab13fddb89ee92cdd7"
+
+jobs:
+  build:
+    name: build and test
+    # Repository variable LB_CI_ON_PUSH=true turns the per-push run on (macOS
+    # minutes in a private repository, DECISIONS P6-13); pull requests and
+    # "Run workflow" always run it.
+    if: github.event_name != 'push' || vars.LB_CI_ON_PUSH == 'true'
+    runs-on: xcode-27
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Record the toolchain
+        run: |
+          sudo xcode-select -s /Applications/Xcode_27.0.app
+          xcodebuild -version
+          swift --version
+          echo "macOS SDK $(xcrun --sdk macosx --show-sdk-version)"
+
+      - name: Clone Dobby at the pinned commit
+        run: |
+          git clone --no-checkout https://github.com/jmpews/Dobby.git vendor/dobby
+          git -C vendor/dobby checkout "$DOBBY_COMMIT"
+
+      - name: Restore the Dobby build
+        id: dobby-cache
+        uses: actions/cache@v4
+        with:
+          path: build/dobby
+          key: dobby-xcode-27-${{ env.DOBBY_COMMIT }}-${{ runner.arch }}
+
+      - name: Build Dobby
+        if: steps.dobby-cache.outputs.cache-hit != 'true'
+        run: make dobby
+
+      - name: Build the dylib, the shim and the helpers
+        run: make all overlay-shim iconmaker appinfo out/sigslice
+
+      - name: No debug channel in the dylib (BACKLOG 20)
+        run: |
+          if strings -a out/lullaby.dylib | grep -q steam-windows-debug; then
+            echo "out/lullaby.dylib carries the Steam Helper debug channel"; exit 1
+          fi
+
+      - name: Hermetic C suites
+        run: |
+          make -s sigcheck callscheck webpatch-fixtures peicon-fixtures panel-behavior spawn-env \
+            compatcheck compatsvc-check updategate-check settingsbridge-check steamwin-check
+
+      - name: Swift tests
+        run: make -s app-tests

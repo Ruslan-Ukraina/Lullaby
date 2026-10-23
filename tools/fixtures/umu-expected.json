@@ -1,0 +1,37 @@
+{
+ "schema": 1,
+ "serial": 1,
+ "entries": [
+  {
+   "id": "umu-111",
+   "name": "Sample Game",
+   "match": {
+    "appIDs": [
+     111
+    ]
+   },
+   "verdict": "fits",
+   "env": {
+    "SDL_JOYSTICK_HIDAPI": "0"
+   },
+   "cpuLimit": 8,
+   "dllOverrides": {
+    "xaudio2_9": "n,b"
+   },
+   "registry": [
+    {
+     "key": "HKCU\\Software\\Wine\\Mac Driver",
+     "name": "X",
+     "type": "REG_DWORD",
+     "value": "1"
+    }
+   ],
+   "source": {
+    "kind": "umu-protonfixes",
+    "ref": "gamefixes-steam/111.py@COMMIT",
+    "license": "BSD-2-Clause"
+   },
+   "reason": "umu-protonfixes, declarative part only; not yet checked on Dormison"
+  }
+ ]
+}

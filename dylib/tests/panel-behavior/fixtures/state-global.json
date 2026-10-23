@@ -1,0 +1,217 @@
+{
+ "d3dmetal": {
+  "installed": [],
+  "macOS": 27
+ },
+ "level": "global",
+ "values": {
+  "avx": {
+   "effective": false,
+   "inherited": false,
+   "inheritedFrom": "defaults",
+   "inheritedLabel": {
+    "en": "Off",
+    "ru": "Выкл.",
+    "uk": "Вимк."
+   },
+   "own": null
+  },
+  "dlss": {
+   "effective": false,
+   "inherited": false,
+   "inheritedFrom": "defaults",
+   "inheritedLabel": {
+    "en": "Off",
+    "ru": "Выкл.",
+    "uk": "Вимк."
+   },
+   "own": null
+  },
+  "emulateModeset": {
+   "effective": false,
+   "inherited": false,
+   "inheritedFrom": "defaults",
+   "inheritedLabel": {
+    "en": "Off",
+    "ru": "Выкл.",
+    "uk": "Вимк."
+   },
+   "own": null
+  },
+  "filter": {
+   "effective": "lanczos",
+   "inherited": "lanczos",
+   "inheritedFrom": "defaults",
+   "inheritedLabel": {
+    "en": "Lanczos",
+    "ru": "Lanczos",
+    "uk": "Lanczos"
+   },
+   "own": null
+  },
+  "forceVsync": {
+   "effective": false,
+   "inherited": false,
+   "inheritedFrom": "defaults",
+   "inheritedLabel": {
+    "en": "Off",
+    "ru": "Выкл.",
+    "uk": "Вимк."
+   },
+   "own": null
+  },
+  "fps": {
+   "effective": false,
+   "inherited": false,
+   "inheritedFrom": "defaults",
+   "inheritedLabel": {
+    "en": "Off",
+    "ru": "Выкл.",
+    "uk": "Вимк."
+   },
+   "own": null
+  },
+  "frameLimit": {
+   "effective": "off",
+   "inherited": "off",
+   "inheritedFrom": "defaults",
+   "inheritedLabel": {
+    "en": "No limit",
+    "ru": "Без ограничения",
+    "uk": "Без обмеження"
+   },
+   "own": null
+  },
+  "gameMode": {
+   "effective": true,
+   "inherited": true,
+   "inheritedFrom": "defaults",
+   "inheritedLabel": {
+    "en": "On",
+    "ru": "Вкл.",
+    "uk": "Увімк."
+   },
+   "own": null
+  },
+  "largeAddressAware": {
+   "effective": false,
+   "inherited": false,
+   "inheritedFrom": "defaults",
+   "inheritedLabel": {
+    "en": "Off",
+    "ru": "Выкл.",
+    "uk": "Вимк."
+   },
+   "own": null
+  },
+  "lowLatency": {
+   "effective": false,
+   "inherited": false,
+   "inheritedFrom": "defaults",
+   "inheritedLabel": {
+    "en": "Off",
+    "ru": "Выкл.",
+    "uk": "Вимк."
+   },
+   "own": null
+  },
+  "metalfx": {
+   "effective": "off",
+   "inherited": "off",
+   "inheritedFrom": "defaults",
+   "inheritedLabel": {
+    "en": "Off",
+    "ru": "Выкл.",
+    "uk": "Вимк."
+   },
+   "own": null
+  },
+  "rawMouse": {
+   "effective": false,
+   "inherited": false,
+   "inheritedFrom": "defaults",
+   "inheritedLabel": {
+    "en": "Off",
+    "ru": "Выкл.",
+    "uk": "Вимк."
+   },
+   "own": null
+  },
+  "rawMouseScale": {
+   "effective": "0.3",
+   "inherited": "0.3",
+   "inheritedFrom": "defaults",
+   "inheritedLabel": {
+    "en": "30 %",
+    "ru": "30 %",
+    "uk": "30 %"
+   },
+   "own": null
+  },
+  "retina": {
+   "effective": true,
+   "inherited": false,
+   "inheritedFrom": "defaults",
+   "inheritedLabel": {
+    "en": "Off",
+    "ru": "Выкл.",
+    "uk": "Вимк."
+   },
+   "own": true
+  },
+  "tuning": {
+   "effective": {
+    "adaptive": false,
+    "objectSpin": 0,
+    "preset": "standard",
+    "waitSpin": 0
+   },
+   "inherited": {
+    "adaptive": false,
+    "objectSpin": 0,
+    "preset": "standard",
+    "waitSpin": 0
+   },
+   "inheritedFrom": "defaults",
+   "inheritedLabel": {
+    "en": "Standard",
+    "ru": "Стандарт",
+    "uk": "Стандарт"
+   },
+   "own": null
+  },
+  "unifiedMemory": {
+   "effective": false,
+   "inherited": false,
+   "inheritedFrom": "defaults",
+   "inheritedLabel": {
+    "en": "Off",
+    "ru": "Выкл.",
+    "uk": "Вимк."
+   },
+   "own": null
+  },
+  "upscaler": {
+   "effective": "off",
+   "inherited": "off",
+   "inheritedFrom": "defaults",
+   "inheritedLabel": {
+    "en": "Off",
+    "ru": "Выкл.",
+    "uk": "Вимк."
+   },
+   "own": null
+  },
+  "windows": {
+   "effective": "fixed",
+   "inherited": "fixed",
+   "inheritedFrom": "defaults",
+   "inheritedLabel": {
+    "en": "Fixed-size windows",
+    "ru": "Окна фиксированного размера",
+    "uk": "Вікна фіксованого розміру"
+   },
+   "own": null
+  }
+ }
+}

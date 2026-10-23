@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "serial": 3,
+  "databases": [
+    {
+      "file": "1788400362.json",
+      "sha256": "e845128f9c9df505c571c1675ba92d333c4d7245f44981bee31cfcc9ee4a0e35"
+    },
+    {
+      "file": "1789086785.json",
+      "sha256": "1b2cbc2e91e5f52311dbfdba5839ffe331240968dc796c7f1e78226515422499"
+    },
+    {
+      "file": "1790904859.json",
+      "sha256": "bba3d3bee778323592e71353f02f2edd44955458da1b5900b4b2d81de643102b"
+    },
+    {
+      "file": "1791592380.json",
+      "sha256": "bd69aca335c5c7d30d5ae12f383d21b87f7ba13882583b17916449d494094cac"
+    },
+    {
+      "file": "1791686101.json",
+      "sha256": "f13df6227972f88dfde603c3b4667d200f747f84960a46b967fc61d65c6f90f2"
+    },
+    {
+      "file": "1791856936.json",
+      "sha256": "6dbb0818442a30702349c4bf6d5104505e458929588caaf08c7a24fe2322121b"
+    },
+    {
+      "file": "1791918634.json",
+      "sha256": "5bb3947050fdbbee4fe5561ab751bfc20d93140fb38c3844fe1a3a0c39284793"
+    },
+    {
+      "file": "1792110651.json",
+      "sha256": "9637053b8fb0c1404fe7bb3e7194dd3f69213dfd3d01212c2554e33a092beee7"
+    }
+  ],
+  "builds": [
+    {
+      "build": 1788400362,
+      "database": "1788400362.json",
+      "checked": "upstream"
+    },
+    {
+      "build": 1789086785,
+      "database": "1789086785.json",
+      "checked": "upstream"
+    },
+    {
+      "build": 1790904859,
+      "database": "1790904859.json",
+      "checked": "upstream"
+    },
+    {
+      "build": 1788652215,
+      "database": "1790904859.json",
+      "checked": "2026-10-06 make anchorcheck: 17 anchors resolved, 0 unresolved"
+    },
+    {
+      "build": 1791592380,
+      "checked": "2026-10-10 CI anchorcheck: 18/18 anchors and recorded addresses, cut from 1790904859.json (6 new patterns)",
+      "database": "1791592380.json"
+    },
+    {
+      "build": 1791686101,
+      "checked": "2026-10-11 CI anchorcheck: 18/18 anchors and recorded addresses, cut from 1791592380.json (0 new patterns)",
+      "database": "1791686101.json"
+    },
+    {
+      "build": 1791856936,
+      "checked": "2026-10-13 CI anchorcheck: 18/18 anchors and recorded addresses, cut from 1791686101.json (0 new patterns)",
+      "database": "1791856936.json"
+    },
+    {
+      "build": 1791918634,
+      "checked": "2026-10-14 CI anchorcheck: 18/18 anchors and recorded addresses, cut from 1791856936.json (0 new patterns)",
+      "database": "1791918634.json"
+    },
+    {
+      "build": 1792110651,
+      "checked": "2026-10-16 CI anchorcheck: 18/18 anchors and recorded addresses, cut from 1791918634.json (2 new patterns)",
+      "database": "1792110651.json"
+    }
+  ]
+}

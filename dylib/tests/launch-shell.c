@@ -1,0 +1,315 @@
+// From upstream NotProton 1.1.0, with Lullaby's LULLABY_ENV_BASE prologue: the
+// expected /bin/sh -c lines carry it ahead of the command line, and a real shell shows it
+// leaves out what the launch options set.
+#include "../hooks/hook_launch.c"
+
+#include <stdio.h>
+
+int   lb_log_level = 0;
+FILE *lb_log_file  = NULL;
+
+static int rebind_rc = -1;
+
+int lb_rebind_import(const struct mach_header_64 *mh, intptr_t slide,
+                     const char *symbol, void *replacement) {
+    (void)mh; (void)slide; (void)symbol; (void)replacement;
+    return rebind_rc;
+}
+
+int fake_parse_shell(const char *cmd, void *argv, int max, const char **rest)
+    __asm__("_" LB_PARSE_SYM_POSIX);
+
+int fake_parse_shell(const char *cmd, void *argv, int max, const char **rest) {
+    (void)cmd; (void)argv; (void)max; (void)rest;
+    return 0;
+}
+
+static int launch_disabled = 0;
+
+int lb_hooks_env_lists_label(const char *var, const char *label) {
+    (void)var;
+    return launch_disabled && strcmp(label, "launch") == 0;
+}
+
+static int compat_tool = 1;
+
+int lb_compat_runs_tool(const char *cmd) {
+    (void)cmd;
+    return compat_tool;
+}
+
+static int app_tool = 1;
+
+int lb_compat_app_runs_tool(uint32_t appid) {
+    (void)appid;
+    return app_tool;
+}
+
+void *Plat_Realloc(void *p, size_t size) {
+    return realloc(p, size);
+}
+
+static int vr_calls;
+
+static uint64_t fake_vr_support(void *self, uint32_t appid, char **arguments) {
+    (void)self; (void)appid; (void)arguments;
+    vr_calls++;
+    return 7;
+}
+
+static int         failures;
+static const char *shell;
+
+static char *sh_words(const char *args) {
+    static char out[512];
+    char        cmd[1024];
+
+    snprintf(cmd, sizeof(cmd), "printf '[%%s]' %s", args);
+    FILE  *p = popen(cmd, "r");
+    size_t n = p ? fread(out, 1, sizeof(out) - 1, p) : 0;
+
+    if (p)
+        pclose(p);
+    out[n] = 0;
+    return out;
+}
+
+static void keeps(const char *in, const char *want, const char *words) {
+    char *args = strdup(in);
+    int   before = vr_calls;
+    uint64_t ret = lb_hook_vr_support(NULL, 2290, &args);
+
+    if (ret != 7 || vr_calls != before + 1 || strcmp(args, want) != 0) {
+        printf("FAIL %s\n  want: %s\n  got:  %s\n", in, want, args);
+        failures++;
+    } else if (words && strcmp(sh_words(args), words) != 0) {
+        printf("FAIL %s\n  sh want: %s\n  sh got:  %s\n", in, words, sh_words(args));
+        failures++;
+    } else {
+        printf("  ok    %s\n", in);
+    }
+    free(args);
+}
+
+// `want` as upstream spells it, with the prologue put in after "/bin/sh -c '".
+static char *with_base(const char *want) {
+    static const char lead[] = "/bin/sh -c '";
+    char  *out = malloc(strlen(want) + 4 * sizeof(LB_ENV_BASE) + 1);
+    size_t n   = 0;
+
+    if (shell || strncmp(want, lead, sizeof(lead) - 1) != 0) {
+        strcpy(out, want);
+        return out;
+    }
+    memcpy(out, lead, sizeof(lead) - 1);
+    n = sizeof(lead) - 1;
+    for (const char *s = LB_ENV_BASE; *s; s++) {
+        if (*s == '\'') {
+            memcpy(out + n, "'\\''", 4);
+            n += 4;
+        } else {
+            out[n++] = *s;
+        }
+    }
+    strcpy(out + n, want + sizeof(lead) - 1);
+    return out;
+}
+
+static void wraps(const char *in, const char *upstream_want) {
+    char *got  = lb_launch_shell(in, shell, -1, NULL);
+    char *want = with_base(upstream_want);
+
+    if (!got || strcmp(got, want) != 0) {
+        printf("FAIL %s\n  want: %s\n  got:  %s\n", in, want, got ? got : "(unchanged)");
+        failures++;
+    } else {
+        printf("  ok    %s\n", in);
+    }
+    free(got);
+    free(want);
+}
+
+// The wrapped line run by /bin/sh: the variable the launch options set is not in
+// LULLABY_ENV_BASE, one the shell was handed is.
+static void base_leaves_out_launch_variables(void) {
+    char *line = lb_launch_shell("LB_FROM_OPTIONS=1 /usr/bin/printenv LULLABY_ENV_BASE", NULL, -1, NULL);
+    char  out[65536];
+    size_t n = 0;
+
+    setenv("LB_FROM_STEAM", "1", 1);
+    FILE *p = line ? popen(line, "r") : NULL;
+    if (p) {
+        n = fread(out, 1, sizeof(out) - 1, p);
+        pclose(p);
+    }
+    out[n] = 0;
+    if (!strstr(out, " LB_FROM_STEAM ") || strstr(out, " LB_FROM_OPTIONS ")) {
+        printf("FAIL LULLABY_ENV_BASE: %s\n", out);
+        failures++;
+    } else {
+        printf("  ok    LULLABY_ENV_BASE names what Steam handed the shell, not the options\n");
+    }
+    free(line);
+}
+
+int main(void) {
+    printf("== a NAME=VALUE prefix reaches the shell that promotes it ==\n");
+    wraps("LSFGM_ENV=1 /g/game.exe", "/bin/sh -c 'LSFGM_ENV=1 /g/game.exe'");
+    wraps("A=1 B=2 /g/game.exe", "/bin/sh -c 'A=1 B=2 /g/game.exe'");
+    wraps("A=1 /g/game.exe -windowed", "/bin/sh -c 'A=1 /g/game.exe -windowed'");
+    wraps("  A=1 /g/game.exe", "/bin/sh -c '  A=1 /g/game.exe'");
+
+    wraps("A=1", "/bin/sh -c 'A=1'");
+
+    printf("== the quotes Steam substitutes survive byte for byte ==\n");
+    wraps("A=1 \"/Program Files/game.exe\"",
+          "/bin/sh -c 'A=1 \"/Program Files/game.exe\"'");
+    wraps("A='x y' /g/game.exe", "/bin/sh -c 'A='\\''x y'\\'' /g/game.exe'");
+    wraps("A=1 '/p/.'/run waitforexitandrun '/g/g 64.exe'",
+          "/bin/sh -c 'A=1 '\\''/p/.'\\''/run waitforexitandrun '\\''/g/g 64.exe'\\'''");
+
+    printf("== what only a shell would act on reaches one ==\n");
+    wraps("/g/game.exe > /tmp/log", "/bin/sh -c '/g/game.exe > /tmp/log'");
+    wraps("/g/game.exe | tee /tmp/log", "/bin/sh -c '/g/game.exe | tee /tmp/log'");
+    wraps("/g/game.exe && echo done", "/bin/sh -c '/g/game.exe && echo done'");
+    wraps("/g/game.exe; echo done", "/bin/sh -c '/g/game.exe; echo done'");
+    wraps("/g/game.exe $HOME", "/bin/sh -c '/g/game.exe $HOME'");
+    wraps("/g/game.exe \"$HOME\"", "/bin/sh -c '/g/game.exe \"$HOME\"'");
+    wraps("/g/game.exe ~/save", "/bin/sh -c '/g/game.exe ~/save'");
+    wraps("/g/game.exe *.cfg", "/bin/sh -c '/g/game.exe *.cfg'");
+
+    printf("== a plain command line reaches the shell too, as on Linux ==\n");
+    wraps("/g/game.exe", "/bin/sh -c '/g/game.exe'");
+    wraps("/g/game.exe -windowed", "/bin/sh -c '/g/game.exe -windowed'");
+    wraps("\"/Program Files/game.exe\" -windowed",
+          "/bin/sh -c '\"/Program Files/game.exe\" -windowed'");
+    wraps("gamemoderun /g/game.exe", "/bin/sh -c 'gamemoderun /g/game.exe'");
+    wraps("/g/game.exe '$HOME'", "/bin/sh -c '/g/game.exe '\\''$HOME'\\'''");
+    wraps("", "/bin/sh -c ''");
+    wraps(";touch ~", "/bin/sh -c ';touch ~'");
+
+    printf("== the shell records what it was handed (Lullaby) ==\n");
+    base_leaves_out_launch_variables();
+
+    printf("== STEAM_GAME_LAUNCH_SHELL stands in for /bin/sh -c as one argument ==\n");
+    shell = "/usr/bin/env";
+    wraps("A=1 /g/game.exe", "'/usr/bin/env' 'A=1 /g/game.exe'");
+    shell = "/opt/my shell";
+    wraps("/g/game.exe", "'/opt/my shell' '/g/game.exe'");
+    shell = "";
+    wraps("/g/game.exe", "'' '/g/game.exe'");
+    shell = NULL;
+
+    printf("== a native macOS game keeps Steam's own parsing ==\n");
+    compat_tool = 0;
+    const char *native[] = {
+        "'/g/Game.app'",
+        "'/g/Game.app' -windowed",
+        "A=1 '/g/Game.app/Contents/MacOS/Game'",
+        "'/g/Game' > /tmp/log",
+    };
+    for (size_t i = 0; i < sizeof(native) / sizeof(native[0]); i++) {
+        char *kept = lb_launch_shell(native[i], NULL, -1, NULL);
+        if (kept) {
+            printf("FAIL a native launch must not rewrite, but %s became: %s\n", native[i], kept);
+            failures++;
+        } else {
+            printf("  ok    %s\n", native[i]);
+        }
+        free(kept);
+    }
+    shell = "/usr/bin/env";
+    char *kept = lb_launch_shell("'/g/Game.app'", shell, -1, NULL);
+    if (kept) {
+        printf("FAIL STEAM_GAME_LAUNCH_SHELL must not reach a native launch, but it became: %s\n", kept);
+        failures++;
+    } else {
+        printf("  ok    STEAM_GAME_LAUNCH_SHELL leaves a native launch alone\n");
+    }
+    free(kept);
+    shell = NULL;
+    compat_tool = 1;
+
+    printf("== a capped argument count keeps the caller on its own buffer ==\n");
+    const char *rest = NULL;
+    char       *got  = lb_launch_shell("A=1 /g/game.exe", NULL, 2, NULL);
+
+    if (got) {
+        printf("FAIL a capped count must not rewrite, but it became: %s\n", got);
+        failures++;
+    } else {
+        printf("  ok    a capped count is left alone\n");
+    }
+    free(got);
+
+    got = lb_launch_shell("A=1 /g/game.exe", NULL, -1, &rest);
+    if (got) {
+        printf("FAIL a remainder request must not rewrite, but it became: %s\n", got);
+        failures++;
+    } else {
+        printf("  ok    a remainder request is left alone\n");
+    }
+    free(got);
+
+    printf("== an app's own arguments reach the game with their backslashes ==\n");
+    orig_vr_support  = (void *)fake_vr_support;
+    lb_shell_wrapped = 1;
+    plat_realloc     = Plat_Realloc;
+    keeps("-conf .\\base\\plutoniam.conf -fullscreen -exit",
+          "-conf .\\\\base\\\\plutoniam.conf -fullscreen -exit",
+          "[-conf][.\\base\\plutoniam.conf][-fullscreen][-exit]");
+    keeps("--bundle-dir ..\\bundle", "--bundle-dir ..\\\\bundle", "[--bundle-dir][..\\bundle]");
+    keeps("-conf \"..\\PAGA.conf\"", "-conf \"..\\\\PAGA.conf\"", "[-conf][..\\PAGA.conf]");
+    keeps("\\\\server\\share", "\\\\\\\\server\\\\share", "[\\\\server\\share]");
+    keeps("-windowed", "-windowed", "[-windowed]");
+    keeps("", "", NULL);
+
+    printf("== a native macOS game keeps the client's arguments ==\n");
+    app_tool = 0;
+    keeps("--cwd client_pc\\root\\bin\\pc", "--cwd client_pc\\root\\bin\\pc", NULL);
+    app_tool = 1;
+
+    printf("== without the shell, the client's arguments stay as they are ==\n");
+    lb_shell_wrapped = 0;
+    keeps("--cwd client_pc\\root\\bin\\pc", "--cwd client_pc\\root\\bin\\pc", NULL);
+    lb_shell_wrapped = 1;
+
+    printf("== the shell is used only when an import slot was rebound ==\n");
+    int rcs[] = { -1, 0, 1, 2 };
+    for (size_t i = 0; i < sizeof(rcs) / sizeof(rcs[0]); i++) {
+        rebind_rc        = rcs[i];
+        lb_shell_wrapped = -1;
+        lb_hooks_launch_install(NULL, 0);
+        if (lb_shell_wrapped != (rcs[i] > 0)
+            || lb_hooks_launch_count() != (rcs[i] > 0 ? 1 : 0)) {
+            printf("FAIL rebind rc=%d left lb_shell_wrapped=%d, %d hook(s)\n",
+                   rcs[i], lb_shell_wrapped, lb_hooks_launch_count());
+            failures++;
+        } else {
+            printf("  ok    rebind rc=%d, wrapped=%d, %d hook(s)\n",
+                   rcs[i], lb_shell_wrapped, lb_hooks_launch_count());
+        }
+    }
+
+    printf("== LULLABY_DISABLE=launch turns off the shell and the backslash hook ==\n");
+    rebind_rc        = 1;
+    lb_shell_wrapped = 0;
+    launch_disabled  = 1;
+    lb_hooks_launch_install(NULL, 0);
+    launch_disabled  = 0;
+    if (lb_shell_wrapped || lb_hooks_launch_count() != 0) {
+        printf("FAIL disabled launch left lb_shell_wrapped=%d, %d hook(s)\n",
+               lb_shell_wrapped, lb_hooks_launch_count());
+        failures++;
+    } else {
+        printf("  ok    disabled, wrapped=0, 0 hooks\n");
+    }
+    lb_shell_wrapped = 1;
+
+    if (failures) {
+        printf("\n%d assertion(s) failed\n", failures);
+        return 1;
+    }
+    printf("\n==> launch-shell: all assertions hold\n");
+    return 0;
+}

@@ -1,0 +1,231 @@
+name: steam-signatures
+
+# New macOS Steam builds (stable and beta) -> signature databases -> the signed
+# signatures-manifest.json Lullaby.app reads (docs/RELEASING.md, BACKLOG 22).
+# A build no database slices cleanly gets an issue instead.
+#
+# Dry run (a dryrun-signatures-* tag, or "Run workflow" with dry_run): the TEST
+# keys, nothing published, no issues; the feed it would publish is an artifact.
+
+# The schedule is a parameter: repository variable LB_STEAM_CHECK_HOURS (default 6, 0 = never
+# by schedule, rounded up to a multiple of 6, how often the cron fires). The cron
+# starts only a short Linux gate; the macOS job runs when Valve offers a build without a database (DECISIONS P6-13).
+# Every 6 hours, not 3: a gate is a billed minute each time it fires (Phase 6, private repository).
+# Once a day (the 05:23 firing) the gate also checks that Valve's CDN still serves the
+# packages Install pins (release/valve-check.sh, INDEPENDENCE I5); a gone package opens an issue.
+
+on:
+  schedule:
+    - cron: "23 5 * * *"
+    - cron: "23 11,17,23 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Dry run with the TEST keys (publishes nothing)
+        type: boolean
+        default: true
+  push:
+    tags: ["dryrun-signatures-*"]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: release-feed
+  cancel-in-progress: false
+
+env:
+  DRY_RUN: ${{ github.event_name == 'push' || inputs.dry_run == true }}
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Anything to do
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HOURS: ${{ vars.LB_STEAM_CHECK_HOURS }}
+          DEFAULT_HOURS: "6"
+          CRON_HOURS: "6"
+          LB_RELEASE_PRIVATE_KEY: ${{ secrets.LB_RELEASE_PRIVATE_KEY }}
+        run: |
+          release/ci-gate.sh steam | tee -a "$GITHUB_OUTPUT"
+          grep '^reason=' "$GITHUB_OUTPUT" | tail -1 | cut -d= -f2- >> "$GITHUB_STEP_SUMMARY"
+
+      # In the gate, on Linux: costs no macOS minute and no extra job.
+      - name: Valve still serves the pinned packages (daily, INDEPENDENCE I5)
+        if: github.event.schedule == '23 5 * * *' || github.event_name != 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rc=0; release/valve-check.sh > "$RUNNER_TEMP/valve.log" 2>&1 || rc=$?
+          { echo '### Valve packages (I5)'; echo '```'; cat "$RUNNER_TEMP/valve.log"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          [ "$rc" = 0 ] && exit 0
+          [ "$rc" = 1 ] || exit "$rc"
+          title="Valve no longer serves a package Lullaby's Install pins"
+          { echo "The steam-signatures workflow: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo; echo '```'; cat "$RUNNER_TEMP/valve.log"; echo '```'; echo
+            echo "A clean Install fails until valve-packages.manifest pins packages Valve serves (docs/INDEPENDENCE.md I5)."
+          } > "$RUNNER_TEMP/valve-issue.md"
+          if [ "$DRY_RUN" = true ] && [ "${{ github.event_name }}" != schedule ]; then
+            echo "Dry run, would open: **$title**" >> "$GITHUB_STEP_SUMMARY"
+          else
+            release/gh-publish.sh issue "$title" "$RUNNER_TEMP/valve-issue.md"
+          fi
+
+  signatures:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    runs-on: xcode-27
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Where to publish (release/feed.json)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ "$DRY_RUN" = true ] || release/gh-publish.sh check-repo
+          { echo "FEED=$(python3 -I release/feed.py config feed)"
+            echo "MANIFEST_TAG=$(python3 -I release/feed.py config manifestTag)"
+            echo "SIGNATURES_TAG=$(python3 -I release/feed.py config signaturesTag)"; } >> "$GITHUB_ENV"
+
+      - name: Keys
+        id: keys
+        env:
+          LB_RELEASE_PRIVATE_KEY: ${{ secrets.LB_RELEASE_PRIVATE_KEY }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          LB_RELEASE_PUBLIC_KEY: ${{ vars.LB_RELEASE_PUBLIC_KEY }}
+          SPARKLE_PUBLIC_KEY: ${{ vars.SPARKLE_PUBLIC_KEY }}
+        run: |
+          mode=release; [ "$DRY_RUN" = true ] && mode=dry-run
+          rc=0; release/ci-keys.sh "$mode" "$RUNNER_TEMP/keys" || rc=$?
+          if [ "$rc" = 3 ]; then
+            echo "::notice::The release keys are not set up yet (docs/RELEASING.md); nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          exit "$rc"
+
+      - name: Build anchorcheck and sigslice
+        if: steps.keys.outputs.skip != 'true'
+        run: make -s out/anchorcheck out/sigslice
+
+      - name: Read what is published
+        if: steps.keys.outputs.skip != 'true' && env.DRY_RUN != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cur="$RUNNER_TEMP/current"
+          if release/gh-publish.sh fetch "$MANIFEST_TAG" signatures-manifest.json "$cur"; then
+            release/gh-publish.sh verify "$LB_RELEASE_KEY" "$cur/signatures-manifest.json"
+            echo "CURRENT=$cur/signatures-manifest.json" >> "$GITHUB_ENV"
+            # Through the API, so a private repository reads the same way (ROADMAP §3).
+            for name in $(python3 -I -c 'import json,sys; [print(d["file"]) for d in json.load(open(sys.argv[1]))["databases"]]' "$cur/signatures-manifest.json"); do
+              release/gh-publish.sh fetch "$SIGNATURES_TAG" "$name" "$cur/dbs" --no-sig
+            done
+            python3 -I - "$cur/signatures-manifest.json" "$cur/dbs" <<'PY'
+          import hashlib, json, os, sys
+          m = json.load(open(sys.argv[1]))
+          for d in m["databases"]:
+              data = open(os.path.join(sys.argv[2], d["file"]), "rb").read()
+              if hashlib.sha256(data).hexdigest() != d["sha256"]:
+                  sys.exit(f"{d['file']}: published bytes do not match the signed manifest")
+              print("published", d["file"])
+          PY
+            echo "PUBLISHED_DBS=$cur/dbs" >> "$GITHUB_ENV"
+          else
+            echo "No signatures manifest is published yet; starting from the repository's."
+          fi
+
+      - name: Cut databases for new Steam builds
+        id: cut
+        if: steps.keys.outputs.skip != 'true'
+        run: |
+          rc=0
+          release/steam-signatures.sh "$RUNNER_TEMP/work" "$RUNNER_TEMP/feed" "$FEED" \
+            "${CURRENT:-}" "${PUBLISHED_DBS:-}" || rc=$?
+          [ "$rc" -le 1 ] || exit "$rc"
+          echo "failed=$rc" >> "$GITHUB_OUTPUT"
+          if [ -f "$RUNNER_TEMP/feed/manifest/signatures-manifest.json" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+          {
+            echo "## Steam signatures ($([ "$DRY_RUN" = true ] && echo "dry run, TEST keys" || echo release))"
+            cat "$RUNNER_TEMP/work/summary.md"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Sign the manifest
+        if: steps.cut.outputs.publish == 'true'
+        run: |
+          swift release/sign.swift "$RUNNER_TEMP/keys/release.key" \
+            "$RUNNER_TEMP/feed/manifest/signatures-manifest.json"
+          release/gh-publish.sh verify "$LB_RELEASE_KEY" "$RUNNER_TEMP/feed/manifest/signatures-manifest.json"
+
+      - name: Keep the run's output
+        if: always() && steps.keys.outputs.skip != 'true'
+        uses: actions/upload-artifact@v5
+        with:
+          name: steam-signatures
+          path: |
+            ${{ runner.temp }}/feed
+            ${{ runner.temp }}/work/*.json
+            ${{ runner.temp }}/work/*.log
+            ${{ runner.temp }}/work/summary.md
+            ${{ runner.temp }}/work/result
+          if-no-files-found: ignore
+
+      - name: Publish
+        if: steps.cut.outputs.publish == 'true' && env.DRY_RUN != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          feed="$RUNNER_TEMP/feed"
+          release/gh-publish.sh upload "$SIGNATURES_TAG" "Steam signature databases" "$feed"/signatures/*.json
+          release/gh-publish.sh upload "$MANIFEST_TAG" "Signed manifests" \
+            "$feed/manifest/signatures-manifest.json" "$feed/manifest/signatures-manifest.json.sig"
+
+      - name: Check what was published
+        if: steps.cut.outputs.publish == 'true' && env.DRY_RUN != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          back="$RUNNER_TEMP/published"
+          release/gh-publish.sh fetch "$MANIFEST_TAG" signatures-manifest.json "$back"
+          cmp "$back/signatures-manifest.json" "$RUNNER_TEMP/feed/manifest/signatures-manifest.json"
+          release/gh-publish.sh verify "$LB_RELEASE_KEY" "$back/signatures-manifest.json"
+          echo "The published manifest is the signed one." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report builds that need a person
+        if: steps.keys.outputs.skip != 'true' && always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          result="$RUNNER_TEMP/work/result"
+          [ -f "$result" ] || exit 0
+          while read -r what build channel; do
+            case "$what" in
+              failed) title="Steam $channel build $build needs a signature database" ;;
+              nox86)  title="Steam $channel build $build has no x86_64 steamclient.dylib" ;;
+              *) continue ;;
+            esac
+            body="$RUNNER_TEMP/issue-$build-$what.md"
+            {
+              echo "The steam-signatures workflow: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+              echo
+              cat "$RUNNER_TEMP/work/summary.md"
+              echo
+              echo "Lullaby keeps Steam on its current build until this is solved (docs/BACKLOG.md 22, 24)."
+            } > "$body"
+            if [ "$DRY_RUN" = true ]; then
+              echo "Dry run, would open: **$title**" >> "$GITHUB_STEP_SUMMARY"
+            else
+              release/gh-publish.sh issue "$title" "$body"
+            fi
+          done < "$result"

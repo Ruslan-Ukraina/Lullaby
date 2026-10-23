@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>uk</string>
+		<string>ru</string>
+	</array>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>LullabyApp</string>
+	<key>CFBundleIconFile</key>
+	<string>Lullaby</string>
+	<key>CFBundleIconName</key>
+	<string>Lullaby</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.ruslanukraina.Lullaby</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Lullaby</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.0.0</string>
+	<key>CFBundleVersion</key>
+	<string>0.0.0</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>26.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>LBReleaseFeedURL</key>
+	<string>https://github.com/Ruslan-Ukraina/Lullaby/releases/download/</string>
+	<key>LBReleasePublicKey</key>
+	<string></string>
+	<key>LBReleaseAccess</key>
+	<string>private</string>
+	<key>LBReleaseRepository</key>
+	<string>Ruslan-Ukraina/Lullaby</string>
+	<key>LBReleaseManifestTag</key>
+	<string>manifest</string>
+	<key>LBEngineManifestURL</key>
+	<string>https://github.com/kageroumado/dormison/releases/download/manifest/engine.json</string>
+	<key>LBBuildKind</key>
+	<string>dev</string>
+	<key>SUEnableAutomaticChecks</key>
+	<false/>
+	<key>SUFeedURL</key>
+	<string></string>
+	<key>SUPublicEDKey</key>
+	<string></string>
+	<key>SURequireSignedFeed</key>
+	<true/>
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
+</dict>
+</plist>

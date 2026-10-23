@@ -1,0 +1,58 @@
+GCMouse scale for Lullaby-Dormison, 2026-10-19 (stacks on 0004-winemac-gcmouse-raw-input.patch).
+
+winemac: LULLABY_GCMOUSE_SCALE multiplies GCMouse's raw counts and carries the fractions.
+
+GCMouse reports raw device counts, several times more per hand movement than the engine's own
+path (measured with perf/mouseprobe.c: about 5 to 10 times), so a game's sensitivity feels much
+higher with it. The scale (default 1, accepted 0.01 to 100) lets a blind comparison give the same
+camera speed with both paths. The event holds whole numbers, so the fractional part of each report
+is carried to the next one: with the scale at 1 this also keeps the sub-count movement the original
+code truncated away. Only the GCMouse queue touches the carry.
+
+--- a/dlls/winemac.drv/cocoa_gcmouse.m
++++ b/dlls/winemac.drv/cocoa_gcmouse.m
+@@ -33,6 +33,11 @@
+ static dispatch_queue_t gcmouse_queue;
+ static BOOL observing_mice;
+ static bool gcmouse_active;
++/* LULLABY_GCMOUSE_SCALE multiplies the raw counts (default 1) so that a game's sensitivity can match the
++   engine's own mouse path; the fractions are carried over, as the event holds whole numbers. The handler runs
++   on one serial queue, so the carry needs no lock. */
++static double gcmouse_scale = 1.0;
++static double gcmouse_carry_x, gcmouse_carry_y;
+ 
+ 
+ @interface WineApplicationController (GCMouseAccess)
+@@ -62,9 +67,17 @@
+     window = [controller mouseCaptureWindow] ?: [controller frontWineWindow];
+     if (!window) return;
+ 
++    double sx = delta_x * gcmouse_scale + gcmouse_carry_x;
++    double sy = delta_y * gcmouse_scale + gcmouse_carry_y;
++    int ix = (int)sx, iy = (int)sy;
++
++    gcmouse_carry_x = sx - ix;
++    gcmouse_carry_y = sy - iy;
++    if (!ix && !iy) return;
++
+     event = macdrv_create_event(MOUSE_MOVED_RAW, window);
+-    event->mouse_moved.x = delta_x;
+-    event->mouse_moved.y = -delta_y;
++    event->mouse_moved.x = ix;
++    event->mouse_moved.y = -iy;
+     event->mouse_moved.time_ms = [controller ticksForEventTime:[[NSProcessInfo processInfo] systemUptime]];
+     [window.queue postEvent:event];
+     macdrv_release_event(event);
+@@ -108,6 +121,12 @@
+     if (!use_gcmouse) return;
+     if (observing_mice) return;
+ 
++    {
++        const char *scale = getenv("LULLABY_GCMOUSE_SCALE");
++        double value = scale ? atof(scale) : 0;
++        if (value > 0.01 && value < 100) gcmouse_scale = value;
++    }
++
+     if (@available(macOS 14.0, *))
+     {
+         if (!NSClassFromString(@"GCMouse")) return;

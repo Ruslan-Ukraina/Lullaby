@@ -1,0 +1,276 @@
+name: release
+
+# A v* tag -> Lullaby.app built as a release (the owner's keys, never a TEST key,
+# no development switches), with the bridge the bridge workflow published, signed
+# for Sparkle -> a GitHub release and the appcast Lullaby.app updates itself from
+# (docs/RELEASING.md). vX.Y.Z-pre.N is a pre-release, offered only to apps with
+# "Pre-release versions" on (Sparkle's beta channel).
+#
+# Dry run (a dryrun-app-* tag): a test build with the TEST keys and the bridge from
+# the last dormison-bridge run; nothing published. The app, the appcast and the
+# notes are an artifact.
+
+on:
+  push:
+    tags: ["v*", "dryrun-app-*"]
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: release-feed
+  cancel-in-progress: false
+
+env:
+  DRY_RUN: ${{ startsWith(github.ref_name, 'dryrun-') }}
+  DOBBY_COMMIT: "5dfc8546954ce3b3198132ab13fddb89ee92cdd7"
+  SPARKLE_BIN: app/.build/artifacts/sparkle/Sparkle/bin
+
+jobs:
+  release:
+    runs-on: xcode-27
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Where to publish (release/feed.json)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ "$DRY_RUN" = true ] || release/gh-publish.sh check-repo
+          { echo "FEED=$(python3 -I release/feed.py config feed)"
+            echo "MANIFEST_TAG=$(python3 -I release/feed.py config manifestTag)"
+            echo "APPCAST=$(python3 -I release/feed.py config appcast)"
+            echo "ACCESS=$(python3 -I release/feed.py config access)"; } >> "$GITHUB_ENV"
+
+      - name: Version
+        run: |
+          base=$(sed -n 's/^#define LULLABY_VERSION "\(.*\)"/\1/p' dylib/version.h)
+          if [ "$DRY_RUN" = true ]; then
+            version="$base-dryrun.$GITHUB_RUN_NUMBER"; kind=test; pre=true
+          else
+            version=${GITHUB_REF_NAME#v}; kind=release
+            case "$version" in *-*) pre=true ;; *) pre=false ;; esac
+            [ "${version%%-*}" = "$base" ] || { echo "tag $GITHUB_REF_NAME, but dylib/version.h says $base"; exit 1; }
+          fi
+          # Sparkle compares CFBundleVersion: the commit count only grows on this branch.
+          build=$(git rev-list --count HEAD)
+          { echo "VERSION=$version"; echo "APP_BUILD=$build"; echo "KIND=$kind"; echo "PRE=$pre"; } >> "$GITHUB_ENV"
+          echo "## Lullaby $version (build $build, $kind$([ "$pre" = true ] && echo ", pre-release"))" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keys
+        env:
+          LB_RELEASE_PRIVATE_KEY: ${{ secrets.LB_RELEASE_PRIVATE_KEY }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          LB_RELEASE_PUBLIC_KEY: ${{ vars.LB_RELEASE_PUBLIC_KEY }}
+          SPARKLE_PUBLIC_KEY: ${{ vars.SPARKLE_PUBLIC_KEY }}
+        run: |
+          mode=release; [ "$DRY_RUN" = true ] && mode=dry-run
+          release/ci-keys.sh "$mode" "$RUNNER_TEMP/keys"
+
+      - name: Toolchain
+        run: |
+          sudo xcode-select -s /Applications/Xcode_27.0.app
+          xcodebuild -version
+          swift --version
+
+      - name: Dobby at the pinned commit
+        run: |
+          git clone --no-checkout https://github.com/jmpews/Dobby.git vendor/dobby
+          git -C vendor/dobby checkout "$DOBBY_COMMIT"
+
+      - name: Restore the Dobby build
+        id: dobby-cache
+        uses: actions/cache@v4
+        with:
+          path: build/dobby
+          key: dobby-xcode-27-${{ env.DOBBY_COMMIT }}-${{ runner.arch }}
+
+      - name: Build Dobby
+        if: steps.dobby-cache.outputs.cache-hit != 'true'
+        run: make dobby
+
+      - name: The bridge to bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          dir="$RUNNER_TEMP/bridge-feed"; mkdir -p "$dir"
+          if [ "$DRY_RUN" = true ]; then
+            # The last dormison-bridge run's bridge, signed with the TEST key, stands
+            # in for a published one; bridge/bridge-manifest.json names it for this run only.
+            run=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow dormison-bridge.yml --status success \
+              --json databaseId --jq '.[0].databaseId')
+            [ -n "$run" ] || { echo "no successful dormison-bridge run to take a bridge from"; exit 1; }
+            gh run download "$run" --repo "$GITHUB_REPOSITORY" --name dormison-bridge --dir "$RUNNER_TEMP/bridge-run"
+            entry=$(find "$RUNNER_TEMP/bridge-run" -name '*.entry.json' | head -1)
+            [ -n "$entry" ] || { echo "run $run left no bridge entry"; exit 1; }
+            id=$(basename "$entry" .entry.json)
+            src=$(dirname "$entry")/$id
+            mkdir -p "$dir/$id"
+            cp "$src/$id.tar.xz" "$src/$id.tar.xz.sig" "$dir/$id/"
+            python3 -I - "$entry" bridge/bridge-manifest.json <<'PY'
+          import json, sys
+          entry = json.load(open(sys.argv[1])); repo = json.load(open(sys.argv[2]))
+          repo["bridges"] = [entry]
+          json.dump(repo, open(sys.argv[2], "w"), indent=2)
+          PY
+            echo "Bundled bridge: \`$id\` from dormison-bridge run $run (TEST key)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            for id in $(python3 -I -c 'import json; [print(e["id"]) for e in json.load(open("bridge/bridge-manifest.json"))["bridges"]]'); do
+              release/gh-publish.sh fetch "$id" "$id.tar.xz" "$dir/$id" \
+                || { echo "$id is not published; run dormison-bridge and commit its entry into bridge/bridge-manifest.json"; exit 1; }
+              echo "Bundled bridge: \`$id\` (published)" >> "$GITHUB_STEP_SUMMARY"
+            done
+          fi
+          for sig in "$dir"/*/*.tar.xz.sig; do
+            release/gh-publish.sh verify "$LB_RELEASE_KEY" "${sig%.sig}"
+          done
+          echo "BRIDGE_FEED_DIR=$dir" >> "$GITHUB_ENV"
+
+      # Lullaby's nvapi64.dll is a Windows DLL (nvapi-shim/).
+      - name: Install mingw-w64
+        run: brew install mingw-w64
+
+      - name: Build the dylib, the shim and the helpers
+        run: make all overlay-shim iconmaker appinfo nvapi-shim
+
+      - name: Build Lullaby.app
+        run: |
+          make app LB_BUILD_KIND="$KIND" LB_RELEASE_KEY="$LB_RELEASE_KEY" SPARKLE_KEY="$SPARKLE_KEY" \
+            APP_VERSION="$VERSION" APP_BUILD="$APP_BUILD" BRIDGE_FEED_DIR="$BRIDGE_FEED_DIR"
+
+      - name: Release checks
+        run: |
+          LB_BUILD_KIND="$KIND" release/check-release.sh bundle out/Lullaby.app
+          # The same bundle with a TEST key in a release build must be refused (BuildKind.swift).
+          if [ "$KIND" = release ]; then
+            if LB_BUILD_KIND=release LB_RELEASE_KEY="$(swift release/testkeys.swift release)" SPARKLE_KEY="$SPARKLE_KEY" \
+              LB_RELEASE_FEED="$FEED" SPARKLE_FEED="$(python3 -I release/feed.py config appcastURL)" release/check-release.sh config 2>/dev/null; then
+              echo "a release configuration with the TEST key passed the check"; exit 1
+            fi
+          fi
+          plist() { /usr/libexec/PlistBuddy -c "Print :$1" out/Lullaby.app/Contents/Info.plist; }
+          {
+            echo '```'
+            for k in CFBundleShortVersionString CFBundleVersion LBBuildKind LBReleaseFeedURL LBReleaseAccess LBReleaseRepository LBReleaseManifestTag LBEngineManifestURL LBReleasePublicKey SUFeedURL SUPublicEDKey SUEnableAutomaticChecks SURequireSignedFeed; do
+              echo "$k = $(plist $k)"
+            done
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Hermetic C suites
+        run: |
+          make -s sigcheck callscheck webpatch-fixtures peicon-fixtures panel-behavior spawn-env \
+            compatcheck compatsvc-check updategate-check settingsbridge-check steamwin-check
+
+      - name: Swift tests
+        env:
+          LB_REQUIRE_PAYLOAD: "1"
+        run: make -s app-tests
+
+      - name: The built app reads the published feed
+        if: env.DRY_RUN != 'true'
+        env:
+          # Private mode: the job's token stands in for the user's read-only one.
+          LB_RELEASE_TOKEN: ${{ github.token }}
+        run: |
+          support="$RUNNER_TEMP/np-support"; mkdir -p "$support" "$RUNNER_TEMP/np-steam"
+          private=""; [ "$ACCESS" = private ] && private="--repository $GITHUB_REPOSITORY"
+          # shellcheck disable=SC2086
+          out/Lullaby.app/Contents/MacOS/LullabyApp --release check --support "$support" \
+            --steam "$RUNNER_TEMP/np-steam" --feed "$FEED" --key "$LB_RELEASE_KEY" \
+            --manifest-tag "$MANIFEST_TAG" $private | tee "$RUNNER_TEMP/feed-check.log"
+          grep -q "release: bridge" "$RUNNER_TEMP/feed-check.log"
+
+      - name: Archive, sign and write the appcast
+        env:
+          # gh reads the published appcast; without a token it fails quietly and every
+          # release started a new appcast with only itself in it.
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          arch="$RUNNER_TEMP/archives"; mkdir -p "$arch"
+          zip="Lullaby-$VERSION.zip"
+          ditto -c -k --keepParent out/Lullaby.app "$arch/$zip"
+          # checkout leaves the tag without its annotation (the notes); fetch the tag object itself.
+          git fetch --force --no-tags origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
+          notes=$(git tag -l --format='%(contents)' "$GITHUB_REF_NAME" | sed '/^-----BEGIN PGP/,$d')
+          [ -n "$notes" ] || notes="Lullaby $VERSION."
+          printf '%s\n' "$notes" > "$arch/Lullaby-$VERSION.md"
+          swift package resolve --package-path app
+          if [ "$DRY_RUN" != true ] && release/gh-publish.sh fetch "$MANIFEST_TAG" "$APPCAST" "$RUNNER_TEMP/appcast" --no-sig; then
+            cp "$RUNNER_TEMP/appcast/$APPCAST" "$arch/appcast.xml"
+            echo "Adding to the published appcast."
+          elif [ "$DRY_RUN" != true ]; then
+            echo "::warning::No published appcast was read; this one starts with only $VERSION."
+          fi
+          channel=""; [ "$PRE" = true ] && channel="--channel beta"
+          "$SPARKLE_BIN/generate_appcast" --ed-key-file "$RUNNER_TEMP/keys/sparkle.key" \
+            --download-url-prefix "${FEED}$GITHUB_REF_NAME/" \
+            --embed-release-notes --maximum-versions 1000 $channel "$arch"
+          # generate_appcast drops the items whose archives are not in this folder (every
+          # earlier release): put them back, so a Mac that skipped a version still finds
+          # its way, then sign the edited appcast again.
+          if [ -f "$RUNNER_TEMP/appcast/$APPCAST" ]; then
+            python3 -I - "$RUNNER_TEMP/appcast/$APPCAST" "$arch/appcast.xml" <<'PY'
+          import re, sys
+          old, new = open(sys.argv[1]).read(), open(sys.argv[2]).read()
+          item = re.compile(r"<item>.*?</item>", re.S)
+          version = re.compile(r"<sparkle:version>([^<]+)</sparkle:version>")
+          have = {m.group(1) for m in version.finditer(new)}
+          kept = [i for i in item.findall(old) if (v := version.search(i)) and v.group(1) not in have]
+          if kept:
+              new = new.replace("</channel>", "\n".join(kept) + "\n</channel>", 1)
+              open(sys.argv[2], "w").write(new)
+          print(f"kept {len(kept)} earlier item(s)")
+          PY
+            "$SPARKLE_BIN/sign_update" --ed-key-file "$RUNNER_TEMP/keys/sparkle.key" "$arch/appcast.xml"
+          fi
+          grep -Eq "sparkle:version>$APP_BUILD<|sparkle:version=\"$APP_BUILD\"" "$arch/appcast.xml"
+          grep -q "sparkle:edSignature" "$arch/appcast.xml"
+          "$SPARKLE_BIN/sign_update" --verify --ed-key-file "$RUNNER_TEMP/keys/sparkle.key" "$arch/appcast.xml"
+          { echo "Appcast:"; echo '```xml'; cat "$arch/appcast.xml"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          echo "ARCHIVES=$arch" >> "$GITHUB_ENV"
+          echo "ZIP=$zip" >> "$GITHUB_ENV"
+
+      - name: Keep the build
+        uses: actions/upload-artifact@v5
+        with:
+          name: Lullaby-${{ env.VERSION }}
+          path: ${{ env.ARCHIVES }}
+
+      - name: Publish the release, then the appcast
+        if: env.DRY_RUN != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          pre=""; [ "$PRE" = true ] && pre="--prerelease"
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag $pre \
+            --title "Lullaby $VERSION" --notes-file "$ARCHIVES/Lullaby-$VERSION.md" "$ARCHIVES/$ZIP"
+          if [ "$ACCESS" = private ]; then
+            # A private repository's download links need a browser session, so the
+            # enclosure points at the asset's API address, which Sparkle reads with
+            # the token (ROADMAP §3). The edit changes the appcast: sign it again.
+            api=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$GITHUB_REF_NAME" \
+              --jq ".assets[] | select(.name == \"$ZIP\") | .url")
+            [ -n "$api" ] || { echo "the uploaded $ZIP has no API address"; exit 1; }
+            python3 -I - "$ARCHIVES/appcast.xml" "${FEED}$GITHUB_REF_NAME/$ZIP" "$api" <<'PY'
+          import sys
+          path, public, api = sys.argv[1:4]
+          text = open(path).read()
+          if f'url="{public}"' not in text:
+              sys.exit(f"{public} is not an enclosure of the appcast")
+          open(path, "w").write(text.replace(f'url="{public}"', f'url="{api}"'))
+          PY
+            "$SPARKLE_BIN/sign_update" --ed-key-file "$RUNNER_TEMP/keys/sparkle.key" "$ARCHIVES/appcast.xml"
+            "$SPARKLE_BIN/sign_update" --verify --ed-key-file "$RUNNER_TEMP/keys/sparkle.key" "$ARCHIVES/appcast.xml"
+          fi
+          cp "$ARCHIVES/appcast.xml" "$RUNNER_TEMP/$APPCAST"
+          release/gh-publish.sh upload "$MANIFEST_TAG" "Signed manifests" "$RUNNER_TEMP/$APPCAST"
+          release/gh-publish.sh fetch "$MANIFEST_TAG" "$APPCAST" "$RUNNER_TEMP/back" --no-sig
+          cmp "$RUNNER_TEMP/back/$APPCAST" "$ARCHIVES/appcast.xml"
+          release/gh-publish.sh fetch "$GITHUB_REF_NAME" "$ZIP" "$RUNNER_TEMP/back" --no-sig
+          cmp "$RUNNER_TEMP/back/$ZIP" "$ARCHIVES/$ZIP"
+          echo "Published $GITHUB_REF_NAME and the appcast ($ACCESS); both read back and match." >> "$GITHUB_STEP_SUMMARY"
