@@ -72,8 +72,8 @@ say "B1 ntdll.dll pair"
 ENGINE="$eng" OUT="$W/ntdll-b1" "$repo/ntdll-patch/b1/build-b1.sh" --check-base
 fi
 
-say "engine fixes (engine-fixes/build-fixes.sh)"
-ENGINE="$eng" OUT="$W/engine-fixes" "$repo/engine-fixes/build-fixes.sh"
+say "engine fixes (patches/engine/build-fixes.sh)"
+ENGINE="$eng" OUT="$W/engine-fixes" "$repo/patches/engine/build-fixes.sh"
 
 say "lsteamclient and steam.exe"
 "$repo/lsteamclient/build.sh"

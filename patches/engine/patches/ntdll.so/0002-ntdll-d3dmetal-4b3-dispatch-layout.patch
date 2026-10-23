@@ -12,7 +12,7 @@ Switch: none; it acts only when the toolkit's libd3dshared loads.
 Requires: nothing. ENG-05 builds on it.
 Other bases: does not apply to WineForge 0.6.0.0-0.6.0.7 (its loader.c lacks this glue; it loads D3DMetal
 with its own d3dmetal_loader.c). Whether WineForge needs the same fix is for the D3DMetal run on it to say.
-Test: engine-fixes/tests/d3dmetal-composition-swapchain.c, a D3D12 game under GPTK 4.0 beta 3.
+Test: patches/engine/tests/d3dmetal-composition-swapchain.c, a D3D12 game under GPTK 4.0 beta 3.
 
 diff --git a/dlls/ntdll/unix/loader.c b/dlls/ntdll/unix/loader.c
 index 9d0846838f7..1883bc8ffa7 100644

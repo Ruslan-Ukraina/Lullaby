@@ -1,4 +1,4 @@
-/* Does the engine answer that hardware GPU scheduling (HAGS) is on? (engine-fixes ENG-02)
+/* Does the engine answer that hardware GPU scheduling (HAGS) is on? (patches/engine ENG-02)
  *
  * NVIDIA Streamline asks KMTQAITYPE_WDDM_2_7_CAPS of the adapter and offers DLSS Frame Generation
  * only when HwSchSupported, HwSchEnabled and HwSchEnabledByDefault are set. This asks the same, the

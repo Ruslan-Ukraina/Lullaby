@@ -112,7 +112,7 @@ scriptcheck:
 
 # Every engine patch is in docs/PATCH_REGISTRY.md and has a header, and the registry names no missing one.
 patchcheck:
-	engine-fixes/check-registry.sh
+	patches/engine/check-registry.sh
 
 COMPATCHECK := $(OUT_DIR)/compatcheck
 

@@ -4,7 +4,7 @@
 # tried with `git apply --check` (strict) and, failing that, with `patch --dry-run -F3` (a
 # shifted context). Nothing is built, nothing is changed: the tree is only checked out.
 #
-#   engine-fixes/rehearse.sh CLONE PATCH_DIR [TAG...]
+#   patches/engine/rehearse.sh CLONE PATCH_DIR [TAG...]
 #
 #   CLONE      a git clone of the tree (a throw-away one: its files are overwritten by checkouts)
 #   PATCH_DIR  searched for *.patch, any depth

@@ -11,7 +11,7 @@ largest; NULL if the process has none. ntdll reaches it through ENG-05.
 Switch: none. Requires: ENG-05.
 Other bases: applies to WineForge only with a shifted context (fuzz) on all eight releases, and is useless
 there unless ENG-05 is: WineForge has its own d3dmetal.c.
-Test: engine-fixes/tests/d3dmetal-composition-swapchain.c.
+Test: patches/engine/tests/d3dmetal-composition-swapchain.c.
 
 --- a/dlls/winemac.drv/d3dmetal.c
 +++ b/dlls/winemac.drv/d3dmetal.c

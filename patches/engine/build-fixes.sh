@@ -1,7 +1,7 @@
 #!/bin/sh
 # Engine fixes: rebuilds single files of a Dormison release (a unix module such as
 # winemac.so) from the commit the release was built from, with Lullaby's patches in
-# engine-fixes/patches/<file>/*.patch, applied in order. The bridge carries them into the
+# patches/engine/patches/<file>/*.patch, applied in order. The bridge carries them into the
 # engine next to the B1 ntdll.dll pair (BridgeRelease.engineFiles); the release's file
 # stays beside each as <file>.lullaby-orig.
 #
@@ -10,7 +10,7 @@
 # the release plus the patches and nothing else. Measured for winemac.so of dormison-b2:
 # 126067 instructions, no difference.
 #
-#   build-fixes.sh       build every file that has patches into scratch/engine-fixes/<engine>/
+#   build-fixes.sh       build every file that has patches into scratch/patches/engine/<engine>/
 #
 # Needs the wine tree bridge/setup-wine-tree.sh makes. Overridable: ENGINE, WINE_SRC,
 # WINE_BUILD, OUT. Writes fixes.json: per engine path the release's sha256 (clean), the
@@ -18,7 +18,7 @@
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
-repo=$(cd "$here/.." && pwd)
+repo=$(cd "$here/../.." && pwd)
 support="$HOME/Library/Application Support/lullaby"
 ENGINE=$(cd -P "${ENGINE:-$support/runners/current}" && pwd)
 WINE_SRC=${WINE_SRC:-$repo/scratch/dormison-src}
@@ -33,7 +33,7 @@ json() { python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))[sys.
 [ -f "$ENGINE/engine-info.json" ] || die "no engine-info.json in $ENGINE"
 version=$(json version)
 commit=$(json commit)
-OUT=${OUT:-$repo/scratch/engine-fixes/$version}
+OUT=${OUT:-$repo/scratch/patches/engine/$version}
 mkdir -p "$OUT"
 [ -d "$WINE_BUILD/dlls" ] || die "no wine build tree at $WINE_BUILD, run bridge/setup-wine-tree.sh"
 head=$(git -C "$WINE_SRC" rev-parse HEAD)

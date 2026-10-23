@@ -241,7 +241,7 @@ jobs:
           # the real test is build-fixes, which applies them in order.
           tag="${{ steps.detect.outputs.engine }}"; tag="${tag#dormison-}"
           git -C "$DORMISON_REPO" fetch --tags -q
-          { echo '```'; engine-fixes/rehearse.sh "$DORMISON_REPO" engine-fixes/patches "$tag"; echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
+          { echo '```'; patches/engine/rehearse.sh "$DORMISON_REPO" patches/engine/patches "$tag"; echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Configure the wine tree
         if: steps.detect.outputs.engine
@@ -252,11 +252,11 @@ jobs:
         run: |
           OUT="$PWD/scratch/ntdll-b1/${{ steps.detect.outputs.engine }}" ntdll-patch/b1/build-b1.sh --check-base
 
-      - name: Build the engine fixes (engine-fixes/, each first proven equal to the release)
+      - name: Build the engine fixes (patches/engine/, each first proven equal to the release)
         if: steps.detect.outputs.engine
         run: |
-          OUT="$PWD/scratch/engine-fixes/${{ steps.detect.outputs.engine }}" engine-fixes/build-fixes.sh
-          { echo '```'; cat "scratch/engine-fixes/${{ steps.detect.outputs.engine }}/fixes.json"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          OUT="$PWD/scratch/patches/engine/${{ steps.detect.outputs.engine }}" patches/engine/build-fixes.sh
+          { echo '```'; cat "scratch/patches/engine/${{ steps.detect.outputs.engine }}/fixes.json"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build lsteamclient and steam.exe
         if: steps.detect.outputs.engine
@@ -298,7 +298,7 @@ jobs:
           feed="$RUNNER_TEMP/feed"
           python3 -I release/feed.py bridge-artifact --files-dir "$RUNNER_TEMP/bridge-files" \
             --b1-dir "scratch/ntdll-b1/${{ steps.detect.outputs.engine }}" \
-            --fixes-dir "scratch/engine-fixes/${{ steps.detect.outputs.engine }}" \
+            --fixes-dir "scratch/patches/engine/${{ steps.detect.outputs.engine }}" \
             --engine-json "$ENGINE_JSON" \
             --engine "${{ steps.detect.outputs.engine }}" --commit "${{ steps.engine.outputs.commit }}" \
             --rev "${{ steps.detect.outputs.rev }}" --feed "$FEED" --out "$feed"

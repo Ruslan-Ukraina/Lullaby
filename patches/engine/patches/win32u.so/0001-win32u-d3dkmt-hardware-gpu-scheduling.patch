@@ -7,8 +7,8 @@ Why: NVIDIA Streamline asks KMTQAITYPE_WDDM_2_7_CAPS and offers DLSS Frame Gener
 HwSchSupported, HwSchEnabled and HwSchEnabledByDefault are set; D3DMetal runs the generation on Metal and
 the Mac's GPU schedules its own work, so the answer is "on" (0x7). Plain DLSS does not need it.
 Switch: none (the query is answered the same for every program). Requires: nothing.
-Other bases: applies unchanged to all eight WineForge releases (engine-fixes/rehearse.sh, 2026-10-18).
-Test: engine-fixes/tests/d3dkmt-hags-caps.c (D3DKMTQueryAdapterInfo, WDDM_2_7_CAPS: expects 0x7); in a game
+Other bases: applies unchanged to all eight WineForge releases (patches/engine/rehearse.sh, 2026-10-18).
+Test: patches/engine/tests/d3dkmt-hags-caps.c (D3DKMTQueryAdapterInfo, WDDM_2_7_CAPS: expects 0x7); in a game
 with Streamline, the Frame Generation option appears.
 
 diff --git a/dlls/win32u/d3dkmt.c b/dlls/win32u/d3dkmt.c

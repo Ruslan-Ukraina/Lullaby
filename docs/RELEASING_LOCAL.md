@@ -10,7 +10,7 @@
    CHANNEL=stable RELEASE_KEY=~/Lullaby-keys/lullaby-release.key \
      FEED_BASE=https://github.com/Ruslan-Ukraina/Lullaby/releases/download/ release/local-bridge.sh
    ```
-   Это скачивает движок (проверка подписи Dormison и хешей), собирает дерево Wine на его коммите, B1 `ntdll`, патчи движка (`engine-fixes/patches/`, без `experiments/`), `lsteamclient` и `steam.exe`, тест хука в Wine (x86_64 и i386, плюс контроль), упаковывает и подписывает. Итог в `scratch/local-bridge/<движок>/feed/`.
+   Это скачивает движок (проверка подписи Dormison и хешей), собирает дерево Wine на его коммите, B1 `ntdll`, патчи движка (`patches/engine/patches/`, без `experiments/`), `lsteamclient` и `steam.exe`, тест хука в Wine (x86_64 и i386, плюс контроль), упаковывает и подписывает. Итог в `scratch/local-bridge/<движок>/feed/`.
 2. Посмотреть, что будет загружено (ничего не отправляется):
    ```
    release/local-publish.sh dormison-r7 1

@@ -81,7 +81,7 @@ Dormison, the engine NotProton runs games on, is Wine with wine-staging and its 
 changes, LGPL-2.1-or-later (https://github.com/kageroumado/dormison). NotProton downloads
 it from Dormison's own signed releases. NotProton rebuilds single files of it from the
 same commit and puts them in place, the release's file kept beside each: the ntdll.dll
-loader hook (docs/DECISIONS.md P3-1) and the fixes in engine-fixes/patches (A0910-9 and
+loader hook (docs/DECISIONS.md P3-1) and the fixes in patches/engine/patches (A0910-9 and
 later). Each rebuilt file is first proven equal to the release's, instruction for
 instruction, without the patches. These files stay LGPL-2.1-or-later; their sources are
 Dormison's commit plus the patches in this repository.

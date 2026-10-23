@@ -1,13 +1,13 @@
 #!/bin/sh
 # Is every engine patch in the registry, and does every patch the registry names exist?
-#   engine-fixes/check-registry.sh
-# Patches are *.patch under engine-fixes/, apart from experiments/ and rejected-*, which are
+#   patches/engine/check-registry.sh
+# Patches are *.patch under patches/engine/, apart from experiments/ and rejected-*, which are
 # not built into anything and need no entry (the registry may name them). The registry is
 # docs/PATCH_REGISTRY.md: a patch is "in" it when its file name appears there in backticks.
 # Also: every patch must start with a header (text before the first diff line).
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
-repo=$(cd "$here/.." && pwd)
+repo=$(cd "$here/../.." && pwd)
 reg=$repo/docs/PATCH_REGISTRY.md
 [ -f "$reg" ] || { echo "patchcheck: $reg is missing" >&2; exit 1; }
 

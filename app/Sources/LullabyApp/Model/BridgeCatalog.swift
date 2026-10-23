@@ -58,7 +58,7 @@ struct BridgeRelease: Sendable, Equatable {
     }
 
     /// An engine file rebuilt from the same commit with Lullaby's fixes
-    /// (engine-fixes/build-fixes.sh), put in place like the B1 pair. Optional: older
+    /// (patches/engine/build-fixes.sh), put in place like the B1 pair. Optional: older
     /// bridges carry none.
     struct EngineFile: Sendable, Equatable {
         /// Inside the engine, e.g. wine/lib/wine/x86_64-unix/winemac.so.
