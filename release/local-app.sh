@@ -5,6 +5,7 @@
 #   release/local-app.sh <tag>            the release: kind release, the owner's keys (~/Lullaby-keys), the bridges
 #                                         bridge/bridge-manifest.json names, fetched from the published release and
 #                                         verified; everything is left in scratch/release/<version>/, nothing uploaded
+#   release/local-app.sh <tag> --stable  a regular release (not a pre-release, no beta channel) although the tag has a suffix (v1.1.0-r2)
 #   release/local-app.sh <tag> --title "Lullaby r1"   the GitHub release's title (default "Lullaby <version>")
 #   release/local-app.sh <tag> --yes      the same, then: the GitHub release <tag> with the zip, then the appcast.
 #                                         The tag must already exist and be pushed (nothing here pushes)
@@ -27,6 +28,7 @@ say() { echo "==> local-app: $*"; }
 mode=release
 yes=0
 tag=
+stable=0
 title=
 bridge_src=
 while [ $# -gt 0 ]; do
@@ -34,6 +36,7 @@ while [ $# -gt 0 ]; do
 	--test) mode="test"; shift; case "${1:-}" in ''|--*) ;; *) bridge_src=$1; shift ;; esac ;;
 	--yes) yes=1; shift ;;
 	--title) title=${2:?--title needs a text}; shift 2 ;;
+	--stable) stable=1; shift ;;
 	-*) die "unknown option $1" ;;
 	*) [ -z "$tag" ] || die "one tag only"; tag=$1; shift ;;
 	esac
@@ -60,6 +63,7 @@ else
 	version=${tag#v}
 	kind=release
 	case "$version" in *-*) pre=true ;; *) pre=false ;; esac
+	[ "$stable" = 1 ] && pre=false
 	[ "${version%%-*}" = "$base" ] || die "the tag says $version, but steam/hook/version.h says $base"
 fi
 [ -n "$title" ] || title="Lullaby $version"
