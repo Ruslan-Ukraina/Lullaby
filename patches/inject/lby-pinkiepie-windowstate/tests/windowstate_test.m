@@ -5,6 +5,8 @@
  *
  *   wine-windowstate-test save FILE W H      resize to WxH, leave, and expect the file to say so
  *   wine-windowstate-test restore FILE W H   a 640x480 window must come back to WxH
+ *   wine-windowstate-test late FILE 1 0      the window is an ordinary one first (a launcher) and becomes the screen-covering one
+ *                                            later, in the same window: native full screen is asked for once, then
  *   wine-windowstate-test fullscreen FILE 1|0   a screen-covering game's window (presentationWindowed): with the
  *                                            switch 1 the library asks for native full screen once, with 0 never
  * LULLABY_WINDOWSTATE_DYLIB names the library; the program's name starts with "wine" like the loader's. */
@@ -49,6 +51,24 @@ int main(int argc, char **argv)
         [win orderFrontRegardless];
         NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
         [nc postNotificationName:NSWindowDidBecomeMainNotification object:win];
+        if (!strcmp(phase, "late")) {
+            setenv("LULLABY_NATIVE_FULLSCREEN", "1", 1);
+            [win setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
+            spin(1.5);
+            BOOL early = gToggles == 0;                         /* an ordinary window is left alone */
+            setenv("LBWS_TEST_PRESENTATION", "1", 1);           /* the game goes to its screen-covering window */
+            [win setContentSize:NSMakeSize(1200, 700)];
+            [nc postNotificationName:NSWindowDidResizeNotification object:win];
+            spin(1.6);
+            for (int i = 0; i < 3; i++) {
+                [nc postNotificationName:NSWindowDidResizeNotification object:win];
+                spin(1.0);
+            }
+            BOOL ok = early && gToggles == 1;
+            printf("%s: asked for native full screen %d time(s) after the window became the covering one, wanted 1\n",
+                   ok ? "ok" : "FAIL", gToggles);
+            return ok ? 0 : 1;
+        }
         if (!strcmp(phase, "fullscreen")) {
             spin(2.5);
             [nc postNotificationName:NSWindowDidBecomeMainNotification object:win];   /* the window becomes main again */

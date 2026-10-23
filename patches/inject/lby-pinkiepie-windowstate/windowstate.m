@@ -28,6 +28,8 @@
 static NSString *gPath;
 static NSWindow *gPrimary;           /* the game's main window: the largest one seen; held until it closes */
 static NSHashTable *gTried;          /* windows a restore was tried for */
+static NSHashTable *gAsked;          /* windows native full screen was asked for (once each) */
+static NSHashTable *gPending;        /* windows with a native full screen check waiting */
 static lbws_state gSavedState = LBWS_WINDOW;
 static double gSavedW, gSavedH;      /* the Window size the file holds, 0 when unknown */
 static double gWinW, gWinH;          /* the Window size now known: file's, then the player's */
@@ -172,6 +174,40 @@ static void verifySize(NSWindow *w, double tw, double th, int attempt)
     });
 }
 
+/* A game that covers the screen is shown in a window by the engine, and it can become one after the window
+ * is up: the game opens a small window first (a launcher or a splash) and goes to the screen-covering one in the
+ * same window. So the window is looked at again whenever it changes, and asked once, when it is one. */
+static void autoFullscreen(NSWindow *w, int attempt)
+{
+    if (!w || gClosing || ![w isVisible] || [gAsked containsObject:w]) return;
+    BOOL canNative = ([w collectionBehavior] & NSWindowCollectionBehaviorFullScreenPrimary) != 0;
+    switch (lbws_plan_fullscreen(windowedPresentation(w), wantNative(), isNative(w), canNative)) {
+    case LBWS_FS_ENTER:
+        [gAsked addObject:w];
+        say("native fullscreen, as the game's setting says");
+        [w toggleFullScreen:nil];
+        break;
+    case LBWS_FS_WAIT:
+        if (attempt < 4)
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                autoFullscreen(w, attempt + 1);
+            });
+        break;
+    default:
+        break;
+    }
+}
+
+static void scheduleAutoFullscreen(NSWindow *w)
+{
+    if (!w || [gAsked containsObject:w] || [gPending containsObject:w] || !windowedPresentation(w) || !wantNative()) return;
+    [gPending addObject:w];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.8 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [gPending removeObject:w];
+        autoFullscreen(w, 0);
+    });
+}
+
 static void tryRestore(NSWindow *w, int attempt)
 {
     if (!w || gClosing || ![w isVisible]) return;
@@ -184,21 +220,11 @@ static void tryRestore(NSWindow *w, int attempt)
     lbws_state saved = gSavedState;
     if (presentation) {
         /* A game that covers the screen: the switch decides, not the state it was left in. */
-        switch (lbws_plan_fullscreen(YES, wantNative(), now, canNative)) {
-        case LBWS_FS_ENTER:
-            say("native fullscreen, as the game's setting says");
-            [w toggleFullScreen:nil];
+        if (wantNative()) {
+            autoFullscreen(w, 0);
             return;
-        case LBWS_FS_WAIT:
-            if (attempt < 4)
-                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                    tryRestore(w, attempt + 1);
-                });
-            return;
-        default:
-            break;
         }
-        if (saved == LBWS_NATIVE && !wantNative()) saved = LBWS_WINDOW;   /* the setting keeps it in the window */
+        if (saved == LBWS_NATIVE) saved = LBWS_WINDOW;   /* the setting keeps it in the window */
         if (!gHaveSaved) return;
     }
     lbws_plan p = lbws_plan_restore(saved, gSavedW, gSavedH, now, canNative, resizable, cur.width, cur.height);
@@ -228,6 +254,12 @@ static void tryRestore(NSWindow *w, int attempt)
 static void becameMain(NSWindow *w)
 {
     if (!isGameWindow(w)) return;
+    scheduleAutoFullscreen(w);
+    /* A window that only later becomes the screen-covering one, with no notification the library hears. */
+    for (NSNumber *t in @[@2, @4, @8, @15, @30])
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)([t doubleValue] * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            scheduleAutoFullscreen(w);
+        });
     if (!gPrimary || area(w) >= area(gPrimary)) {
         gPrimary = w;
         if (!gTerminating) gClosing = NO;   /* a game that makes a new main window after closing one */
@@ -244,6 +276,7 @@ static void changed(NSWindow *w)
 {
     if (!isGameWindow(w)) return;
     if (!gPrimary) gPrimary = w;
+    scheduleAutoFullscreen(w);
     if (w == gPrimary) scheduleSave();
 }
 
@@ -272,6 +305,8 @@ __attribute__((constructor)) static void lbws_init(void)
     if ((off && !strcmp(off, "0")) || !file || !*file) return;
     gPath = [NSString stringWithUTF8String:file];
     gTried = [NSHashTable weakObjectsHashTable];
+    gAsked = [NSHashTable weakObjectsHashTable];
+    gPending = [NSHashTable weakObjectsHashTable];
     load();
 
     NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
