@@ -10,6 +10,7 @@
 # engine it says so and exits 0 (SKIP), because a CI runner has none. The run takes about
 # a minute: the first Wine start makes a prefix in a temporary directory.
 set -eu
+export LC_ALL=C   # awk reads and prints decimals with a point (a comma locale truncated the numbers it compares)
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../../../.." && pwd)
 dll=${1:-$root/out/lullaby-nvapi64.dll}

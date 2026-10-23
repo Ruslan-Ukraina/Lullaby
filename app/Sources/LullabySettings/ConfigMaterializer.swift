@@ -91,9 +91,9 @@ public enum ConfigMaterializer {
     /// decode) changes nothing. No frame limit (the game's and the screen's own pacing), the
     /// engine's pointer curve off (the raw GameController path is the mouse's), its scale automatic
     /// (from the mouse's resolution, 30 % when it reports none), 4 GB for every 32-bit game (the engine applies it to 32-bit programs
-    /// only), and NVIDIA Reflex left to D3DMetal (LULLABY_LOW_LATENCY=0): Lullaby's own answer held RE9's menu at 83 frames
-    /// a second against 96 without it (3 runs, 2026-10-23), so it is off until S8 makes it free; the launch option
-    /// LULLABY_LOW_LATENCY=1 turns it on for one run.
+    /// only), and NVIDIA Reflex answered by Lullaby for D3DMetal games that use it (LULLABY_LOW_LATENCY=1; since the pacing
+    /// holds one frame deeper under V-Sync it costs no frames: RE9's menu 98 a second, 96.5 without Reflex, 84 with the old
+    /// rule, 5 runs, 2026-10-23; the launch option LULLABY_LOW_LATENCY=0 turns it off for one run).
     /// Display mode emulation is not here: compat_run.sh turns it on for a 32-bit program.
     ///
     /// Also fixed: AVX advertised to games (Rosetta), DLSS through MetalFX (DXMT's switch and
@@ -113,7 +113,7 @@ public enum ConfigMaterializer {
         "SEVO_LINEAR_MOUSE=0",
         "LULLABY_GCMOUSE_SCALE=auto",
         "SEVO_LARGE_ADDRESS_AWARE=1",
-        "LULLABY_LOW_LATENCY=0",
+        "LULLABY_LOW_LATENCY=1",
     ]
 
     /// Dormison's own counter and graph stay off: the panel's counter is the Metal HUD

@@ -133,7 +133,7 @@ static double synced; /* average of "this interval was whole refreshes", 0..1 */
    back down only after the probes have found nothing for a while (doubling that while each try keeps failing). A game that is bound by the
    CPU gains nothing from the extra frame and keeps the short queue. That control is NOT the default: in RE9's menu it swung between depth
    0 and 2 every few seconds (the first frames of a probe window leave in a burst and look faster than they are). The default is the fixed
-   depth 1: 95.4 frames a second against 84 with the plain rule and 96.5 without Reflex (3 runs each, tools/perf/presentfeed.py), the
+   depth 1 with V-Sync: 95.4 frames a second against 84 with the plain rule and 96.5 without Reflex (3 runs each, tools/perf/presentfeed.py), the
    latency as without Reflex (48 ms against 49; the plain rule 36 ms). LULLABY_REFLEX_DEPTH=<n> sets the fixed depth (0 = the plain rule),
    LULLABY_REFLEX_ADAPT=1 turns the control on. */
 static unsigned adapt_depth, just_lowered;
@@ -471,7 +471,9 @@ static NvAPI_Status __cdecl lb_Sleep(void *dev)
     {
         back = synced > 0.7 && frame_no > 1 ? 2 : 1;
         {
-            unsigned depth = adapt_fixed ? extra_depth : adapt_depth + (probe_left ? 1 : 0);
+            /* the extra frame only where the screen's grid and the compositor stand behind the GPU (V-Sync): without it the plain rule
+               loses nothing (the simulator: latency x0.44, frames the same) */
+            unsigned depth = synced > 0.7 ? (adapt_fixed ? extra_depth : adapt_depth + (probe_left ? 1 : 0)) : 0;
             if (depth > 3) depth = 3;
             if (depth && frame_no > depth + 1) back += depth;
         }

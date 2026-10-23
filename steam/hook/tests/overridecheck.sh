@@ -49,10 +49,12 @@ check "a scale that is not a number changes nothing" "LULLABY_GCMOUSE_SCALE=auto
 fresh; printf '%s\n' 'LULLABY_GCMOUSE_SCALE=auto' >> "$work/bottle.env"; ( LULLABY_GCMOUSE_SCALE=1.2.3 launch_overrides "$work/bottle.env" )
 check "two dots change nothing" "LULLABY_GCMOUSE_SCALE=auto" "$(grep GCMOUSE "$work/bottle.env")"
 
+fresh; printf '%s\n' 'LULLABY_LOW_LATENCY=1' >> "$work/bottle.env"; ( LULLABY_LOW_LATENCY=0 launch_overrides "$work/bottle.env" )
+check "Reflex turned off for one run" "LULLABY_LOW_LATENCY=0" "$(grep LOW_LATENCY "$work/bottle.env")"
 fresh; printf '%s\n' 'LULLABY_LOW_LATENCY=0' >> "$work/bottle.env"; ( LULLABY_LOW_LATENCY=1 launch_overrides "$work/bottle.env" )
-check "Reflex turned on for one run" "LULLABY_LOW_LATENCY=1" "$(grep LOW_LATENCY "$work/bottle.env")"
-fresh; printf '%s\n' 'LULLABY_LOW_LATENCY=0' >> "$work/bottle.env"; ( LULLABY_LOW_LATENCY=0 launch_overrides "$work/bottle.env" )
-check "only 1 turns Reflex on" "LULLABY_LOW_LATENCY=0" "$(grep LOW_LATENCY "$work/bottle.env")"
+check "and on again" "LULLABY_LOW_LATENCY=1" "$(grep LOW_LATENCY "$work/bottle.env")"
+fresh; printf '%s\n' 'LULLABY_LOW_LATENCY=1' >> "$work/bottle.env"; ( LULLABY_LOW_LATENCY=2 launch_overrides "$work/bottle.env" )
+check "anything but 0 or 1 changes nothing" "LULLABY_LOW_LATENCY=1" "$(grep LOW_LATENCY "$work/bottle.env")"
 
 [ "$fail" -eq 0 ] && echo "==> overridecheck: launch options turn AVX and DLSS off and set the mouse speed for one run"
 exit "$fail"

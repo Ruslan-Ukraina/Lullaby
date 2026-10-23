@@ -403,7 +403,7 @@ env_file_set() {
 # writes the file again at the next launch, which drops it. WINEMSYNC=0 is handled with the
 # sync above (the server's own variable).
 #   LULLABY_AVX=0    do not advertise AVX to the game
-#   LULLABY_LOW_LATENCY=1   Lullaby's own NVIDIA Reflex answer for a D3DMetal game (off by default: it costs frames)
+#   LULLABY_LOW_LATENCY=0   Lullaby's own NVIDIA Reflex answer off for this run (D3DMetal's stubs stay); =1 turns it on
 #   LULLABY_GCMOUSE_SCALE=0.2   the mouse speed of GCMouse for this run (a number, 0.01 .. 100)
 #   LULLABY_DLSS=0   DLSS through MetalFX off (DXMT's and D3DMetal's switches; the card stays NVIDIA)
 launch_overrides() {
@@ -414,9 +414,9 @@ launch_overrides() {
     env_file_set "$1" DXMT_ENABLE_NVEXT ''
     env_file_set "$1" D3DM_ENABLE_METALFX ''
   fi
-  if [ "${LULLABY_LOW_LATENCY:-}" = 1 ]; then
-    env_file_set "$1" LULLABY_LOW_LATENCY 1
-  fi
+  case "${LULLABY_LOW_LATENCY:-}" in
+    0|1) env_file_set "$1" LULLABY_LOW_LATENCY "$LULLABY_LOW_LATENCY" ;;
+  esac
   case "${LULLABY_GCMOUSE_SCALE:-}" in
     ''|*[!0-9.]*|*.*.*) ;;
     *) env_file_set "$1" LULLABY_GCMOUSE_SCALE "$LULLABY_GCMOUSE_SCALE" ;;
