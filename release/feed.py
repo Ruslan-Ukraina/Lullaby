@@ -4,14 +4,14 @@
 Staging into the app payload (make app-payload):
 
     feed.py stage-bridge <bridge/bridge-manifest.json> <B1 build dir> <payload>
-    feed.py stage-signatures <signatures/manifest.json> <signatures/macos.arm64> <payload>
+    feed.py stage-signatures <steam/signatures/manifest.json> <steam/signatures/macos.arm64> <payload>
 
 Publishing (CI in Phase 6, or a local test feed; signing is release/sign.swift):
 
     feed.py bridge-artifact --manifest bridge/bridge-manifest.json --like bridge-dormison-b1-1 \
         --root <payload> --rev 2 --feed <base url> --out <feed dir>
     feed.py bridge-manifest --serial N --out <feed dir>/manifest/bridge-manifest.json <entry.json>...
-    feed.py signatures --manifest signatures/manifest.json --dir signatures/macos.arm64 \
+    feed.py signatures --manifest steam/signatures/manifest.json --dir steam/signatures/macos.arm64 \
         --feed <base url> --serial N --out <feed dir> [--drop-build B]...
 
 Phase 6 CI (.github/workflows, docs/RELEASING.md):
@@ -25,7 +25,7 @@ Phase 6 CI (.github/workflows, docs/RELEASING.md):
         --feed <base url> --out <feed dir>                         a bridge built from source
     feed.py publish-bridges --repo bridge/bridge-manifest.json [--current <published>] \
         --out <feed dir>/manifest/bridge-manifest.json <entry.json>...
-    feed.py publish-signatures --repo signatures/manifest.json --dir signatures/macos.arm64 \
+    feed.py publish-signatures --repo steam/signatures/manifest.json --dir steam/signatures/macos.arm64 \
         [--current <published>] [--add-db <file>] [--add-build B=<db file>:<checked>]... \
         --feed <base url> --out <feed dir>
     feed.py stage-bridge --from-feed <dir with <id>/<id>.tar.xz> ...   bundle a published bridge

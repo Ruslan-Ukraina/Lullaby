@@ -20,9 +20,9 @@ if not wanted:
     sys.exit("sigcheck: no signature names found in dylib/, the patterns are stale")
 
 # Databases only: signatures/manifest.json lists them and the builds they fit.
-dbs = sorted((root / "signatures").glob("macos.*/*.json"))
+dbs = sorted((root / "steam" / "signatures").glob("macos.*/*.json"))
 if not dbs:
-    sys.exit("sigcheck: no signature database under signatures/")
+    sys.exit("sigcheck: no signature database under steam/signatures/")
 
 status = 0
 for db in dbs:

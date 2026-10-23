@@ -550,7 +550,7 @@ dylib-install: $(TARGET)
 
 sigdb-install:
 	@mkdir -p "$(SUPPORT_DIR)/signatures/macos.arm64"
-	cp -f signatures/macos.arm64/*.json "$(SUPPORT_DIR)/signatures/macos.arm64/"
+	cp -f steam/signatures/macos.arm64/*.json "$(SUPPORT_DIR)/signatures/macos.arm64/"
 	@echo "==> Installed: $(SUPPORT_DIR)/signatures/macos.arm64"
 
 LAUNCHABLE_BUNDLES := $(HOME)/Desktop/Lullaby.app /Applications/Lullaby.app
@@ -602,7 +602,7 @@ app-payload: $(TARGET) $(OVERLAY_SHIM) $(ICONMAKER) $(APPINFO) $(NVAPI_SHIM)
 	cp -f "$$(swift build --package-path app -c release --show-bin-path)/lullaby-settings" \
 		"$(APP_PAYLOAD)/lullaby-settings"
 	cp -f dylib/feats/compat_run.sh "$(APP_PAYLOAD)/compat_run.sh"
-	cp -f signatures/macos.arm64/*.json "$(APP_PAYLOAD)/signatures/macos.arm64/"
+	cp -f steam/signatures/macos.arm64/*.json "$(APP_PAYLOAD)/signatures/macos.arm64/"
 ifeq ($(BRIDGE_FEED_DIR),)
 	@set -e; for spec in $(BRIDGE_FILES); do \
 		src="$${spec%%:*}"; dst="$(APP_PAYLOAD)/bridge/$${spec##*:}"; \
@@ -615,7 +615,7 @@ else
 	python3 -I release/feed.py stage-bridge --from-feed "$(BRIDGE_FEED_DIR)" \
 		bridge/bridge-manifest.json - "$(APP_PAYLOAD)"
 endif
-	python3 -I release/feed.py stage-signatures signatures/manifest.json signatures/macos.arm64 "$(APP_PAYLOAD)"
+	python3 -I release/feed.py stage-signatures steam/signatures/manifest.json steam/signatures/macos.arm64 "$(APP_PAYLOAD)"
 	@echo "==> Staged app payload in $(APP_PAYLOAD)"
 
 APP_BUNDLE  := $(OUT_DIR)/Lullaby.app

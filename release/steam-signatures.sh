@@ -33,7 +33,7 @@ rm -f "$WORK"/[0-9]*.json      # a database from an earlier run is not this run'
 [ -x "$SIGSLICE" ] && [ -x "$ANCHORCHECK" ] || { echo "==> run: make out/sigslice out/anchorcheck" >&2; exit 2; }
 
 listed() { # build -> 0 when a manifest already names it
-	for m in "$repo/signatures/manifest.json" $CURRENT; do
+	for m in "$repo/steam/signatures/manifest.json" $CURRENT; do
 		[ -f "$m" ] || continue
 		python3 -I -c 'import json,sys; sys.exit(0 if any(int(b["build"]) == int(sys.argv[2]) for b in json.load(open(sys.argv[1]))["builds"]) else 1)' \
 			"$m" "$1" && return 0
@@ -43,7 +43,7 @@ listed() { # build -> 0 when a manifest already names it
 
 # Newest database first, by the build in its name; published ones count too.
 bases() {
-	find "$repo/signatures/macos.arm64" ${PUBLISHED_DBS:+"$PUBLISHED_DBS"} -maxdepth 1 -name '[0-9]*.json' 2>/dev/null \
+	find "$repo/steam/signatures/macos.arm64" ${PUBLISHED_DBS:+"$PUBLISHED_DBS"} -maxdepth 1 -name '[0-9]*.json' 2>/dev/null \
 		| awk -F/ '{ n = $NF; sub(/\.json$/, "", n); print n "\t" $0 }' | sort -rn | cut -f2 | awk '!seen[$0]++'
 }
 
@@ -120,8 +120,8 @@ for channel in stable publicbeta; do
 done
 
 if [ $# -gt 0 ]; then
-	python3 -I "$here/feed.py" publish-signatures --repo "$repo/signatures/manifest.json" \
-		--dir "$repo/signatures/macos.arm64" --feed "$FEED" --out "$FEED_DIR" \
+	python3 -I "$here/feed.py" publish-signatures --repo "$repo/steam/signatures/manifest.json" \
+		--dir "$repo/steam/signatures/macos.arm64" --feed "$FEED" --out "$FEED_DIR" \
 		--tag "$(python3 -I "$here/feed.py" config signaturesTag)" \
 		${CURRENT:+--current "$CURRENT"} "$@"
 fi

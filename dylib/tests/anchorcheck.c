@@ -20,7 +20,7 @@
 #define STEAM_MACOS \
     "/Library/Application Support/Steam/Steam.AppBundle/Steam/Contents/MacOS/"
 #define MAX_IMAGES 4
-#define SIGDB_DIR "signatures/macos.arm64"
+#define SIGDB_DIR "steam/signatures/macos.arm64"
 #define MAX_DBS   16
 
 // Locate the loaded image whose name ends with `suffix`.

@@ -63,7 +63,7 @@ steam)
 		curl -fsSL --retry 3 -o "$tmp/$name" "https://client-update.akamai.steamstatic.com/$name" \
 			|| say true "Valve's $name did not answer; the full check decides"
 		build=$(python3 -I "$here/feed.py" valve-manifest "$tmp/$name" | python3 -I -c 'import json,sys; print(json.load(sys.stdin)["version"])')
-		for m in "$repo/signatures/manifest.json" "$tmp/signatures-manifest.json"; do
+		for m in "$repo/steam/signatures/manifest.json" "$tmp/signatures-manifest.json"; do
 			[ -f "$m" ] || continue
 			if python3 -I -c 'import json,sys; sys.exit(0 if any(int(b["build"]) == int(sys.argv[2]) for b in json.load(open(sys.argv[1]))["builds"]) else 1)' "$m" "$build"; then
 				continue 2
