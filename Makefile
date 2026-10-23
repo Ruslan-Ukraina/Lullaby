@@ -70,7 +70,7 @@ DEPS := $(OBJS:.o=.d)
         tests-list overlay-shim overlay-shim-install overlay-shim-tests \
         overlay-shim-bench iconmaker icon \
         appinfo helpers-install bridge runcheck compatcheck \
-        compatsvc-check scriptcheck steamwin-check updategate-check settingsbridge-check webpatch-syntax sigslice
+        compatsvc-check scriptcheck steamwin-check updategate-check settingsbridge-check webpatch-syntax sigslice releasecheck
 
 APP_PAYLOAD := app/Sources/LullabyApp/Resources/payload
 
@@ -708,7 +708,7 @@ SPARKLE_KEY  ?=
 # release (the release workflow), test (its dry run, TEST keys only) or dev.
 # release/check-release.sh holds each kind to its keys before and after the build.
 LB_BUILD_KIND ?= dev
-export LB_BUILD_KIND LB_DEV LB_RELEASE_KEY LB_RELEASE_FEED SPARKLE_KEY SPARKLE_FEED LB_RELEASE_ACCESS
+export LB_BUILD_KIND LB_DEV LB_RELEASE_KEY LB_RELEASE_FEED SPARKLE_KEY SPARKLE_FEED LB_RELEASE_ACCESS APP_BUILD
 
 ICONGEN  := $(OUT_DIR)/icongen
 ICON_DOC := $(OUT_DIR)/Lullaby.icon
@@ -802,3 +802,14 @@ clean:
 rebuild: clean all
 
 -include $(DEPS)
+
+# A release's build number is above everything published before (release/app-build.sh, release/check-release.sh):
+# Sparkle only offers a release whose CFBundleVersion is higher than the installed one.
+releasecheck:
+	@fail=0; \
+	ok()  { LB_BUILD_KIND=$$1 release/check-release.sh build $$2 >/dev/null 2>&1 || { echo "releasecheck: $$1 build $$2 should pass"; fail=1; }; }; \
+	bad() { if LB_BUILD_KIND=$$1 release/check-release.sh build $$2 >/dev/null 2>&1; then echo "releasecheck: $$1 build $$2 should be refused"; fail=1; fi; }; \
+	bad release 259; bad release 40; bad release 1.1.0; bad release ''; ok release 260; ok release 340; ok dev 1; \
+	n=$$(release/app-build.sh); ok release $$n; \
+	[ "$$n" -gt 259 ] || { echo "releasecheck: release/app-build.sh gave $$n, not above the published 259"; fail=1; }; \
+	[ $$fail -eq 0 ] && echo "==> releasecheck: a release's build number must be above the published 259 (now $$n)"; exit $$fail

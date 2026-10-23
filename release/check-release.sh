@@ -3,6 +3,7 @@
 #
 #   check-release.sh config        before the build: the make variables a build of
 #                                  kind LB_BUILD_KIND is about to bake in
+#   check-release.sh build <n>     a release's build number is above everything published before
 #   check-release.sh bundle <app>  after the build: what the bundle actually carries
 #
 # A release build (LB_BUILD_KIND=release) needs the owner's keys, never a TEST key
@@ -47,6 +48,15 @@ check_keys() { # kind release-key sparkle-key release-feed sparkle-feed
 	esac
 }
 
+# The newest build number published before this branch's history started over (1.1.0-pre.25): a release
+# must be above it, or Sparkle never offers it to a Mac that has that one (release/app-build.sh).
+PUBLISHED_FLOOR=259
+check_build() { # kind build
+	[ "$1" = release ] || return 0
+	case "$2" in ''|*[!0-9]*) die "a release build's CFBundleVersion is a whole number (Sparkle compares them), not '$2'" ;; esac
+	[ "$2" -gt "$PUBLISHED_FLOOR" ] || die "build $2 is not above $PUBLISHED_FLOOR, the newest published (1.1.0-pre.25): Sparkle would not offer it; use release/app-build.sh"
+}
+
 plist() { /usr/libexec/PlistBuddy -c "Print :$2" "$1/Contents/Info.plist" 2>/dev/null || true; }
 
 case "${1:-}" in
@@ -55,7 +65,12 @@ config)
 		die "LB_DEV=1 builds the Steam Helper debug channel in; never in a release"
 	fi
 	check_keys "$KIND" "${LB_RELEASE_KEY:-}" "${SPARKLE_KEY:-}" "${LB_RELEASE_FEED:-}" "${SPARKLE_FEED:-}"
+	[ -z "${APP_BUILD:-}" ] || check_build "$KIND" "$APP_BUILD"
 	echo "==> release check: $KIND build configuration ok"
+	;;
+build)
+	check_build "$KIND" "${2:?usage: check-release.sh build <number>}"
+	echo "==> release check: build $2 ok for a $KIND build"
 	;;
 bundle)
 	app=${2:?usage: check-release.sh bundle <Lullaby.app>}
@@ -72,6 +87,7 @@ bundle)
 			fi
 		done
 	fi
+	check_build "$KIND" "$(plist "$app" CFBundleVersion)"
 	if [ "$KIND" = release ]; then
 		# ROADMAP §9.5: no background checks; the window looks when it opens.
 		[ "$(plist "$app" SUEnableAutomaticChecks)" = false ] || die "a release build must not check for updates in the background"
@@ -81,7 +97,7 @@ bundle)
 	echo "==> release check: $app is a sound $KIND build ($(plist "$app" CFBundleShortVersionString), build $(plist "$app" CFBundleVersion))"
 	;;
 *)
-	echo "usage: $0 config | bundle <Lullaby.app>" >&2
+	echo "usage: $0 config | build <number> | bundle <Lullaby.app>" >&2
 	exit 2
 	;;
 esac

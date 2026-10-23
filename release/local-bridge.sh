@@ -120,8 +120,14 @@ fi
 FEED_BASE=${FEED_BASE:-file://$feed/}
 id="bridge-$version-$REV"
 rm -rf "${feed:?}"
+# Where this Dormison comes from (url, sha256, size), from the manifest the engine was fetched by (or the pinned
+# one): the app falls back to it when Dormison's newest release has no bridge yet (DECISIONS P8-17). Without it a
+# Mac that installs from scratch could not get this engine once Dormison has published a newer one.
+engine_json="$WORK/cache/engine.json"
+python3 -I -c 'import json,sys; sys.exit(0 if any(c.get("version") == sys.argv[2] for c in json.load(open(sys.argv[1]))["channels"].values()) else 1)' \
+	"$engine_json" "$version" || die "$engine_json does not name $version, so the bridge entry could not record where the engine comes from"
 python3 -I "$here/feed.py" bridge-artifact --files-dir "$files" --b1-dir "$W/ntdll-b1" --fixes-dir "$W/engine-fixes" \
-	--engine "$version" --commit "$commit" --rev "$REV" --feed "$FEED_BASE" --out "$feed"
+	--engine "$version" --commit "$commit" --rev "$REV" --feed "$FEED_BASE" --engine-json "$engine_json" --out "$feed"
 python3 -I "$here/feed.py" publish-bridges --repo "$repo/bridge/bridge-manifest.json" \
 	--out "$feed/manifest/bridge-manifest.json" "$feed/$id.entry.json"
 swift "$here/sign.swift" "$signkey" "$feed/$id/$id.tar.xz" "$feed/manifest/bridge-manifest.json"

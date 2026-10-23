@@ -826,20 +826,28 @@ struct EngineUpdaterTests {
         #expect(store.state == .init(current: "bridge-dormison-b1-1", previous: "bridge-dormison-b2-1"))
     }
 
-    @Test("The shipped bridge list names dormison-r5 with its commit, both B1 files and its Dormison download")
+    @Test("The shipped bridge list names a known Dormison with its commit, both B1 files and its Dormison download")
     func shippedTable() throws {
         let repo = URL(filePath: #filePath).deletingLastPathComponent().appending(path: "../../..").standardizedFileURL
         let data = try Data(contentsOf: repo.appending(path: "bridge/bridge-manifest.json"))
         let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
         let releases = BridgeRelease.list(json, remote: nil, root: repo, bundled: true)
-        let entry = try #require(releases.first { $0.engine == "dormison-r5" })
-        #expect(entry.engineCommit == "4ed1e4195327ab907e0c3c96dc5c2405bf753c9f")
-        // Any revision: a release bundles the one dormison-bridge published (DECISIONS P6-2).
-        #expect(entry.id == "bridge-dormison-r5-\(entry.rev)")
+        // What each Dormison release this project has bundled a bridge for is: its commit, where it comes from, how big.
+        let known: [String: (commit: String, url: String, size: Int)] = [
+            "dormison-r5": ("4ed1e4195327ab907e0c3c96dc5c2405bf753c9f",
+                            "https://github.com/kageroumado/dormison/releases/download/r5/dormison-r5.tar.xz", 234_717_860),
+            "dormison-r7": ("3e77a1125ef897378f3f869ff5b2eaf0c44a58aa",
+                            "https://github.com/kageroumado/dormison/releases/download/r7/dormison-r7.tar.xz", 234_697_884),
+        ]
+        let entry = try #require(releases.first)
+        let facts = try #require(known[entry.engine], "\(entry.engine) is shipped but this test does not know it: add its commit, download and size")
+        #expect(entry.engineCommit == facts.commit)
+        // Any revision: a release bundles the one that was published (DECISIONS P6-2).
+        #expect(entry.id == "bridge-\(entry.engine)-\(entry.rev)")
         // Install falls back to it while Dormison's newest has no bridge (DECISIONS P8-17).
         let download = try #require(entry.engineRelease)
-        #expect(download.url.absoluteString == "https://github.com/kageroumado/dormison/releases/download/r5/dormison-r5.tar.xz")
-        #expect(download.sizeBytes == 234_717_860)
+        #expect(download.url.absoluteString == facts.url)
+        #expect(download.sizeBytes == facts.size)
         #expect(Set(entry.ntdll.map(\.arch)) == ["x86_64", "i386"])
         #expect(Set(entry.files.map(\.name)) == BridgeRelease.fileNames)
         _ = EngineSignature.dormisonKey
