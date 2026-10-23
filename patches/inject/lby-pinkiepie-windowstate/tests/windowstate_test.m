@@ -39,6 +39,15 @@ int main(int argc, char **argv)
         [nc postNotificationName:NSWindowDidBecomeMainNotification object:win];
         if (!strcmp(phase, "save")) {
             spin(0.3);
+            /* Several changes with a save after each, the autorelease pool drained between them: what the library
+               keeps in its statics has to outlive a pool (a second save once read a freed string). */
+            for (int i = 0; i < 3; i++) {
+                @autoreleasepool {
+                    [win setContentSize:NSMakeSize(w - 100 + i * 50, h - 60 + i * 30)];
+                    [nc postNotificationName:NSWindowDidResizeNotification object:win];
+                    spin(1.4);
+                }
+            }
             [win setContentSize:NSMakeSize(w, h)];
             [nc postNotificationName:NSWindowDidResizeNotification object:win];
             spin(1.8);

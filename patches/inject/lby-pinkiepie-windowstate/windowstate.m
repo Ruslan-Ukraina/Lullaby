@@ -21,12 +21,12 @@
 #include "windowstate_core.h"
 
 static NSString *gPath;
-static NSWindow *gPrimary;           /* the game's main window: the largest one seen */
+static NSWindow *gPrimary;           /* the game's main window: the largest one seen; held until it closes */
 static NSHashTable *gTried;          /* windows a restore was tried for */
 static lbws_state gSavedState = LBWS_WINDOW;
 static double gSavedW, gSavedH;      /* the Window size the file holds, 0 when unknown */
 static double gWinW, gWinH;          /* the Window size now known: file's, then the player's */
-static BOOL gHaveSaved, gClosing;
+static BOOL gHaveSaved, gClosing, gTerminating;
 static uint64_t gToken;              /* a newer change cancels the save waiting on an older one */
 static NSString *gLastWritten;
 
@@ -135,7 +135,10 @@ static void tryRestore(NSWindow *w, int attempt)
 static void becameMain(NSWindow *w)
 {
     if (!isGameWindow(w)) return;
-    if (!gPrimary || area(w) >= area(gPrimary)) gPrimary = w;
+    if (!gPrimary || area(w) >= area(gPrimary)) {
+        gPrimary = w;
+        if (!gTerminating) gClosing = NO;   /* a game that makes a new main window after closing one */
+    }
     if ([gTried containsObject:w]) return;
     [gTried addObject:w];
     /* After the engine has laid the window out. */
@@ -172,11 +175,14 @@ __attribute__((constructor)) static void lbws_init(void)
     /* The close of the game's window, or of the app, is not a state to keep: what follows it
        (leaving full screen, shrinking) is the game going away. */
     [nc addObserverForName:NSWindowWillCloseNotification object:nil queue:nil usingBlock:^(NSNotification *n) {
-        if ([n object] == gPrimary) gClosing = YES;
+        if ([n object] == gPrimary) {
+            gClosing = YES;
+            gPrimary = nil;
+        }
     }];
     [nc addObserverForName:NSApplicationWillTerminateNotification object:nil queue:nil usingBlock:^(NSNotification *n) {
         (void)n;
-        gClosing = YES;
+        gClosing = gTerminating = YES;
     }];
     say("watching, state file %s", file);
 }

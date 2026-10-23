@@ -481,7 +481,7 @@ overlay-shim-tests: $(OVERLAY_SHIM)
 # next launch. Injected into the Wine loader's process, so arm64 (wineserver, which it ignores) and x86_64.
 WINDOWSTATE_DIR  := patches/inject/lby-pinkiepie-windowstate
 WINDOWSTATE      := $(OUT_DIR)/lullaby-windowstate.dylib
-WINDOWSTATE_FLAGS := -mmacosx-version-min=$(MIN_VER) -dynamiclib -O2 -Wall -Wextra \
+WINDOWSTATE_FLAGS := -mmacosx-version-min=$(MIN_VER) -dynamiclib -O2 -Wall -Wextra -fobjc-arc \
                       -install_name @rpath/lullaby-windowstate.dylib -framework AppKit
 
 windowstate: $(WINDOWSTATE)
@@ -494,17 +494,18 @@ $(WINDOWSTATE): $(WINDOWSTATE_DIR)/windowstate.m $(WINDOWSTATE_DIR)/windowstate_
 	codesign -fs - $@
 	@lipo -info $@
 
-# The decisions in plain C, then the library in a process with a WineWindow, on both architectures.
+# The decisions in plain C, then the library in a process with a WineWindow, on both architectures, with
+# freed memory scribbled and zombies on: a static that outlives its autorelease pool fails the run.
 windowstate-tests: $(WINDOWSTATE)
 	@mkdir -p $(OUT_DIR)
 	$(CC) -Wall -Wextra -o $(OUT_DIR)/windowstate-core-test $(WINDOWSTATE_DIR)/tests/core_test.c
 	$(OUT_DIR)/windowstate-core-test
 	@set -e; for a in arm64 x86_64; do \
-		$(CC) -arch $$a -mmacosx-version-min=$(MIN_VER) -framework AppKit -o $(OUT_DIR)/wine-windowstate-test.$$a \
+		$(CC) -arch $$a -mmacosx-version-min=$(MIN_VER) -fobjc-arc -framework AppKit -o $(OUT_DIR)/wine-windowstate-test.$$a \
 			$(WINDOWSTATE_DIR)/tests/windowstate_test.m; \
 		f=$$(mktemp -d "$${TMPDIR:-/tmp}/windowstate.XXXXXX")/state.json; \
-		LULLABY_WINDOWSTATE_DYLIB=$(WINDOWSTATE) $(OUT_DIR)/wine-windowstate-test.$$a save "$$f" 1000 640 2>/dev/null; \
-		LULLABY_WINDOWSTATE_DYLIB=$(WINDOWSTATE) $(OUT_DIR)/wine-windowstate-test.$$a restore "$$f" 1000 640 2>/dev/null; \
+		MallocScribble=1 MallocPreScribble=1 NSZombieEnabled=YES LULLABY_WINDOWSTATE_DYLIB=$(WINDOWSTATE) $(OUT_DIR)/wine-windowstate-test.$$a save "$$f" 1000 640 2>/dev/null; \
+		MallocScribble=1 MallocPreScribble=1 NSZombieEnabled=YES LULLABY_WINDOWSTATE_DYLIB=$(WINDOWSTATE) $(OUT_DIR)/wine-windowstate-test.$$a restore "$$f" 1000 640 2>/dev/null; \
 		rm -rf "$$(dirname "$$f")"; \
 	done
 	@echo "==> windowstate tests: decisions, saving and putting back a window size, arm64 and x86_64"
