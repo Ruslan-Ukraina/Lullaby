@@ -1,4 +1,4 @@
-Lullaby 1.1.0
+Lullaby r1 (1.1.0)
 
 Windows games from your Steam library on a Mac, in the ordinary Steam for macOS. Rebuilt on the Dormison r7 engine.
 

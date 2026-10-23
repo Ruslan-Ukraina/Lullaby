@@ -5,6 +5,7 @@
 #   release/local-app.sh <tag>            the release: kind release, the owner's keys (~/Lullaby-keys), the bridges
 #                                         bridge/bridge-manifest.json names, fetched from the published release and
 #                                         verified; everything is left in scratch/release/<version>/, nothing uploaded
+#   release/local-app.sh <tag> --title "Lullaby r1"   the GitHub release's title (default "Lullaby <version>")
 #   release/local-app.sh <tag> --yes      the same, then: the GitHub release <tag> with the zip, then the appcast.
 #                                         The tag must already exist and be pushed (nothing here pushes)
 #   release/local-app.sh --test [dir]     a rehearsal: kind test, TEST keys (a release build refuses them), the bridge
@@ -26,11 +27,13 @@ say() { echo "==> local-app: $*"; }
 mode=release
 yes=0
 tag=
+title=
 bridge_src=
 while [ $# -gt 0 ]; do
 	case "$1" in
 	--test) mode="test"; shift; case "${1:-}" in ''|--*) ;; *) bridge_src=$1; shift ;; esac ;;
 	--yes) yes=1; shift ;;
+	--title) title=${2:?--title needs a text}; shift 2 ;;
 	-*) die "unknown option $1" ;;
 	*) [ -z "$tag" ] || die "one tag only"; tag=$1; shift ;;
 	esac
@@ -59,6 +62,7 @@ else
 	case "$version" in *-*) pre=true ;; *) pre=false ;; esac
 	[ "${version%%-*}" = "$base" ] || die "the tag says $version, but steam/hook/version.h says $base"
 fi
+[ -n "$title" ] || title="Lullaby $version"
 build=$("$here/app-build.sh")
 out="$root/scratch/release/$version"
 rm -rf "${out:?}"
@@ -209,7 +213,7 @@ fi
 # --- publish: the release with the zip, then the appcast
 pre_flag=
 [ "$pre" = true ] && pre_flag=--prerelease
-gh release create "$tag" --repo "$repo" --verify-tag $pre_flag --title "Lullaby $version" \
+gh release create "$tag" --repo "$repo" --verify-tag $pre_flag --title "$title" \
 	--notes-file "$arch/Lullaby-$version.md" "$arch/$zip" || die "cannot create the release $tag"
 if [ "$access" = private ]; then
 	# A private repository's download links need a browser session, so the enclosure points at the asset's
