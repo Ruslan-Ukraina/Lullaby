@@ -586,8 +586,8 @@ BRIDGE_FILES := \
 
 bridge:
 	bridge/setup-wine-tree.sh
-	lsteamclient/build.sh
-	steam-shim/build.sh
+	bridge/lsteamclient/build.sh
+	bridge/steam-shim/build.sh
 	@echo "==> Built the bridge, now run: $(MAKE) app-payload"
 
 app-payload: $(TARGET) $(OVERLAY_SHIM) $(ICONMAKER) $(APPINFO) $(NVAPI_SHIM)

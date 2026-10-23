@@ -935,7 +935,7 @@ static void report_renderer_chain(void)
 
 // FEX specific stuff
 // The name keeps the project's old np_ prefix: bridges already built (r5-1 and older)
-// look it up by this name (lsteamclient/unixlib.cpp).
+// look it up by this name (bridge/lsteamclient/unixlib.cpp).
 __attribute__((visibility("default"))) void np_overlay_shim_install(void)
 {
 	ensure_device_hooks(MTLCreateSystemDefaultDevice());

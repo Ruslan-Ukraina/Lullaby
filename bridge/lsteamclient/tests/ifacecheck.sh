@@ -4,7 +4,7 @@
 # and logged in; no game is started and no app id is set.
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
-repo=$(cd "$here/../.." && pwd)
+repo=$(cd "$here/../../.." && pwd)
 support="$HOME/Library/Application Support/lullaby"
 BRIDGE_DIR=${BRIDGE_DIR:-$support/bridge}
 WORK=${WORK:-$repo/scratch/b1-test}

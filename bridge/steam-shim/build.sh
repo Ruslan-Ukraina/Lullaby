@@ -22,7 +22,7 @@
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
-repo=$(cd "$here/.." && pwd)
+repo=$(cd "$here/../.." && pwd)
 
 WINE_BUILD=${WINE_BUILD:-$repo/scratch/dormison-build}
 # Relative because it lands in the debug info. Keep the default sibling layout so
@@ -74,7 +74,7 @@ make "$out" >/dev/null
 
 size=$(stat -f %z "$out")
 # shellcheck disable=SC2046
-set -- $("$here/../bridge/pe-info.py" "$out")
+set -- $("$here/../pe-info.py" "$out")
 [ "$1" = "x86_64" ] || { echo "==> built $1, expected x86_64"; exit 1; }
 # The shim statically links jsoncpp and weighs ~14 MB. Anything near zero means
 # the link dropped objects.

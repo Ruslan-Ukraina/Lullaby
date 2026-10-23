@@ -45,7 +45,7 @@
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
-repo=$(cd "$here/.." && pwd)
+repo=$(cd "$here/../.." && pwd)
 
 WINE_BUILD=${WINE_BUILD:-$repo/scratch/dormison-build}
 # Mach-O spells the arm64 arch arm64 and wine spells its directory aarch64-unix, so
@@ -101,7 +101,7 @@ echo "==> syncing the assembled tree into $WINE_SRC_REL/$dll"
 # world.
 rsync -a --delete "${TREE:?}/" "${src:?}/"
 
-pe_info=$here/../bridge/pe-info.py
+pe_info=$here/../pe-info.py
 
 pe_i386=$dll/i386-windows/lsteamclient.dll
 pe_x86_64=$dll/x86_64-windows/lsteamclient.dll

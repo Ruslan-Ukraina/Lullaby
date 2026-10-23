@@ -87,15 +87,15 @@ else
     ( cd "$WINE_SRC" && git apply "$here/register-components.diff" )
 fi
 
-"$repo/lsteamclient/fetch.sh"
-"$repo/steam-shim/fetch-headers.sh"
+"$repo/bridge/lsteamclient/fetch.sh"
+"$repo/bridge/steam-shim/fetch-headers.sh"
 
 # Whole trees, not just the two Makefile.in files: makedep reads the SOURCES each one
 # lists and fails the entire configure if any of those files is absent.
 mkdir -p "$WINE_SRC/dlls/lsteamclient" "$WINE_SRC/programs/steam.exe"
 rsync -a "$repo/build/lsteamclient/" "$WINE_SRC/dlls/lsteamclient/"
 rsync -a --exclude build.sh --exclude gen-implib.sh --exclude fetch-headers.sh \
-    "$repo/steam-shim/" "$WINE_SRC/programs/steam.exe/"
+    "$repo/bridge/steam-shim/" "$WINE_SRC/programs/steam.exe/"
 echo "==> placed sources for dlls/lsteamclient and programs/steam.exe"
 
 # The release's install prefix is compiled into ntdll.so (BINDIR, DLLDIR, DATADIR), and
@@ -204,5 +204,5 @@ else
     ( cd "$WINE_BUILD" && make dlls/ntdll/ntdll.so )
 fi
 
-echo "==> ready, now run: ../lsteamclient/build.sh --install"
-echo "                    ../steam-shim/build.sh --install"
+echo "==> ready, now run: bridge/lsteamclient/build.sh --install"
+echo "                    bridge/steam-shim/build.sh --install"

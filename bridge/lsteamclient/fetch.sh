@@ -15,7 +15,7 @@
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
-repo=$(cd "$here/.." && pwd)
+repo=$(cd "$here/../.." && pwd)
 
 PROTON_COMMIT=${PROTON_COMMIT:-164e0ccd2ea2b1ec2e5d08dc97f65b184c2539ca}
 

@@ -12,7 +12,7 @@ vendor/sparkle/
 scratch/
 .scratch/
 
-steam-shim/proton-headers/
+bridge/steam-shim/proton-headers/
 
 cmake-build-*/
 .idea/

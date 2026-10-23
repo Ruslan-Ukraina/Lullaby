@@ -54,7 +54,7 @@ macOS, так само як Steam Play (Proton) на Linux.
 ## Для розробників
 
 - `app/` — застосунок для macOS і консольна утиліта налаштувань (Swift); `steam/hook/` —
-  бібліотека, яка завантажується в Steam; `lsteamclient/`, `steam-shim/` — міст Steam;
+  бібліотека, яка завантажується в Steam; `bridge/lsteamclient/`, `bridge/steam-shim/` — міст Steam;
   `patches/engine/lby-discord-ntdllhook/` — хук завантажувача, зібраний з вихідного коду Dormison;
   `patches/engine/` — окремі файли рушія, перезібрані з виправленнями (кожен спершу
   перевірено на збіг із релізом).

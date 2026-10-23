@@ -21,7 +21,7 @@
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
-repo=$(cd "$here/.." && pwd)
+repo=$(cd "$here/../.." && pwd)
 
 # Submodule pins as recorded by Proton at proton_9.0. openvr is ValveSoftware/openvr;
 # the wine submodule url is ../wine relative to Proton, so ValveSoftware/wine.

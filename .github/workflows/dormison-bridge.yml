@@ -261,8 +261,8 @@ jobs:
       - name: Build lsteamclient and steam.exe
         if: steps.detect.outputs.engine
         run: |
-          lsteamclient/build.sh
-          steam-shim/build.sh
+          bridge/lsteamclient/build.sh
+          bridge/steam-shim/build.sh
           files="$RUNNER_TEMP/bridge-files"; mkdir -p "$files"
           b=scratch/dormison-build
           cp "$b/programs/steam.exe/x86_64-windows/steam.exe" "$files/steam.exe"

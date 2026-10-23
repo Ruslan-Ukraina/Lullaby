@@ -25,9 +25,9 @@ https://github.com/sparkle-project/Sparkle/blob/2.10.0/LICENSE
 
 These third party files carry their original notices from the project authors:
 
-  steam-shim/jsoncpp.cpp             JsonCpp, public domain / MIT (header)
-  steam-shim/json/json.h             JsonCpp, public domain / MIT (header)
-  steam-shim/json/json-forwards.h    JsonCpp, public domain / MIT (header)
+  bridge/steam-shim/jsoncpp.cpp             JsonCpp, public domain / MIT (header)
+  bridge/steam-shim/json/json.h             JsonCpp, public domain / MIT (header)
+  bridge/steam-shim/json/json-forwards.h    JsonCpp, public domain / MIT (header)
   vendor/cJSON.c                     cJSON, MIT (header)
   vendor/cJSON.h                     cJSON, MIT (header)
 
