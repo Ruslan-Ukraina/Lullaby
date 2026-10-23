@@ -39,7 +39,7 @@ struct SettingCatalogTests {
         (.retina, .bool(true), "LULLABY_RETINA=1"),
         (.filter, .string("metalfx"), "SEVO_UPSCALER=metalfx"),
         (.fps, .bool(true), "MTL_HUD_ENABLED=1"),
-        (.nativeFullscreen, .bool(false), "LULLABY_NATIVE_FULLSCREEN=0"),
+        (.nativeFullscreen, .bool(true), "LULLABY_NATIVE_FULLSCREEN=1"),
         (.filter, .string("bilinear"), "SEVO_FINAL_FILTER=bilinear"),
         (.rawMouse, .bool(false), "LULLABY_GCMOUSE=0"),
         (.tuning, .string("experimental"), "SEVO_WAIT_SPIN=5200"),
@@ -116,7 +116,7 @@ struct SettingCatalogTests {
         #expect(env["SEVO_LINEAR_MOUSE"] == "0")
         #expect(env["LULLABY_GCMOUSE_SCALE"] == "auto", "from the mouse's resolution")
         #expect(env["SEVO_RESIZABLE_WINDOWS"] == "window", "windows are always the Mac's own, a full-screen game in one")
-        #expect(env["LULLABY_NATIVE_FULLSCREEN"] == "1", "a game that covers the screen goes to native full screen")
+        #expect(env["LULLABY_NATIVE_FULLSCREEN"] == "0", "native full screen of a covering game is an experiment, off")
         #expect(env["SEVO_LARGE_ADDRESS_AWARE"] == "1", "4 GB for 32-bit games")
         #expect(env["LULLABY_LOW_LATENCY"] == "1", "Reflex is always answered")
         #expect(env["LULLABY_EMULATE_MODESET"] == nil, "compat_run.sh decides by the program's bitness")

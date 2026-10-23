@@ -260,7 +260,7 @@ public enum ConfigDefaults {
         v.upscaler = .off
         v.metalfx = .off
         v.fps = false
-        v.nativeFullscreen = true
+        v.nativeFullscreen = false
         v.filter = .lanczos
         v.emulateModeset = false
         v.dlss = false

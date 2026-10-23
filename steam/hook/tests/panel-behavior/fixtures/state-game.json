@@ -123,13 +123,13 @@
    "own": null
   },
   "nativeFullscreen": {
-   "effective": true,
-   "inherited": true,
+   "effective": false,
+   "inherited": false,
    "inheritedFrom": "defaults",
    "inheritedLabel": {
-    "en": "On",
-    "ru": "Вкл.",
-    "uk": "Увімк."
+    "en": "Off",
+    "ru": "Выкл.",
+    "uk": "Вимк."
    },
    "own": null
   }
