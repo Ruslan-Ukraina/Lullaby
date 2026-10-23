@@ -2473,6 +2473,30 @@
       },
       "generatesSymbol": false
     },
+    "Raw mouse input through GameController, an option in the game settings.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Raw mouse input through GameController, an option in the game settings."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сырой ввод мыши через GameController, настройка игры."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сирий ввід миші через GameController, налаштування гри."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
     "Two engine fixes: memory use and Retina resolution.": {
       "extractionState": "manual",
       "localizations": {

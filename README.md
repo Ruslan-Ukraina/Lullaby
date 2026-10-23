@@ -53,11 +53,15 @@ macOS, так само як Steam Play (Proton) на Linux.
 
 ## Для розробників
 
-- `app/` — застосунок для macOS і консольна утиліта налаштувань (Swift); `steam/hook/` —
-  бібліотека, яка завантажується в Steam; `bridge/lsteamclient/`, `bridge/steam-shim/` — міст Steam;
-  `patches/engine/lby-discord-ntdllhook/` — хук завантажувача, зібраний з вихідного коду Dormison;
-  `patches/engine/` — окремі файли рушія, перезібрані з виправленнями (кожен спершу
-  перевірено на збіг із релізом).
-- `make app` збирає застосунок, `make app-tests` запускає тести Swift; перевірки C і
-  скриптів — це інші цілі в `Makefile`.
-- Плани, рішення й журнал роботи — у `docs/` (російською).
+Карта репозиторію — `docs/STRUCTURE.md`, назви компонентів — `docs/NAMING.md`, правила
+проєкту — `docs/PROJECT_RULES.md`.
+
+- `app/` — застосунок для macOS і консольна утиліта налаштувань (Swift).
+- `steam/` — усе, що працює всередині Steam: `hook/` (бібліотека), `overlay/` (оверлей),
+  `signatures/` (бази сигнатур).
+- `bridge/` — міст Steam: `lsteamclient/` і `steam-shim/`.
+- `patches/` — усе, що ми додаємо до чужого коду, з реєстром `patches/REGISTRY.md`:
+  `engine/` (патчі Dormison і хук завантажувача `lby-discord-ntdllhook`; кожен
+  перезібраний файл спершу перевіряється на збіг із релізом), `inject/` (без перезбирання рушія).
+- `make app` збирає застосунок, `make app-tests` запускає тести Swift, `make patchcheck`
+  звіряє патчі з реєстром, `tools/check-structure` — дерево з картою.

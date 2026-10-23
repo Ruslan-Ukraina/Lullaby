@@ -25,7 +25,7 @@ set -eu
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/.." && pwd)"
 
-DORMISON_REPO="${DORMISON_REPO:-$HOME/Projects/dormison}"
+DORMISON_REPO="${DORMISON_REPO:-$repo/scratch/dormison}"
 DORMISON_URL="${DORMISON_URL:-https://github.com/kageroumado/dormison.git}"
 # The commit dormison-b1 was built from. A worktree records what it resolved to,
 # so a moved branch can never change what gets built here without a signal.

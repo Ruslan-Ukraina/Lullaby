@@ -94,6 +94,11 @@ Two of those engine fixes are Highball's (https://github.com/gauthierpiarrette/h
 patches to Wine, LGPL-2.1-or-later): 0018 (commit charge is the footprint) and 0020 (Retina
 HORZRES, itself from athei/wine fa43d6db2). Their headers name the source.
 
+Raw mouse input through GameController (patches/engine/patches/winemac.so/0004, 0005) is
+Elvin Hayatov's Wine merge request !11799 (Copyright 2026 Elvin Hayatov, LGPL-2.1-or-later),
+taken from WineForge 0.6.0.7 (https://github.com/Alien4042x/WineForge, commit 8051e02d); the
+opt-in switch and the scale setting are Lullaby's.
+
 The run script's routing by verb (EA, Ubisoft and other launchers), the Steam Input
 controller handling, the batched prefix registry import, steam.exe's std handles and
 Ubisoft Connect's install path values come from upstream NotProton 1.1.x (GPL-3.0),
