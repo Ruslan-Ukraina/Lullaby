@@ -20,7 +20,7 @@ struct SettingCatalogTests {
         }
     }
 
-    @Test("the four quick settings, in order; the Advanced groups, old games apart")
+    @Test("the four quick settings, in order; the Advanced groups: what is automatic has no row")
     func quickSettings() {
         #expect(SettingCatalog.quick.map(\.id) == [.renderer, .retina, .metalfx, .fps])
         #expect(SettingCatalog.setting(.renderer).levels == [.game])
@@ -28,11 +28,10 @@ struct SettingCatalogTests {
         func advanced(_ group: SettingGroup) -> [SettingID] {
             SettingCatalog.settings(in: group, at: .game).filter { $0.quick == nil }.map(\.id)
         }
-        #expect(advanced(.picture) == [.upscaler, .windows, .filter, .dlss])
-        #expect(advanced(.mouse) == [.rawMouse, .rawMouseScale])
-        #expect(advanced(.performance) == [.tuning, .unifiedMemory, .avx, .gameMode, .frameLimit])
-        #expect(advanced(.oldGames) == [.emulateModeset, .largeAddressAware])
-        #expect(advanced(.diagnostics) == [.msync, .forceVsync, .lowLatency])
+        #expect(advanced(.picture) == [.windows, .filter])
+        #expect(advanced(.performance) == [.tuning, .avx, .gameMode])
+        #expect(advanced(.diagnostics) == [.dlss, .unifiedMemory, .rawMouse, .msync, .forceVsync])
+        #expect(SettingGroup.allCases == [.picture, .performance, .diagnostics])
     }
 
     /// A value other than the default for each setting, and a key it must reach.
@@ -40,22 +39,17 @@ struct SettingCatalogTests {
         (.renderer, .string("dxvk"), "LULLABY_RENDERER=dxvk"),
         (.retina, .bool(true), "LULLABY_RETINA=1"),
         (.metalfx, .string("2"), "DXMT_METALFX_SPATIAL_SWAPCHAIN=1"),
-        (.upscaler, .string("metalfx"), "SEVO_UPSCALER=metalfx"),
+        (.filter, .string("metalfx"), "SEVO_UPSCALER=metalfx"),
         (.fps, .bool(true), "MTL_HUD_ENABLED=1"),
         (.windows, .string("all"), "SEVO_RESIZABLE_WINDOWS=all"),
         (.filter, .string("nearest"), "SEVO_FINAL_FILTER=nearest"),
         (.dlss, .bool(true), "DXMT_ENABLE_NVEXT=1"),
-        (.rawMouse, .bool(true), "LULLABY_GCMOUSE=1"),
-        (.rawMouseScale, .string("0.5"), "LULLABY_GCMOUSE_SCALE=0.5"),
+        (.rawMouse, .bool(false), "LULLABY_GCMOUSE=0"),
         (.tuning, .string("experimental"), "SEVO_WAIT_SPIN=5200"),
-        (.unifiedMemory, .bool(true), "SEVO_FORCE_UMA=1"),
+        (.unifiedMemory, .bool(false), "SEVO_FORCE_UMA=0"),
         (.avx, .bool(true), "ROSETTA_ADVERTISE_AVX=1"),
         (.gameMode, .bool(false), "LULLABY_GAME_MODE=0"),
-        (.frameLimit, .string("60"), "SEVO_FPS_LIMIT=60"),
-        (.emulateModeset, .bool(true), "LULLABY_EMULATE_MODESET=1"),
-        (.largeAddressAware, .bool(true), "SEVO_LARGE_ADDRESS_AWARE=1"),
         (.forceVsync, .bool(true), "LULLABY_FORCE_VSYNC=1"),
-        (.lowLatency, .bool(true), "LULLABY_LOW_LATENCY=1"),
     ]
 
     @Test("every game setting reaches its key, and inherit writes none")
@@ -91,10 +85,10 @@ struct SettingCatalogTests {
         global.fps = true
         var game = ConfigValues()
         game.fps = true
-        game.largeAddressAware = false
+        game.gameMode = false
         let lines = ConfigMaterializer.gameLines(appID: 1, stack: ConfigStack(global: global, game: game))
         #expect(lines.contains("MTL_HUD_ENABLED=1"))
-        #expect(lines.contains("SEVO_LARGE_ADDRESS_AWARE=0"))
+        #expect(lines.contains("LULLABY_GAME_MODE=0"))
         #expect(!lines.contains { $0.hasPrefix("ROSETTA_ADVERTISE_AVX=") }, "an inherited switch is not written")
 
         let bottle = ConfigMaterializer.bottleLines(global: global, msync: true, cli: "/x/sevo")
@@ -104,8 +98,64 @@ struct SettingCatalogTests {
         #expect(bottle.contains("SEVO_CLI=/x/sevo"))
         #expect(bottle.contains("LULLABY_MSYNC=1"))
         let env = ConfigMaterializer.effectiveEnvironment(bottle: bottle, program: lines)
-        #expect(env["SEVO_LARGE_ADDRESS_AWARE"] == "0")
+        #expect(env["LULLABY_GAME_MODE"] == "0")
         #expect(env["MTL_HUD_ENABLED"] == "1")
+    }
+
+    @Test("what is automatic is the same for every game, whatever an older version stored")
+    func automaticSettings() throws {
+        var global = ConfigValues()
+        global.frameLimit = .f60
+        global.mouse = .linear
+        global.rawMouseScale = .p100
+        global.largeAddressAware = false
+        global.lowLatency = false
+        global.emulateModeset = true
+        var game = global
+        game.name = "x"
+        let bottle = ConfigMaterializer.bottleLines(global: global, msync: true, cli: nil)
+        let program = ConfigMaterializer.gameLines(appID: 1, stack: ConfigStack(global: global, game: game))
+        let env = ConfigMaterializer.effectiveEnvironment(bottle: bottle, program: program)
+        #expect(env["SEVO_FPS_LIMIT"] == "0", "no frame limit")
+        #expect(env["SEVO_LINEAR_MOUSE"] == "0")
+        #expect(env["LULLABY_GCMOUSE_SCALE"] == "0.3")
+        #expect(env["SEVO_LARGE_ADDRESS_AWARE"] == "1", "4 GB for 32-bit games")
+        #expect(env["LULLABY_LOW_LATENCY"] == "1", "Reflex is always answered")
+        #expect(env["LULLABY_EMULATE_MODESET"] == nil, "compat_run.sh decides by the program's bitness")
+        #expect(!program.contains { $0.hasPrefix("SEVO_FPS_LIMIT") || $0.hasPrefix("LULLABY_LOW_LATENCY") })
+    }
+
+    @Test("defaults: GameController mouse and unified memory on; Reflex and 4 GB are no choices")
+    func automaticDefaults() {
+        let stack = ConfigStack(global: .empty)
+        #expect(stack[\.rawMouse] && stack[\.unifiedMemory])
+        let env = ConfigMaterializer.effectiveEnvironment(
+            bottle: ConfigMaterializer.bottleLines(global: .empty, msync: true, cli: nil), program: [])
+        #expect(env["LULLABY_GCMOUSE"] == "1" && env["SEVO_FORCE_UMA"] == "1")
+        #expect(env["SEVO_UPSCALER"] == "off", "the final filter stays off until chosen")
+    }
+
+    @Test("the final filter is one row over the upscaler and the filter")
+    func finalFilterRow() throws {
+        let setting = SettingCatalog.setting(.filter)
+        #expect(setting.group == .picture)
+        var values = ConfigValues()
+        #expect(setting.read(values) == nil)
+        for (choice, upscaler, filter): (String, String, String?) in [
+            ("off", "off", nil), ("nearest", "lanczos", "nearest"), ("bilinear", "lanczos", "bilinear"),
+            ("lanczos", "lanczos", "lanczos"), ("metalfx", "metalfx", nil),
+        ] {
+            try setting.write(&values, .string(choice))
+            #expect(values.upscaler?.rawValue == upscaler, "\(choice)")
+            #expect(values.filter?.rawValue == filter, "\(choice)")
+            #expect(setting.read(values) == .string(choice), "\(choice) reads back")
+        }
+        try setting.write(&values, nil)
+        #expect(values == .empty)
+        #expect(throws: SettingsError.self) { try setting.write(&values, .string("anime4k")) }
+        if case let .choice(choices) = setting.control {
+            #expect(choices.map { $0.label.en } == ["Off", "Nearest", "Bilinear", "Lanczos", "MetalFX Spatial"])
+        }
     }
 
     @Test("the card follows DLSS: AMD by default, NVIDIA with DLSS, in every layer")

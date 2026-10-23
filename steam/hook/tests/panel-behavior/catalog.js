@@ -194,7 +194,7 @@ for (const lang of ['en', 'uk', 'ru']) {
   overlay.props.onKeyDown({ key: 'Escape', stopPropagation() {}, preventDefault() {} });
   t.ok(JSON.stringify(ctx.calls) === JSON.stringify([['reset'], ['advanced', false], ['advanced', false]]),
     `Reset game settings, Done and Escape (${JSON.stringify(ctx.calls)})`);
-  t.ok(groups.includes(catalog.groups.find(g => g.id === 'oldGames').title.uk), 'old games have a group of their own');
+  t.ok(catalog.groups.map(g => g.id).join() === 'picture,performance,diagnostics', 'three groups: what is automatic has no row');
   t.ok(!walk(overlay).some(n => n.type === 'textarea' || n.type === 'input'), 'no variable or DLL editors');
   t.ok(foreign(tree, 'uk', ['peak.exe', 'PEAK', 'Lullaby']).length === 0,
     'the dialog speaks only the catalog\'s words');

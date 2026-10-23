@@ -42,18 +42,18 @@ struct SettingsCLITests {
         #expect(state["engine"] == .string("dormison-b1"))
         #expect(state["values"]?.object?["renderer"]?.object?["inheritedLabel"]?.object?["en"] == .string("DXMT"))
 
-        answer = try object(cli.panel(#"{"op":"set","app":3527290,"id":"upscaler","value":"metalfx"}"#).text)
+        answer = try object(cli.panel(#"{"op":"set","app":3527290,"id":"filter","value":"metalfx"}"#).text)
         state = try #require(answer["state"]?.object)
         #expect(state["status"] == .string("nextLaunch"))
         #expect(state["exes"] == .array([.string("peak.exe")]))
-        let upscaler = try #require(state["values"]?.object?["upscaler"]?.object)
+        let upscaler = try #require(state["values"]?.object?["filter"]?.object)
         #expect(upscaler["own"] == .string("metalfx"))
         #expect(upscaler["inherited"] == .string("off"))
         #expect(upscaler["effective"] == .string("metalfx"))
         #expect(fixture.read(".sevo/apps/peak.exe.env", in: 3527290)?.contains("SEVO_UPSCALER=metalfx") == true)
 
-        answer = try object(cli.panel(#"{"op":"set","app":3527290,"id":"upscaler","value":null}"#).text)
-        #expect(answer["state"]?.object?["values"]?.object?["upscaler"]?.object?["own"] == .null)
+        answer = try object(cli.panel(#"{"op":"set","app":3527290,"id":"filter","value":null}"#).text)
+        #expect(answer["state"]?.object?["values"]?.object?["filter"]?.object?["own"] == .null)
 
         answer = try object(cli.panel(#"{"op":"set","app":3527290,"id":"fps","value":"loud"}"#).text)
         #expect(answer["ok"] == .bool(false))
@@ -118,7 +118,7 @@ struct SettingsCLITests {
             #expect(result.status == 0, "\(call): \(result.error)")
         }
         let game = fixture.service.store.game(227300)
-        #expect(game.upscaler == .metalfx)
+        #expect(game.upscaler == .lanczos, "the filter picked last replaces MetalFX Spatial")
         #expect(game.filter == .bilinear)
         #expect(game.fps == nil, "the panel's counter is the Metal HUD, not Dormison's")
         #expect(game.windows == .window)

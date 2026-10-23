@@ -45,12 +45,10 @@ public enum ConfigMaterializer {
         var lines = [
             "# Lullaby settings for every game. A game's own values: .sevo/apps/<program>.env",
             "SEVO_RESIZABLE_WINDOWS=\(stack[\.windows].rawValue)",
-            "SEVO_FPS_LIMIT=\(stack[\.frameLimit].envValue)",
             "SEVO_UPSCALER=\(stack[\.upscaler].rawValue)",
             "SEVO_FINAL_FILTER=\(stack[\.filter].rawValue)",
-            "SEVO_LINEAR_MOUSE=\(stack[\.mouse] == .linear ? "1" : "0")",
-            "LULLABY_GCMOUSE_SCALE=\(stack[\.rawMouseScale].rawValue)",
         ]
+        lines += fixedLines
         lines += switches.map { "\($0.key)=\(stack[$0.path] ? "1" : "0")" }
         lines += engineCounterOff
         lines += tuningLines(stack)
@@ -79,13 +77,8 @@ public enum ConfigMaterializer {
         var lines = ["# app \(appID)" + (game.name.map { " \($0)" } ?? "")]
         if let renderer = game.renderer { lines.append("LULLABY_RENDERER=\(renderer.rawValue)") }
         if let windows = game.windows { lines.append("SEVO_RESIZABLE_WINDOWS=\(windows.rawValue)") }
-        if let limit = game.frameLimit { lines.append("SEVO_FPS_LIMIT=\(limit.envValue)") }
         if let upscaler = game.upscaler { lines.append("SEVO_UPSCALER=\(upscaler.rawValue)") }
         if let filter = game.filter { lines.append("SEVO_FINAL_FILTER=\(filter.rawValue)") }
-        // The system curve over a linear shared value needs the key written: bottle.env
-        // is read first and an absent key leaves its value standing.
-        if let mouse = game.mouse { lines.append("SEVO_LINEAR_MOUSE=\(mouse == .linear ? "1" : "0")") }
-        if let scale = game.rawMouseScale { lines.append("LULLABY_GCMOUSE_SCALE=\(scale.rawValue)") }
         lines += switches.compactMap { key, path in game[keyPath: path].map { "\(key)=\($0 ? "1" : "0")" } }
         if game.tuning != nil { lines += tuningLines(stack) }
         if game.metalfx != nil {
@@ -107,13 +100,26 @@ public enum ConfigMaterializer {
     /// Switches that reach a game as one variable each.
     static let switches: [(key: String, path: KeyPath<ConfigValues, Bool?> & Sendable)] = [
         ("MTL_HUD_ENABLED", \.fps),
-        ("SEVO_LARGE_ADDRESS_AWARE", \.largeAddressAware),
         ("ROSETTA_ADVERTISE_AVX", \.avx),
         ("LULLABY_GAME_MODE", \.gameMode),
         ("SEVO_FORCE_UMA", \.unifiedMemory),
         ("LULLABY_FORCE_VSYNC", \.forceVsync),
         ("LULLABY_GCMOUSE", \.rawMouse),
-        ("LULLABY_LOW_LATENCY", \.lowLatency),
+    ]
+
+    /// What is no setting any more: it is the same for every game and for every level, so
+    /// a value an older version stored for it (the fields stay in ConfigValues so old files
+    /// decode) changes nothing. No frame limit (the game's and the screen's own pacing), the
+    /// engine's pointer curve off (the raw GameController path is the mouse's), its scale the
+    /// calibrated 30 %, 4 GB for every 32-bit game (the engine applies it to 32-bit programs
+    /// only), and NVIDIA Reflex answered by Lullaby for D3DMetal games that use it.
+    /// Display mode emulation is not here: compat_run.sh turns it on for a 32-bit program.
+    static let fixedLines = [
+        "SEVO_FPS_LIMIT=0",
+        "SEVO_LINEAR_MOUSE=0",
+        "LULLABY_GCMOUSE_SCALE=\(RawMouseScale.p30.rawValue)",
+        "SEVO_LARGE_ADDRESS_AWARE=1",
+        "LULLABY_LOW_LATENCY=1",
     ]
 
     /// Dormison's own counter and graph stay off: the panel's counter is the Metal HUD
@@ -124,7 +130,6 @@ public enum ConfigMaterializer {
     /// the DLL overrides DLSS needs next to the renderer's.
     static let markers: [(key: String, path: KeyPath<ConfigValues, Bool?> & Sendable)] = [
         ("LULLABY_RETINA", \.retina),
-        ("LULLABY_EMULATE_MODESET", \.emulateModeset),
         ("LULLABY_DLSS", \.dlss),
     ]
 

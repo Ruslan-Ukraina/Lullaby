@@ -77,6 +77,34 @@ public enum FinalFilter: String, Codable, CaseIterable, Sendable {
     case nearest, bilinear, lanczos
 }
 
+/// The picture's last step as the player sees it (SettingCatalog.pictureFilterSetting): nothing
+/// (macOS stretches the picture), a final filter of Dormison's presenter, or MetalFX Spatial.
+public enum PictureFilter: String, Codable, CaseIterable, Sendable {
+    case off, nearest, bilinear, lanczos, metalfx
+
+    /// The pair of stored values a level holds; nil when neither is set.
+    init?(upscaler: UpscalerChoice?, filter: FinalFilter?) {
+        switch (upscaler, filter) {
+        case (nil, _): return nil
+        case (.off?, _): self = .off
+        case (.metalfx?, _): self = .metalfx
+        case let (.lanczos?, filter): self = filter.flatMap { PictureFilter(rawValue: $0.rawValue) } ?? .lanczos
+        }
+    }
+
+    /// Dormison's `Upscaler` for this choice.
+    public var upscaler: UpscalerChoice {
+        switch self {
+        case .off: .off
+        case .metalfx: .metalfx
+        case .nearest, .bilinear, .lanczos: .lanczos
+        }
+    }
+
+    /// Dormison's `FinalFilter` for this choice; nil leaves the default (Lanczos).
+    public var finalFilter: FinalFilter? { FinalFilter(rawValue: rawValue) }
+}
+
 /// What draws Direct3D. D3DMetal (Direct3D 11 and 12) is offered once the player has
 /// added Apple's Game Porting Toolkit (D3DMetalStore).
 public enum RendererChoice: String, Codable, CaseIterable, Sendable {
@@ -228,11 +256,11 @@ public enum ConfigDefaults {
         v.emulateModeset = false
         v.dlss = false
         v.mouse = .system
-        v.rawMouse = false
+        v.rawMouse = true
         v.rawMouseScale = .p30
         v.tuning = .standard
-        v.unifiedMemory = false
-        v.largeAddressAware = false
+        v.unifiedMemory = true
+        v.largeAddressAware = true
         v.avx = false
         v.gameMode = true
         v.frameLimit = .off

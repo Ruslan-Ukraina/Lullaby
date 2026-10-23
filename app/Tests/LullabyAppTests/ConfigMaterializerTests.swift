@@ -137,7 +137,7 @@ struct ConfigMaterializerTests {
             try fixture.write("# written by Lullaby; edits are overwritten\n", ".sevo/bottle.env", in: id)
         }
         try FileManager.default.createDirectory(at: fixture.prefix(30), withIntermediateDirectories: true)
-        try fixture.service.set("upscaler", .string("lanczos"), appID: nil)
+        try fixture.service.set("filter", .string("lanczos"), appID: nil)
         #expect(fixture.read(".sevo/bottle.env", in: 10)?.contains("SEVO_UPSCALER=lanczos") == true)
         #expect(fixture.read(".sevo/bottle.env", in: 20)?.contains("SEVO_UPSCALER=lanczos") == true)
         #expect(fixture.read(".sevo/bottle.env", in: 30) == nil, "a prefix Lullaby never ran is not touched")
@@ -202,7 +202,7 @@ struct ConfigMaterializerTests {
         #expect(fixture.service.store.game(8).renderer == nil)
         try fixture.service.set("retina", .bool(false), appID: 8)
         #expect(fixture.service.store.game(8).retina == false)
-        try fixture.service.set("upscaler", .string("off"), appID: nil)
+        try fixture.service.set("filter", .string("off"), appID: nil)
         #expect(fixture.service.store.global().upscaler == nil, "Lullaby's default")
     }
 

@@ -59,9 +59,7 @@ public enum GroupTitles {
     public static func title(_ group: SettingGroup) -> L10n {
         switch group {
         case .picture: L10n("Graphics", uk: "Графіка", ru: "Графика")
-        case .mouse: L10n("Mouse", uk: "Миша", ru: "Мышь")
         case .performance: L10n("Performance", uk: "Продуктивність", ru: "Производительность")
-        case .oldGames: L10n("Old games", uk: "Старі ігри", ru: "Старые игры")
         case .diagnostics: L10n("Diagnostics", uk: "Діагностика", ru: "Диагностика")
         }
     }
@@ -171,32 +169,6 @@ extension SettingCopy {
                            uk: "Зберігається в реєстрі Wine гри під час запуску.",
                            ru: "Сохраняется в реестре Wine игры при запуске.")))
 
-    static let upscaler = SettingCopy(
-        L10n("Upscaler", uk: "Апскейлер", ru: "Апскейлер"),
-        caption: L10n("Enlarges a picture the game draws smaller than the window.", uk: "Збільшує картинку, яку гра малює меншою за вікно.",
-                      ru: "Увеличивает картинку, которую игра рисует меньше окна."),
-        help: SettingHelp(
-            L10n("Two steps between the game and the window: the upscaler, then the final filter.",
-                 uk: "Два кроки між грою та вікном: апскейлер, потім фінальний фільтр.",
-                 ru: "Два шага между игрой и окном: апскейлер, потом финальный фильтр."),
-            entries: [
-                HelpEntry(Words.off, L10n(
-                    "macOS stretches the picture softly. A smaller picture keeps black borders.",
-                    uk: "macOS м’яко розтягує картинку. Менша картинка лишається з чорними смугами.",
-                    ru: "macOS мягко растягивает картинку. Меньшая картинка остаётся с чёрными полосами.")),
-                HelpEntry(L10n("Final filter only", uk: "Лише фінальний фільтр", ru: "Только финальный фильтр"), L10n(
-                    "No upscaler: the final filter just fits the picture to the window.",
-                    uk: "Без апскейлера: фінальний фільтр лише підганяє картинку під вікно.",
-                    ru: "Без апскейлера: финальный фильтр просто подгоняет картинку под окно.")),
-                HelpEntry(.same("MetalFX Spatial"), L10n(
-                    "For 3D games that render below the screen's resolution.",
-                    uk: "Для 3D-ігор, які рендеряться в роздільності нижчій за екранну.",
-                    ru: "Для 3D-игр, которые рендерятся в разрешении ниже экранного.")),
-            ],
-            footnote: L10n("View › Upscaler in the game's menu changes it while you play. Lullaby remembers your choice.",
-                           uk: "View › Upscaler у меню гри змінює його під час гри. Lullaby запам’ятовує ваш вибір.",
-                           ru: "View › Upscaler в меню игры меняет его во время игры. Lullaby запоминает ваш выбор.")))
-
     static let metalfx = SettingCopy(
         L10n("MetalFX upscaling", uk: "Апскейл MetalFX", ru: "Апскейл MetalFX"),
         caption: L10n("Samples from the resolution the game is set to.",
@@ -269,35 +241,36 @@ extension SettingCopy {
 
     static let filter = SettingCopy(
         L10n("Final filter", uk: "Фінальний фільтр", ru: "Финальный фильтр"),
+        caption: L10n("How a picture smaller than the window is fitted to it.",
+                      uk: "Як картинку, меншу за вікно, підганяють під нього.",
+                      ru: "Как картинку, меньшую окна, подгоняют под него."),
         help: SettingHelp(
-            L10n("Fits the upscaler's picture to the exact window size. Works only while an upscaler is on.",
-                 uk: "Підганяє картинку апскейлера під точний розмір вікна. Працює, лише коли апскейлер увімкнено.",
-                 ru: "Подгоняет картинку апскейлера под точный размер окна. Работает, только когда апскейлер включён."),
+            L10n("The last step between the game and the window. Off leaves it to macOS; the others run Lullaby's own presenter.",
+                 uk: "Останній крок між грою та вікном. «Вимк.» залишає це macOS; решта запускають власний презентер.",
+                 ru: "Последний шаг между игрой и окном. «Выкл.» оставляет это macOS; остальные запускают собственный презентер."),
             entries: [
-                HelpEntry(L10n("Nearest", uk: "Найближчий", ru: "Ближайший"), L10n(
+                HelpEntry(Words.off, L10n(
+                    "macOS stretches the picture softly. A smaller picture keeps black borders.",
+                    uk: "macOS м’яко розтягує картинку. Менша картинка лишається з чорними смугами.",
+                    ru: "macOS мягко растягивает картинку. Меньшая картинка остаётся с чёрными полосами.")),
+                HelpEntry(.same("Nearest"), L10n(
                     "Copies pixels. Crisp at whole-number scales, uneven at others.",
                     uk: "Копіює пікселі. Чітко при цілому масштабі, нерівно при інших.",
                     ru: "Копирует пиксели. Чётко при целом масштабе, неровно при остальных.")),
-                HelpEntry(L10n("Bilinear", uk: "Білінійний", ru: "Билинейный"), L10n(
+                HelpEntry(.same("Bilinear"), L10n(
                     "Blends neighbouring pixels. The softest option.", uk: "Змішує сусідні пікселі. Найм’якший варіант.",
                     ru: "Смешивает соседние пиксели. Самый мягкий вариант.")),
                 HelpEntry(.same("Lanczos"), L10n(
                     "Sharp resampling that works well at fractional scales.", uk: "Чітке перемасштабування, добре для дробових масштабів.",
                     ru: "Чёткое масштабирование, хорошо подходит для дробных масштабов.")),
-            ]))
-
-    static let emulateModeset = SettingCopy(
-        L10n("Display mode emulation", uk: "Емуляція зміни роздільності", ru: "Эмуляция смены разрешения"),
-        caption: L10n("When a game changes the screen resolution, it gets a window instead.",
-                      uk: "Коли гра змінює роздільність екрана, вона отримує натомість вікно.",
-                      ru: "Когда игра меняет разрешение экрана, она получает вместо этого окно."),
-        help: SettingHelp(
-            L10n("Older games ask Windows to switch the display to 800 × 600 or 1024 × 768. A Mac screen has no such modes. With this on, the game is told the switch happened and its picture goes into a window.",
-                 uk: "Старі ігри просять Windows перемкнути дисплей на 800 × 600 або 1024 × 768. У екрана Mac таких режимів немає. З цією опцією гра отримує відповідь, що режим змінено, а її картинка йде у вікно.",
-                 ru: "Старые игры просят Windows переключить дисплей на 800 × 600 или 1024 × 768. У экрана Mac таких режимов нет. С этой опцией игре отвечают, что режим сменился, а её картинка идёт в окно."),
-            footnote: L10n("Saved to the game's Wine registry at launch.",
-                           uk: "Зберігається в реєстрі Wine гри під час запуску.",
-                           ru: "Сохраняется в реестре Wine игры при запуске.")))
+                HelpEntry(.same("MetalFX Spatial"), L10n(
+                    "Apple's upscaler, for 3D games that render below the screen's resolution.",
+                    uk: "Апскейлер Apple, для 3D-ігор, які рендеряться в роздільності нижчій за екранну.",
+                    ru: "Апскейлер Apple, для 3D-игр, которые рендерятся в разрешении ниже экранного.")),
+            ],
+            footnote: L10n("View › Upscaler in the game's menu changes it while you play. Lullaby remembers your choice.",
+                           uk: "View › Upscaler у меню гри змінює його під час гри. Lullaby запам’ятовує ваш вибір.",
+                           ru: "View › Upscaler в меню игры меняет его во время игры. Lullaby запоминает ваш выбор.")))
 
     static let dlss = SettingCopy(
         L10n("DLSS MetalFX", uk: "DLSS MetalFX", ru: "DLSS MetalFX"),
@@ -329,40 +302,10 @@ extension SettingCopy {
                  uk: "Читає мишу через Apple GameController і дає грі сирий рух, без кривої курсора й без очікування екрана: власний шлях рушія дає близько 120 звітів на секунду, цей — близько 500 (виміряно). Рух у сирих відліках пристрою, у кілька разів більших, ніж у звичайного шляху, тому чутливість нижче його масштабує.",
                  ru: "Читает мышь через Apple GameController и отдаёт игре сырое движение, без кривой курсора и без ожидания экрана: собственный путь движка даёт около 120 отчётов в секунду, этот — около 500 (измерено). Движение в сырых отсчётах устройства, в несколько раз крупнее, чем у обычного пути, поэтому чувствительность ниже его масштабирует."),
             entries: [
-                HelpEntry(L10n("Experiment", uk: "Експеримент", ru: "Эксперимент"), L10n(
-                    "Not enough games have been tried. If a game stutters or freezes, turn it off for that game.",
-                    uk: "Перевірено мало ігор. Якщо гра смикається або зависає, вимкніть для цієї гри.",
-                    ru: "Проверено мало игр. Если игра дёргается или зависает, выключите для этой игры.")),
-            ]))
-
-    static let rawMouseScale = SettingCopy(
-        L10n("Raw mouse sensitivity", uk: "Чутливість сирої миші", ru: "Чувствительность сырой мыши"),
-        caption: L10n("How much of the raw movement the game gets.", uk: "Яка частка сирого руху доходить до гри.",
-                      ru: "Какая доля сырого движения доходит до игры."),
-        help: SettingHelp(
-            L10n("Only for the raw mouse. 30 % matched the usual feel on one mouse in one game; it depends on the mouse's resolution (DPI) and on the game's own sensitivity slider, so adjust it once.",
-                 uk: "Лише для сирої миші. 30 % збіглося зі звичним відчуттям на одній миші в одній грі; значення залежить від роздільності миші (DPI) і від повзунка чутливості самої гри, тож налаштуйте один раз.",
-                 ru: "Только для сырой мыши. 30 % совпало с привычным ощущением на одной мыши в одной игре; значение зависит от разрешения мыши (DPI) и от ползунка чувствительности самой игры, так что настройте один раз."),
-            entries: []))
-
-    static let mouse = SettingCopy(
-        L10n("Mouse movement", uk: "Рух миші", ru: "Движение мыши"),
-        caption: L10n("What the game receives when it captures the pointer for mouse-look.",
-                      uk: "Що отримує гра, коли захоплює курсор для огляду мишею.",
-                      ru: "Что получает игра, когда захватывает курсор для обзора мышью."),
-        help: SettingHelp(
-            L10n("Applies only while a game has captured the pointer, as a first-person camera does. Menus and the desktop keep the Mac's normal pointer.",
-                 uk: "Діє лише тоді, коли гра захопила курсор, як камера від першої особи. У меню й на робочому столі курсор лишається звичайним, як у Mac.",
-                 ru: "Действует только когда игра захватила курсор, как камера от первого лица. В меню и на рабочем столе курсор остаётся обычным, как в Mac."),
-            entries: [
-                HelpEntry(L10n("macOS acceleration", uk: "Прискорення macOS", ru: "Ускорение macOS"), L10n(
-                    "The usual pointer curve: a fast flick goes farther than a slow movement of the same length.",
-                    uk: "Звичайна крива курсора: швидкий рух відводить далі, ніж повільний такої ж довжини.",
-                    ru: "Обычная кривая курсора: быстрый рывок уводит дальше, чем медленное движение той же длины.")),
-                HelpEntry(L10n("Linear (no acceleration)", uk: "Лінійний (без прискорення)", ru: "Линейное (без ускорения)"), L10n(
-                    "The same hand movement turns the camera the same amount at any speed. What shooters expect.",
-                    uk: "Однаковий рух руки повертає камеру однаково за будь-якої швидкості. Саме цього чекають шутери.",
-                    ru: "Одинаковое движение руки поворачивает камеру одинаково при любой скорости. Именно этого ждут шутеры.")),
+                HelpEntry(L10n("If a game misbehaves", uk: "Якщо гра поводиться дивно", ru: "Если игра ведёт себя странно"), L10n(
+                    "On for every game. If a game stutters, freezes or the mouse feels wrong, turn it off for that game: the engine's own mouse path takes over.",
+                    uk: "Увімкнено для всіх ігор. Якщо гра смикається, зависає або миша поводиться дивно, вимкніть для цієї гри: працюватиме власний шлях рушія.",
+                    ru: "Включено для всех игр. Если игра дёргается, зависает или мышь ведёт себя странно, выключите для этой игры: заработает собственный путь движка.")),
             ]))
 
     static let tuning = SettingCopy(
@@ -406,22 +349,6 @@ extension SettingCopy {
                     ru: "Неправильные текстуры или игра останавливается при запуске: выключите для этой игры.")),
             ]))
 
-    static let largeAddressAware = SettingCopy(
-        L10n("4 GB for 32-bit games", uk: "4 ГБ для 32-бітних ігор", ru: "4 ГБ для 32-битных игр"),
-        caption: L10n("A 32-bit game can use 4 GB where Windows would give it 2.",
-                      uk: "32-бітна гра може використати 4 ГБ замість 2 у Windows.",
-                      ru: "32-битная игра может использовать 4 ГБ вместо 2 в Windows."),
-        help: SettingHelp(
-            L10n("32-bit games with mods or heavy textures run out of 2 GB and crash. With this on, every 32-bit game gets the full 4 GB.",
-                 uk: "32-бітні ігри з модами або важкими текстурами вичерпують 2 ГБ і вилітають. З цією опцією кожна 32-бітна гра отримує всі 4 ГБ.",
-                 ru: "32-битные игры с модами или тяжёлыми текстурами исчерпывают 2 ГБ и вылетают. С этой опцией каждая 32-битная игра получает все 4 ГБ."),
-            entries: [
-                HelpEntry(L10n("If a game misbehaves", uk: "Якщо гра поводиться дивно", ru: "Если игра ведёт себя странно"), L10n(
-                    "A few old games crash above 2 GB: turn it off for that game.",
-                    uk: "Кілька старих ігор вилітають вище 2 ГБ: вимкніть для цієї гри.",
-                    ru: "Несколько старых игр вылетают выше 2 ГБ: выключите для этой игры.")),
-            ]))
-
     static let avx = SettingCopy(
         L10n("Report AVX to games", uk: "Повідомляти іграм про AVX", ru: "Сообщать играм об AVX"),
         caption: L10n("Games that check for AVX at launch will find it.", uk: "Ігри, які перевіряють AVX під час запуску, його знайдуть.",
@@ -447,16 +374,6 @@ extension SettingCopy {
                  uk: "На весь екран macOS вмикає для гри ігровий режим: процесор і відеокарта дістаються їй першою, а програми у фоні притримуються. Під час стріму чи запису це гальмує OBS, VTuber-модель тощо. Вимкнено — пакет гри відмовляється від ігрового режиму. Діє з наступного запуску.",
                  ru: "На весь экран macOS включает для игры игровой режим: процессор и видеокарта достаются ей первой, а программы в фоне придерживаются. Во время стрима или записи это тормозит OBS, VTuber-модель и т. п. Выключено — пакет игры отказывается от игрового режима. Действует со следующего запуска.")))
 
-    static let frameLimit = SettingCopy(
-        L10n("Frame rate limit", uk: "Обмеження FPS", ru: "Ограничение FPS"),
-        caption: L10n("Frames on the screen per second at most. Leaves the GPU room for streaming.",
-                      uk: "Не більше стільки кадрів на екрані за секунду. Лишає відеокарті запас для стріму.",
-                      ru: "Не больше стольких кадров на экране в секунду. Оставляет видеокарте запас для стрима."),
-        help: SettingHelp(
-            L10n("Dormison holds every frame until its turn. The limit counts frames on the screen: with frame generation the game itself draws half of them. A game that always reaches its limit runs evenly, and while you stream the GPU keeps room for OBS and a VTuber model, so frames stop arriving late. Pick a little under what the game holds where it is heaviest.",
-                 uk: "Dormison притримує кожен кадр до його черги. Обмеження рахує кадри на екрані: з генерацією кадрів гра сама малює половину. Гра, що завжди сягає обмеження, йде рівно, а під час стріму відеокарта зберігає запас для OBS і VTuber-моделі, тож кадри перестають запізнюватися. Обирайте трохи нижче за те, що гра тримає там, де найважче.",
-                 ru: "Dormison придерживает каждый кадр до его очереди. Ограничение считает кадры на экране: с генерацией кадров игра сама рисует половину. Игра, которая всегда достигает ограничения, идёт ровно, а во время стрима видеокарта сохраняет запас для OBS и VTuber-модели, так что кадры перестают опаздывать. Выбирайте чуть ниже того, что игра держит там, где тяжелее всего.")))
-
     static let forceVsync = SettingCopy(
         L10n("No frame tearing", uk: "Без розривів кадру", ru: "Без разрывов кадра"),
         caption: L10n("Keeps D3DMetal's picture in step with the display, even with frame generation on.",
@@ -466,16 +383,6 @@ extension SettingCopy {
             L10n("Games with frame generation turn V-Sync off, and the picture then tears. On, every frame waits for the display's refresh. D3DMetal only.",
                  uk: "Ігри з генерацією кадрів вимикають V-Sync, і картинка тоді рветься. Увімкнено — кожен кадр чекає оновлення екрана. Лише D3DMetal.",
                  ru: "Игры с генерацией кадров выключают V-Sync, и картинка тогда рвётся. Включено — каждый кадр ждёт обновления экрана. Только D3DMetal.")))
-
-    static let lowLatency = SettingCopy(
-        L10n("NVIDIA Reflex", uk: "NVIDIA Reflex", ru: "NVIDIA Reflex"),
-        caption: L10n("Makes the game's Reflex option work: input reaches the screen sooner.",
-                      uk: "Вмикає справжню роботу пункту Reflex у грі: введення швидше доходить до екрана.",
-                      ru: "Включает настоящую работу пункта Reflex в игре: ввод быстрее доходит до экрана."),
-        help: SettingHelp(
-            L10n("D3DMetal answers a game's NVIDIA Reflex calls and does nothing. On, Lullaby answers them: each frame is held just long enough that the GPU is ready for it on arrival, so it starts on fresh input with no frame queued in front of it (the idea of Korthos Software's low_latency_layer, paced by Lullaby). Turn Reflex on in the game too. D3DMetal with DLSS on only; the log is lullaby-nvapi.log beside the game's Wine log.",
-                 uk: "D3DMetal відповідає на виклики NVIDIA Reflex у грі й нічого не робить. Увімкнено — відповідає Lullaby: кожен кадр затримується рівно настільки, щоб GPU був готовий до нього, тож гра починає зі свіжим введенням і без черги кадрів (ідея low_latency_layer від Korthos Software, темп — власний у Lullaby). Увімкніть Reflex і в самій грі. Лише D3DMetal з увімкненим DLSS; журнал — lullaby-nvapi.log поруч із журналом Wine гри.",
-                 ru: "D3DMetal отвечает на вызовы NVIDIA Reflex в игре и ничего не делает. Включено — отвечает Lullaby: каждый кадр задерживается ровно настолько, чтобы GPU был готов к нему, поэтому игра начинает со свежим вводом и без очереди кадров (идея low_latency_layer от Korthos Software, темп — собственный у Lullaby). Включите Reflex и в самой игре. Только D3DMetal с включённым DLSS; журнал — lullaby-nvapi.log рядом с журналом Wine игры.")))
 
     static let msync = SettingCopy(
         .same("msync+"),

@@ -8,19 +8,17 @@
 import Foundation
 
 public enum SettingID: String, CaseIterable, Sendable, Codable {
-    case renderer, retina, metalfx, upscaler, fps
-    case windows, filter, dlss
-    case rawMouse, rawMouseScale
-    case tuning, unifiedMemory, avx, gameMode, frameLimit
-    case emulateModeset, largeAddressAware
-    case msync
-    case forceVsync, lowLatency
+    case renderer, retina, metalfx, fps
+    case windows, filter
+    case tuning, avx, gameMode
+    case dlss, unifiedMemory, rawMouse, msync, forceVsync
 }
 
-/// The groups the Advanced dialog shows, in order. `oldGames` holds what only older games
-/// need (Amendment 09.10, docs/ROADMAP.md §13).
+/// The groups the Advanced dialog shows, in order. What a game's bitness or age decides
+/// (4 GB for 32-bit games, display mode emulation) is no setting: compat_run.sh and the
+/// materializer set it (ConfigMaterializer.fixedLines).
 public enum SettingGroup: String, CaseIterable, Sendable, Codable {
-    case picture, mouse, performance, oldGames, diagnostics
+    case picture, performance, diagnostics
 }
 
 public enum SettingLevel: String, CaseIterable, Sendable, Codable {
@@ -180,14 +178,6 @@ public enum SettingCatalog {
                      (.x3, .same("3×"))],
             copy: .metalfx, carrier: .environment(["DXMT_METALFX_SPATIAL_SWAPCHAIN", "DXMT_CONFIG"]))
             .shown(with: [.dxmt]),
-        .choice(
-            .upscaler, in: .picture, key: \.upscaler,
-            labels: [
-                (.off, Words.off),
-                (.lanczos, L10n("Final filter only", uk: "Лише фінальний фільтр", ru: "Только финальный фильтр")),
-                (.metalfx, .same("MetalFX Spatial")),
-            ],
-            copy: .upscaler, carrier: .environment(["SEVO_UPSCALER"])),
         .flag(.fps, in: .picture, quick: 4, key: \.fps, copy: .fps, carrier: .environment(["MTL_HUD_ENABLED"])),
         .choice(
             .windows, in: .picture, key: \.windows,
@@ -199,48 +189,26 @@ public enum SettingCatalog {
                 (.all, L10n("Every window with a title bar", uk: "Кожне вікно із заголовком", ru: "Каждое окно с заголовком")),
             ],
             copy: .windows, carrier: .environment(["SEVO_RESIZABLE_WINDOWS"])),
-        .choice(
-            .filter, in: .picture, key: \.filter,
-            labels: [
-                (.nearest, L10n("Nearest", uk: "Найближчий", ru: "Ближайший")),
-                (.bilinear, L10n("Bilinear", uk: "Білінійний", ru: "Билинейный")),
-                (.lanczos, .same("Lanczos")),
-            ],
-            copy: .filter, carrier: .environment(["SEVO_FINAL_FILTER"])),
+        pictureFilterSetting,
         // The card a game is told of follows this switch (GPUIdentity.forGame).
-        .flag(.dlss, in: .picture, experimental: true, key: \.dlss, copy: .dlss,
+        .flag(.dlss, in: .diagnostics, experimental: true, key: \.dlss, copy: .dlss,
               carrier: .environment(["DXMT_ENABLE_NVEXT", "D3DM_ENABLE_METALFX", "LULLABY_DLSS"] + ConfigMaterializer.gpuKeys)),
-        // Replaces the old "Mouse movement" choice (macOS acceleration / linear): the engine's linear
-        // path stays what it was; this is the raw GameController path (winemac patch 0004).
-        .flag(.rawMouse, in: .mouse, experimental: true, key: \.rawMouse, copy: .rawMouse,
-              carrier: .environment(["LULLABY_GCMOUSE"])),
-        .choice(
-            .rawMouseScale, in: .mouse, key: \.rawMouseScale,
-            labels: RawMouseScale.allCases.map { ($0, L10n.same("\(Int((Double($0.rawValue) ?? 1) * 100)) %")) },
-            copy: .rawMouseScale, carrier: .environment(["LULLABY_GCMOUSE_SCALE"])),
         tuningSetting,
-        .flag(.unifiedMemory, in: .performance, experimental: true, key: \.unifiedMemory, copy: .unifiedMemory,
+        .flag(.unifiedMemory, in: .diagnostics, key: \.unifiedMemory, copy: .unifiedMemory,
               carrier: .environment(["SEVO_FORCE_UMA"])),
+        // Raw GameController input (winemac patches 0004 and 0005): on for every game; this switch
+        // is for finding out whether it is the cause of a problem.
+        .flag(.rawMouse, in: .diagnostics, key: \.rawMouse, copy: .rawMouse,
+              carrier: .environment(["LULLABY_GCMOUSE"])),
         .flag(.avx, in: .performance, key: \.avx, copy: .avx, carrier: .environment(["ROSETTA_ADVERTISE_AVX"])),
         // The run script writes the game's bundle (compat_run.sh): LSSupportsGameMode.
         .flag(.gameMode, in: .performance, key: \.gameMode, copy: .gameMode, carrier: .environment(["LULLABY_GAME_MODE"])),
-        .choice(
-            .frameLimit, in: .performance, key: \.frameLimit,
-            labels: [(.off, L10n("No limit", uk: "Без обмеження", ru: "Без ограничения"))]
-                + FrameLimit.allCases.filter { $0 != .off }.map { ($0, L10n.same($0.rawValue)) },
-            copy: .frameLimit, carrier: .environment(["SEVO_FPS_LIMIT"])),
-        .flag(.emulateModeset, in: .oldGames, key: \.emulateModeset, copy: .emulateModeset,
-              carrier: .registry(values: ["EmulateModeset"], marker: "LULLABY_EMULATE_MODESET")),
-        .flag(.largeAddressAware, in: .oldGames, key: \.largeAddressAware, copy: .largeAddressAware,
-              carrier: .environment(["SEVO_LARGE_ADDRESS_AWARE"])),
         .flag(.msync, in: .diagnostics, levels: [.game], key: \.msync, copy: .msync,
               carrier: .bottleOnly(["WINEMSYNC"])),
         // Lullaby's winemac.so fix 0003 (WineMetalLayer): the D3DMetal layer's sync, and the
         // present feed Lullaby's nvapi64.dll paces NVIDIA Reflex with (patches/inject/lby-rainbowdash-reflex/).
         .flag(.forceVsync, in: .diagnostics, experimental: true, key: \.forceVsync, copy: .forceVsync,
               carrier: .environment(["LULLABY_FORCE_VSYNC"])),
-        .flag(.lowLatency, in: .diagnostics, experimental: true, key: \.lowLatency, copy: .lowLatency,
-              carrier: .environment(["LULLABY_LOW_LATENCY"])),
     ]
 
     public static func setting(_ id: SettingID) -> Setting {
@@ -278,6 +246,39 @@ public enum SettingCatalog {
     }
 
     // MARK: Compound settings
+
+    /// The picture's last step: nothing, one of Dormison's final filters, or MetalFX Spatial. One
+    /// row over two stored values (`upscaler`, `filter`): the engine's filter acts only while its
+    /// presenter runs, which an upscaler other than "off" starts, so a filter is "upscaler lanczos
+    /// (the final filter alone) + that filter" and MetalFX Spatial is "upscaler metalfx".
+    static let pictureFilterChoices = [
+        SettingChoice(.string(PictureFilter.off.rawValue), Words.off),
+        SettingChoice(.string(PictureFilter.nearest.rawValue), .same("Nearest")),
+        SettingChoice(.string(PictureFilter.bilinear.rawValue), .same("Bilinear")),
+        SettingChoice(.string(PictureFilter.lanczos.rawValue), .same("Lanczos")),
+        SettingChoice(.string(PictureFilter.metalfx.rawValue), .same("MetalFX Spatial")),
+    ]
+
+    static let pictureFilterSetting = Setting(
+        id: .filter, group: .picture, levels: [.global, .game], quick: nil, experimental: false,
+        copy: .filter, control: .choice(pictureFilterChoices),
+        carrier: .environment(["SEVO_UPSCALER", "SEVO_FINAL_FILTER"]),
+        read: { values in PictureFilter(upscaler: values.upscaler, filter: values.filter).map { .string($0.rawValue) } },
+        write: { values, value in
+            guard let value, value != .null else {
+                values.upscaler = nil
+                values.filter = nil
+                return
+            }
+            guard let raw = value.string, let choice = PictureFilter(rawValue: raw.lowercased()) else {
+                throw SettingsError.invalidValue("filter", value.text)
+            }
+            values.upscaler = choice.upscaler
+            values.filter = choice.finalFilter
+        },
+        resolved: { stack in
+            .string((PictureFilter(upscaler: stack[\.upscaler], filter: stack[\.filter]) ?? .off).rawValue)
+        })
 
     static let tuningChoices = [
         SettingChoice(.string("standard"), L10n("Standard", uk: "Стандарт", ru: "Стандарт")),

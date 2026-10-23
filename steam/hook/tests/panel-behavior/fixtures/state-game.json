@@ -35,25 +35,14 @@
    },
    "own": null
   },
-  "emulateModeset": {
-   "effective": false,
-   "inherited": false,
+  "filter": {
+   "effective": "off",
+   "inherited": "off",
    "inheritedFrom": "defaults",
    "inheritedLabel": {
     "en": "Off",
     "ru": "Выкл.",
     "uk": "Вимк."
-   },
-   "own": null
-  },
-  "filter": {
-   "effective": "lanczos",
-   "inherited": "lanczos",
-   "inheritedFrom": "defaults",
-   "inheritedLabel": {
-    "en": "Lanczos",
-    "ru": "Lanczos",
-    "uk": "Lanczos"
    },
    "own": null
   },
@@ -79,17 +68,6 @@
    },
    "own": true
   },
-  "frameLimit": {
-   "effective": "off",
-   "inherited": "off",
-   "inheritedFrom": "defaults",
-   "inheritedLabel": {
-    "en": "No limit",
-    "ru": "Без ограничения",
-    "uk": "Без обмеження"
-   },
-   "own": null
-  },
   "gameMode": {
    "effective": true,
    "inherited": true,
@@ -98,28 +76,6 @@
     "en": "On",
     "ru": "Вкл.",
     "uk": "Увімк."
-   },
-   "own": null
-  },
-  "largeAddressAware": {
-   "effective": false,
-   "inherited": false,
-   "inheritedFrom": "defaults",
-   "inheritedLabel": {
-    "en": "Off",
-    "ru": "Выкл.",
-    "uk": "Вимк."
-   },
-   "own": null
-  },
-  "lowLatency": {
-   "effective": false,
-   "inherited": false,
-   "inheritedFrom": "defaults",
-   "inheritedLabel": {
-    "en": "Off",
-    "ru": "Выкл.",
-    "uk": "Вимк."
    },
    "own": null
   },
@@ -153,17 +109,6 @@
     "en": "Off",
     "ru": "Выкл.",
     "uk": "Вимк."
-   },
-   "own": null
-  },
-  "rawMouseScale": {
-   "effective": "0.3",
-   "inherited": "0.3",
-   "inheritedFrom": "defaults",
-   "inheritedLabel": {
-    "en": "30 %",
-    "ru": "30 %",
-    "uk": "30 %"
    },
    "own": null
   },
@@ -213,17 +158,6 @@
   "unifiedMemory": {
    "effective": false,
    "inherited": false,
-   "inheritedFrom": "defaults",
-   "inheritedLabel": {
-    "en": "Off",
-    "ru": "Выкл.",
-    "uk": "Вимк."
-   },
-   "own": null
-  },
-  "upscaler": {
-   "effective": "off",
-   "inherited": "off",
    "inheritedFrom": "defaults",
    "inheritedLabel": {
     "en": "Off",

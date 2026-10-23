@@ -181,6 +181,15 @@ prefix_machine() {
   od -A n -t x2 -j "$((off + 4))" -N 2 "$dll" 2>/dev/null | tr -d ' \n'
 }
 
+# The machine type of a PE file (014c: 32-bit x86, 8664: x86-64), nothing when it is not one.
+exe_machine() {
+  [ -f "$1" ] || return 1
+  pe_off=$(od -A n -t u4 -j 60 -N 4 "$1" 2>/dev/null | tr -d ' ')
+  case "$pe_off" in ''|*[!0-9]*) return 1 ;; esac
+  [ "$(od -A n -t x1 -j "$pe_off" -N 4 "$1" 2>/dev/null | tr -d ' \n')" = 50450000 ] || return 1
+  od -A n -t x2 -j "$((pe_off + 4))" -N 2 "$1" 2>/dev/null | tr -d ' \n'
+}
+
 tool_name() {
   case "$1" in
     aa64) printf 'an ARM64 compatibility tool' ;;
@@ -580,6 +589,11 @@ if [ -n "$STEAM_COMPAT_DATA_PATH" ]; then
   # bottle.env (the engine reads its SEVO_* keys from those files itself).
   [ -n "$LULLABY_RETINA" ] || LULLABY_RETINA=$(env_value LULLABY_RETINA)
   [ -n "$LULLABY_EMULATE_MODESET" ] || LULLABY_EMULATE_MODESET=$(env_value LULLABY_EMULATE_MODESET)
+  # Display mode emulation is for old games, which are 32-bit: the program decides, no setting.
+  if [ -z "$LULLABY_EMULATE_MODESET" ] && [ "$(exe_machine "$1")" = 014c ]; then
+    LULLABY_EMULATE_MODESET=1
+    echo "32-bit program: display mode emulation on" >> "$log" 2>&1 || true
+  fi
   [ -n "$LULLABY_DLSS" ] || LULLABY_DLSS=$(env_value LULLABY_DLSS)
   msync_from=launch-options
   # msync+ is Dormison's sync and stays on; the catalog's per-game debugging switch

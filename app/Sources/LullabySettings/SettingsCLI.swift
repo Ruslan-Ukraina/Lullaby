@@ -214,10 +214,23 @@ public struct SettingsCLI {
         }
         switch arguments[2] {
         case "upscaler":
-            // A shader package this engine does not ship cannot be stored.
-            guard UpscalerChoice(rawValue: value) != nil else { throw SettingsError.invalidValue("upscaler", value) }
-            try service.set("upscaler", .string(value), appID: app)
-        case "filter": try service.set("filter", .string(value), appID: app)
+            // The View menu's two steps are one setting here (PictureFilter). A shader package this
+            // engine does not ship cannot be stored.
+            guard let upscaler = UpscalerChoice(rawValue: value) else { throw SettingsError.invalidValue("upscaler", value) }
+            let choice: PictureFilter
+            switch upscaler {
+            case .off: choice = .off
+            case .metalfx: choice = .metalfx
+            case .lanczos:
+                let stack = service.store.stack(for: app)
+                choice = PictureFilter(upscaler: .lanczos, filter: stack[\.filter]) ?? .lanczos
+            }
+            try service.set("filter", .string(choice.rawValue), appID: app)
+        case "filter":
+            guard let filter = FinalFilter(rawValue: value) else { throw SettingsError.invalidValue("filter", value) }
+            // The last choice wins: a filter picked in the View menu replaces MetalFX Spatial, and a filter
+            // acts only while the presenter runs, so it is stored on the final-filter-only upscaler.
+            try service.set("filter", .string(filter.rawValue), appID: app)
         case "fps", "fps-graph":
             _ = try onOff(value)
             service.log("app \(app): View menu \(arguments[2])=\(value) not kept (Dormison's counter)")
