@@ -7,6 +7,10 @@
  *   wine-windowstate-test restore FILE W H   a 640x480 window must come back to WxH
  *   wine-windowstate-test late FILE 1 0      the window is an ordinary one first (a launcher) and becomes the screen-covering one
  *                                            later, in the same window: native full screen is asked for once, then
+ *   wine-windowstate-test relayout FILE 1 0  the engine's layout of the picture is asked for again after the window changes, only for a covering window
+ *   wine-windowstate-test launcher FILE 1 0  the file says native full screen was a screen-covering window's state, this window is a launcher: left alone
+ *   wine-windowstate-test retry FILE 1 0     the window is knocked out of full screen (the stub never enters it): asked again after a
+ *                                            few seconds, not at once, and not more than the limit
  *   wine-windowstate-test both FILE 1 0      the file says native and the window is the screen-covering one: one toggle, not two
  *   wine-windowstate-test fullscreen FILE 1|0   a screen-covering game's window (presentationWindowed): with the
  *                                            switch 1 the library asks for native full screen once, with 0 never
@@ -14,13 +18,14 @@
 #import <AppKit/AppKit.h>
 #include <dlfcn.h>
 
-static int gToggles;
+static int gToggles, gRelayouts;
 
 @interface WineWindow : NSWindow
 @property (readonly) BOOL presentationWindowed;
 @end
 @implementation WineWindow
 - (BOOL)presentationWindowed { return getenv("LBWS_TEST_PRESENTATION") != NULL; }
+- (void)layoutPresentation { gRelayouts++; }          /* the engine's own layout of the scaled picture */
 - (void)toggleFullScreen:(id)sender { gToggles++; }   /* not entered: it would take the screen */
 @end
 
@@ -36,6 +41,9 @@ int main(int argc, char **argv)
         const char *phase = argv[1];
         double w = atof(argv[3]), h = atof(argv[4]);
         setenv("LULLABY_WINDOW_STATE_FILE", argv[2], 1);
+        if (!strcmp(phase, "launcher"))
+            [@"{\"version\":1,\"state\":\"native\",\"width\":960,\"height\":540,\"covering\":true}\n" writeToFile:[NSString stringWithUTF8String:argv[2]]
+                atomically:YES encoding:NSUTF8StringEncoding error:nil];
         if (!strcmp(phase, "both"))
             [@"{\"version\":1,\"state\":\"native\",\"width\":960,\"height\":540}\n" writeToFile:[NSString stringWithUTF8String:argv[2]]
                 atomically:YES encoding:NSUTF8StringEncoding error:nil];
@@ -60,6 +68,18 @@ int main(int argc, char **argv)
         [win orderFrontRegardless];
         NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
         [nc postNotificationName:NSWindowDidBecomeMainNotification object:win];
+        if (!strcmp(phase, "retry")) {
+            setenv("LBWS_TEST_PRESENTATION", "1", 1);
+            setenv("LULLABY_NATIVE_FULLSCREEN", "1", 1);
+            [win setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
+            spin(2.5);
+            BOOL first = gToggles == 1;                         /* asked once, and not again within 4 seconds */
+            spin(7.5);                                          /* the 8 second check asks again */
+            BOOL ok = first && gToggles == 2;
+            printf("%s: knocked out of full screen: %d request(s) in 10 s, wanted 2 (one at once, one after the pause)\n",
+                   ok ? "ok" : "FAIL", gToggles);
+            return ok ? 0 : 1;
+        }
         if (!strcmp(phase, "both")) {
             spin(3.0);
             BOOL ok = gToggles == 1;
@@ -75,13 +95,41 @@ int main(int argc, char **argv)
             setenv("LBWS_TEST_PRESENTATION", "1", 1);           /* the game goes to its screen-covering window */
             [win setContentSize:NSMakeSize(1200, 700)];
             [nc postNotificationName:NSWindowDidResizeNotification object:win];
-            spin(1.6);
-            for (int i = 0; i < 3; i++) {
+            spin(1.0);
+            BOOL waited = gToggles == 0;                        /* the window was resized a moment ago: left alone while it settles */
+            spin(2.2);
+            BOOL asked = gToggles == 1;
+            for (int i = 0; i < 2; i++) {                       /* more changes after: not asked again within the pause */
                 [nc postNotificationName:NSWindowDidResizeNotification object:win];
-                spin(1.0);
+                spin(0.6);
             }
-            BOOL ok = early && gToggles == 1;
-            printf("%s: asked for native full screen %d time(s) after the window became the covering one, wanted 1\n",
+            BOOL ok = early && waited && asked && gToggles == 1;
+            printf("%s: ordinary window left alone %d, waited while resizing %d, asked once %d (toggles %d)\n",
+                   ok ? "ok" : "FAIL", early, waited, asked, gToggles);
+            return ok ? 0 : 1;
+        }
+        if (!strcmp(phase, "relayout")) {
+            setenv("LULLABY_NATIVE_FULLSCREEN", "0", 1);        /* only the layout is under test: no full screen is asked for */
+            setenv("LBWS_TEST_PRESENTATION", "1", 1);
+            spin(0.5);
+            int before = gRelayouts;
+            [nc postNotificationName:NSWindowDidEnterFullScreenNotification object:win];
+            spin(2.2);
+            BOOL asked = gRelayouts > before;
+            unsetenv("LBWS_TEST_PRESENTATION");                 /* an ordinary window: the engine's layout is not touched */
+            before = gRelayouts;
+            [nc postNotificationName:NSWindowDidResizeNotification object:win];
+            spin(2.2);
+            BOOL ok = asked && gRelayouts == before;
+            printf("%s: layout asked for after a change of a covering window %d, an ordinary window left alone %d\n",
+                   ok ? "ok" : "FAIL", asked, gRelayouts == before);
+            return ok ? 0 : 1;
+        }
+        if (!strcmp(phase, "launcher")) {
+            /* The file says native full screen was the state of a screen-covering window: an ordinary (launcher) window is not put there. */
+            spin(3.0);
+            BOOL ok = gToggles == 0;
+            printf("%s: a saved covering-window state does not take a launcher window to full screen (%d toggle(s))\n",
                    ok ? "ok" : "FAIL", gToggles);
             return ok ? 0 : 1;
         }

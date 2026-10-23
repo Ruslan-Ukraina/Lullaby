@@ -10,13 +10,17 @@
  * LULLABY_WINDOW_STATE=0     off for the run (a launch option)
  * LULLABY_NATIVE_FULLSCREEN  0: a game that covers the screen stays in the window the engine shows it in;
  *                            anything else: it goes on to macOS's native full screen (the game's setting)
+ * LULLABY_LAYER_DUMP=1       (or a file named layer-dump beside the state file) a diagnosis: the window's layer tree (class, frame, bounds, position, anchor, transform) goes to the log
+ *                            three seconds after the window enters or leaves native full screen
  * LULLABY_KEEP_BUNDLE_ICON=1 the launcher bundle has Lullaby's icon: the engine's later -setApplicationIconImage:
  *                            (the program's own window icon, unstyled) is left out, so the Dock keeps it
  *
  * A state counts as the game's when it has stood for a second: a game leaving full screen only because
  * it is closing, or a window mid-animation, is not the state to come back to. */
 #import <AppKit/AppKit.h>
+#import <QuartzCore/QuartzCore.h>
 #include <dispatch/dispatch.h>
+#include <objc/message.h>
 #include <objc/runtime.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -28,7 +32,13 @@
 static NSString *gPath;
 static NSWindow *gPrimary;           /* the game's main window: the largest one seen; held until it closes */
 static NSHashTable *gTried;          /* windows a restore was tried for */
-static NSHashTable *gAsked;          /* windows native full screen was asked for (once each) */
+static NSMapTable *gAskedCount;      /* window -> how many times native full screen was asked for */
+static NSMapTable *gAskedAt;         /* window -> when it was asked for last (seconds, monotonic) */
+static NSMapTable *gFirstSeen;       /* window -> when it was first seen as a game window */
+static NSMapTable *gLastChange;      /* window -> when it last changed (resized, moved to another state) */
+static BOOL gSavedCovering;          /* the file says the window was a screen-covering one the engine shows in a window */
+static BOOL gDumpLayers;
+static uint64_t gDumpToken;
 static NSHashTable *gPending;        /* windows with a native full screen check waiting */
 static lbws_state gSavedState = LBWS_WINDOW;
 static double gSavedW, gSavedH;      /* the Window size the file holds, 0 when unknown */
@@ -90,6 +100,8 @@ static void load(void)
         lbws_state s;
         if (![name isKindOfClass:[NSString class]] || !lbws_parse([name UTF8String], &s)) return;
         gSavedState = s;
+        id covering = [d objectForKey:@"covering"];
+        gSavedCovering = [covering isKindOfClass:[NSNumber class]] && [covering boolValue];
         gSavedW = [width isKindOfClass:[NSNumber class]] ? [width doubleValue] : 0;
         gSavedH = [height isKindOfClass:[NSNumber class]] ? [height doubleValue] : 0;
         if (!(gSavedW >= 0 && gSavedW < 20000 && gSavedH >= 0 && gSavedH < 20000)) gSavedW = gSavedH = 0;   // also NaN
@@ -114,8 +126,8 @@ static void save(void)
         gWinW = c.width;
         gWinH = c.height;
     }
-    NSString *text = [NSString stringWithFormat:@"{\"version\":1,\"state\":\"%s\",\"width\":%.0f,\"height\":%.0f}\n",
-                      lbws_name(s), gWinW, gWinH];
+    NSString *text = [NSString stringWithFormat:@"{\"version\":1,\"state\":\"%s\",\"width\":%.0f,\"height\":%.0f,\"covering\":%s}\n",
+                      lbws_name(s), gWinW, gWinH, windowedPresentation(w) ? "true" : "false"];
     if ([text isEqualToString:gLastWritten]) return;
     NSString *dir = [gPath stringByDeletingLastPathComponent];
     [[NSFileManager defaultManager] createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:nil];
@@ -174,16 +186,48 @@ static void verifySize(NSWindow *w, double tw, double th, int attempt)
     });
 }
 
-/* A game that covers the screen is shown in a window by the engine, and it can become one after the window
- * is up: the game opens a small window first (a launcher or a splash) and goes to the screen-covering one in the
- * same window. So the window is looked at again whenever it changes, and asked once, when it is one. */
+static double nowSeconds(void) { return [[NSProcessInfo processInfo] systemUptime]; }
+
+/* Whether native full screen may be asked for this window now. A game that covers the screen is shown in a
+ * window by the engine, and it can become one after the window is up: the game opens a small window first (a
+ * launcher or a splash) and goes to the screen-covering one in the same window, and the engine can take the window
+ * out of full screen again while it rearranges. So during the first 30 seconds it is asked again, up to three
+ * times and not within 4 seconds of the last; after that a way out of full screen is the player's. */
+static BOOL mayAsk(NSWindow *w)
+{
+    double now = nowSeconds();
+    if (![gFirstSeen objectForKey:w]) [gFirstSeen setObject:@(now) forKey:w];
+    int count = [[gAskedCount objectForKey:w] intValue];
+    if (count == 0) return YES;
+    if (count >= 3) return NO;
+    if (now - [[gFirstSeen objectForKey:w] doubleValue] > 30.0) return NO;
+    return now - [[gAskedAt objectForKey:w] doubleValue] >= 4.0;
+}
+
+static void noteAsked(NSWindow *w)
+{
+    [gAskedCount setObject:@([[gAskedCount objectForKey:w] intValue] + 1) forKey:w];
+    [gAskedAt setObject:@(nowSeconds()) forKey:w];
+}
+
 static void autoFullscreen(NSWindow *w, int attempt)
 {
-    if (!w || gClosing || ![w isVisible] || [gAsked containsObject:w]) return;
+    if (!w || gClosing || ![w isVisible] || !mayAsk(w)) return;
+    /* While the game is still rearranging its window (a resize a moment ago) the window is left alone: asking in
+     * the middle of it is what takes the window out of full screen again, and each round trip costs the size
+     * the game is told one title bar (32 points). */
+    NSNumber *last = [gLastChange objectForKey:w];
+    double quiet = last ? nowSeconds() - [last doubleValue] : 99;
+    if (quiet < 2.0 && windowedPresentation(w) && wantNative()) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)((2.0 - quiet + 0.1) * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            autoFullscreen(w, attempt);
+        });
+        return;
+    }
     BOOL canNative = ([w collectionBehavior] & NSWindowCollectionBehaviorFullScreenPrimary) != 0;
     switch (lbws_plan_fullscreen(windowedPresentation(w), wantNative(), isNative(w), canNative)) {
     case LBWS_FS_ENTER:
-        [gAsked addObject:w];
+        noteAsked(w);
         say("native fullscreen, as the game's setting says");
         [w toggleFullScreen:nil];
         break;
@@ -200,7 +244,7 @@ static void autoFullscreen(NSWindow *w, int attempt)
 
 static void scheduleAutoFullscreen(NSWindow *w)
 {
-    if (!w || [gAsked containsObject:w] || [gPending containsObject:w] || !windowedPresentation(w) || !wantNative()) return;
+    if (!w || [gPending containsObject:w] || !windowedPresentation(w) || !wantNative() || !mayAsk(w)) return;
     [gPending addObject:w];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.8 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         [gPending removeObject:w];
@@ -218,6 +262,12 @@ static void tryRestore(NSWindow *w, int attempt)
     BOOL resizable = ([w styleMask] & NSWindowStyleMaskResizable) != 0;
     NSSize cur = [w contentRectForFrameRect:[w frame]].size;
     lbws_state saved = gSavedState;
+    /* The file says the game's window was a screen-covering one in full screen; this one is not (a launcher or a
+     * splash first): native full screen is for the covering window when it comes. */
+    if (!presentation && gSavedCovering && saved == LBWS_NATIVE) {
+        say("a saved native full screen is kept for the screen-covering window, not this one");
+        return;
+    }
     if (presentation) {
         /* A game that covers the screen: the switch decides, not the state it was left in. */
         if (wantNative()) {
@@ -239,7 +289,7 @@ static void tryRestore(NSWindow *w, int attempt)
     }
     case LBWS_ENTER_NATIVE:
         say("native fullscreen back");
-        [gAsked addObject:w];   /* the window is on its way to full screen: a second toggle would take it out again */
+        noteAsked(w);   /* the window is on its way to full screen: a second toggle at once would take it out again */
         [w toggleFullScreen:nil];
         break;
     default:
@@ -273,10 +323,76 @@ static void becameMain(NSWindow *w)
     });
 }
 
+/* The layer tree of a game window, to find where a layer stands that the engine's frames say should be elsewhere. */
+static void dumpLayer(CALayer *l, int depth)
+{
+    CATransform3D t = [l transform];
+    NSString *extra = @"";
+    if ([NSStringFromClass([l class]) containsString:@"Host"]) {
+        @try { extra = [NSString stringWithFormat:@" contextId=%@", [l valueForKey:@"contextId"]]; } @catch (NSException *e) {}
+    }
+    say("layer %*s%s frame=%s bounds=%s position=%s anchor=%s transform=[a %.3f d %.3f tx %.1f ty %.1f]%s", depth * 2, "",
+        [NSStringFromClass([l class]) UTF8String], [NSStringFromRect(NSRectFromCGRect([l frame])) UTF8String],
+        [NSStringFromRect(NSRectFromCGRect([l bounds])) UTF8String], [NSStringFromPoint(NSPointFromCGPoint([l position])) UTF8String],
+        [NSStringFromPoint(NSPointFromCGPoint([l anchorPoint])) UTF8String], t.m11, t.m22, t.m41, t.m42, [extra UTF8String]);
+    if (depth < 6) for (CALayer *s in [l sublayers]) dumpLayer(s, depth + 1);
+}
+
+static void dumpWindow(NSWindow *w)
+{
+    say("layer dump of a window, frame %s, content view frame %s, native %d", [NSStringFromRect([w frame]) UTF8String],
+        [NSStringFromRect([[w contentView] frame]) UTF8String], (int)isNative(w));
+    CALayer *root = [[w contentView] layer];
+    if (root) dumpLayer(root, 0);
+}
+
+/* After the window changes (full screen entered or left, a resize) the engine's own layout of the scaled picture is
+ * asked for once more. The engine lays the picture out at its box (scaled, centred) on every change it hears of, and
+ * the layer log shows the box right; but the content view then stands at x = 0 instead of the box's x: a move of the
+ * view that came after the engine's layout (AppKit's resizing of the window's views while the full-screen animation
+ * ends) and that nothing laid out again, so the picture sits at the left with the empty strip on the right and the
+ * pointer, which follows the box, is off by the same amount. The method is the engine's (WineWindow
+ * layoutPresentation); a window or an engine without it is left alone. */
+static NSHashTable *gRelayoutPending;
+
+static void relayout(NSWindow *w)
+{
+    SEL layout = NSSelectorFromString(@"layoutPresentation");
+    if (!w || gClosing || ![w isVisible] || ![w respondsToSelector:layout] || !windowedPresentation(w)) return;
+    NSView *content = nil;
+    @try { content = [w valueForKey:@"wineContentView"]; } @catch (NSException *e) {}
+    NSRect before = content ? [content frame] : NSZeroRect;
+    ((void (*)(id, SEL))objc_msgSend)(w, layout);
+    NSRect after = content ? [content frame] : NSZeroRect;
+    if (!NSEqualRects(before, after))
+        say("the picture's layout put back: x %.1f -> %.1f, width %.1f -> %.1f", before.origin.x, after.origin.x,
+            before.size.width, after.size.width);
+}
+
+static void scheduleRelayout(NSWindow *w)
+{
+    if (!w || [gRelayoutPending containsObject:w] || !windowedPresentation(w)) return;
+    [gRelayoutPending addObject:w];
+    for (NSNumber *t in @[@0.4, @1.5]) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)([t doubleValue] * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            relayout(w);
+            if ([t doubleValue] > 1.0) [gRelayoutPending removeObject:w];
+        });
+    }
+}
+
 static void changed(NSWindow *w)
 {
     if (!isGameWindow(w)) return;
     if (!gPrimary) gPrimary = w;
+    [gLastChange setObject:@(nowSeconds()) forKey:w];
+    scheduleRelayout(w);
+    if (gDumpLayers && w == gPrimary) {
+        uint64_t token = ++gDumpToken;
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            if (token == gDumpToken) dumpWindow(w);
+        });
+    }
     scheduleAutoFullscreen(w);
     if (w == gPrimary) scheduleSave();
 }
@@ -306,7 +422,13 @@ __attribute__((constructor)) static void lbws_init(void)
     if ((off && !strcmp(off, "0")) || !file || !*file) return;
     gPath = [NSString stringWithUTF8String:file];
     gTried = [NSHashTable weakObjectsHashTable];
-    gAsked = [NSHashTable weakObjectsHashTable];
+    gDumpLayers = (getenv("LULLABY_LAYER_DUMP") && !strcmp(getenv("LULLABY_LAYER_DUMP"), "1")) ||
+                  [[NSFileManager defaultManager] fileExistsAtPath:[[gPath stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"layer-dump"]];
+    gAskedCount = [NSMapTable weakToStrongObjectsMapTable];
+    gAskedAt = [NSMapTable weakToStrongObjectsMapTable];
+    gFirstSeen = [NSMapTable weakToStrongObjectsMapTable];
+    gLastChange = [NSMapTable weakToStrongObjectsMapTable];
+    gRelayoutPending = [NSHashTable weakObjectsHashTable];
     gPending = [NSHashTable weakObjectsHashTable];
     load();
 

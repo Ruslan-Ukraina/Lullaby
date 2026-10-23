@@ -12,5 +12,13 @@ Remembers the state a game's window was left in and puts it back at the next lau
   this library takes that window to macOS's native full screen once, on its own desktop, at the game's resolution. With it off the
   window stays a window (the green button still works). For such a window the switch decides, not the saved state.
   The engine's `presentationWindowed` is read through key-value coding; an engine without it only loses this.
+- **When it asks**: a game opens a launcher window first; native full screen is asked for the screen-covering window once it has stood
+  still for 2 seconds, again (up to three times, 4 seconds apart) only during the first 30 seconds, when the engine takes it out
+  of full screen while the game rearranges. The state file also keeps `covering`: a saved native full screen of a screen-covering
+  window is not put on a launcher window.
+- **Layout put back**: after a change of a screen-covering window the engine's own `layoutPresentation` is asked for again. Without it the
+  content view stands at x = 0 instead of the centred box's x after the full-screen animation (picture at the left, empty strip at the
+  right, pointer off by the same amount); found with the layer dump below.
+- Diagnosis: `LULLABY_LAYER_DUMP=1` (or a file `layer-dump` beside the state file) prints the window's layer tree to the log.
 - Off for one run: launch option `LULLABY_WINDOW_STATE=0` (this switch too).
 - Tests: `make windowstate-tests` (decisions in plain C; the library in a process with a `WineWindow`, arm64 and x86_64).
