@@ -13,7 +13,7 @@ Paths in the column "Было" are today's locations; moves follow the protocol 
 | `bridge/` | мост Steam: `lby-applejack-steambridge` (lsteamclient), `lby-bigmack-steamexe` (steam.exe) | исходники, скрипты сборки, `bridge-manifest.json` | VR/Vulkan без записанной причины; пересборку модулей Dormison (это `patches/`) | Bridge | `lsteamclient/`, `steam-shim/`, `bridge/` |
 | `engine/` | как получить и проверить Dormison (r8): скрипты загрузки, подпись Ed25519, описание пары | скрипты, проверка | сами файлы движка, патчи | Engine | `engine/` |
 | `patches/` | **всё, что мы добавляем к чужому коду** (§1.6) | см. ниже | | Patches | `patches/engine/`, `ntdll-patch/`, `nvapi-shim/` |
-| `patches/REGISTRY.md` | единый реестр: ID, заголовок, на каких релизах проверен, переключатель | | | Patches | `docs/PATCH_REGISTRY.md` |
+| `patches/REGISTRY.md` | единый реестр: ID, заголовок, на каких релизах проверен, переключатель | | | Patches | `patches/REGISTRY.md` |
 | `patches/engine/` | патчи Dormison, серия на основу (`dormison/ntdll.so/NNNN-….patch` и т.д.) | `.patch` с заголовком, `tests/` | чужой исходник целиком | Patches | `patches/engine/patches` |
 | `patches/inject/` | инжекты без пересборки движка: Reflex, пейсер, GCMouse, состояние окна | каждый — каталог `lby-<имя>-<роль>/` | | Patches | `nvapi-shim/` и новые |
 | `patches/steam/` | ссылка на `steam/hook` и `steam/overlay` (они — тоже патчи Steam) | только ссылки (§1.6) | | Patches | — |

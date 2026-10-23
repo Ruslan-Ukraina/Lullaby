@@ -3,12 +3,12 @@
 #   patches/engine/check-registry.sh
 # Patches are *.patch under patches/engine/, apart from experiments/ and rejected-*, which are
 # not built into anything and need no entry (the registry may name them). The registry is
-# docs/PATCH_REGISTRY.md: a patch is "in" it when its file name appears there in backticks.
+# patches/REGISTRY.md: a patch is "in" it when its file name appears there in backticks.
 # Also: every patch must start with a header (text before the first diff line).
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$here/../.." && pwd)
-reg=$repo/docs/PATCH_REGISTRY.md
+reg=$repo/patches/REGISTRY.md
 [ -f "$reg" ] || { echo "patchcheck: $reg is missing" >&2; exit 1; }
 
 all=$(find "$here" -name '*.patch' | sed 's#.*/##' | sort -u)
@@ -18,7 +18,7 @@ named=$(grep -o '`[A-Za-z0-9._-]*\.patch`' "$reg" | tr -d '`' | sort -u)
 
 fail=0
 for p in $need; do
-  echo "$named" | grep -qx "$p" || { echo "patchcheck: $p is not in docs/PATCH_REGISTRY.md" >&2; fail=1; }
+  echo "$named" | grep -qx "$p" || { echo "patchcheck: $p is not in patches/REGISTRY.md" >&2; fail=1; }
 done
 for p in $named; do
   echo "$all" | grep -qx "$p" || { echo "patchcheck: the registry names $p, which does not exist" >&2; fail=1; }

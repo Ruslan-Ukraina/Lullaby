@@ -110,7 +110,7 @@ scriptcheck:
 	done; \
 	echo "==> scriptcheck: $(words $(SCRIPTS)) scripts lint and parse clean"
 
-# Every engine patch is in docs/PATCH_REGISTRY.md and has a header, and the registry names no missing one.
+# Every engine patch is in patches/REGISTRY.md and has a header, and the registry names no missing one.
 patchcheck:
 	patches/engine/check-registry.sh
 
