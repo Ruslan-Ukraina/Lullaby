@@ -27,7 +27,7 @@ struct SettingCatalogTests {
         func advanced(_ group: SettingGroup) -> [SettingID] {
             SettingCatalog.settings(in: group, at: .game).filter { $0.quick == nil }.map(\.id)
         }
-        #expect(advanced(.picture) == [.nativeFullscreen, .filter])
+        #expect(advanced(.picture) == [.filter])
         #expect(advanced(.performance) == [.tuning, .gameMode])
         #expect(advanced(.diagnostics) == [.unifiedMemory, .rawMouse, .forceVsync])
         #expect(SettingGroup.allCases == [.picture, .performance, .diagnostics])
@@ -39,7 +39,6 @@ struct SettingCatalogTests {
         (.retina, .bool(true), "LULLABY_RETINA=1"),
         (.filter, .string("metalfx"), "SEVO_UPSCALER=metalfx"),
         (.fps, .bool(true), "MTL_HUD_ENABLED=1"),
-        (.nativeFullscreen, .bool(true), "LULLABY_NATIVE_FULLSCREEN=1"),
         (.filter, .string("bilinear"), "SEVO_FINAL_FILTER=bilinear"),
         (.rawMouse, .bool(false), "LULLABY_GCMOUSE=0"),
         (.tuning, .string("experimental"), "SEVO_WAIT_SPIN=5200"),
@@ -116,7 +115,7 @@ struct SettingCatalogTests {
         #expect(env["SEVO_LINEAR_MOUSE"] == "0")
         #expect(env["LULLABY_GCMOUSE_SCALE"] == "auto", "from the mouse's resolution")
         #expect(env["SEVO_RESIZABLE_WINDOWS"] == "window", "windows are always the Mac's own, a full-screen game in one")
-        #expect(env["LULLABY_NATIVE_FULLSCREEN"] == "0", "native full screen of a covering game is an experiment, off")
+        #expect(env["LULLABY_NATIVE_FULLSCREEN"] == "0", "native full screen of a covering game is postponed: off, no setting")
         #expect(env["SEVO_LARGE_ADDRESS_AWARE"] == "1", "4 GB for 32-bit games")
         #expect(env["LULLABY_LOW_LATENCY"] == "1", "Reflex is always answered")
         #expect(env["LULLABY_EMULATE_MODESET"] == nil, "compat_run.sh decides by the program's bitness")
@@ -194,7 +193,7 @@ struct SettingCatalogTests {
     func invalidValues() {
         var values = ConfigValues()
         let bad: [(SettingID, JSONValue)] = [
-            (.fps, .string("yes")), (.renderer, .string("vulkan")), (.nativeFullscreen, .string("yes")),
+            (.fps, .string("yes")), (.renderer, .string("vulkan")),
             (.tuning, .object(["preset": .string("custom"), "waitSpin": .number(2_000_000)])),
         ]
         for (id, value) in bad {

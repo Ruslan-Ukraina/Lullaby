@@ -9,7 +9,7 @@ import Foundation
 
 public enum SettingID: String, CaseIterable, Sendable, Codable {
     case renderer, retina, fps
-    case nativeFullscreen, filter
+    case filter
     case tuning, gameMode
     case unifiedMemory, rawMouse, forceVsync
 }
@@ -171,12 +171,6 @@ public enum SettingCatalog {
         .flag(.retina, in: .picture, quick: 2, key: \.retina, copy: .retina,
               carrier: .registry(values: ["RetinaMode"], marker: "LULLABY_RETINA")),
         .flag(.fps, in: .picture, quick: 3, key: \.fps, copy: .fps, carrier: .environment(["MTL_HUD_ENABLED"])),
-        // Windows are always the Mac's own (fixedLines: SEVO_RESIZABLE_WINDOWS=window); this is only whether
-        // a game that covers the screen goes on to macOS's full screen. lby-pinkiepie-windowstate acts on it.
-        // Experiment, off by default (docs/BACKLOG.md "Native full screen of a screen-covering game"): the game is told a
-        // window 32 points too tall and draws a picture the engine then shrinks.
-        .flag(.nativeFullscreen, in: .picture, experimental: true, key: \.nativeFullscreen, copy: .nativeFullscreen,
-              carrier: .environment(["LULLABY_NATIVE_FULLSCREEN"])),
         pictureFilterSetting,
         tuningSetting,
         .flag(.unifiedMemory, in: .diagnostics, key: \.unifiedMemory, copy: .unifiedMemory,

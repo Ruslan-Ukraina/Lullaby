@@ -84,7 +84,6 @@ public enum ConfigMaterializer {
         ("SEVO_FORCE_UMA", \.unifiedMemory),
         ("LULLABY_FORCE_VSYNC", \.forceVsync),
         ("LULLABY_GCMOUSE", \.rawMouse),
-        ("LULLABY_NATIVE_FULLSCREEN", \.nativeFullscreen),
     ]
 
     /// What is no setting any more: it is the same for every game and for every level, so
@@ -102,6 +101,7 @@ public enum ConfigMaterializer {
     /// WINEMSYNC=0).
     static let fixedLines = [
         "SEVO_RESIZABLE_WINDOWS=window",
+        "LULLABY_NATIVE_FULLSCREEN=0",
         "ROSETTA_ADVERTISE_AVX=1",
         "DXMT_ENABLE_NVEXT=1",
         "D3DM_ENABLE_METALFX=1",

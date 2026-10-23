@@ -121,17 +121,6 @@
     "uk": "Вимк."
    },
    "own": null
-  },
-  "nativeFullscreen": {
-   "effective": false,
-   "inherited": false,
-   "inheritedFrom": "defaults",
-   "inheritedLabel": {
-    "en": "Off",
-    "ru": "Выкл.",
-    "uk": "Вимк."
-   },
-   "own": null
   }
  }
 }

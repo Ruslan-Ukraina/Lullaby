@@ -178,29 +178,6 @@ extension SettingCopy {
                  uk: "Власна накладка Apple з показниками: кадри за секунду, час кадру й пам’ять GPU — дані беруться з графічного драйвера. Працює в іграх, що малюють через Metal: DXMT, DXVK і D3DMetal.",
                  ru: "Собственная панель Apple с показателями: кадры в секунду, время кадра и память GPU — данные берутся из графического драйвера. Работает в играх, которые рисуют через Metal: DXMT, DXVK и D3DMetal.")))
 
-    static let nativeFullscreen = SettingCopy(
-        L10n("Native full screen", uk: "Рідний повний екран", ru: "Нативный полный экран"),
-        caption: L10n("A game that covers the screen opens in macOS's own full screen.",
-                      uk: "Гра, що займає весь екран, відкривається в рідному повному екрані macOS.",
-                      ru: "Игра, занимающая весь экран, открывается в нативном полном экране macOS."),
-        help: SettingHelp(
-            L10n("Game windows are always the Mac's own: you can move and resize them, and the picture is scaled to the window at the game's resolution. This switch is only about a game that covers the whole screen (full screen or borderless).",
-                 uk: "Вікна ігор завжди рідні для Mac: їх можна переміщати й розтягувати, а картинка масштабується під вікно в роздільності гри. Цей перемикач лише для гри, що займає весь екран (повноекранний або безрамковий режим).",
-                 ru: "Окна игр всегда родные для Mac: их можно перемещать и растягивать, а картинка масштабируется под окно в разрешении игры. Этот переключатель только для игры, занимающей весь экран (полноэкранный или безрамочный режим)."),
-            entries: [
-                HelpEntry(L10n("On", uk: "Увімкнено", ru: "Включено"), L10n(
-                    "The game goes to macOS's full screen: its own desktop, the game's resolution, swipe or Mission Control to leave it.",
-                    uk: "Гра переходить у повний екран macOS: окремий робочий стіл, роздільність гри, вийти можна свайпом чи Mission Control.",
-                    ru: "Игра переходит в полный экран macOS: отдельный рабочий стол, разрешение игры, выйти можно свайпом или Mission Control.")),
-                HelpEntry(L10n("Off", uk: "Вимкнено", ru: "Выключено"), L10n(
-                    "The game stays in a window you can move and resize. The green button still takes it to full screen.",
-                    uk: "Гра лишається у вікні, яке можна переміщати й розтягувати. Зелена кнопка все одно відкриває повний екран.",
-                    ru: "Игра остаётся в окне, которое можно перемещать и растягивать. Зелёная кнопка по-прежнему открывает полный экран.")),
-            ],
-            footnote: L10n("Experiment, off by default: in full screen the game is told a window slightly taller than the screen, so the picture is drawn at a wrong size and scaled down. The window's size and a full screen you chose by hand are remembered for the next launch.",
-                           uk: "Експеримент, типово вимкнено: у повному екрані грі повідомляють вікно трохи вище за екран, тому картинка малюється в неправильному розмірі й зменшується. Розмір вікна й повний екран, який ви ввімкнули вручну, запам’ятовуються до наступного запуску.",
-                           ru: "Эксперимент, по умолчанию выключен: в полном экране игре сообщают окно чуть выше экрана, поэтому картинка рисуется в неправильном размере и уменьшается. Размер окна и полный экран, который вы включили вручную, запоминаются до следующего запуска.")))
-
     static let filter = SettingCopy(
         L10n("Final filter", uk: "Фінальний фільтр", ru: "Финальный фильтр"),
         caption: L10n("How a picture smaller than the window is fitted to it.",
