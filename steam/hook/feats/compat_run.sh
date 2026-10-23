@@ -1077,16 +1077,24 @@ resolve_icon() {
       *.exe) art="$target" ;;
     esac
   fi
+  # The program's own icon is read too when there is one: iconmaker takes the biggest of the two, and
+  # Steam's published icon is often 48 px where the exe carries 256.
+  alt_arg=""
+  case "$(printf '%s' "$target" | tr '[:upper:]' '[:lower:]')" in
+    *.exe) [ -f "$target" ] && alt_arg="$target" ;;
+  esac
+  # icon_style: iconmaker's look (its styleVersion); a cached icon of another look is made again.
+  icon_style=2
   icon_source=""
   if [ -n "$art" ]; then
-    icon_source="$art $(stat -f %m "$art" 2>/dev/null || echo 0)"
+    icon_source="$art $(stat -f %m "$art" 2>/dev/null || echo 0) ${alt_arg:+$(stat -f %m "$alt_arg" 2>/dev/null || echo 0)} style$icon_style"
   fi
   icon_cache="$loader_root/game.icns"
   if [ -n "$art" ] && [ -s "$icon_cache" ] &&   [ "$(cat "$loader_root/lullaby-icon.source" 2>/dev/null)" =   "$icon_source" ] && cp -f "$icon_cache" "$loader_res/game.icns"; then
     icon_arg="  <key>CFBundleIconFile</key><string>game</string>"
     echo "icon reused from $art" >> "$log" 2>&1 || true
   elif [ -n "$art" ] && [ -x "$iconmaker" ]; then
-    if "$iconmaker" "$art" "$icon_cache" >> "$log" 2>&1 &&   cp -f "$icon_cache" "$loader_res/game.icns"; then
+    if "$iconmaker" "$art" "$icon_cache" ${alt_arg:+--alt "$alt_arg"} >> "$log" 2>&1 &&   cp -f "$icon_cache" "$loader_res/game.icns"; then
       icon_arg="  <key>CFBundleIconFile</key><string>game</string>"
       printf '%s\n' "$icon_source" > "$loader_root/lullaby-icon.source"
       echo "icon built from $art" >> "$log" 2>&1 || true
@@ -1191,9 +1199,12 @@ if [ -n "\$STEAM_DYLD_INSERT_LIBRARIES" ]; then
   fi
 fi
 # The state the game's window was left in is kept in the prefix and put back (lby-pinkiepie-windowstate);
-# LULLABY_WINDOW_STATE=0 as a launch option leaves it out for a run.
+# LULLABY_WINDOW_STATE=0 as a launch option turns that off for a run (the library reads it itself).
+# The bundle's icon stays in the Dock: the engine would put the program's own window icon over it once the
+# window is up (a lower-resolution, unstyled picture).
+${icon_arg:+export LULLABY_KEEP_BUNDLE_ICON=1}
 window_state="$HOME/Library/Application Support/lullaby/lullaby-windowstate.dylib"
-if [ -f "\$window_state" ] && [ "\${LULLABY_WINDOW_STATE:-}" != 0 ]; then
+if [ -f "\$window_state" ]; then
   export DYLD_INSERT_LIBRARIES="\$window_state\${DYLD_INSERT_LIBRARIES:+:\$DYLD_INSERT_LIBRARIES}"
   export LULLABY_WINDOW_STATE_FILE="$WINEPREFIX/.sevo/lullaby-window.json"
 fi

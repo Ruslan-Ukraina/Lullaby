@@ -65,7 +65,7 @@ TARGET      := $(OUT_DIR)/lullaby.dylib
 OBJS := $(patsubst %.c,$(OUT_DIR)/%.o,$(SRCS)) $(patsubst %.m,$(OUT_DIR)/%.o,$(OBJC_SRCS))
 DEPS := $(OBJS:.o=.d)
 
-.PHONY: all windowstate windowstate-tests nvapi-shim reflex-sim patchcheck clean rebuild dobby deploy dylib-install sigcheck app-payload app app-zip app-config \
+.PHONY: all iconmaker-tests windowstate windowstate-tests nvapi-shim reflex-sim patchcheck clean rebuild dobby deploy dylib-install sigcheck app-payload app app-zip app-config \
         anchorcheck callscheck sigdb-fixtures webpatch-fixtures peicon-fixtures panel-behavior app-tests launch-shell \
         tests-list overlay-shim overlay-shim-install overlay-shim-tests \
         overlay-shim-bench iconmaker icon \
@@ -532,6 +532,10 @@ $(ICONMAKER): app/helpers/iconmaker.swift steam/hook/util/peicon.c steam/hook/ut
 		-framework AppKit -import-objc-header steam/hook/util/peicon.h \
 		-o $@ app/helpers/iconmaker.swift $(OUT_DIR)/peicon-host.o
 	@echo "==> Built $@"
+
+# The look, the choice of the biggest input, the .icns and the time (app/helpers/tests/iconmaker_test.py).
+iconmaker-tests: $(ICONMAKER)
+	python3 -I app/helpers/tests/iconmaker_test.py $(ICONMAKER)
 
 APPINFO := $(OUT_DIR)/appinfo
 

@@ -8,11 +8,14 @@
  *
  * LULLABY_WINDOW_STATE_FILE  where the state lives (set by compat_run.sh); without it nothing happens
  * LULLABY_WINDOW_STATE=0     off for the run (a launch option)
+ * LULLABY_KEEP_BUNDLE_ICON=1 the launcher bundle has Lullaby's icon: the engine's later -setApplicationIconImage:
+ *                            (the program's own window icon, unstyled) is left out, so the Dock keeps it
  *
  * A state counts as the game's when it has stood for a second: a game leaving full screen only because
  * it is closing, or a window mid-animation, is not the state to come back to. */
 #import <AppKit/AppKit.h>
 #include <dispatch/dispatch.h>
+#include <objc/runtime.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -198,10 +201,26 @@ static void changed(NSWindow *w)
     if (w == gPrimary) scheduleSave();
 }
 
+/* The engine sets the Dock icon from the program's window icon once the window is up, over the bundle's own.
+ * With a styled icon in the bundle that would swap it for a plainer, often smaller one. */
+static void keepBundleIcon(void)
+{
+    Method m = class_getInstanceMethod([NSApplication class], @selector(setApplicationIconImage:));
+    if (!m) return;
+    IMP ignore = imp_implementationWithBlock(^(id self, NSImage *image) {
+        (void)self;
+        (void)image;
+        say("the program's own icon left out of the Dock");
+    });
+    method_setImplementation(m, ignore);
+}
+
 __attribute__((constructor)) static void lbws_init(void)
 {
     const char *name = getprogname();
     if (!name || strncmp(name, "wine", 4) || !strcmp(name, "wineserver")) return;   /* the Wine loader's processes only */
+    const char *keep = getenv("LULLABY_KEEP_BUNDLE_ICON");
+    if (keep && !strcmp(keep, "1")) keepBundleIcon();
     const char *off = getenv("LULLABY_WINDOW_STATE");
     const char *file = getenv("LULLABY_WINDOW_STATE_FILE");
     if ((off && !strcmp(off, "0")) || !file || !*file) return;
