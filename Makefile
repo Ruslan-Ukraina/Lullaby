@@ -65,7 +65,7 @@ TARGET      := $(OUT_DIR)/lullaby.dylib
 OBJS := $(patsubst %.c,$(OUT_DIR)/%.o,$(SRCS)) $(patsubst %.m,$(OUT_DIR)/%.o,$(OBJC_SRCS))
 DEPS := $(OBJS:.o=.d)
 
-.PHONY: all iconmaker-tests windowstate windowstate-tests nvapi-shim reflex-sim patchcheck clean rebuild dobby deploy dylib-install sigcheck app-payload app app-zip app-config \
+.PHONY: all iconmaker-tests windowstate windowstate-tests pacer nvapi-shim reflex-sim patchcheck clean rebuild dobby deploy dylib-install sigcheck app-payload app app-zip app-config \
         anchorcheck callscheck sigdb-fixtures webpatch-fixtures peicon-fixtures panel-behavior app-tests launch-shell \
         tests-list overlay-shim overlay-shim-install overlay-shim-tests \
         overlay-shim-bench iconmaker icon \
@@ -492,6 +492,23 @@ $(WINDOWSTATE): $(WINDOWSTATE_DIR)/windowstate.m $(WINDOWSTATE_DIR)/windowstate_
 	$(CC) -arch arm64 $(WINDOWSTATE_FLAGS) -o $(OUT_DIR)/lullaby-windowstate.arm64.dylib $<
 	$(CC) -arch x86_64 $(WINDOWSTATE_FLAGS) -o $(OUT_DIR)/lullaby-windowstate.x86_64.dylib $<
 	lipo -create $(OUT_DIR)/lullaby-windowstate.arm64.dylib $(OUT_DIR)/lullaby-windowstate.x86_64.dylib -output $@
+	codesign -fs - $@
+	@lipo -info $@
+
+# lby-ponthree-pacer (patches/inject/): frame pacing of a game's presentation on Metal (S8). Off unless a
+# game's prefix asks for it (PACER_MODE); loaded into the Wine loader's process like the window-state library.
+PACER_DIR   := patches/inject/lby-ponthree-pacer
+PACER       := $(OUT_DIR)/lullaby-pacer.dylib
+PACER_FLAGS := -mmacosx-version-min=$(MIN_VER) -dynamiclib -O2 -Wall -Wextra -fobjc-arc \
+               -install_name @rpath/lullaby-pacer.dylib -framework Foundation -framework Metal -framework QuartzCore
+
+pacer: $(PACER)
+
+$(PACER): $(PACER_DIR)/pacer.m
+	@mkdir -p $(OUT_DIR)
+	$(CC) -arch arm64 $(PACER_FLAGS) -o $(OUT_DIR)/lullaby-pacer.arm64.dylib $<
+	$(CC) -arch x86_64 $(PACER_FLAGS) -o $(OUT_DIR)/lullaby-pacer.x86_64.dylib $<
+	lipo -create $(OUT_DIR)/lullaby-pacer.arm64.dylib $(OUT_DIR)/lullaby-pacer.x86_64.dylib -output $@
 	codesign -fs - $@
 	@lipo -info $@
 

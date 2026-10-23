@@ -1232,6 +1232,11 @@ if [ -f "\$window_state" ]; then
   export DYLD_INSERT_LIBRARIES="\$window_state\${DYLD_INSERT_LIBRARIES:+:\$DYLD_INSERT_LIBRARIES}"
   export LULLABY_WINDOW_STATE_FILE="$WINEPREFIX/.sevo/lullaby-window.json"
 fi
+# Frame pacing of the game's presentation (lby-ponthree-pacer): the library does nothing unless PACER_MODE asks for it.
+pacer="$HOME/Library/Application Support/lullaby/lullaby-pacer.dylib"
+if [ -f "\$pacer" ]; then
+  export DYLD_INSERT_LIBRARIES="\$pacer\${DYLD_INSERT_LIBRARIES:+:\$DYLD_INSERT_LIBRARIES}"
+fi
 [ -n "\$LULLABY_GAME_CWD" ] && cd "\$LULLABY_GAME_CWD"
 "$WINELOADER" "\$@"
 exit \$?
