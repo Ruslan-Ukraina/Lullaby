@@ -108,7 +108,7 @@
 | STM-06 | Правки интерфейса Steam (webpatch) | `webpatch.c`, `webui.c` | фикстуры `webpatch-fixtures` |
 | STM-07 | Доступ ко вводу | `input_access.c` | с приложением |
 | STM-08 | Оверлей Steam в игре | `steam/overlay/` → `overlay-shim.dylib` (arm64 + x86_64) | с приложением |
-| STM-09 | База сигнатур клиента | `signatures/macos.arm64/<сборка>.json`, `signatures/manifest.json` | CI по расписанию + `anchorcheck`, подпись |
+| STM-09 | База сигнатур клиента | `steam/signatures/macos.arm64/<сборка>.json`, `steam/signatures/manifest.json` | CI по расписанию + `anchorcheck`, подпись |
 
 ### 3.7 Скрипт запуска и приложение
 

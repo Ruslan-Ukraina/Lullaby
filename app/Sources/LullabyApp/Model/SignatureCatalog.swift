@@ -13,7 +13,7 @@
 //
 // A build is listed once its database resolved every signature against that very
 // Steam client (make anchorcheck, CI in Phase 6). The app carries the same file
-// without urls (signatures/manifest.json in the repository). Steam may update to
+// without urls (steam/signatures/manifest.json in the repository). Steam may update to
 // a build only when it is listed and its database is on disk (SteamUpdateGate).
 
 import Foundation

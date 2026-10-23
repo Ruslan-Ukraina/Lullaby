@@ -37,7 +37,7 @@ statically: it hooks Steam's functions. Dobby is licensed under the Apache Licen
 https://github.com/jmpews/Dobby/blob/5dfc8546954ce3b3198132ab13fddb89ee92cdd7/LICENSE
 NotProton uses it unchanged; see vendor/README.md for how it is fetched and built.
 
-Parts of the game settings catalog (app/Sources/NotProtonSettings: SettingCatalog,
+Parts of the game settings catalog (app/Sources/LullabySettings: SettingCatalog,
 SettingCopy, GameConfig, ConfigMaterializer, GameLibrary's executable filter) follow
 Sevoflurane by kageroumado: the shape of the catalog, the env file format and its
 inheritance rules, the value types and the help texts, shortened and translated into
@@ -65,7 +65,7 @@ Ukrainian and Russian. Sevoflurane is MIT licensed:
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
 
-The automatic graphics card (app/Sources/NotProtonSettings: GPUIdentity in GameConfig,
+The automatic graphics card (app/Sources/LullabySettings: GPUIdentity in GameConfig,
 ConfigMaterializer's GPU lines and dxvk.conf) follows Sevoflurane's Core/GPUIdentity.swift
 and Core/GPUEquivalence.swift: which cards stand in for an Apple chip, their PCI ids, the
 driver version strings and the variables each renderer reads. Same MIT license as above,

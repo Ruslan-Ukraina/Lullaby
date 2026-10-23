@@ -100,7 +100,7 @@ echo "==> placed sources for dlls/lsteamclient and programs/steam.exe"
 
 # The release's install prefix is compiled into ntdll.so (BINDIR, DLLDIR, DATADIR), and
 # a different one moves every later byte of its data: dormison-r6 was configured with
-# --prefix=/Users/kirie/Developer/build/dormison/stage, r5 with the default, and the
+# --prefix=<the release builder's staging dir>, r5 with the default, and the
 # unpatched rebuild only matches the release's code with the release's prefix. Read off
 # the engine's ntdll.so (ENGINE, the unpacked release) unless CONFIGURE_OPTS names one.
 if [ -n "${ENGINE:-}" ] && [ -f "$ENGINE/wine/lib/wine/x86_64-unix/ntdll.so" ]; then
