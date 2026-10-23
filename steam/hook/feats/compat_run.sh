@@ -1084,7 +1084,7 @@ resolve_icon() {
     *.exe) [ -f "$target" ] && alt_arg="$target" ;;
   esac
   # icon_style: iconmaker's look (its styleVersion); a cached icon of another look is made again.
-  icon_style=2
+  icon_style=3
   icon_source=""
   if [ -n "$art" ]; then
     icon_source="$art $(stat -f %m "$art" 2>/dev/null || echo 0) ${alt_arg:+$(stat -f %m "$alt_arg" 2>/dev/null || echo 0)} style$icon_style"

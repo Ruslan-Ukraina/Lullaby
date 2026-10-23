@@ -8,7 +8,7 @@
 // Two kinds of input are told apart by the edge of the picture:
 //  - art that fills its square (a capsule, a photo, an icon with a coloured backdrop): scaled to
 //    cover the body;
-//  - a logo on a transparent background: scaled down to ~70 % and set on a solid fill of the logo's
+//  - a logo on a transparent background: scaled down to ~80 % and set on a solid fill of the logo's
 //    main colour (moved toward light or dark when the logo would not stand out from it).
 // The rim is the one measured on the system's own rendering of Lullaby's icon (macOS 27): a bright
 // specular edge along the top that fades within ~30 px of 1024, a weaker one along the bottom, and a
@@ -20,7 +20,7 @@
 import AppKit
 import Foundation
 
-let styleVersion = 2   // keep in step with icon_style in compat_run.sh
+let styleVersion = 3   // keep in step with icon_style in compat_run.sh
 
 let arguments = Array(CommandLine.arguments.dropFirst())
 var positional: [String] = []
@@ -261,7 +261,7 @@ private func renderMaster(_ image: CGImage, _ look: Look) -> CGImage? {
     let w = Double(image.width), h = Double(image.height)
     let fit: Double
     if look.logoOnTransparent {
-        let box = bodySide * 0.70
+        let box = bodySide * 0.80
         fit = min(box / w, box / h)
     } else {
         fit = max(bodySide / w, bodySide / h)
