@@ -2,11 +2,49 @@
 
 Решение владельца 2026-10-19: оплаты GitHub не будет, Actions не запускаются. Загрузка файлов в релизы через `gh` оплаты не требует, поэтому всё, что делал CI, делается здесь. Ключи: `~/Lullaby-keys/lullaby-release.key` (манифесты, мосты, каталог, сигнатуры) и `lullaby-sparkle.key` (обновления приложения). Секретные части никуда не копируются и в журналы не попадают.
 
+## Первый выпуск Lullaby 1.1.0 — порядок
+
+Всё ниже делается с этого Mac; ключи уже лежат в `~/Lullaby-keys`, `gh` вошёл в аккаунт владельца. Скрипты по умолчанию ничего не
+отправляют; отправка — только с `--yes` и только после слова владельца. Номер сборки приложения даёт `release/app-build.sh`
+(история ветки началась заново, а опубликованная `1.1.0-pre.25` имела сборку 259: без смещения Sparkle не предложил бы обновление).
+
+**До слова владельца (готово, проверено репетицией `release/local-app.sh --test` и `release/local-signatures.sh --test`):**
+сборка, проверки, тесты, архив и подписанный appcast проходят; тест на тестовых ключах, без чтения ключей владельца.
+
+**Шаги, каждый по слову владельца:**
+
+1. **Ветка.** `git push -u origin lullaby` (только эта ветка; `main` старой истории не трогается). Нужна, чтобы тег указывал на коммит, который есть на GitHub.
+2. **Мост r7, подписанный ключом релизов** (r8 у Dormison пока без поддержки: его архив везёт файлы Apple, поэтому r7 закреплён через `PIN_JSON`):
+   ```
+   cd ~/Lullaby-Project/Lullaby
+   PIN_JSON=<pins/r7.json> DORMISON_REPO=<клон Dormison с коммитом r7> REV=1 CHANNEL=beta \
+     RELEASE_KEY=~/Lullaby-keys/lullaby-release.key \
+     FEED_BASE=https://github.com/Ruslan-Ukraina/Lullaby/releases/download/ release/local-bridge.sh
+   release/local-publish.sh dormison-r7 1          # что будет загружено
+   release/local-publish.sh dormison-r7 1 --yes    # мост, потом манифест
+   ```
+   Запись моста (в ней `engineRelease`: откуда качать r7, пока у Dormison есть более новый релиз) переносится в `bridge/bridge-manifest.json`
+   (`feed/manifest/bridge-manifest.json`), коммит. Релиз приложения встраивает именно этот опубликованный мост.
+3. **Базы сигнатур:** `release/local-signatures.sh` (проверка), затем `--yes`: базы в релиз `signatures`, подписанный манифест в `manifest`.
+4. **Тег и заметки.** Заметки выпуска — текст аннотированного тега и то, что видно в окне обновления; черновик — `docs/RELEASE_NOTES.md`.
+   ```
+   git tag -a v1.1.0-pre.26 -F docs/RELEASE_NOTES.md      # имя тега решает владелец
+   git push origin v1.1.0-pre.26
+   ```
+5. **Приложение:** `release/local-app.sh v1.1.0-pre.26` (сборка `LB_BUILD_KIND=release`, ключи владельца, мост из опубликованного релиза с проверкой
+   подписи, проверки бандла, тесты, архив, appcast с прежними записями). Результат в `scratch/release/<версия>/`. Затем `--yes`: релиз GitHub с
+   архивом, потом appcast (приватный репозиторий: адрес архива — API-адрес ассета, appcast подписывается заново). Прочитанные обратно файлы сверяются побайтно.
+6. **Проверка пути обновления:** установить опубликованную сборку на этом Mac, в Status нажать «Check for Updates» (пре-релизы включены) и убедиться,
+   что приложение видит appcast, проверяет подписи и ставит мост и базы из ленты.
+
+`release/local-app.sh --test [каталог ленты моста]` и `release/local-signatures.sh --test` повторяют путь на тестовых ключах (ключи владельца не
+читаются, ничего не отправляется); их стоит гонять после любого изменения в выпускных скриптах.
+
 ## Мост для нового релиза Dormison (например `dormison-r7`)
 
 1. Собрать, проверить в Wine и подписать **своим** ключом, ничего не отправляя:
    ```
-   cd ~/Projects/NotProton
+   cd ~/Lullaby-Project/Lullaby
    CHANNEL=stable RELEASE_KEY=~/Lullaby-keys/lullaby-release.key \
      FEED_BASE=https://github.com/Ruslan-Ukraina/Lullaby/releases/download/ release/local-bridge.sh
    ```
