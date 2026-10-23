@@ -513,6 +513,8 @@ windowstate-tests: $(WINDOWSTATE)
 		done; \
 		rm -f "$$f"; \
 		MallocScribble=1 MallocPreScribble=1 NSZombieEnabled=YES LULLABY_WINDOWSTATE_DYLIB=$(WINDOWSTATE) $(OUT_DIR)/wine-windowstate-test.$$a late "$$f" 1 0 2>/dev/null; \
+		rm -f "$$f"; \
+		MallocScribble=1 MallocPreScribble=1 NSZombieEnabled=YES LULLABY_WINDOWSTATE_DYLIB=$(WINDOWSTATE) $(OUT_DIR)/wine-windowstate-test.$$a both "$$f" 1 0 2>/dev/null; \
 		for on in 1 0; do \
 			rm -f "$$f"; \
 			MallocScribble=1 MallocPreScribble=1 NSZombieEnabled=YES LULLABY_WINDOWSTATE_DYLIB=$(WINDOWSTATE) $(OUT_DIR)/wine-windowstate-test.$$a fullscreen "$$f" $$on 0 2>/dev/null; \

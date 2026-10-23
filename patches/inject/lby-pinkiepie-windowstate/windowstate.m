@@ -239,6 +239,7 @@ static void tryRestore(NSWindow *w, int attempt)
     }
     case LBWS_ENTER_NATIVE:
         say("native fullscreen back");
+        [gAsked addObject:w];   /* the window is on its way to full screen: a second toggle would take it out again */
         [w toggleFullScreen:nil];
         break;
     default:

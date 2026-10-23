@@ -7,6 +7,7 @@
  *   wine-windowstate-test restore FILE W H   a 640x480 window must come back to WxH
  *   wine-windowstate-test late FILE 1 0      the window is an ordinary one first (a launcher) and becomes the screen-covering one
  *                                            later, in the same window: native full screen is asked for once, then
+ *   wine-windowstate-test both FILE 1 0      the file says native and the window is the screen-covering one: one toggle, not two
  *   wine-windowstate-test fullscreen FILE 1|0   a screen-covering game's window (presentationWindowed): with the
  *                                            switch 1 the library asks for native full screen once, with 0 never
  * LULLABY_WINDOWSTATE_DYLIB names the library; the program's name starts with "wine" like the loader's. */
@@ -35,6 +36,9 @@ int main(int argc, char **argv)
         const char *phase = argv[1];
         double w = atof(argv[3]), h = atof(argv[4]);
         setenv("LULLABY_WINDOW_STATE_FILE", argv[2], 1);
+        if (!strcmp(phase, "both"))
+            [@"{\"version\":1,\"state\":\"native\",\"width\":960,\"height\":540}\n" writeToFile:[NSString stringWithUTF8String:argv[2]]
+                atomically:YES encoding:NSUTF8StringEncoding error:nil];
         const char *dylib = getenv("LULLABY_WINDOWSTATE_DYLIB");
         if (!dylib || !dlopen(dylib, RTLD_NOW)) { fprintf(stderr, "no library: %s\n", dlerror()); return 3; }
 
@@ -43,6 +47,11 @@ int main(int argc, char **argv)
         NSWindow *win = [[WineWindow alloc] initWithContentRect:NSMakeRect(-20000, -20000, 640, 480)
                                                       styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskResizable
                                                         backing:NSBackingStoreBuffered defer:NO];
+        if (!strcmp(phase, "both")) {
+            setenv("LBWS_TEST_PRESENTATION", "1", 1);
+            setenv("LULLABY_NATIVE_FULLSCREEN", "1", 1);
+            [win setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
+        }
         if (!strcmp(phase, "fullscreen")) {
             setenv("LBWS_TEST_PRESENTATION", "1", 1);
             setenv("LULLABY_NATIVE_FULLSCREEN", argv[3], 1);
@@ -51,6 +60,13 @@ int main(int argc, char **argv)
         [win orderFrontRegardless];
         NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
         [nc postNotificationName:NSWindowDidBecomeMainNotification object:win];
+        if (!strcmp(phase, "both")) {
+            spin(3.0);
+            BOOL ok = gToggles == 1;
+            printf("%s: the saved state and the setting both say native full screen: %d toggle(s), wanted 1\n",
+                   ok ? "ok" : "FAIL", gToggles);
+            return ok ? 0 : 1;
+        }
         if (!strcmp(phase, "late")) {
             setenv("LULLABY_NATIVE_FULLSCREEN", "1", 1);
             [win setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
