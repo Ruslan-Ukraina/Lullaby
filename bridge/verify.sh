@@ -18,7 +18,7 @@
 # rather than deletes: the attic is in scratch, which is disposable.
 #
 # Every file here is reproducible. The built ones come from make lsteamclient,
-# make steam-shim and ntdll-patch/b1/build-b1.sh. The Valve ones come from the Steam client
+# make steam-shim and patches/engine/lby-discord-ntdllhook/build-b1.sh. The Valve ones come from the Steam client
 # packages, fetched by fetch-valve.sh beside this script.
 set -eu
 

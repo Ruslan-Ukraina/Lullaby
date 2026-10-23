@@ -174,7 +174,7 @@ def stage_bridge(args):
             elif os.path.isfile(dst) and sha256(dst) == item["b1"]:
                 print(f"==> keeping staged {rel}")
             else:
-                raise SystemExit(f"{src} is missing and nothing is staged, run ntdll-patch/b1/build-b1.sh")
+                raise SystemExit(f"{src} is missing and nothing is staged, run patches/engine/lby-discord-ntdllhook/build-b1.sh")
     out = os.path.join(args.payload, "engine-support", "bridge-manifest.json")
     write_json(out, manifest)
     stale = os.path.join(args.payload, "engine-support", "support.json")

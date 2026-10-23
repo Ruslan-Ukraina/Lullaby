@@ -12,7 +12,7 @@ Paths in the column "Было" are today's locations; moves follow the protocol 
 | `steam/signatures/` | база сигнатур Steam | JSON по билдам, `manifest.json` | ручные правки | Release | `signatures/` |
 | `bridge/` | мост Steam: `lby-applejack-steambridge` (lsteamclient), `lby-bigmack-steamexe` (steam.exe) | исходники, скрипты сборки, `bridge-manifest.json` | VR/Vulkan без записанной причины; пересборку модулей Dormison (это `patches/`) | Bridge | `lsteamclient/`, `steam-shim/`, `bridge/` |
 | `engine/` | как получить и проверить Dormison (r8): скрипты загрузки, подпись Ed25519, описание пары | скрипты, проверка | сами файлы движка, патчи | Engine | `engine/` |
-| `patches/` | **всё, что мы добавляем к чужому коду** (§1.6) | см. ниже | | Patches | `patches/engine/`, `ntdll-patch/`, `nvapi-shim/` |
+| `patches/` | **всё, что мы добавляем к чужому коду** (§1.6) | см. ниже | | Patches | `patches/engine/`, `patches/engine/lby-discord-ntdllhook/`, `nvapi-shim/` |
 | `patches/REGISTRY.md` | единый реестр: ID, заголовок, на каких релизах проверен, переключатель | | | Patches | `patches/REGISTRY.md` |
 | `patches/engine/` | патчи Dormison, серия на основу (`dormison/ntdll.so/NNNN-….patch` и т.д.) | `.patch` с заголовком, `tests/` | чужой исходник целиком | Patches | `patches/engine/patches` |
 | `patches/inject/` | инжекты без пересборки движка: Reflex, пейсер, GCMouse, состояние окна | каждый — каталог `lby-<имя>-<роль>/` | | Patches | `nvapi-shim/` и новые |
@@ -33,7 +33,7 @@ Paths in the column "Было" are today's locations; moves follow the protocol 
 
 ### Что переносится и в каком порядке (протокол «Гигиена», п. 4)
 1. S2: создать ветку, перенести `engine-fixes → patches` одним коммитом (`git mv`), правки `Makefile` и `.github` в том же коммите, до и после — `make patchcheck`, сборка моста.
-2. Затем `nvapi-shim → patches/inject`, `ntdll-patch/b1 → patches/engine/…` (если B1 остаётся), `perf/ → tools/perf`.
+2. Затем `nvapi-shim → patches/inject`, `patches/engine/lby-discord-ntdllhook → patches/engine/…` (если B1 остаётся), `perf/ → tools/perf`.
 3. `dylib/ → steam/hook`, `overlay-shim → steam/overlay`, `lsteamclient`+`steam-shim` под `bridge/` — **последними**, потому что `Makefile` и `embed_script.py` завязаны на пути.
 Файлы из рантайма (бандл, `~/Library/Application Support/lullaby`) не двигаются.
 

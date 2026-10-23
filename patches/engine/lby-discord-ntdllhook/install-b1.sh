@@ -11,7 +11,7 @@
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
-repo=$(cd "$here/../.." && pwd)
+repo=$(cd "$here/../../.." && pwd)
 support="$HOME/Library/Application Support/lullaby"
 ENGINE=$(cd -P "${ENGINE:-$support/runners/current}" && pwd)
 BRIDGE_DIR=${BRIDGE_DIR:-$support/bridge}

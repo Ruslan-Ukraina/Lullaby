@@ -610,7 +610,7 @@ fi
 prefix_steam="$WINEPREFIX/drive_c/Program Files (x86)/Steam"
 # The engine's ntdll.dll, x86_64 and i386, has to carry the steamclient ->
 # lsteamclient hook for a game to reach lsteamclient (B1, docs/DECISIONS.md P3-1:
-# ntdll-patch/b1/install-b1.sh puts the pair in the engine and the bridge).
+# patches/engine/lby-discord-ntdllhook/install-b1.sh puts the pair in the engine and the bridge).
 verify_runner() {
   for arch in x86_64 i386; do
     staged="$bridge_src/wine/$arch-windows/ntdll.dll"
@@ -618,7 +618,7 @@ verify_runner() {
     if [ ! -f "$staged" ]; then
       echo "=== no patched $arch ntdll in the bridge, $arch games will not reach lsteamclient ===" >> "$log" 2>&1 || true
     elif ! cmp -s "$staged" "$live"; then
-      echo "=== the engine's $arch ntdll is not the patched copy, run ntdll-patch/b1/install-b1.sh ===" >> "$log" 2>&1 || true
+      echo "=== the engine's $arch ntdll is not the patched copy, run patches/engine/lby-discord-ntdllhook/install-b1.sh ===" >> "$log" 2>&1 || true
     elif grep -a -q "lead to lsteamclient" "$live" 2>/dev/null; then
       echo "runner: $arch ntdll is the patched copy (B1)" >> "$log" 2>&1 || true
     else

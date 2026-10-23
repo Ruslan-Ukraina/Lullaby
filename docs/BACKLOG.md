@@ -253,7 +253,7 @@
 
 ## 11. i386-путь lsteamclient не проверен на живой игре — фаза не назначена
 
-**Что есть.** Хук B1 в i386 `ntdll.dll` реализован (P3-1) и покрыт `ntdll-patch/b1/test-b1.sh`: `steamclient.dll` грузится, `CreateInterface` и точка входа ведут в `lsteamclient`; без B1 — ошибка 126. Интерфейсы i386 на живом клиенте — `lsteamclient/tests/ifacecheck.sh`.
+**Что есть.** Хук B1 в i386 `ntdll.dll` реализован (P3-1) и покрыт `patches/engine/lby-discord-ntdllhook/test-b1.sh`: `steamclient.dll` грузится, `CreateInterface` и точка входа ведут в `lsteamclient`; без B1 — ошибка 126. Интерфейсы i386 на живом клиенте — `lsteamclient/tests/ifacecheck.sh`.
 
 **Чего нет.** Проверки на настоящей 32-битной игре: у тебя нет 32-битных игр, проверку Isaac пропустили (твоё решение, 2026-10-06). CS:S запускается как 64-битная (R35).
 

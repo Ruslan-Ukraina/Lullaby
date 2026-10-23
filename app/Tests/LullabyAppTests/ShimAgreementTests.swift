@@ -36,7 +36,7 @@ struct ShimAgreementTests {
         }
     }
 
-    // The B1 ntdll pair is ntdll-patch/b1 work rather than the app's, and what it leaves in
+    // The B1 ntdll pair is patches/engine/lby-discord-ntdllhook work rather than the app's, and what it leaves in
     // the bridge is the manifest's patched entries. The shim compares the engine against
     // exactly those files, one arch at a time.
     @Test("The shim checks the patched ntdll the manifest lists")

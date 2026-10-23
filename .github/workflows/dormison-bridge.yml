@@ -250,7 +250,7 @@ jobs:
       - name: Build the B1 ntdll.dll pair
         if: steps.detect.outputs.engine
         run: |
-          OUT="$PWD/scratch/ntdll-b1/${{ steps.detect.outputs.engine }}" ntdll-patch/b1/build-b1.sh --check-base
+          OUT="$PWD/scratch/ntdll-b1/${{ steps.detect.outputs.engine }}" patches/engine/lby-discord-ntdllhook/build-b1.sh --check-base
 
       - name: Build the engine fixes (patches/engine/, each first proven equal to the release)
         if: steps.detect.outputs.engine
@@ -285,9 +285,9 @@ jobs:
           cp "$f/x86_64-windows-lsteamclient.dll" "$t/lsteamclient.dll"
           cp "$f/x86_64-unix-lsteamclient.so" "$t/lsteamclient.so"
           b1="scratch/ntdll-b1/${{ steps.detect.outputs.engine }}"
-          BRIDGE_DIR="$t" WORK="$RUNNER_TEMP/b1-test" ntdll-patch/b1/test-b1.sh "$b1" | tee "$RUNNER_TEMP/b1-test.log"
+          BRIDGE_DIR="$t" WORK="$RUNNER_TEMP/b1-test" patches/engine/lby-discord-ntdllhook/test-b1.sh "$b1" | tee "$RUNNER_TEMP/b1-test.log"
           # The control: the release's own ntdll.dll must not lead to lsteamclient.
-          if BRIDGE_DIR="$t" WORK="$RUNNER_TEMP/b1-test" ntdll-patch/b1/test-b1.sh --clean > "$RUNNER_TEMP/b1-clean.log" 2>&1; then
+          if BRIDGE_DIR="$t" WORK="$RUNNER_TEMP/b1-test" patches/engine/lby-discord-ntdllhook/test-b1.sh --clean > "$RUNNER_TEMP/b1-clean.log" 2>&1; then
             echo "the release's ntdll.dll passed the hook test, so the test proves nothing"; exit 1
           fi
           { echo '```'; grep -E "^(OK|FAIL) |arch\(es\)" "$RUNNER_TEMP/b1-test.log"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"

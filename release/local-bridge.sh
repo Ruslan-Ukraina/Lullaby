@@ -52,7 +52,7 @@ if [ -n "${B1_REUSE:-}" ]; then
 	[ -f "$B1_REUSE/ntdll/x86_64-ntdll.dll" ] && [ -f "$B1_REUSE/ntdll/i386-ntdll.dll" ] || die "no ntdll pair in $B1_REUSE"
 	mkdir -p "$W/ntdll-b1"
 	cp "$B1_REUSE/ntdll/x86_64-ntdll.dll" "$B1_REUSE/ntdll/i386-ntdll.dll" "$W/ntdll-b1/"
-	python3 -I - "$B1_REUSE/bridge.json" "$W/ntdll-b1" "$repo/ntdll-patch/b1" "$version" "$commit" <<'PY'
+	python3 -I - "$B1_REUSE/bridge.json" "$W/ntdll-b1" "$repo/patches/engine/lby-discord-ntdllhook" "$version" "$commit" <<'PY'
 import hashlib, json, sys
 src, out, b1dir, version, commit = sys.argv[1:]
 bridge = json.load(open(src))
@@ -69,7 +69,7 @@ json.dump({"engine": version, "commit": commit, "patch": patch, "patchSha256": p
 PY
 else
 say "B1 ntdll.dll pair"
-ENGINE="$eng" OUT="$W/ntdll-b1" "$repo/ntdll-patch/b1/build-b1.sh" --check-base
+ENGINE="$eng" OUT="$W/ntdll-b1" "$repo/patches/engine/lby-discord-ntdllhook/build-b1.sh" --check-base
 fi
 
 say "engine fixes (patches/engine/build-fixes.sh)"
@@ -96,9 +96,9 @@ cp "$files/i386-windows-lsteamclient.dll" "$t/i386-windows/lsteamclient.dll"
 cp "$files/x86_64-unix-lsteamclient.so" "$t/x86_64-unix/lsteamclient.so"
 cp "$files/x86_64-windows-lsteamclient.dll" "$t/lsteamclient.dll"
 cp "$files/x86_64-unix-lsteamclient.so" "$t/lsteamclient.so"
-ENGINE="$eng" BRIDGE_DIR="$t" WORK="$W/b1-test" "$repo/ntdll-patch/b1/test-b1.sh" "$W/ntdll-b1" | tee "$W/b1-test.log"
+ENGINE="$eng" BRIDGE_DIR="$t" WORK="$W/b1-test" "$repo/patches/engine/lby-discord-ntdllhook/test-b1.sh" "$W/ntdll-b1" | tee "$W/b1-test.log"
 # The control: the release's own ntdll.dll must not lead to lsteamclient.
-if ENGINE="$eng" BRIDGE_DIR="$t" WORK="$W/b1-test" "$repo/ntdll-patch/b1/test-b1.sh" --clean > "$W/b1-clean.log" 2>&1; then
+if ENGINE="$eng" BRIDGE_DIR="$t" WORK="$W/b1-test" "$repo/patches/engine/lby-discord-ntdllhook/test-b1.sh" --clean > "$W/b1-clean.log" 2>&1; then
 	die "the release's ntdll.dll passed the hook test, so the test proves nothing"
 fi
 

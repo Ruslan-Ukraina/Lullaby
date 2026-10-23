@@ -98,7 +98,7 @@
 
 - Проверка: sha256, которые GitHub показывает у ассетов (`gh release view … --json assets`), совпали с локальными. В релизе также `SHA256SUMS` (`shasum -a 256 -c SHA256SUMS`).
 - **10.10 ~22:10, чистка (P9-17):** в релизе оставлен только r5 (`dormison-r5-src.tar.xz` + `SHA256SUMS`), название «Dormison sources (r5)». Архивы b1 и b2 — локально в `~/Projects/NotProton/scratch/backups/dormison-sources/` (sha256 из таблицы сошлись).
-- Наши изменения поверх движка (B1-хук `ntdll.dll`, исправления Highball 0018/0020) — в этом репозитории: `ntdll-patch/b1/`, `patches/engine/patches/`. Вместе с архивами это полный исходный код для LGPL.
+- Наши изменения поверх движка (B1-хук `ntdll.dll`, исправления Highball 0018/0020) — в этом репозитории: `patches/engine/lby-discord-ntdllhook/`, `patches/engine/patches/`. Вместе с архивами это полный исходный код для LGPL.
 - **Не покрыто:** исходники DXMT, DXVK, MoltenVK, которые лежат в тарболе Dormison готовыми файлами (Dormison берёт их своими скриптами из `build-macos/`). Если понадобится — отдельное решение.
 - **Дальше (Фаза 6):** шаг в `dormison-bridge.yml` — на каждый новый движок с мостом добавлять его архив в этот релиз.
 

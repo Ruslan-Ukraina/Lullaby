@@ -1,6 +1,6 @@
 #!/bin/sh
 # Runs tests/ifacecheck.c, x86_64 and i386, against the running Steam client in the
-# throwaway prefix ntdll-patch/b1/test-b1.sh made (run that first). Needs Steam open
+# throwaway prefix patches/engine/lby-discord-ntdllhook/test-b1.sh made (run that first). Needs Steam open
 # and logged in; no game is started and no app id is set.
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
@@ -9,7 +9,7 @@ support="$HOME/Library/Application Support/lullaby"
 BRIDGE_DIR=${BRIDGE_DIR:-$support/bridge}
 WORK=${WORK:-$repo/scratch/b1-test}
 die() { echo "==> $*" >&2; exit 1; }
-[ -x "$WORK/engine/wine/bin/wine" ] && [ -d "$WORK/pfx" ] || die "run ntdll-patch/b1/test-b1.sh first"
+[ -x "$WORK/engine/wine/bin/wine" ] && [ -d "$WORK/pfx" ] || die "run patches/engine/lby-discord-ntdllhook/test-b1.sh first"
 pgrep -x steam_osx >/dev/null || die "Steam is not running"
 bin="$WORK/iface"
 mkdir -p "$bin/x86_64" "$bin/i386"
