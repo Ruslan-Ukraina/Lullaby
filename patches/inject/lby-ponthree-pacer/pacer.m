@@ -8,6 +8,7 @@
  * env files after this library is loaded), from the environment or from <prefix>/.sevo/lullaby-pacer.conf (KEY=VALUE):
  *   PACER_MODE=off      nothing at all (the default)
  *   PACER_MODE=probe    only counts which present calls the game's Metal path makes, and logs a summary every 5 s
+ *   PACER_MODE=meter    only listens: the frame rate and the evenness of what reaches the screen, every 5 s (any Metal game)
  *   PACER_MODE=adaptive the time each drawable is asked to be shown at is made even (see "the pacer" below)
  *   PACER_CAP=<fps>     with adaptive: never faster than this (0 = no cap)
  *   PACER_LOG=<path>    where the lines go (default: stderr, i.e. the game's log)
@@ -419,6 +420,106 @@ static void hook_pacer(void)
     free(classes);
 }
 
+/* ---- the meter: when each frame of any Metal game reached the screen -------------------------------------------------
+ *
+ * -[CAMetalDrawable didPresentAtTime:] is the system telling a drawable that it was shown (a time in seconds on the
+ * clock of mach_absolute_time), once per frame, whoever presented it: D3DMetal, DXMT or a native game alike. Mode
+ * "meter" only listens and logs, every 5 s: the frame rate, the intervals' p50/p95/p99/max/std, the share of frames
+ * within 1 ms of the median, and the share whose interval is a whole number of 120 Hz refreshes (8.33 ms: the grid
+ * the stairs stand on). */
+#define METER_RING 600
+static double gShown[METER_RING];
+static _Atomic unsigned long long gShownCount;
+static unsigned long long gShownSeen;
+
+static void note_shown(double t)
+{
+    if (t <= 0) return;
+    unsigned long long n = atomic_fetch_add(&gShownCount, 1);
+    gShown[n % METER_RING] = t;
+}
+
+static int cmp_double(const void *a, const void *b)
+{
+    double x = *(const double *)a, y = *(const double *)b;
+    return x < y ? -1 : x > y;
+}
+
+static void summarize_meter(void)
+{
+    unsigned long long n = atomic_load(&gShownCount);
+    if (n < gShownSeen + 60) { if (n == gShownSeen) say("meter: no frame was shown in the last 5 s"); return; }
+    gShownSeen = n;
+    unsigned m = n < METER_RING ? (unsigned)n : METER_RING;
+    double t[METER_RING], iv[METER_RING];
+    for (unsigned k = 0; k < m; k++) t[k] = gShown[(n - m + k) % METER_RING];
+    qsort(t, m, sizeof(double), cmp_double);
+    unsigned c = 0;
+    double sum = 0;
+    for (unsigned k = 1; k < m; k++) {
+        double d = (t[k] - t[k - 1]) * 1000.0;
+        if (d > 0 && d < 500) { iv[c++] = d; sum += d; }
+    }
+    if (c < 30) return;
+    double mean = sum / c, sq = 0;
+    for (unsigned k = 0; k < c; k++) sq += (iv[k] - mean) * (iv[k] - mean);
+    double sorted[METER_RING];
+    memcpy(sorted, iv, c * sizeof(double));
+    qsort(sorted, c, sizeof(double), cmp_double);
+    double p50 = sorted[c / 2], p95 = sorted[(unsigned)(c * 0.95)], p99 = sorted[(unsigned)(c * 0.99)], mx = sorted[c - 1];
+    unsigned flat = 0, grid = 0;
+    for (unsigned k = 0; k < c; k++) {
+        if (fabs(iv[k] - p50) <= 1.0) flat++;
+        double r = fmod(iv[k], 1000.0 / 120.0);
+        if (r < 0.6 || 1000.0 / 120.0 - r < 0.6) grid++;
+    }
+    say("meter: %u frames, %.1f fps, interval p50 %.2f p95 %.2f p99 %.2f max %.2f ms, std %.2f, %u%% within 1 ms of the median, %u%% on the 120 Hz grid",
+        c + 1, 1000.0 / mean, p50, p95, p99, mx, sqrt(sq / c), flat * 100 / c, grid * 100 / c);
+}
+
+static void install_meter(Class cls, SEL sel)
+{
+    int idx = atomic_fetch_add(&gHookCount, 1);
+    if (idx >= MAX_HOOKS) { atomic_fetch_sub(&gHookCount, 1); return; }
+    hook_t *h = &gHooks[idx];
+    Method m = class_getInstanceMethod(cls, sel);
+    h->cls = cls;
+    h->sel = sel;
+    h->orig = method_getImplementation(m);
+    h->kind = SIG_DOUBLE;
+    method_setImplementation(m, imp_implementationWithBlock(^(id self, double t) {
+        atomic_fetch_add(&h->calls, 1);
+        note_shown(t);
+        ((void (*)(id, SEL, double))h->orig)(self, sel, t);
+    }));
+    say("meter hook on -[%s %s]", class_getName(cls), sel_getName(sel));
+}
+
+static void hook_meter(void)
+{
+    SEL sel = sel_registerName("didPresentAtTime:");
+    unsigned n = 0;
+    Class *classes = objc_copyClassList(&n);
+    for (unsigned i = 0; i < n; i++) {
+        const char *name = class_getName(classes[i]);
+        if (!strstr(name, "Drawable") || strstr(name, "NSKVONotifying")) continue;
+        unsigned count = 0;
+        Method *list = class_copyMethodList(classes[i], &count);
+        for (unsigned k = 0; k < count; k++) {
+            if (method_getName(list[k]) != sel || method_getNumberOfArguments(list[k]) != 3) continue;
+            char t[16];
+            method_getArgumentType(list[k], 2, t, sizeof t);
+            if (t[0] != 'd') continue;
+            BOOL done = NO;
+            int have = atomic_load(&gHookCount);
+            for (int q = 0; q < have && !done; q++) done = gHooks[q].cls == classes[i] && gHooks[q].sel == sel;
+            if (!done) install_meter(classes[i], sel);
+        }
+        free(list);
+    }
+    free(classes);
+}
+
 static void rescan_if_new_classes(void)
 {
     static int known;
@@ -487,6 +588,21 @@ __attribute__((constructor)) static void pacer_init(void)
             static dispatch_source_t keep_pace;
             keep_pace = t;
             (void)keep_pace;
+        }
+        if ([gMode isEqualToString:@"meter"]) {
+            hook_meter();
+            dispatch_source_t t = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, gQueue);
+            dispatch_source_set_timer(t, dispatch_time(DISPATCH_TIME_NOW, 5ull * NSEC_PER_SEC), 5ull * NSEC_PER_SEC, NSEC_PER_SEC / 10);
+            dispatch_source_set_event_handler(t, ^{
+                static int known;
+                int now = objc_getClassList(NULL, 0);
+                if (now != known) { known = now; hook_meter(); }
+                summarize_meter();
+            });
+            dispatch_resume(t);
+            static dispatch_source_t keep_meter;
+            keep_meter = t;
+            (void)keep_meter;
         }
         if ([gMode isEqualToString:@"probe"]) {
             hook_all();
