@@ -127,7 +127,7 @@
 | DAT-03 | `signatures-manifest.json` | наш ключ | по сборкам Steam |
 | DAT-04 | `valve-packages.manifest` | — | пакеты Valve для установки Steam |
 | DAT-05 | `release/feed.json` (Sparkle) | наш ключ | приложение |
-| DAT-06 | Каталог исправлений игр (формат по exe: `backend`, `env`, `needs_engine`) | наш ключ | планируется (Э8): MacGameFix (приоритет), `umu-protonfixes` только данными |
+| DAT-06 | Каталог исправлений игр (формат по exe: `backend`, `env`, `needs_engine`) | наш ключ | планируется (Э8): MacGameFix (приоритет) |
 | DAT-07 | `.sevo/bottle.env`, `.sevo/apps/<exe>.env` | — | настройки пользователя, не обновляются |
 
 ### 3.9 Инструменты проверки (не поставляются)

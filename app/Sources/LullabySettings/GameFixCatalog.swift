@@ -45,13 +45,13 @@ public struct GameFix: Sendable, Equatable {
     /// The engine tag it needs at least; older engines skip the entry.
     public let needsEngine: String?
     /// The engine tag the fix was checked on; without it the fix is shown, never applied
-    /// (a draft from umu-protonfixes or MacGameFix is not proof for this stack).
+    /// (a draft from MacGameFix is not proof for this stack).
     public let verifiedOn: String?
     /// From this GPTK version on the fix is not needed.
     public let notNeededFromGPTK: String?
     public let env: [String: String]
-    /// umu-protonfixes' `set_cpu_topology_limit`: fewer logical processors for the game,
-    /// applied only when the Mac has more (as Proton does), as SEVO_CPU_COUNT.
+    /// Fewer logical processors for the game, applied only when the Mac has more,
+    /// as SEVO_CPU_COUNT.
     public let cpuLimit: Int?
     public let dllOverrides: [String: String]
     public let files: [FileOp]
@@ -86,7 +86,7 @@ public struct GameFixCatalog: Sendable, Equatable {
         public let description: String
     }
 
-    static let sources: Set<String> = ["lullaby", "umu-protonfixes", "macgamefix", "highball"]
+    static let sources: Set<String> = ["lullaby", "macgamefix", "highball"]
     static let overrideModes: Set<String> = ["n", "b", "n,b", "b,n", "d"]
     static let forbiddenEnv: Set<String> = [
         "WINELOADER", "WINESERVER", "WINEPREFIX", "WINEDLLOVERRIDES", "PATH", "HOME", "MTL_HUD_ENABLED",
@@ -133,8 +133,8 @@ public struct GameFixCatalog: Sendable, Equatable {
         return usable.first { !$0.exes.isEmpty && !names.isDisjoint(with: $0.exes) }
     }
 
-    /// Who wins when sources disagree: Lullaby's own, then MacGameFix, Highball, umu-protonfixes.
-    static let priority = ["lullaby": 0, "macgamefix": 1, "highball": 2, "umu-protonfixes": 3]
+    /// Who wins when sources disagree: Lullaby's own, then MacGameFix, Highball.
+    static let priority = ["lullaby": 0, "macgamefix": 1, "highball": 2]
 
     /// What the catalog says for a game, all sources together (docs/ROADMAP.md §14.2). Entries
     /// the versions rule out, `not_needed` ones and unverified ones add nothing; an `unfit` entry

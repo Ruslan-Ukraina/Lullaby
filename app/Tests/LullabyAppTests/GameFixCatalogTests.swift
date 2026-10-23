@@ -92,7 +92,7 @@ struct GameFixCatalogTests {
 
     @Test("A foreign source needs a reference and a license; ids are unique; schema is checked")
     func misc() {
-        let foreign = Self.entry().replacingOccurrences(of: #""kind":"lullaby","ref":"""#, with: #""kind":"umu-protonfixes","ref":"""#)
+        let foreign = Self.entry().replacingOccurrences(of: #""kind":"lullaby","ref":"""#, with: #""kind":"highball","ref":"""#)
         #expect(Self.rejects(Self.catalog(foreign), "foreign source"))
         #expect(Self.rejects(Self.catalog(Self.entry() + "," + Self.entry()), "duplicate id"))
         #expect(Self.rejects(Data(#"{"schema":2,"serial":1,"entries":[]}"#.utf8), "schema"))
@@ -154,28 +154,6 @@ struct GameFixWiringTests {
     }
 }
 
-@Suite("Game fix importer output")
-struct GameFixImporterTests {
-    /// tools/fixtures/umu-expected.json is what tools/import-umu.py makes of tools/fixtures/umu.
-    @Test("The importer's output decodes in the app's validator")
-    func fixtureDecodes() throws {
-        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-            .appending(path: "../../../tools/fixtures/umu-expected.json").standardized
-        let catalog = try GameFixCatalog.decode(Data(contentsOf: url))
-        let fix = try #require(catalog.fix(appID: 111, exes: nil, engine: nil, gptk: nil))
-        #expect(fix.env == ["SDL_JOYSTICK_HIDAPI": "0"] && fix.cpuLimit == 8 && fix.dllOverrides == ["xaudio2_9": "n,b"])
-        #expect(fix.registry.count == 1 && fix.source.kind == "umu-protonfixes")
-    }
-
-    /// Set UMU_DRAFT to a file made from the whole upstream checkout to check it too.
-    @Test("A full draft passes the validator when one is given")
-    func fullDraft() throws {
-        guard let path = ProcessInfo.processInfo.environment["UMU_DRAFT"] else { return }
-        let catalog = try GameFixCatalog.decode(Data(contentsOf: URL(fileURLWithPath: path)))
-        #expect(!catalog.entries.isEmpty)
-    }
-}
-
 @Suite("Game fix sources together")
 struct GameFixMergeTests {
     static func entry(_ id: String, _ kind: String, verified: Bool = true, verdict: String = "fits", more: String = "") -> String {
@@ -193,18 +171,18 @@ struct GameFixMergeTests {
     @Test("Variables are united and the stronger source wins a key")
     func union() throws {
         let r = try #require(try resolve([
-            Self.entry("umu", "umu-protonfixes", more: #","env":{"SDL_A":"1","SDL_B":"u"}"#),
+            Self.entry("hb", "highball", more: #","env":{"SDL_A":"1","SDL_B":"u"}"#),
             Self.entry("mgf", "macgamefix", more: #","env":{"SDL_B":"m","SDL_C":"3"}"#),
         ]))
         #expect(r.fix.env == ["SDL_A": "1", "SDL_B": "m", "SDL_C": "3"])
         #expect(r.conflicts == ["mgf overrides env SDL_B"])
-        #expect(r.fix.id == "mgf+umu")
+        #expect(r.fix.id == "mgf+hb")
     }
 
     @Test("Renderer and processor limit come from the strongest source that has one")
     func strongest() throws {
         let r = try #require(try resolve([
-            Self.entry("umu", "umu-protonfixes", more: #","backend":"dxvk","cpuLimit":4"#),
+            Self.entry("hb", "highball", more: #","backend":"dxvk","cpuLimit":4"#),
             Self.entry("mgf", "macgamefix", more: #","backend":"d3dmetal""#),
         ]))
         #expect(r.fix.backend == .d3dmetal && r.fix.cpuLimit == 4)
@@ -213,7 +191,7 @@ struct GameFixMergeTests {
     @Test("Unverified entries add nothing; an unfit entry blocks the sources below it")
     func gates() throws {
         let r = try #require(try resolve([
-            Self.entry("umu", "umu-protonfixes", verified: false, more: #","env":{"SDL_X":"1"}"#),
+            Self.entry("hb", "highball", verified: false, more: #","env":{"SDL_X":"1"}"#),
             Self.entry("own", "lullaby", more: #","env":{"SDL_Y":"1"}"#),
         ]))
         #expect(r.fix.env == ["SDL_Y": "1"])
@@ -222,7 +200,7 @@ struct GameFixMergeTests {
             Self.entry("mgf", "macgamefix", more: #","env":{"SDL_Z":"1"}"#),
         ]))
         #expect(blocked.fix.verdict == .unfit)
-        #expect(try resolve([Self.entry("umu", "umu-protonfixes", verified: false)]) == nil)
+        #expect(try resolve([Self.entry("hb", "highball", verified: false)]) == nil)
     }
 
     @Test("Files of two sources are never both installed")
@@ -232,11 +210,11 @@ struct GameFixMergeTests {
             #","files":[{"op":"add","path":"\#(path)","asset":"a","sha256":"\#(sha)"}]"#
         }
         let r = try #require(try resolve([
-            Self.entry("umu", "umu-protonfixes", more: files("bin/umu.ini")),
+            Self.entry("hb", "highball", more: files("bin/hb.ini")),
             Self.entry("mgf", "macgamefix", more: files("bin/mgf.ini")),
         ]))
         #expect(r.fix.files.map(\.path) == ["bin/mgf.ini"])
-        #expect(r.conflicts.contains { $0.contains("files of umu left out") })
+        #expect(r.conflicts.contains { $0.contains("files of hb left out") })
     }
 }
 
