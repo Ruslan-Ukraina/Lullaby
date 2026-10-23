@@ -9,9 +9,9 @@ What, both read once per process from the env files and off by default:
                         frame waiting for a refresh does not starve the GPU of drawables.
  LULLABY_PRESENT_FEED=1 <prefix>/.sevo/run/<Windows pid>.present: every drawable handed out and the moment
                         it reached the screen (addPresentedHandler), a ring of 256 in a shared page
-                        (magic "LBPRSENT"). lullaby-nvapi64.dll (nvapi-shim, Reflex by Lullaby) reads it.
+                        (magic "LBPRSENT"). lullaby-nvapi64.dll (patches/inject/lby-rainbowdash-reflex, Reflex by Lullaby) reads it.
 Without the variables the patch changes nothing.
-Requires: nothing in the patch; Reflex needs nvapi-shim (CMP-04).
+Requires: nothing in the patch; Reflex needs patches/inject/lby-rainbowdash-reflex (CMP-04).
 Other bases: FAIL on every WineForge release; it patches Dormison's WineMetalLayer, WineForge's
 d3dmetal_objc.m is different code. Needs rewriting for it; Reflex and V-Sync depend on it.
 Test: make reflex-sim (the feed is simulated there); in a game, lullaby-nvapi.log.

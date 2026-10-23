@@ -40,7 +40,7 @@ enum SupportPaths {
     static var overlayShim: URL { support.appending(path: "overlay-shim.dylib") }
     static var iconmaker: URL { support.appending(path: "iconmaker") }
     static var appinfo: URL { support.appending(path: "appinfo") }
-    /// Lullaby's nvapi64.dll: NVIDIA Reflex in front of D3DMetal's (nvapi-shim/).
+    /// Lullaby's nvapi64.dll: NVIDIA Reflex in front of D3DMetal's (patches/inject/lby-rainbowdash-reflex/).
     static var nvapiShim: URL { support.appending(path: nvapiShimName) }
     static let nvapiShimName = "lullaby-nvapi64.dll"
     static let settingsCLIName = "lullaby-settings"

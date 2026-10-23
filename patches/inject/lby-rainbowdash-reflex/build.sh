@@ -1,5 +1,5 @@
 #!/bin/sh
-# Builds Lullaby's nvapi64.dll (x86_64 PE) with mingw-w64: nvapi-shim/build.sh OUT.dll
+# Builds Lullaby's nvapi64.dll (x86_64 PE) with mingw-w64: patches/inject/lby-rainbowdash-reflex/build.sh OUT.dll
 #
 # The DLL is stamped as one of Wine's own ("Wine builtin DLL" right after the DOS header,
 # where dlls/ntdll/loader.c looks): with nvapi64=b the game then takes it from the D3DMetal

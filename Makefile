@@ -509,20 +509,20 @@ $(APPINFO): helpers/appinfo.swift
 	swiftc -O -target $(ARCH)-apple-macos$(MIN_VER) -o $@ $<
 	@echo "==> Built $@"
 
-# Lullaby's nvapi64.dll (nvapi-shim/): NVIDIA Reflex in front of D3DMetal's. Needs mingw-w64.
+# Lullaby's nvapi64.dll (patches/inject/lby-rainbowdash-reflex/): NVIDIA Reflex in front of D3DMetal's. Needs mingw-w64.
 NVAPI_SHIM := $(OUT_DIR)/lullaby-nvapi64.dll
 
 nvapi-shim: $(NVAPI_SHIM)
 
 # What Reflex by Lullaby is meant to do, in a simulated game under the installed engine's Wine
-# (nvapi-shim/tests/run-sim.sh): shorter latency GPU-bound, nothing changed CPU-bound.
+# (patches/inject/lby-rainbowdash-reflex/tests/run-sim.sh): shorter latency GPU-bound, nothing changed CPU-bound.
 # Skips, exit 0, where no engine is installed.
 reflex-sim: $(NVAPI_SHIM)
-	nvapi-shim/tests/run-sim.sh $(NVAPI_SHIM)
+	patches/inject/lby-rainbowdash-reflex/tests/run-sim.sh $(NVAPI_SHIM)
 
-$(NVAPI_SHIM): nvapi-shim/lullaby_nvapi.c nvapi-shim/nvapi_names.h nvapi-shim/nvapi64.def nvapi-shim/build.sh
+$(NVAPI_SHIM): patches/inject/lby-rainbowdash-reflex/lullaby_nvapi.c patches/inject/lby-rainbowdash-reflex/nvapi_names.h patches/inject/lby-rainbowdash-reflex/nvapi64.def patches/inject/lby-rainbowdash-reflex/build.sh
 	@mkdir -p $(OUT_DIR)
-	nvapi-shim/build.sh $@
+	patches/inject/lby-rainbowdash-reflex/build.sh $@
 	@echo "==> Built $@"
 
 helpers-install: $(ICONMAKER) $(APPINFO)

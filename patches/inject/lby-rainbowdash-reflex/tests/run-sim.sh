@@ -4,14 +4,14 @@
 #   GPU-bound, with or without V-Sync: shorter latency, at most a little frame rate lost;
 #   CPU-bound: nothing held, nothing changed.
 #
-#   nvapi-shim/tests/run-sim.sh [NVAPI_DLL]      (default out/lullaby-nvapi64.dll)
+#   patches/inject/lby-rainbowdash-reflex/tests/run-sim.sh [NVAPI_DLL]      (default out/lullaby-nvapi64.dll)
 #
 # Needs mingw-w64 and an installed engine (runners/current/lullaby-engine.env); with no
 # engine it says so and exits 0 (SKIP), because a CI runner has none. The run takes about
 # a minute: the first Wine start makes a prefix in a temporary directory.
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
-root=$(cd "$here/../.." && pwd)
+root=$(cd "$here/../../../.." && pwd)
 dll=${1:-$root/out/lullaby-nvapi64.dll}
 envfile=${LB_ENGINE_ENV:-$HOME/Library/Application Support/lullaby/runners/current/lullaby-engine.env}
 

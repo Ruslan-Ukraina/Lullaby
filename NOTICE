@@ -102,7 +102,7 @@ adapted to Dormison.
 D3DMetal is Apple's, from the Game Porting Toolkit each player downloads from Apple and
 adds; NotProton neither ships nor downloads it.
 
-Lullaby's nvapi64.dll (nvapi-shim/) stands in front of D3DMetal's and answers NVIDIA
+Lullaby's nvapi64.dll (patches/inject/lby-rainbowdash-reflex/) stands in front of D3DMetal's and answers NVIDIA
 Reflex. Its function names come from NVIDIA's nvapi_interface.h and its structures from
 nvapi.h (https://github.com/NVIDIA/nvapi, MIT, Copyright (c) 2024 NVIDIA CORPORATION &
 AFFILIATES). The idea of holding a frame back in the game's Sleep so that none waits in a

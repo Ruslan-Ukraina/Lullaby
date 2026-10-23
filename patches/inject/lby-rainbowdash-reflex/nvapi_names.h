@@ -1,6 +1,6 @@
 /* NVAPI function names by interface id, for the log: generated from NVIDIA's
  * nvapi_interface.h (https://github.com/NVIDIA/nvapi, MIT, Copyright (c) 2024
- * NVIDIA CORPORATION & AFFILIATES) by nvapi-shim/gen-names.sh. Do not edit. */
+ * NVIDIA CORPORATION & AFFILIATES) by patches/inject/lby-rainbowdash-reflex/gen-names.sh. Do not edit. */
 static const struct nvapi_name { unsigned int id; const char *name; } nvapi_names[] = {
     { 0x0150e828, "NvAPI_Initialize" },
     { 0xd22bdd7e, "NvAPI_Unload" },

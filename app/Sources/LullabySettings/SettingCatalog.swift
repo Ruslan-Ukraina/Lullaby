@@ -236,7 +236,7 @@ public enum SettingCatalog {
         .flag(.msync, in: .diagnostics, levels: [.game], key: \.msync, copy: .msync,
               carrier: .bottleOnly(["WINEMSYNC"])),
         // Lullaby's winemac.so fix 0003 (WineMetalLayer): the D3DMetal layer's sync, and the
-        // present feed Lullaby's nvapi64.dll paces NVIDIA Reflex with (nvapi-shim/).
+        // present feed Lullaby's nvapi64.dll paces NVIDIA Reflex with (patches/inject/lby-rainbowdash-reflex/).
         .flag(.forceVsync, in: .diagnostics, experimental: true, key: \.forceVsync, copy: .forceVsync,
               carrier: .environment(["LULLABY_FORCE_VSYNC"])),
         .flag(.lowLatency, in: .diagnostics, experimental: true, key: \.lowLatency, copy: .lowLatency,

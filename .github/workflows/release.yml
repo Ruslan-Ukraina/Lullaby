@@ -130,7 +130,7 @@ jobs:
           done
           echo "BRIDGE_FEED_DIR=$dir" >> "$GITHUB_ENV"
 
-      # Lullaby's nvapi64.dll is a Windows DLL (nvapi-shim/).
+      # Lullaby's nvapi64.dll is a Windows DLL (patches/inject/lby-rainbowdash-reflex/).
       - name: Install mingw-w64
         run: brew install mingw-w64
 
