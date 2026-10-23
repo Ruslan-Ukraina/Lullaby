@@ -40,6 +40,7 @@ enum Uninstall {
         updateBlocks: [URL] = UpdateBlock.paths,
         legacyCompat: URL = SupportPaths.Steam.legacyCompat,
         compatTool: URL = SupportPaths.Steam.compatTool,
+        libraries: [SteamLibrary] = PrefixStore.libraries(),
         directories: [URL] = [
             SupportPaths.support,
             SupportPaths.packageDownloads.deletingLastPathComponent(),
@@ -65,9 +66,10 @@ enum Uninstall {
         }
 
         report(.removing)
-        let removed = try remove(
+        var removed = try remove(
             legacyCompat: legacyCompat, compatTool: compatTool, directories: directories
         )
+        removed += try removeSteamDLLLinks(to: legacyCompat, in: libraries)
 
         report(.finished)
         return UninstallOutcome(
@@ -118,6 +120,22 @@ enum Uninstall {
             guard files.fileExists(atPath: path) else { continue }
             try WriteRefused.catching(path) { try files.removeItem(at: target) }
             removed.append(target.lastPathComponent)
+        }
+        return removed
+    }
+
+    /// The links the run script made beside each library's steamapps/common (for Prey) that point at
+    /// legacycompat. Anything else under that name is not ours and stays.
+    static func removeSteamDLLLinks(to legacyCompat: URL, in libraries: [SteamLibrary]) throws -> [String] {
+        let files = FileManager.default
+        let target = legacyCompat.appending(path: "Steam.dll").path(percentEncoded: false)
+        var removed: [String] = []
+        for library in libraries {
+            let link = library.steamapps.appending(path: "common/Steam.dll")
+            let path = link.path(percentEncoded: false)
+            guard (try? files.destinationOfSymbolicLink(atPath: path)) == target else { continue }
+            try WriteRefused.catching(path) { try files.removeItem(at: link) }
+            removed.append(link.lastPathComponent)
         }
         return removed
     }

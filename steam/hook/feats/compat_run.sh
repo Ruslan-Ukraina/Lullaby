@@ -689,6 +689,21 @@ install_legacy_steam_dll() {
 # Steam runs a Windows game's installscript.vdf by invoking the standalone
 # evaluator through the compat tool, the same way the linux client does, but
 # the binaries are missing on macOS, so...
+# Steam on Linux symlinks this for every compat tool launch; some legacy games (Prey 2006) look for it
+# beside the steamapps/common folders (upstream NotProton 1.2.0). The app's Remove takes the link away.
+link_legacy_steam_dll() {
+  src="$STEAM_COMPAT_CLIENT_INSTALL_PATH/legacycompat/Steam.dll"
+  [ -n "$STEAM_COMPAT_INSTALL_PATH" ] && [ -f "$src" ] || return 0
+  dst="$(dirname "$STEAM_COMPAT_INSTALL_PATH")/Steam.dll"
+  [ -L "$dst" ] || [ ! -e "$dst" ] || return 0
+  [ "$(readlink "$dst" 2>/dev/null)" = "$src" ] && return 0
+  if ln -sfn "$src" "$dst" 2>> "$log"; then
+    echo "=== linked legacy Steam.dll at $dst ===" >> "$log" 2>&1 || true
+  else
+    echo "=== could not link legacy Steam.dll at $dst ===" >> "$log" 2>&1 || true
+  fi
+}
+
 install_legacycompat() {
   src="$bridge_src/legacycompat"
   dst="$STEAM_COMPAT_CLIENT_INSTALL_PATH/legacycompat"
@@ -739,6 +754,7 @@ if [ -d "$bridge_src" ] && [ -n "$WINEPREFIX" ]; then
     export STEAM_COMPAT_CLIENT_INSTALL_PATH="$native_client"
   fi
   install_legacycompat
+  link_legacy_steam_dll
   echo "=== bridge staged into $prefix_steam ===" >> "$log" 2>&1 || true
   echo "WINEDLLPATH=$WINEDLLPATH" >> "$log" 2>&1 || true
   echo "STEAM_COMPAT_CLIENT_INSTALL_PATH=$STEAM_COMPAT_CLIENT_INSTALL_PATH" >> "$log" 2>&1 || true
@@ -1137,6 +1153,9 @@ cat > "$loader_contents/Info.plist" <<PLIST
   <key>LSApplicationCategoryType</key><string>public.app-category.games</string>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSPrincipalClass</key><string>NSApplication</string>
+  <key>NSMicrophoneUsageDescription</key><string>This game would like to access your microphone.</string>
+  <key>NSCameraUsageDescription</key><string>This game would like to access your camera.</string>
+  <key>NSLocalNetworkUsageDescription</key><string>This game would like to access devices on your local network.</string>
 $uielement_arg
 $gamemode_arg
 $icon_arg
@@ -1357,6 +1376,9 @@ lsregister="$lsregister/Frameworks/LaunchServices.framework/Support/lsregister"
 [ -x "$lsregister" ] && "$lsregister" -f "$loader_app" >> "$log" 2>&1 || true
 open -n -W -a "$loader_app" "$@" >> "$log" 2>&1 &
 open_pid=$!
+# A game pad does not count as activity: keep the Mac and its display awake while the game runs (upstream
+# NotProton 1.2.0).
+[ -x /usr/bin/caffeinate ] && { /usr/bin/caffeinate -d -i -w "$open_pid" >> "$log" 2>&1 & }
 start_watchdog
 status=0
 seen=0
