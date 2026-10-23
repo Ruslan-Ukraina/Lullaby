@@ -1,3 +1,15 @@
+ntdll: lsteamclient takes the place of Valve's Windows steamclient
+
+When a program loads steamclient64.dll / steamclient.dll (or gameoverlayrenderer),
+the loader redirects their exports and entry point to lsteamclient.dll, so Steamworks
+games talk to the macOS Steam. Same idea as Proton's use_lsteamclient /
+steamclient_setup_trampolines (ValveSoftware/wine, dlls/ntdll/loader.c).
+Origin: Lullaby, by that idea; Wine code, LGPL-2.1-or-later.
+Component: lby-discord-ntdllhook. Replaces the PE ntdll.dll (x86_64 and i386) only;
+ntdll.so, the unix interface and the server protocol stay the release's.
+Verified on: Dormison r5, r6 (2026-10). r8: not yet, to be done in S2.
+Switch: none; active whenever the bridge is installed. Test: test-b1.sh, tests/trampcheck.c.
+
 diff --git a/dlls/ntdll/loader.c b/dlls/ntdll/loader.c
 index 45654e9aa8..78abcb9ecd 100644
 --- a/dlls/ntdll/loader.c
