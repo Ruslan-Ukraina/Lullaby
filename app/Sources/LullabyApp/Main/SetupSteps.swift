@@ -53,8 +53,10 @@ enum SetupSteps {
     /// Install and Update are one flow (owner's edit to Phase 8): every part is checked
     /// and put in place or updated, whatever is already current is left alone.
     static func setup(_ plan: UpdatePlan? = nil, _ env: SetupEnvironment = .live) -> [FlowStep] {
-        var steps = [rosetta(), engine(plan?.engine, env), bridge(env), signatures(env), steam(force: false)]
-        if plan?.app != nil { steps.append(app()) }
+        var steps = [rosetta(), engine(plan?.engine, env), bridge(env), signatures(env)]
+        // With an update of Lullaby itself the patch for Steam is the new version's: it goes on after the restart
+        // (UpdateContinuation), so that the window does not ask for a second press.
+        if plan?.app != nil { steps.append(app()) } else { steps.append(steam(force: false)) }
         return migrate(env) + steps
     }
 
@@ -169,9 +171,10 @@ enum SetupSteps {
         FlowStep(.app, tr("Updating Lullaby")) { detail in
             // Sparkle without its windows: the progress is this step's, and when the new
             // version is ready MainModel asks to restart (one system alert).
-            _ = try await AppUpdater.shared.install { received, total in
+            let ready = try await AppUpdater.shared.install { received, total in
                 detail(downloaded(received, of: total ?? 0))
             }
+            if ready { UpdateContinuation.note(from: AppVersion.bundled) }
         }
     }
 

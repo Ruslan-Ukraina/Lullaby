@@ -197,7 +197,8 @@ struct GitHubAssetTransport: EngineTransport {
         }
         await assets.store(tag: tag, found)
         guard let id = found[file] else {
-            throw TransportFailure(detail: "\(file) is not in the release \(tag).")
+            // A file the release does not have is a 404, not a network failure: the window must not say "check your internet".
+            throw TransportFailure(detail: "\(file) is not in the release \(tag).", status: 404)
         }
         return Self.api.appending(path: "repos/\(repository)/releases/assets/\(id)")
     }

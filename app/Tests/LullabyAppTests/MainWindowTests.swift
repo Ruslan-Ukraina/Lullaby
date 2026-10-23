@@ -293,7 +293,8 @@ struct MainWindowFlowTests {
         var plan = updatePlan
         #expect(SetupSteps.setup(plan, env).map(\.id) == [.rosetta, .engine, .bridge, .signatures, .steam])
         plan.app = "1.2.0"
-        #expect(SetupSteps.setup(plan, env).map(\.id) == [.rosetta, .engine, .bridge, .signatures, .steam, .app])
+        // An update of Lullaby itself ends the flow with the app: the patch for Steam is the new version's and goes on after the restart.
+        #expect(SetupSteps.setup(plan, env).map(\.id) == [.rosetta, .engine, .bridge, .signatures, .app])
     }
 
     @Test("Known causes become plain sentences")

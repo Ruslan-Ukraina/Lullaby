@@ -65,6 +65,19 @@ struct ReleaseAccessTests {
         }
     }
 
+    @Test("A file the release does not have is told as missing, not as a network failure")
+    func missingFileIsNotOffline() async throws {
+        let github = FakeGitHub(["manifest": ["bridge-manifest.json": (id: 42, data: Data("{}".utf8))]])
+        do {
+            _ = try await transport(github).fetch(Self.base.appending(path: "manifest/game-fixes.json"), limit: 1024)
+            Issue.record("a file that is not in the release was fetched")
+        } catch {
+            #expect((error as? TransportFailure)?.status == 404)
+            #expect(ReleaseAccess.failure(error) == ReleaseAccess.notFound)
+            #expect(ReleaseAccess.failure(error) != EngineUpdater.offline)
+        }
+    }
+
     @Test("Sparkle gets the appcast's direct address: its own Accept header would make the API answer JSON")
     func appcastDirectAddress() async throws {
         let github = FakeGitHub(["manifest": ["appcast.xml": (id: 9, data: Data("<rss/>".utf8))]])

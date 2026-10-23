@@ -171,6 +171,23 @@ final class MainModel {
         await status.refresh()
         status.startReleaseChecks()
         await checkForUpdates()
+        await continueAfterAppUpdate()
+    }
+
+    /// The version that came up after Lullaby's own update puts its patch into Steam, which the old one left for it.
+    private func continueAfterAppUpdate() async {
+        let marker = UpdateContinuation.take()
+        guard UpdateContinuation.shouldContinue(marker, bundled: AppVersion.bundled), let marker else {
+            if marker != nil { AppLog.note("main: the update note is from this very version, dropped") }
+            return
+        }
+        guard plan?.steamPatch == true else {
+            AppLog.note("main: Lullaby was updated from \(marker.from), Steam's patch is current already")
+            return
+        }
+        AppLog.note("main: Lullaby was updated from \(marker.from); going on with the patch for Steam")
+        reopenSteam = true
+        await begin(.update, asked: true)
     }
 
     func checkForUpdates() async {
