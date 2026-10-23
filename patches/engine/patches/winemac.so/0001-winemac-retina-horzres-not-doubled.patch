@@ -16,6 +16,10 @@ GetSystemMetrics, EnumDisplaySettings and DESKTOPHORZRES say 3840x2160 and HORZR
 7680x4320. Team Fortress 2 centres its window from HORZRES (athei), and Red Dead Redemption 2 at
 1920x1080 fullscreen comes out cropped for a player with Retina on (highball#261).
 
+Verified on: Dormison r5, r6, r7, r8 (applies; module built and compared with the release on r7, 2026-10).
+Switch: none, always on (it corrects a plain error).
+Test: engine/tests/highball-probe.c (HORZRES/VERTRES against GetSystemMetrics).
+
 --- a/dlls/winemac.drv/gdi.c
 +++ b/dlls/winemac.drv/gdi.c
 @@ -213,15 +213,10 @@ static INT macdrv_GetDeviceCaps(PHYSDEV dev, INT cap)

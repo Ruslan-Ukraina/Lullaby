@@ -2,8 +2,8 @@
 #define STEAM_HELPER_POSIX_COMPAT_H
 
 /* setenv is POSIX and absent from the mingw PE C runtime. steam.cpp uses it to
-   publish anti-cheat and VR runtime paths into the environment; map it onto the
-   mingw _putenv_s so the source builds unchanged. */
+   set the language locale of a game (LC_CTYPE, LC_MESSAGES); map it onto the mingw
+   _putenv_s so the source builds unchanged. */
 
 #include <stdlib.h>
 

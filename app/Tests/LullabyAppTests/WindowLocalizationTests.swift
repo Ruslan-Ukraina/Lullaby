@@ -122,7 +122,7 @@ struct CreditsTests {
             #expect(text.contains(credit.noticeMarker), "\(credit.name): \"\(credit.noticeMarker)\" not in NOTICE")
             #expect(!credit.license.isEmpty && !credit.authors.isEmpty && !credit.role.isEmpty)
         }
-        let parts = ["lsteamclient", "steam-shim", "Sparkle", "JsonCpp", "cJSON", "OpenVR", "Sevoflurane",
+        let parts = ["lsteamclient", "steam-shim", "Sparkle", "cJSON", "Sevoflurane",
                      "NotProtonNot", "Dormison", "Highball", "D3DMetal", "DXMT", "DXVK", "MoltenVK",
                      "Dobby"]
         for part in parts where text.contains(part) {

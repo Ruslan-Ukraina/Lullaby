@@ -4,9 +4,8 @@ Wine's configure enumerates the makefiles it will generate, so a component has t
 declared before configure runs. Undeclared, it gets no makefile and its build target
 silently does nothing.
 
-WINE_EXTERNAL(programs/steam.exe) is what stops makedep reading the internal includes
-inside jsoncpp's amalgamation. Those sit behind JSON_IS_AMALGAMATION and never compile,
-but the scanner follows them regardless of the #if.
+WINE_EXTERNAL(programs/steam.exe) builds the shim as an external program (its own headers,
+none of Wine's internal includes).
 
 Tracked as a patch rather than regenerated with autoconf. It is +8/-1 mechanical lines
 across the two files, where a local autoconf against stock 11.15 would rewrite the whole

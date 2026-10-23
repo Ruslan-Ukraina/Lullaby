@@ -20,6 +20,10 @@ its memory free, and its crash report carries MEM_USED 87180247040 against MEM_L
 
 The peak follows the current value, as in the Linux branch.
 
+Verified on: Dormison r5, r6, r7, r8 (applies; module built and compared with the release on r7, 2026-10).
+Switch: none, always on (it corrects a plain error).
+Test: engine/tests/highball-probe.c (PagefileUsage against the working set).
+
 --- a/dlls/ntdll/unix/process.c
 +++ b/dlls/ntdll/unix/process.c
 @@ -1515,6 +1515,9 @@

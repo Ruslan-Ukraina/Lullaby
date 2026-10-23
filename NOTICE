@@ -16,8 +16,7 @@ BSD-3-Clause.
 Steam-shim compiles against Steamworks SDK headers. Those headers are licensed
 under the Steamworks SDK license whenever they are used.
 
-It also compiles against OpenVR and Wine headers, which are BSD-3-Clause and
-LGPL-V2, respectively.
+It also compiles against a Wine header (heap.h), LGPL-2.1-or-later.
 
 The app bundle embeds Sparkle, which checks for and installs updates. Sparkle is
 MIT licensed, see
@@ -25,9 +24,6 @@ https://github.com/sparkle-project/Sparkle/blob/2.10.0/LICENSE
 
 These third party files carry their original notices from the project authors:
 
-  bridge/steam-shim/jsoncpp.cpp             JsonCpp, public domain / MIT (header)
-  bridge/steam-shim/json/json.h             JsonCpp, public domain / MIT (header)
-  bridge/steam-shim/json/json-forwards.h    JsonCpp, public domain / MIT (header)
   vendor/cJSON.c                     cJSON, MIT (header)
   vendor/cJSON.h                     cJSON, MIT (header)
 

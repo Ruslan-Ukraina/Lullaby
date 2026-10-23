@@ -76,8 +76,8 @@ size=$(stat -f %z "$out")
 # shellcheck disable=SC2046
 set -- $("$here/../pe-info.py" "$out")
 [ "$1" = "x86_64" ] || { echo "==> built $1, expected x86_64"; exit 1; }
-# The shim statically links jsoncpp and weighs ~14 MB. Anything near zero means
-# the link dropped objects.
+# The shim is several MB with its static C++ runtime. Anything near zero means the link
+# dropped objects.
 [ "$size" -gt 1000000 ] || { echo "==> only $size bytes, the link dropped objects"; exit 1; }
 echo "==> built $out  $1  $size bytes  $2 (timestamp and checksum zeroed)"
 

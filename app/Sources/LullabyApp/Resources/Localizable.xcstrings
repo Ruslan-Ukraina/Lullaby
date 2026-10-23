@@ -1129,30 +1129,6 @@
       },
       "generatesSymbol": false
     },
-    "Headers used to build steam-shim.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Headers used to build steam-shim."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Заголовки для сборки steam-shim."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Заголовки для збирання steam-shim."
-          }
-        }
-      },
-      "generatesSymbol": false
-    },
     "Install": {
       "extractionState": "manual",
       "localizations": {
@@ -1676,30 +1652,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ставить усі частини заново."
-          }
-        }
-      },
-      "generatesSymbol": false
-    },
-    "Reads JSON in steam-shim.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reads JSON in steam-shim."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Читает JSON в steam-shim."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Читає JSON у steam-shim."
           }
         }
       },
