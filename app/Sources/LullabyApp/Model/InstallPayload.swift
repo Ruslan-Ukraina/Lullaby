@@ -11,6 +11,7 @@ enum InstallPayload {
         let iconmaker: URL
         let appinfo: URL
         let nvapiShim: URL
+        let windowState: URL
         /// lullaby-settings: the settings CLI the Steam panel and Dormison's View menu call.
         let settingsCLI: URL
         /// compat_run.sh as the dylib embeds it, to compare with Steam's copy and to write it.
@@ -43,6 +44,7 @@ enum InstallPayload {
         let iconmaker = root.appending(path: "iconmaker")
         let appinfo = root.appending(path: "appinfo")
         let nvapiShim = root.appending(path: SupportPaths.nvapiShimName)
+        let windowState = root.appending(path: SupportPaths.windowStateName)
         let settingsCLI = root.appending(path: SupportPaths.settingsCLIName)
         let runScript = root.appending(path: runScriptName)
 
@@ -61,6 +63,9 @@ enum InstallPayload {
         }
         if !files.fileExists(atPath: nvapiShim.path(percentEncoded: false)) {
             missing.append(SupportPaths.nvapiShimName)
+        }
+        if !files.fileExists(atPath: windowState.path(percentEncoded: false)) {
+            missing.append(SupportPaths.windowStateName)
         }
         if !files.fileExists(atPath: settingsCLI.path(percentEncoded: false)) {
             missing.append(SupportPaths.settingsCLIName)
@@ -86,7 +91,7 @@ enum InstallPayload {
 
         return Located(
             dylib: dylib, overlayShim: shim, iconmaker: iconmaker,
-            appinfo: appinfo, nvapiShim: nvapiShim, settingsCLI: settingsCLI, runScript: runScript, signatures: signatures
+            appinfo: appinfo, nvapiShim: nvapiShim, windowState: windowState, settingsCLI: settingsCLI, runScript: runScript, signatures: signatures
         )
     }
 }

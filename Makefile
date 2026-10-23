@@ -65,7 +65,7 @@ TARGET      := $(OUT_DIR)/lullaby.dylib
 OBJS := $(patsubst %.c,$(OUT_DIR)/%.o,$(SRCS)) $(patsubst %.m,$(OUT_DIR)/%.o,$(OBJC_SRCS))
 DEPS := $(OBJS:.o=.d)
 
-.PHONY: all nvapi-shim reflex-sim patchcheck clean rebuild dobby deploy dylib-install sigcheck app-payload app app-zip app-config \
+.PHONY: all windowstate windowstate-tests nvapi-shim reflex-sim patchcheck clean rebuild dobby deploy dylib-install sigcheck app-payload app app-zip app-config \
         anchorcheck callscheck sigdb-fixtures webpatch-fixtures peicon-fixtures panel-behavior app-tests launch-shell \
         tests-list overlay-shim overlay-shim-install overlay-shim-tests \
         overlay-shim-bench iconmaker icon \
@@ -477,6 +477,38 @@ overlay-shim-tests: $(OVERLAY_SHIM)
 		echo "overlay shim tests: all $$skipped skipped, so nothing was checked"; exit 1; fi; \
 	echo "==> overlay shim tests: $$ran passed, $$skipped skipped"
 
+# lby-pinkiepie-windowstate (patches/inject/): the state a game's window was left in, put back at the
+# next launch. Injected into the Wine loader's process, so arm64 (wineserver, which it ignores) and x86_64.
+WINDOWSTATE_DIR  := patches/inject/lby-pinkiepie-windowstate
+WINDOWSTATE      := $(OUT_DIR)/lullaby-windowstate.dylib
+WINDOWSTATE_FLAGS := -mmacosx-version-min=$(MIN_VER) -dynamiclib -O2 -Wall -Wextra \
+                      -install_name @rpath/lullaby-windowstate.dylib -framework AppKit
+
+windowstate: $(WINDOWSTATE)
+
+$(WINDOWSTATE): $(WINDOWSTATE_DIR)/windowstate.m $(WINDOWSTATE_DIR)/windowstate_core.h
+	@mkdir -p $(OUT_DIR)
+	$(CC) -arch arm64 $(WINDOWSTATE_FLAGS) -o $(OUT_DIR)/lullaby-windowstate.arm64.dylib $<
+	$(CC) -arch x86_64 $(WINDOWSTATE_FLAGS) -o $(OUT_DIR)/lullaby-windowstate.x86_64.dylib $<
+	lipo -create $(OUT_DIR)/lullaby-windowstate.arm64.dylib $(OUT_DIR)/lullaby-windowstate.x86_64.dylib -output $@
+	codesign -fs - $@
+	@lipo -info $@
+
+# The decisions in plain C, then the library in a process with a WineWindow, on both architectures.
+windowstate-tests: $(WINDOWSTATE)
+	@mkdir -p $(OUT_DIR)
+	$(CC) -Wall -Wextra -o $(OUT_DIR)/windowstate-core-test $(WINDOWSTATE_DIR)/tests/core_test.c
+	$(OUT_DIR)/windowstate-core-test
+	@set -e; for a in arm64 x86_64; do \
+		$(CC) -arch $$a -mmacosx-version-min=$(MIN_VER) -framework AppKit -o $(OUT_DIR)/wine-windowstate-test.$$a \
+			$(WINDOWSTATE_DIR)/tests/windowstate_test.m; \
+		f=$$(mktemp -d "$${TMPDIR:-/tmp}/windowstate.XXXXXX")/state.json; \
+		LULLABY_WINDOWSTATE_DYLIB=$(WINDOWSTATE) $(OUT_DIR)/wine-windowstate-test.$$a save "$$f" 1000 640 2>/dev/null; \
+		LULLABY_WINDOWSTATE_DYLIB=$(WINDOWSTATE) $(OUT_DIR)/wine-windowstate-test.$$a restore "$$f" 1000 640 2>/dev/null; \
+		rm -rf "$$(dirname "$$f")"; \
+	done
+	@echo "==> windowstate tests: decisions, saving and putting back a window size, arm64 and x86_64"
+
 overlay-shim-bench:
 	@if [ ! -f $(OVERLAY_SHIM_TESTS)/passbench.m ]; then \
 		$(call SKIP,overlay-shim-bench,$(OVERLAY_SHIM_TESTS)/passbench.m); exit 0; fi; \
@@ -590,7 +622,7 @@ bridge:
 	bridge/steam-shim/build.sh
 	@echo "==> Built the bridge, now run: $(MAKE) app-payload"
 
-app-payload: $(TARGET) $(OVERLAY_SHIM) $(ICONMAKER) $(APPINFO) $(NVAPI_SHIM)
+app-payload: $(TARGET) $(OVERLAY_SHIM) $(ICONMAKER) $(APPINFO) $(NVAPI_SHIM) $(WINDOWSTATE)
 	@mkdir -p "$(APP_PAYLOAD)/signatures/macos.arm64"
 	@mkdir -p "$(APP_PAYLOAD)/bridge"
 	cp -f $(TARGET) "$(APP_PAYLOAD)/lullaby.dylib"
@@ -598,6 +630,7 @@ app-payload: $(TARGET) $(OVERLAY_SHIM) $(ICONMAKER) $(APPINFO) $(NVAPI_SHIM)
 	cp -f $(ICONMAKER) "$(APP_PAYLOAD)/iconmaker"
 	cp -f $(APPINFO) "$(APP_PAYLOAD)/appinfo"
 	cp -f $(NVAPI_SHIM) "$(APP_PAYLOAD)/lullaby-nvapi64.dll"
+	cp -f $(WINDOWSTATE) "$(APP_PAYLOAD)/lullaby-windowstate.dylib"
 	swift build --package-path app -c release --product lullaby-settings
 	cp -f "$$(swift build --package-path app -c release --show-bin-path)/lullaby-settings" \
 		"$(APP_PAYLOAD)/lullaby-settings"

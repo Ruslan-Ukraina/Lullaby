@@ -1190,6 +1190,13 @@ if [ -n "\$STEAM_DYLD_INSERT_LIBRARIES" ]; then
     export DYLD_INSERT_LIBRARIES="\$STEAM_DYLD_INSERT_LIBRARIES"
   fi
 fi
+# The state the game's window was left in is kept in the prefix and put back (lby-pinkiepie-windowstate);
+# LULLABY_WINDOW_STATE=0 as a launch option leaves it out for a run.
+window_state="$HOME/Library/Application Support/lullaby/lullaby-windowstate.dylib"
+if [ -f "\$window_state" ] && [ "\${LULLABY_WINDOW_STATE:-}" != 0 ]; then
+  export DYLD_INSERT_LIBRARIES="\$window_state\${DYLD_INSERT_LIBRARIES:+:\$DYLD_INSERT_LIBRARIES}"
+  export LULLABY_WINDOW_STATE_FILE="$WINEPREFIX/.sevo/lullaby-window.json"
+fi
 [ -n "\$LULLABY_GAME_CWD" ] && cd "\$LULLABY_GAME_CWD"
 "$WINELOADER" "\$@"
 exit \$?

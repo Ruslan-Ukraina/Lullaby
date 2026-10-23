@@ -49,6 +49,7 @@ struct SteamInstallerTests {
         let appinfo = root.appending(path: "appinfo")
         try FileManager.default.copyItem(at: dylib, to: appinfo)
         try FileManager.default.copyItem(at: dylib, to: root.appending(path: SupportPaths.nvapiShimName))
+        try FileManager.default.copyItem(at: dylib, to: root.appending(path: SupportPaths.windowStateName))
         try FileManager.default.copyItem(at: dylib, to: root.appending(path: SupportPaths.settingsCLIName))
 
         try Data("#!/bin/sh\necho shipped\n".utf8)
@@ -73,6 +74,7 @@ struct SteamInstallerTests {
         var iconmaker: URL { support.appending(path: "iconmaker") }
         var appinfo: URL { support.appending(path: "appinfo") }
         var nvapiShim: URL { support.appending(path: SupportPaths.nvapiShimName) }
+        var windowState: URL { support.appending(path: SupportPaths.windowStateName) }
         var settingsCLI: URL { support.appending(path: SupportPaths.settingsCLIName) }
         var deployedVersion: URL { support.appending(path: "dylib.version") }
         var backups: URL { support.appending(path: "backups") }
@@ -117,6 +119,7 @@ struct SteamInstallerTests {
             iconmaker: fixture.iconmaker,
             appinfo: fixture.appinfo,
             nvapiShim: fixture.nvapiShim,
+            windowState: fixture.windowState,
             settingsCLI: fixture.settingsCLI,
             deployedVersion: fixture.deployedVersion,
             backups: fixture.backups,

@@ -43,6 +43,9 @@ enum SupportPaths {
     /// Lullaby's nvapi64.dll: NVIDIA Reflex in front of D3DMetal's (patches/inject/lby-rainbowdash-reflex/).
     static var nvapiShim: URL { support.appending(path: nvapiShimName) }
     static let nvapiShimName = "lullaby-nvapi64.dll"
+    /// The window-state library injected into a game's Wine loader (patches/inject/lby-pinkiepie-windowstate/).
+    static var windowState: URL { support.appending(path: windowStateName) }
+    static let windowStateName = "lullaby-windowstate.dylib"
     static let settingsCLIName = "lullaby-settings"
     /// The settings CLI (LullabySettings): the Steam panel's writer, and what the stand-in
     /// below hands Dormison's View menu calls to.

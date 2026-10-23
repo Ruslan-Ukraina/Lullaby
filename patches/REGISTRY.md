@@ -93,6 +93,7 @@
 | CMP-02 | DXVK | `runners/<основа>/dxvk/` | Gcenx/DXVK-macOS v1.10.3 | из основы |
 | CMP-03 | D3DMetal (GPTK 4.0 beta 3) | `lullaby/d3dmetal/<версия>/` | Apple, ставит пользователь; не распространяем | импорт; Dormison: файлы в `wine/lib/external`; WineForge: `D3DMETAL_RUNTIME_DIR=<GPTK>/lib` |
 | CMP-04 | `lullaby-nvapi64.dll`: NVIDIA Reflex поверх D3DMetal (`nvapimt` переименован) | `patches/inject/lby-rainbowdash-reflex/` | Lullaby (идея `low_latency_layer`, MIT; код свой) | не зависит от основы; нужна лента показа ENG-07 |
+| WIN-01 | `lby-pinkiepie-windowstate`: запоминает состояние окна игры (окно и его размер / нативный полный экран / окно на весь экран) и возвращает его при следующем запуске | `patches/inject/lby-pinkiepie-windowstate`, `lullaby-windowstate.dylib` через `DYLD_INSERT_LIBRARIES` в загрузчик Wine | Lullaby, только публичный API AppKit (`NSWindow`, уведомления); движок не затронут | выключается `LULLABY_WINDOW_STATE=0` (параметр запуска); тесты `make windowstate-tests` |
 | CMP-05 | Прокси `d3d12`: единая память (UMA=1) | — | Lullaby, по `sevo_uma.c` Dormison | запланирован (Э3) |
 | CMP-06 | WFDXCompat (D3D12/D3D11 пробелы D3DMetal) | `lib/wfdxcompat` WineForge | WineForge | оценить на RE9 |
 

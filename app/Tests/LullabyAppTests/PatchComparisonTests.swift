@@ -29,6 +29,7 @@ struct PatchComparisonTests {
         try write("iconmaker", to: shipped.appending(path: "iconmaker"))
         try write("appinfo", to: shipped.appending(path: "appinfo"))
         try write("nvapi", to: shipped.appending(path: SupportPaths.nvapiShimName))
+        try write("windowstate", to: shipped.appending(path: SupportPaths.windowStateName))
         try write("settings", to: shipped.appending(path: SupportPaths.settingsCLIName))
         try write("#!/bin/sh\n", to: shipped.appending(path: InstallPayload.runScriptName))
         try write("{}", to: shipped.appending(path: "signatures/macos.arm64/1788652215.json"))
@@ -45,6 +46,7 @@ struct PatchComparisonTests {
             iconmaker: support.appending(path: "iconmaker"),
             appinfo: support.appending(path: "appinfo"),
             nvapiShim: support.appending(path: SupportPaths.nvapiShimName),
+            windowState: support.appending(path: SupportPaths.windowStateName),
             settingsCLI: support.appending(path: SupportPaths.settingsCLIName),
             signatures: support.appending(path: "signatures/macos.arm64")
         )
@@ -54,6 +56,7 @@ struct PatchComparisonTests {
         try write("iconmaker", to: installed.iconmaker)
         try write("appinfo", to: installed.appinfo)
         try write("nvapi", to: installed.nvapiShim)
+        try write("windowstate", to: installed.windowState)
         try write("settings", to: installed.settingsCLI)
         try write("{}", to: installed.signatures.appending(path: "1788652215.json"))
         for entry in BridgePayload.entries {
