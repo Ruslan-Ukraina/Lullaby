@@ -26,6 +26,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "nvapi_names.h"
 
@@ -124,6 +125,25 @@ static SRWLOCK log_lock = SRWLOCK_INIT;
    screen are whole refreshes. */
 static uint64_t refresh_ns;
 static double synced; /* average of "this interval was whole refreshes", 0..1 */
+/* The probe windows of the pacing (see "held" below): frames between them, frames in one, frames left in this one. */
+/* Reflex must not cost frames. The rule "frame N goes once N-2 (N-3 with V-Sync) is on the screen" keeps the queue short but, with the
+   compositor and the 120 Hz grid behind the GPU, lets a GPU-bound game idle: RE9's menu 84 frames a second against 96 without Reflex
+   (the latency 36 ms against 49). So the rule is loosened by adapt_depth frames in flight (0..2) as long as that buys frames: in a probe
+   window the game runs one frame deeper, and if its frame rate there beats the normal one by more than 3 % the depth goes up; it comes
+   back down only after the probes have found nothing for a while (doubling that while each try keeps failing). A game that is bound by the
+   CPU gains nothing from the extra frame and keeps the short queue. That control is NOT the default: in RE9's menu it swung between depth
+   0 and 2 every few seconds (the first frames of a probe window leave in a burst and look faster than they are). The default is the fixed
+   depth 1: 95.4 frames a second against 84 with the plain rule and 96.5 without Reflex (3 runs each, tools/perf/presentfeed.py), the
+   latency as without Reflex (48 ms against 49; the plain rule 36 ms). LULLABY_REFLEX_DEPTH=<n> sets the fixed depth (0 = the plain rule),
+   LULLABY_REFLEX_ADAPT=1 turns the control on. */
+static unsigned adapt_depth, just_lowered;
+static BOOL adapt_fixed = TRUE;   /* the depth is fixed at extra_depth unless the control is asked for */
+static double norm_sum, probe_sum;
+static unsigned norm_n, probe_n, adapt_quiet, lower_wait = 4, lower_wait_left;
+static unsigned extra_depth = 1;         /* LULLABY_REFLEX_DEPTH=<n>: frames more in flight than the pacing allows (an experiment) */
+static BOOL trace_frames;           /* LULLABY_REFLEX_TRACE=1: one log line per frame (a diagnosis) */
+static double trace_interval;
+static unsigned probe_every = 300, probe_len = 60, probe_left, frames_since_probe;
 
 static void log_line(const char *fmt, ...)
 {
@@ -161,6 +181,39 @@ static BOOL CALLBACK init(INIT_ONCE *once, void *param, void **ctx)
                                OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (GetEnvironmentVariableA("LULLABY_REFLEX", value, sizeof(value)) && !strcmp(value, "0"))
         reflex_here = FALSE;
+    if (GetEnvironmentVariableA("LULLABY_REFLEX_TRACE", value, sizeof(value)) && !strcmp(value, "1"))
+        trace_frames = TRUE;
+    /* or a file named like the log with .trace after it (the run script passes only the variables it names) */
+    if (log_file != INVALID_HANDLE_VALUE && wcslen(path) + 7 < MAX_PATH)
+    {
+        wcscat(path, L".trace");
+        if (GetFileAttributesW(path) != INVALID_FILE_ATTRIBUTES) trace_frames = TRUE;
+    }
+    /* the file form again: <log>.depth holds the number */
+    if (log_file != INVALID_HANDLE_VALUE && wcslen(path) + 8 < MAX_PATH)
+    {
+        HANDLE d;
+        wcscpy(wcsrchr(path, L'.') ? wcsrchr(path, L'.') : path + wcslen(path), L".depth");
+        d = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (d != INVALID_HANDLE_VALUE)
+        {
+            char digits[8] = {0};
+            DWORD got = 0;
+            if (ReadFile(d, digits, 7, &got, NULL) && got)
+            {
+                if (digits[0] >= '0' && digits[0] <= '3') extra_depth = (unsigned)atoi(digits);
+                adapt_fixed = digits[0] != 'a';   /* a digit fixes the depth; "a" turns the control on */
+                if (digits[0] == 'x') reflex_here = FALSE;   /* the shim stays, Reflex is left to D3DMetal (measured only) */
+            }
+            CloseHandle(d);
+        }
+    }
+    if (GetEnvironmentVariableA("LULLABY_REFLEX_ADAPT", value, sizeof(value)) && !strcmp(value, "1"))
+        adapt_fixed = FALSE;
+    if (GetEnvironmentVariableA("LULLABY_REFLEX_DEPTH", value, sizeof(value)) && value[0] >= '0' && value[0] <= '3')
+        extra_depth = (unsigned)atoi(value);
+    if (GetEnvironmentVariableA("LULLABY_REFLEX_PROBE", value, sizeof(value)) && value[0] >= '0' && value[0] <= '9')
+        probe_every = (unsigned)atoi(value);
     log_line("=== lullaby nvapi64 (pid %lu): Reflex %s, display refresh %.2f ms", GetCurrentProcessId(),
              reflex_here ? "paced by Lullaby" : "left to D3DMetal", refresh_ns / 1e6);
     if (!(real = LoadLibraryW(L"nvapimt.dll")))
@@ -288,6 +341,11 @@ static uint64_t acquired_at_release[FRAMES];
    unheld and is measured again; a frame released at once every so often would do it too,
    but shows on the screen as a regular stutter. */
 static BOOL held[FRAMES];
+/* The estimate of the GPU's frame interval is made from the frames that were not held, and once most frames are held
+   those are the late ones: the estimate drifts up (RE9's menu: 21-25 ms on a screen that shows a frame every 11), the
+   hold computed from it grows, the GPU idles and the game loses a seventh of its frames. So every probe_every frames
+   probe_len frames go unheld: the screen then shows what the GPU really delivers, and the estimate is true again.
+   LULLABY_REFLEX_PROBE=<frames> sets probe_every (0 = no probe windows: the old behaviour). */
 static uint64_t release_of_game_id[RING];   /* by the game's frame id: when its Sleep returned */
 static uint64_t prev_done;                  /* when the previous wait's frame reached the screen */
 static double gpu_ns, cpu_ns;               /* averages: frame interval on screen, CPU time to Present */
@@ -412,6 +470,11 @@ static NvAPI_Status __cdecl lb_Sleep(void *dev)
     if (on && f && frame_no)
     {
         back = synced > 0.7 && frame_no > 1 ? 2 : 1;
+        {
+            unsigned depth = adapt_fixed ? extra_depth : adapt_depth + (probe_left ? 1 : 0);
+            if (depth > 3) depth = 3;
+            if (depth && frame_no > depth + 1) back += depth;
+        }
         need = acquired_at_release[(frame_no + 1 - back) % FRAMES];
     }
     ReleaseSRWLockExclusive(&reflex_lock);
@@ -433,6 +496,7 @@ static NvAPI_Status __cdecl lb_Sleep(void *dev)
             {
                 uint64_t off = (shown - prev_done) % refresh_ns;
                 double dev = (double)(shown - prev_done) - gpu_ns;
+                trace_interval = (double)(shown - prev_done);
                 /* The frame that was just shown: N-2, or N-3 with V-Sync. */
                 if (!held[(frame_no - back) % FRAMES])
                 {
@@ -453,7 +517,7 @@ static NvAPI_Status __cdecl lb_Sleep(void *dev)
                        then rarely finds it idle. A margin bigger than the room there is
                        holds nothing (a negative double must not become a time). */
                     double hold = gpu_ns - cpu_ns - slack - 1000000 - 2 * gpu_dev_ns;
-                    if (hold > 0) target = shown + (uint64_t)hold;
+                    if (hold > 0 && !probe_left) target = shown + (uint64_t)hold;
                 }
             }
             ReleaseSRWLockExclusive(&reflex_lock);
@@ -468,7 +532,50 @@ static NvAPI_Status __cdecl lb_Sleep(void *dev)
     if (f) measure_shown(f);
     frame_no++;
     acquired_at_release[frame_no % FRAMES] = f ? f->acquired : 0;
+    if (trace_frames)
+        log_line("trace frame %llu: waited %.2f ms for N-%u shown, hold %.2f ms, shown-interval %.2f ms, gpu_ns %.2f, cpu_ns %.2f, dev %.2f, synced %.2f, probe_left %u",
+                 (unsigned long long)frame_no, (t - start) / 1e6, back + 1, target ? (double)(target - shown) / 1e6 : 0.0,
+                 trace_interval / 1e6, gpu_ns / 1e6, cpu_ns / 1e6, gpu_dev_ns / 1e6, synced, probe_left);
     held[frame_no % FRAMES] = target != 0;
+    if (!adapt_fixed && last_release && t - last_release < 100000000ull)
+    {
+        /* the interval of the game's own frames, in a normal window or a probe window (the first frames of a window are the change) */
+        if (probe_left && probe_left <= probe_len - 24) { probe_sum += (double)(t - last_release); probe_n++; }
+        else if (!probe_left && frames_since_probe >= 24) { norm_sum += (double)(t - last_release); norm_n++; }
+    }
+    if (probe_left)
+    {
+        probe_left--;
+        if (!probe_left && !adapt_fixed && norm_n >= 100 && probe_n >= 20)
+        {
+            double norm = norm_sum / norm_n, probe = probe_sum / probe_n;
+            if (probe * 1.05 < norm && adapt_depth < 2)
+            {
+                adapt_depth++;
+                if (just_lowered && lower_wait < 64) lower_wait *= 2;   /* a try that failed: wait longer next time */
+                just_lowered = 0;
+                lower_wait_left = lower_wait;
+                adapt_quiet = 0;
+                log_line("reflex: one frame deeper helps (%.2f ms a frame against %.2f): depth %u", probe / 1e6, norm / 1e6, adapt_depth);
+            }
+            else if (adapt_depth && probe * 1.01 >= norm)
+            {
+                if (lower_wait_left) lower_wait_left--;
+                else if (++adapt_quiet >= 2)
+                {
+                    adapt_depth--;
+                    adapt_quiet = 0;
+                    lower_wait_left = 0;
+                    just_lowered = 1;
+                    log_line("reflex: the extra frame buys nothing (%.2f ms against %.2f): depth %u, trying", probe / 1e6, norm / 1e6, adapt_depth);
+                }
+            }
+            else adapt_quiet = 0;
+            norm_sum = probe_sum = 0;
+            norm_n = probe_n = 0;
+        }
+    }
+    else if (probe_every && ++frames_since_probe >= probe_every) { probe_left = probe_len; frames_since_probe = 0; }
     last_release = t;
     stat_frames++;
     stat_wait_ns += t - start;

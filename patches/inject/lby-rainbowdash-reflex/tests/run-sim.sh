@@ -71,8 +71,11 @@ echo "==> reflex-sim ($dll)"
 #     name                               GPU CPU HZ LAG  lat   fps
 check "GPU-bound, no V-Sync"              20   8   0   0  0.60  0.95
 check "GPU-bound, CPU close to GPU"       16  14   0   0  0.75  0.95
-check "V-Sync 120 Hz, GPU 9 ms"            9   2 120   0  0.85  0.95
-check "V-Sync 120 Hz, GPU 10, lag 8 ms"   10   2 120   8  0.85  0.95
+# With V-Sync the compositor and the 120 Hz grid stand behind the GPU, and the plain "frame N after N-2 is shown" rule cost RE9
+# 12 % of its frames on the real screen (84 against 96, S8): the default holds one frame deeper, so here the promise is only that
+# nothing is lost and the latency is not worse than without Reflex.
+check "V-Sync 120 Hz, GPU 9 ms"            9   2 120   0  1.10  0.95
+check "V-Sync 120 Hz, GPU 10, lag 8 ms"   10   2 120   8  1.10  0.95
 check "CPU-bound: nothing to hold"         8  14   0   0  1.10  0.95
 if [ "$fail" -ne 0 ]; then
   echo "==> reflex-sim: FAILED" >&2
