@@ -22,15 +22,14 @@ struct SettingCatalogTests {
 
     @Test("the four quick settings, in order; the Advanced groups: what is automatic has no row")
     func quickSettings() {
-        #expect(SettingCatalog.quick.map(\.id) == [.renderer, .retina, .metalfx, .fps])
+        #expect(SettingCatalog.quick.map(\.id) == [.renderer, .retina, .fps])
         #expect(SettingCatalog.setting(.renderer).levels == [.game])
-        #expect(SettingCatalog.setting(.msync).levels == [.game])
         func advanced(_ group: SettingGroup) -> [SettingID] {
             SettingCatalog.settings(in: group, at: .game).filter { $0.quick == nil }.map(\.id)
         }
         #expect(advanced(.picture) == [.windows, .filter])
-        #expect(advanced(.performance) == [.tuning, .avx, .gameMode])
-        #expect(advanced(.diagnostics) == [.dlss, .unifiedMemory, .rawMouse, .msync, .forceVsync])
+        #expect(advanced(.performance) == [.tuning, .gameMode])
+        #expect(advanced(.diagnostics) == [.unifiedMemory, .rawMouse, .forceVsync])
         #expect(SettingGroup.allCases == [.picture, .performance, .diagnostics])
     }
 
@@ -38,23 +37,20 @@ struct SettingCatalogTests {
     static let samples: [(SettingID, JSONValue, String)] = [
         (.renderer, .string("dxvk"), "LULLABY_RENDERER=dxvk"),
         (.retina, .bool(true), "LULLABY_RETINA=1"),
-        (.metalfx, .string("2"), "DXMT_METALFX_SPATIAL_SWAPCHAIN=1"),
         (.filter, .string("metalfx"), "SEVO_UPSCALER=metalfx"),
         (.fps, .bool(true), "MTL_HUD_ENABLED=1"),
         (.windows, .string("all"), "SEVO_RESIZABLE_WINDOWS=all"),
-        (.filter, .string("nearest"), "SEVO_FINAL_FILTER=nearest"),
-        (.dlss, .bool(true), "DXMT_ENABLE_NVEXT=1"),
+        (.filter, .string("bilinear"), "SEVO_FINAL_FILTER=bilinear"),
         (.rawMouse, .bool(false), "LULLABY_GCMOUSE=0"),
         (.tuning, .string("experimental"), "SEVO_WAIT_SPIN=5200"),
         (.unifiedMemory, .bool(false), "SEVO_FORCE_UMA=0"),
-        (.avx, .bool(true), "ROSETTA_ADVERTISE_AVX=1"),
         (.gameMode, .bool(false), "LULLABY_GAME_MODE=0"),
         (.forceVsync, .bool(true), "LULLABY_FORCE_VSYNC=1"),
     ]
 
     @Test("every game setting reaches its key, and inherit writes none")
     func gameLinesPerSetting() throws {
-        #expect(Set(Self.samples.map(\.0)).union([.msync]) == Set(SettingID.allCases))
+        #expect(Set(Self.samples.map(\.0)) == Set(SettingID.allCases))
         for (id, value, line) in Self.samples {
             var game = ConfigValues()
             try SettingCatalog.setting(id).write(&game, value)
@@ -142,7 +138,7 @@ struct SettingCatalogTests {
         var values = ConfigValues()
         #expect(setting.read(values) == nil)
         for (choice, upscaler, filter): (String, String, String?) in [
-            ("off", "off", nil), ("nearest", "lanczos", "nearest"), ("bilinear", "lanczos", "bilinear"),
+            ("off", "off", nil), ("bilinear", "lanczos", "bilinear"),
             ("lanczos", "lanczos", "lanczos"), ("metalfx", "metalfx", nil),
         ] {
             try setting.write(&values, .string(choice))
@@ -153,41 +149,43 @@ struct SettingCatalogTests {
         try setting.write(&values, nil)
         #expect(values == .empty)
         #expect(throws: SettingsError.self) { try setting.write(&values, .string("anime4k")) }
+        #expect(throws: SettingsError.self, "Nearest is not offered") { try setting.write(&values, .string("nearest")) }
+        // A Nearest stored by an older version reads as Lanczos.
+        values.upscaler = .lanczos
+        values.filter = .nearest
+        #expect(setting.read(values) == .string("lanczos"))
         if case let .choice(choices) = setting.control {
-            #expect(choices.map { $0.label.en } == ["Off", "Nearest", "Bilinear", "Lanczos", "MetalFX Spatial"])
+            #expect(choices.map { $0.label.en } == ["Off", "Bilinear", "Lanczos", "MetalFX Spatial"])
         }
     }
 
-    @Test("the card follows DLSS: AMD by default, NVIDIA with DLSS, in every layer")
-    func graphicsCardFollowsDLSS() throws {
-        var global = ConfigValues()
-        try SettingCatalog.setting(.dlss).write(&global, .bool(true))
+    @Test("every game gets the same NVIDIA card under the Mac's chip name, in every layer")
+    func graphicsCardIsOneNVIDIAUnderTheChipName() throws {
+        let chip = GPUIdentity.chipName
+        #expect(chip.hasPrefix("Apple"))
         var game = ConfigValues()
-        let shared = ConfigMaterializer.effectiveEnvironment(
-            bottle: ConfigMaterializer.bottleLines(global: global, msync: true, cli: nil),
-            program: ConfigMaterializer.gameLines(appID: 7, stack: ConfigStack(global: global, game: game)))
-        #expect(shared["SEVO_GPU_VENDOR_ID"] == "0x10DE")
-        #expect(shared["SEVO_GPU_DEVICE_ID"] == "0x2D04")
-        #expect(shared["SEVO_GPU_NAME"] == "NVIDIA GeForce RTX 5060 Ti")
-        #expect(shared["SEVO_GPU_DRIVER_VERSION"] == "32.0.16.1088")
-        #expect(shared["D3DM_DEVICE_ID"] == "0x2D04")
-        #expect(shared["DXMT_ENABLE_NVEXT"] == "1")
-        #expect(shared["DXMT_CONFIG"]?.contains("dxgi.customDeviceId = 2d04") == true)
-
-        // The game turns DLSS off: its own file names the AMD card over the shared NVIDIA.
-        try SettingCatalog.setting(.dlss).write(&game, .bool(false))
-        let own = ConfigMaterializer.effectiveEnvironment(
-            bottle: ConfigMaterializer.bottleLines(global: global, msync: true, cli: nil),
-            program: ConfigMaterializer.gameLines(appID: 7, stack: ConfigStack(global: global, game: game)))
-        #expect(own["SEVO_GPU_VENDOR_ID"] == "0x1002")
-        #expect(own["SEVO_GPU_DEVICE_ID"] == "0x7590")
-        #expect(own["SEVO_GPU_NAME"] == "AMD Radeon RX 9060 XT")
-        #expect(own["SEVO_GPU_DRIVER_PROVIDER"] == "Advanced Micro Devices, Inc.")
-        #expect(own["D3DM_DEVICE_DESCRIPTION"] == "AMD Radeon RX 9060 XT")
-        #expect(own["DXMT_ENABLE_NVEXT"] == nil)
-        #expect(own["DXVK_CONFIG_FILE"] == #"C:\windows\dxvk.conf"#)
-        #expect(ConfigMaterializer.dxgiConfig(.amd)
-            == #"dxgi.customVendorId = 1002; dxgi.customDeviceId = 7590; dxgi.customDeviceDesc = "AMD Radeon RX 9060 XT"; dxgi.maxDeviceMemory = 16384"#)
+        game.dlss = false   // an older version's value changes nothing
+        let env = ConfigMaterializer.effectiveEnvironment(
+            bottle: ConfigMaterializer.bottleLines(global: .empty, msync: true, cli: nil),
+            program: ConfigMaterializer.gameLines(appID: 7, stack: ConfigStack(global: .empty, game: game)))
+        #expect(env["SEVO_GPU_VENDOR_ID"] == "0x10DE")
+        #expect(env["SEVO_GPU_DEVICE_ID"] == "0x2D04")
+        #expect(env["SEVO_GPU_NAME"] == chip)
+        #expect(env["SEVO_GPU_DRIVER_VERSION"] == "32.0.16.1088")
+        #expect(env["SEVO_GPU_DRIVER_PROVIDER"] == "NVIDIA")
+        #expect(env["D3DM_VENDOR_ID"] == "0x10DE")
+        #expect(env["D3DM_DEVICE_DESCRIPTION"] == chip)
+        #expect(env["DXMT_ENABLE_NVEXT"] == "1")
+        #expect(env["D3DM_ENABLE_METALFX"] == "1")
+        #expect(env["LULLABY_DLSS"] == "1")
+        #expect(env["ROSETTA_ADVERTISE_AVX"] == "1")
+        #expect(env["DXMT_METALFX_SPATIAL_SWAPCHAIN"] == "0")
+        #expect(env["WINEMSYNC"] == nil, "WINEMSYNC is the server's: written beside bottle.env by write()")
+        #expect(env["DXMT_CONFIG"]?.contains("dxgi.customDeviceId = 2d04") == true)
+        #expect(env["DXMT_CONFIG"]?.contains("dxgi.customDeviceDesc = \"\(chip)\"") == true)
+        #expect(env["DXVK_CONFIG_FILE"] == #"C:\windows\dxvk.conf"#)
+        #expect(ConfigMaterializer.dxgiConfig(.current)
+            == "dxgi.customVendorId = 10de; dxgi.customDeviceId = 2d04; dxgi.customDeviceDesc = \"\(chip)\"; dxgi.maxDeviceMemory = 16384")
     }
 
     @Test("values outside a setting are refused")
@@ -212,12 +210,12 @@ struct SettingCatalogTests {
         var game = ConfigValues()
         game.retina = true
         game.renderer = .dxmt
-        game.avx = true
+        game.gameMode = false
         game.exes = ["a.exe"]
         let kept = SettingCatalog.withoutInherited(game, level: .game, global: global)
         #expect(kept.retina == nil, "the shared value")
         #expect(kept.renderer == nil, "Lullaby's default renderer")
-        #expect(kept.avx == true)
+        #expect(kept.gameMode == false)
         #expect(kept.exes == ["a.exe"])
         #expect(SettingCatalog.withoutInherited(global, level: .global, global: .empty).retina == true)
     }
@@ -256,7 +254,7 @@ struct SettingCatalogTests {
             #expect(env[key] == value, "\(key)")
         }
         #expect(env["SEVO_CPU_COUNT"] == nil)
-        #expect(env["SEVO_GPU_VENDOR_ID"] == "0x1002", "games see the AMD card by default")
+        #expect(env["SEVO_GPU_VENDOR_ID"] == "0x10DE", "games see the NVIDIA card by default, under the chip's name")
         #expect(env["MTL_HUD_ENABLED"] == "0")
     }
 }

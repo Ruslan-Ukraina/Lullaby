@@ -161,7 +161,6 @@ struct D3DMetalStoreTests {
         try Self.makeRedist(at: volume)
         let toolkit = try service.d3dmetal.install(from: volume)
         try service.set("renderer", .string("d3dmetal"), appID: 4022369388)
-        try service.set("dlss", .bool(true), appID: 4022369388)
 
         let bottle = try #require(fixture.read(".sevo/bottle.env", in: 4022369388))
         #expect(bottle.contains("LULLABY_D3DMETAL=") && bottle.contains("/d3dmetal/\(toolkit.version)\n"), "\(bottle)")
@@ -169,13 +168,12 @@ struct D3DMetalStoreTests {
         try service.materialize(appID: 4022369388)
         let game = try #require(fixture.read(".sevo/apps/re9.exe.env", in: 4022369388))
         #expect(game.contains("LULLABY_RENDERER=d3dmetal"))
-        // The card follows DLSS (Amendment 09.10): with it on, D3DMetal names the NVIDIA card
-        // and answers DLSS through MetalFX.
-        #expect(game.contains("D3DM_VENDOR_ID=0x10DE"))
-        #expect(game.contains("D3DM_DEVICE_ID=0x2D04"))
-        #expect(game.contains("D3DM_DEVICE_DESCRIPTION=NVIDIA GeForce RTX 5060 Ti"))
-        #expect(game.contains("D3DM_ENABLE_METALFX=1"))
-        #expect(bottle.contains("D3DM_VENDOR_ID=0x1002"), "AMD for the games without DLSS")
+        // Every game is told the NVIDIA card under the Mac's chip name, and D3DMetal answers DLSS
+        // through MetalFX: bottle.env carries it for all games.
+        #expect(bottle.contains("D3DM_VENDOR_ID=0x10DE"))
+        #expect(bottle.contains("D3DM_DEVICE_ID=0x2D04"))
+        #expect(bottle.contains("D3DM_DEVICE_DESCRIPTION=\(GPUIdentity.chipName)"))
+        #expect(bottle.contains("D3DM_ENABLE_METALFX=1"))
 
         let catalog = service.catalogJSON().object?["settings"]?.array?.first { $0.object?["id"] == .string("renderer") }
         let choices = catalog?.object?["control"]?.object?["choices"]?.array ?? []

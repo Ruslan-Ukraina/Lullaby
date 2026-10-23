@@ -5,28 +5,6 @@
  },
  "level": "global",
  "values": {
-  "avx": {
-   "effective": false,
-   "inherited": false,
-   "inheritedFrom": "defaults",
-   "inheritedLabel": {
-    "en": "Off",
-    "ru": "Выкл.",
-    "uk": "Вимк."
-   },
-   "own": null
-  },
-  "dlss": {
-   "effective": false,
-   "inherited": false,
-   "inheritedFrom": "defaults",
-   "inheritedLabel": {
-    "en": "Off",
-    "ru": "Выкл.",
-    "uk": "Вимк."
-   },
-   "own": null
-  },
   "filter": {
    "effective": "off",
    "inherited": "off",
@@ -68,17 +46,6 @@
     "en": "On",
     "ru": "Вкл.",
     "uk": "Увімк."
-   },
-   "own": null
-  },
-  "metalfx": {
-   "effective": "off",
-   "inherited": "off",
-   "inheritedFrom": "defaults",
-   "inheritedLabel": {
-    "en": "Off",
-    "ru": "Выкл.",
-    "uk": "Вимк."
    },
    "own": null
   },

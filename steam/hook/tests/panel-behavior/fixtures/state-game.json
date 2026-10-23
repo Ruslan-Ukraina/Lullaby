@@ -13,28 +13,6 @@
  "running": false,
  "status": "nextLaunch",
  "values": {
-  "avx": {
-   "effective": false,
-   "inherited": false,
-   "inheritedFrom": "defaults",
-   "inheritedLabel": {
-    "en": "Off",
-    "ru": "Выкл.",
-    "uk": "Вимк."
-   },
-   "own": null
-  },
-  "dlss": {
-   "effective": false,
-   "inherited": false,
-   "inheritedFrom": "defaults",
-   "inheritedLabel": {
-    "en": "Off",
-    "ru": "Выкл.",
-    "uk": "Вимк."
-   },
-   "own": null
-  },
   "filter": {
    "effective": "off",
    "inherited": "off",
@@ -69,28 +47,6 @@
    "own": true
   },
   "gameMode": {
-   "effective": true,
-   "inherited": true,
-   "inheritedFrom": "defaults",
-   "inheritedLabel": {
-    "en": "On",
-    "ru": "Вкл.",
-    "uk": "Увімк."
-   },
-   "own": null
-  },
-  "metalfx": {
-   "effective": "off",
-   "inherited": "off",
-   "inheritedFrom": "defaults",
-   "inheritedLabel": {
-    "en": "Off",
-    "ru": "Выкл.",
-    "uk": "Вимк."
-   },
-   "own": null
-  },
-  "msync": {
    "effective": true,
    "inherited": true,
    "inheritedFrom": "defaults",

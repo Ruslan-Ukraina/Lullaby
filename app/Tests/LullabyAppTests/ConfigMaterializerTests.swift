@@ -94,17 +94,17 @@ struct ConfigMaterializerTests {
         let fixture = try SettingsFixture()
         defer { fixture.cleanUp() }
         try FileManager.default.createDirectory(at: fixture.prefix(5), withIntermediateDirectories: true)
-        try fixture.service.set("msync", .bool(false), appID: 5)
+        try fixture.service.materialize(appID: 5)
         var bottle = try #require(fixture.read(".sevo/bottle.env", in: 5))
-        #expect(bottle.contains("LULLABY_MSYNC=0"))
-        #expect(bottle.contains("WINEMSYNC=0"), "a new bottle.env starts with the setting")
+        #expect(bottle.contains("LULLABY_MSYNC=1"), "msync+ is always on")
+        #expect(bottle.contains("WINEMSYNC=1"), "a new bottle.env starts with it")
         #expect(bottle.contains("SEVO_CLI=/support/lullaby-sevo"))
 
-        // The run script set WINEMSYNC=1 for the session now running.
-        try fixture.write(bottle.replacingOccurrences(of: "WINEMSYNC=0", with: "WINEMSYNC=1"), ".sevo/bottle.env", in: 5)
+        // The run script set WINEMSYNC=0 for one run (a launch option): the session now running keeps it.
+        try fixture.write(bottle.replacingOccurrences(of: "WINEMSYNC=1", with: "WINEMSYNC=0"), ".sevo/bottle.env", in: 5)
         try fixture.service.set("fps", .bool(true), appID: nil)
         bottle = try #require(fixture.read(".sevo/bottle.env", in: 5))
-        #expect(bottle.contains("WINEMSYNC=1"))
+        #expect(bottle.contains("WINEMSYNC=0"))
         #expect(bottle.contains("MTL_HUD_ENABLED=1"))
     }
 
@@ -150,45 +150,14 @@ struct ConfigMaterializerTests {
         let windows = fixture.prefix(12).appending(path: "drive_c/windows")
         try FileManager.default.createDirectory(at: windows, withIntermediateDirectories: true)
         try fixture.service.materialize(appID: 12)
-        #expect(fixture.read("drive_c/windows/dxvk.conf", in: 12)?.contains("dxgi.customDeviceId = 7590") == true)
-        try fixture.service.set("dlss", .bool(true), appID: 12)
         let conf = try #require(fixture.read("drive_c/windows/dxvk.conf", in: 12))
         #expect(conf.hasPrefix(ConfigMaterializer.header))
         #expect(conf.contains("dxgi.customDeviceId = 2d04"))
-        #expect(conf.contains(#"dxgi.customDeviceDesc = "NVIDIA GeForce RTX 5060 Ti""#))
+        #expect(conf.contains(#"dxgi.customDeviceDesc = "\#(GPUIdentity.chipName)""#))
 
         try fixture.write("dxgi.customVendorId = 8086\n", "drive_c/windows/dxvk.conf", in: 12)
-        try fixture.service.set("dlss", .bool(false), appID: 12)
+        try fixture.service.materialize(appID: 12)
         #expect(fixture.read("drive_c/windows/dxvk.conf", in: 12) == "dxgi.customVendorId = 8086\n")
-    }
-
-    @Test("MetalFX on DXMT's swapchain: the switch and the factor reach the game, the card stays in DXMT_CONFIG")
-    func swapchainMetalFX() throws {
-        let off = ConfigMaterializer.bottleLines(global: .empty, msync: true, cli: nil)
-        #expect(off.contains("DXMT_METALFX_SPATIAL_SWAPCHAIN=0"))
-        #expect(!off.joined().contains("metalSpatialUpscaleFactor"))
-
-        var game = ConfigValues()
-        game.metalfx = .x1_5
-        let stack = ConfigStack(global: .empty, game: game)
-        let env = ConfigMaterializer.effectiveEnvironment(
-            bottle: off, program: ConfigMaterializer.gameLines(appID: 1422450, stack: stack))
-        #expect(env["DXMT_METALFX_SPATIAL_SWAPCHAIN"] == "1")
-        let config = try #require(env["DXMT_CONFIG"])
-        #expect(config.hasSuffix("; d3d11.metalSpatialUpscaleFactor = 1.5"))
-        #expect(config.contains("dxgi.customDeviceId = 7590"))
-
-        game.dlss = true
-        let both = ConfigMaterializer.effectiveEnvironment(
-            bottle: off, program: ConfigMaterializer.gameLines(appID: 1422450, stack: ConfigStack(global: .empty, game: game)))
-        #expect(both["DXMT_CONFIG"]?.contains("dxgi.customDeviceId = 2d04; ") == true)
-        #expect(both["DXMT_CONFIG"]?.hasSuffix("metalSpatialUpscaleFactor = 1.5") == true)
-
-        var global = ConfigValues()
-        global.metalfx = .x2
-        let shared = ConfigMaterializer.bottleLines(global: global, msync: true, cli: nil)
-        #expect(shared.contains("DXMT_METALFX_SPATIAL_SWAPCHAIN=1"))
-        #expect(shared.contains { $0.hasPrefix("DXMT_CONFIG=") && $0.hasSuffix("metalSpatialUpscaleFactor = 2.0") })
     }
 
     @Test("a value set equal to what the game inherits is stored as inherit")
@@ -277,7 +246,6 @@ struct ConfigMigrationTests {
         let file = try #require(fixture.read(".sevo/apps/deadlock.exe.env", in: 1422450))
         #expect(file.hasPrefix(ConfigMaterializer.header))
         #expect(file.contains("SEVO_LOADER=/b/Deadlock.app/Contents/MacOS/wine"))
-        #expect(file.contains("ROSETTA_ADVERTISE_AVX=1"))
         #expect(!file.contains("DXVK_HUD"), "a key no setting owns stays only in the backup")
         #expect(fixture.read(".sevo/apps/steam.exe.env", in: 1422450) == "SEVO_LOADER=/b/Deadlock.app/Contents/MacOS/wine\n",
                 "the Steam shim's file is the run script's")
@@ -352,7 +320,7 @@ struct StoreUpgradeTests {
         #expect(try String(contentsOf: backup.appending(path: "games/3527290.json"), encoding: .utf8).contains("cursorConfine"))
         #expect(try String(contentsOf: backup.appending(path: "global.json"), encoding: .utf8).contains("fpsLimit"))
         let bottle = try #require(fixture.read(".sevo/bottle.env", in: 3527290))
-        #expect(bottle.contains("SEVO_GPU_DEVICE_ID=0x7590"), "every prefix rewritten")
+        #expect(bottle.contains("SEVO_GPU_DEVICE_ID=0x2D04"), "every prefix rewritten")
         #expect(!bottle.contains("SEVO_CPU_COUNT"))
 
         // Once: a later change of the old shape is not upgraded again.

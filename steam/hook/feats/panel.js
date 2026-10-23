@@ -275,12 +275,48 @@
       ctx.global ? el("div", { className: "LBCaption LBTop" }, T(ctx, "globalCaption")) : null,
       rows(ctx, settingsAt(ctx, true)),
       el("div", { className: "LBActions" },
-        el(B.$n, { onClick: function () { ctx.setAdvanced(true); } }, T(ctx, "advanced")),
+        el(B.$n, { onClick: function () { dialogScroll = 0; ctx.setAdvanced(true); } }, T(ctx, "advanced")),
         el(B.$n, { className: "LBReset", onClick: function () { ctx.reset(); } },
           T(ctx, resetLabel(ctx)))),
       statusLine(ctx),
       ctx.error ? el("div", { className: "LBError" }, T(ctx, "saveFailed", ctx.error)) : null,
       ctx.advanced ? overlay(ctx) : null);
+  }
+
+  // The dialog's list keeps its scroll position through the re-render a change causes: a change
+  // answers with new state, the dialog is drawn again and the list used to jump to the top. The
+  // position is read when a change starts (and while the player scrolls), and put back after the
+  // render and again shortly after, in case the jump comes later.
+  var dialogScroll = 0, dialogSettling = 0;
+  function dialogBody() {
+    return typeof document !== "undefined" && document.querySelector ? document.querySelector(".LBDialogBody") : null;
+  }
+  function holdScroll() {
+    var n = dialogBody();
+    if (n && n.scrollHeight > n.clientHeight) dialogScroll = n.scrollTop;
+    dialogSettling = Date.now() + 400;
+  }
+  function restoreScroll() {
+    var n = dialogBody();
+    if (n && dialogScroll > 0 && n.scrollTop !== dialogScroll) n.scrollTop = dialogScroll;
+  }
+  function restoreSoon() {
+    restoreScroll();
+    if (typeof setTimeout === "function") [30, 120, 300].forEach(function (ms) { setTimeout(restoreScroll, ms); });
+  }
+  function DialogBody(props) {
+    var node = R.useRef(null);
+    (R.useLayoutEffect || R.useEffect)(function () {
+      if (node.current && dialogScroll > 0 && node.current.scrollTop !== dialogScroll) node.current.scrollTop = dialogScroll;
+    });
+    return el("div", {
+      className: "LBDialogBody", ref: node,
+      onScroll: function (e) {
+        var n = e.currentTarget;
+        // A jump to the top just after a change is not the player's own scrolling.
+        if (n.scrollHeight > n.clientHeight && !(n.scrollTop === 0 && Date.now() < dialogSettling)) dialogScroll = n.scrollTop;
+      }
+    }, props.children);
   }
 
   // The Advanced dialog: every other row of the level, by group, over the window.
@@ -298,7 +334,7 @@
       style(),
       el("div", { className: "LBDialog DialogContent", role: "dialog", "aria-label": title },
         el("div", { className: "LBDialogHead" }, title),
-        el("div", { className: "LBDialogBody" },
+        el(DialogBody, null,
           ctx.catalog.groups.map(function (g) {
             var list = others.filter(function (s) { return s.group === g.id; });
             if (!list.length) return null;
@@ -376,8 +412,14 @@
         if (body !== h[0]) h[1](body);
       },
       global: appID === undefined,
-      change: function (id, value) { return ask({ op: "set", app: appID, id: id, value: value }).then(answered); },
-      reset: function () { return ask({ op: "reset", app: appID }).then(answered); }
+      change: function (id, value) {
+        holdScroll();
+        return ask({ op: "set", app: appID, id: id, value: value }).then(function (r) { answered(r); restoreSoon(); });
+      },
+      reset: function () {
+        holdScroll();
+        return ask({ op: "reset", app: appID }).then(function (r) { answered(r); restoreSoon(); });
+      }
     };
   }
 

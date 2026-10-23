@@ -9,8 +9,8 @@
 // - a game's file carries only what the game sets itself, and a switch it sets is
 //   written as =0 or =1 even where it equals the shared value.
 //
-// The graphics card is not a setting: it follows DLSS → MetalFX (GPUIdentity.forGame), and
-// DXVK's part of it is a dxvk.conf in the game's prefix.
+// The graphics card is not a setting: every game is told the same NVIDIA card under the Mac's
+// chip name (GPUIdentity.current), and DXVK's part of it is a dxvk.conf in the game's prefix.
 //
 // Lullaby keeps one prefix per game, so a prefix's bottle.env also holds the two
 // lines only that file may carry: WINEMSYNC, which the run script sets at every launch
@@ -53,13 +53,6 @@ public enum ConfigMaterializer {
         lines += engineCounterOff
         lines += tuningLines(stack)
         lines += gpuLines(stack)
-        lines.append(swapchainUpscaleLine(stack))
-        // DLSS through MetalFX: DXMT's own switch, and D3DMetal's (Sevoflurane's
-        // Core/BottleGraphics.swift names it; it does nothing under the other renderers).
-        if stack[\.dlss] {
-            lines.append("DXMT_ENABLE_NVEXT=1")
-            lines.append("D3DM_ENABLE_METALFX=1")
-        }
         // A directory's URL path ends in "/"; the run script joins its own parts to it.
         if let d3dmetal {
             let path = d3dmetal.hasSuffix("/") ? String(d3dmetal.dropLast()) : d3dmetal
@@ -81,17 +74,6 @@ public enum ConfigMaterializer {
         if let filter = game.filter { lines.append("SEVO_FINAL_FILTER=\(filter.rawValue)") }
         lines += switches.compactMap { key, path in game[keyPath: path].map { "\(key)=\($0 ? "1" : "0")" } }
         if game.tuning != nil { lines += tuningLines(stack) }
-        if game.metalfx != nil {
-            lines.append(swapchainUpscaleLine(stack))
-            // DXMT_CONFIG carries the factor beside the card; DLSS below writes it whole.
-            if game.dlss == nil { lines.append("DXMT_CONFIG=\(dxmtConfig(stack))") }
-        }
-        if let dlss = game.dlss {
-            // The card follows DLSS, so a game that sets it names its card over the shared one.
-            lines += gpuLines(stack)
-            lines.append(dlss ? "DXMT_ENABLE_NVEXT=1" : "DXMT_ENABLE_NVEXT=")
-            lines.append(dlss ? "D3DM_ENABLE_METALFX=1" : "D3DM_ENABLE_METALFX=")
-        }
         lines += markers.compactMap { key, path in game[keyPath: path].map { "\(key)=\($0 ? "1" : "0")" } }
         lines += stack.fixLines
         return lines
@@ -100,7 +82,6 @@ public enum ConfigMaterializer {
     /// Switches that reach a game as one variable each.
     static let switches: [(key: String, path: KeyPath<ConfigValues, Bool?> & Sendable)] = [
         ("MTL_HUD_ENABLED", \.fps),
-        ("ROSETTA_ADVERTISE_AVX", \.avx),
         ("LULLABY_GAME_MODE", \.gameMode),
         ("SEVO_FORCE_UMA", \.unifiedMemory),
         ("LULLABY_FORCE_VSYNC", \.forceVsync),
@@ -114,7 +95,18 @@ public enum ConfigMaterializer {
     /// calibrated 30 %, 4 GB for every 32-bit game (the engine applies it to 32-bit programs
     /// only), and NVIDIA Reflex answered by Lullaby for D3DMetal games that use it.
     /// Display mode emulation is not here: compat_run.sh turns it on for a 32-bit program.
+    ///
+    /// Also fixed: AVX advertised to games (Rosetta), DLSS through MetalFX (DXMT's switch and
+    /// D3DMetal's; Sevoflurane's Core/BottleGraphics.swift names them, they do nothing under the
+    /// other renderers) with no DXMT swapchain upscaler (the final filter has MetalFX Spatial),
+    /// and msync+ (a launch option can still turn a variable off for one run: LULLABY_DLSS=0,
+    /// WINEMSYNC=0).
     static let fixedLines = [
+        "ROSETTA_ADVERTISE_AVX=1",
+        "DXMT_ENABLE_NVEXT=1",
+        "D3DM_ENABLE_METALFX=1",
+        "LULLABY_DLSS=1",
+        "DXMT_METALFX_SPATIAL_SWAPCHAIN=0",
         "SEVO_FPS_LIMIT=0",
         "SEVO_LINEAR_MOUSE=0",
         "LULLABY_GCMOUSE_SCALE=\(RawMouseScale.p30.rawValue)",
@@ -130,7 +122,6 @@ public enum ConfigMaterializer {
     /// the DLL overrides DLSS needs next to the renderer's.
     static let markers: [(key: String, path: KeyPath<ConfigValues, Bool?> & Sendable)] = [
         ("LULLABY_RETINA", \.retina),
-        ("LULLABY_DLSS", \.dlss),
     ]
 
     static func tuningLines(_ stack: ConfigStack) -> [String] {
@@ -153,7 +144,7 @@ public enum ConfigMaterializer {
     static let dxvkConfigWindowsPath = #"C:\windows\dxvk.conf"#
     static let dxvkConfigPrefixPath = "drive_c/windows/dxvk.conf"
 
-    public static func gpu(_ stack: ConfigStack) -> GPUIdentity { .forGame(dlss: stack[\.dlss]) }
+    public static func gpu(_ stack: ConfigStack) -> GPUIdentity { .current }
 
     /// The card a game is told of, in every layer's own spelling.
     static func gpuLines(_ stack: ConfigStack) -> [String] {
@@ -176,17 +167,8 @@ public enum ConfigMaterializer {
         ]
     }
 
-    /// DXMT's switch for MetalFX on the swapchain; it acts on "1" only.
-    static func swapchainUpscaleLine(_ stack: ConfigStack) -> String {
-        "DXMT_METALFX_SPATIAL_SWAPCHAIN=\(stack[\.metalfx] == .off ? "0" : "1")"
-    }
-
-    /// DXMT's options: the card, and the MetalFX factor while it is on.
-    static func dxmtConfig(_ stack: ConfigStack) -> String {
-        let card = dxgiConfig(gpu(stack))
-        guard let factor = stack[\.metalfx].factor else { return card }
-        return card + "; d3d11.metalSpatialUpscaleFactor = \(factor)"
-    }
+    /// DXMT's options: the card.
+    static func dxmtConfig(_ stack: ConfigStack) -> String { dxgiConfig(gpu(stack)) }
 
     /// DXGI's options in the shape DXMT and DXVK both parse (`dxgi_options.cpp`): an id as
     /// four bare hex digits, a value with a space quoted. DXMT passes over the memory key.
@@ -230,11 +212,11 @@ public enum ConfigMaterializer {
         try FileManager.default.createDirectory(at: apps, withIntermediateDirectories: true)
 
         let bottle = sevo.appending(path: "bottle.env")
-        var bottleText = bottleLines(global: stack.global, msync: stack[\.msync], cli: cli, d3dmetal: d3dmetal)
+        var bottleText = bottleLines(global: stack.global, msync: true, cli: cli, d3dmetal: d3dmetal)
         // The server and every process of a running game agree on WINEMSYNC; only the
         // run script, before the server starts, changes it.
         let msyncLine = existingLines(bottle, keys: ["WINEMSYNC"])
-        bottleText += msyncLine.isEmpty ? ["WINEMSYNC=\(stack[\.msync] ? "1" : "0")"] : msyncLine
+        bottleText += msyncLine.isEmpty ? ["WINEMSYNC=1"] : msyncLine
         if try writeIfChanged(bottleText, to: bottle) { outcome.written.append("bottle.env") }
 
         // DXVK's file in the game's own prefix, so the card is the game's (DLSS included).

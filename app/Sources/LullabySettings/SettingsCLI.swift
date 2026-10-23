@@ -230,7 +230,11 @@ public struct SettingsCLI {
             guard let filter = FinalFilter(rawValue: value) else { throw SettingsError.invalidValue("filter", value) }
             // The last choice wins: a filter picked in the View menu replaces MetalFX Spatial, and a filter
             // acts only while the presenter runs, so it is stored on the final-filter-only upscaler.
-            try service.set("filter", .string(filter.rawValue), appID: app)
+            guard let choice = PictureFilter(rawValue: filter.rawValue) else {
+                service.log("app \(app): View menu filter=\(value) not kept (not offered)")
+                break
+            }
+            try service.set("filter", .string(choice.rawValue), appID: app)
         case "fps", "fps-graph":
             _ = try onOff(value)
             service.log("app \(app): View menu \(arguments[2])=\(value) not kept (Dormison's counter)")

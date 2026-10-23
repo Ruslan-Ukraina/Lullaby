@@ -169,36 +169,6 @@ extension SettingCopy {
                            uk: "Зберігається в реєстрі Wine гри під час запуску.",
                            ru: "Сохраняется в реестре Wine игры при запуске.")))
 
-    static let metalfx = SettingCopy(
-        L10n("MetalFX upscaling", uk: "Апскейл MetalFX", ru: "Апскейл MetalFX"),
-        caption: L10n("Samples from the resolution the game is set to.",
-                      uk: "Береться роздільність, вибрана в налаштуваннях гри.",
-                      ru: "Берётся разрешение, выбранное в настройках игры."),
-        help: SettingHelp(
-            L10n("The game draws at the resolution set in its own options, and MetalFX enlarges that picture before it reaches the window. Works with DXMT only, in Direct3D 10 and 11 games.",
-                 uk: "Гра малює в роздільності, вибраній у її налаштуваннях, а MetalFX збільшує цю картинку перед тим, як вона потрапить у вікно. Працює лише з DXMT, в іграх на Direct3D 10 і 11.",
-                 ru: "Игра рисует в разрешении, выбранном в её настройках, а MetalFX увеличивает эту картинку, прежде чем она попадёт в окно. Работает только с DXMT, в играх на Direct3D 10 и 11."),
-            entries: [
-                HelpEntry(.same("2×"), L10n(
-                    "Four times fewer pixels to draw. With Retina off, the game's resolution doubled is the screen's own.",
-                    uk: "Удвічі менша сторона кадру — вчетверо менше пікселів. З вимкненим Retina подвоєна роздільність гри збігається з екранною.",
-                    ru: "Вдвое меньшая сторона кадра — вчетверо меньше пикселей. С выключенным Retina удвоенное разрешение игры совпадает с экранным.")),
-                HelpEntry(L10n("1.5× and 1.72×", uk: "1.5× і 1.72×", ru: "1.5× и 1.72×"), L10n(
-                    "Sharper, with a smaller gain.",
-                    uk: "Чіткіше, але приріст менший.",
-                    ru: "Чётче, но прирост меньше.")),
-                HelpEntry(.same("3×"), L10n(
-                    "The fastest and the softest picture.",
-                    uk: "Найшвидше, картинка найм’якша.",
-                    ru: "Быстрее всего, картинка самая мягкая.")),
-                HelpEntry(L10n("The game's own upscaler", uk: "Власний апскейлер гри", ru: "Собственный апскейлер игры"), L10n(
-                    "Turn FSR or DLSS in the game off while this is on: two upscalers do the work twice.",
-                    uk: "Вимкніть FSR або DLSS у грі, поки це ввімкнено: два апскейлери роблять одну роботу двічі.",
-                    ru: "Выключите FSR или DLSS в игре, пока это включено: два апскейлера делают одну работу дважды.")),
-            ],
-            footnote: L10n("Takes effect at the next launch.", uk: "Діє з наступного запуску.",
-                           ru: "Действует со следующего запуска.")))
-
     static let fps = SettingCopy(
         L10n("Frame rate counter", uk: "Лічильник FPS", ru: "Счётчик FPS"),
         caption: L10n("Apple's Metal HUD shown over the game.", uk: "Metal HUD від Apple поверх гри.",
@@ -253,10 +223,6 @@ extension SettingCopy {
                     "macOS stretches the picture softly. A smaller picture keeps black borders.",
                     uk: "macOS м’яко розтягує картинку. Менша картинка лишається з чорними смугами.",
                     ru: "macOS мягко растягивает картинку. Меньшая картинка остаётся с чёрными полосами.")),
-                HelpEntry(.same("Nearest"), L10n(
-                    "Copies pixels. Crisp at whole-number scales, uneven at others.",
-                    uk: "Копіює пікселі. Чітко при цілому масштабі, нерівно при інших.",
-                    ru: "Копирует пиксели. Чётко при целом масштабе, неровно при остальных.")),
                 HelpEntry(.same("Bilinear"), L10n(
                     "Blends neighbouring pixels. The softest option.", uk: "Змішує сусідні пікселі. Найм’якший варіант.",
                     ru: "Смешивает соседние пиксели. Самый мягкий вариант.")),
@@ -271,26 +237,6 @@ extension SettingCopy {
             footnote: L10n("View › Upscaler in the game's menu changes it while you play. Lullaby remembers your choice.",
                            uk: "View › Upscaler у меню гри змінює його під час гри. Lullaby запам’ятовує ваш вибір.",
                            ru: "View › Upscaler в меню игры меняет его во время игры. Lullaby запоминает ваш выбор.")))
-
-    static let dlss = SettingCopy(
-        L10n("DLSS MetalFX", uk: "DLSS MetalFX", ru: "DLSS MetalFX"),
-        caption: L10n("For games with DLSS: MetalFX works in its place, and the game sees an NVIDIA GeForce RTX 5060 Ti.",
-                      uk: "Для ігор із DLSS: замість нього працює MetalFX, а гра бачить NVIDIA GeForce RTX 5060 Ti.",
-                      ru: "Для игр с DLSS: вместо него работает MetalFX, а игра видит NVIDIA GeForce RTX 5060 Ti."),
-        help: SettingHelp(
-            L10n("DXMT answers the game's NVIDIA (NVAPI) and DLSS calls and upscales with MetalFX. Works with DXMT only.",
-                 uk: "DXMT відповідає на виклики NVIDIA (NVAPI) і DLSS від гри та масштабує через MetalFX. Працює лише з DXMT.",
-                 ru: "DXMT отвечает на вызовы NVIDIA (NVAPI) и DLSS от игры и масштабирует через MetalFX. Работает только с DXMT."),
-            entries: [
-                HelpEntry(L10n("Graphics card", uk: "Відеокарта", ru: "Видеокарта"), L10n(
-                    "Lullaby chooses the card the game sees: an AMD Radeon RX 9060 XT, or, with this on, an NVIDIA GeForce RTX 5060 Ti, because games offer DLSS only on NVIDIA.",
-                    uk: "Lullaby сам обирає відеокарту, яку бачить гра: AMD Radeon RX 9060 XT, а з цією опцією — NVIDIA GeForce RTX 5060 Ti, бо ігри пропонують DLSS лише на NVIDIA.",
-                    ru: "Lullaby сам выбирает видеокарту, которую видит игра: AMD Radeon RX 9060 XT, а с этой опцией — NVIDIA GeForce RTX 5060 Ti, потому что игры предлагают DLSS только на NVIDIA.")),
-                HelpEntry(L10n("If a game misbehaves", uk: "Якщо гра поводиться дивно", ru: "Если игра ведёт себя странно"), L10n(
-                    "Turn it off for that game. Few games have been tested this way.",
-                    uk: "Вимкніть для цієї гри. Цим шляхом перевірено мало ігор.",
-                    ru: "Выключите для этой игры. Этим путём проверено мало игр.")),
-            ]))
 
     static let rawMouse = SettingCopy(
         L10n("Raw mouse (GameController)", uk: "Сира миша (GameController)", ru: "Сырая мышь (GameController)"),
@@ -349,21 +295,6 @@ extension SettingCopy {
                     ru: "Неправильные текстуры или игра останавливается при запуске: выключите для этой игры.")),
             ]))
 
-    static let avx = SettingCopy(
-        L10n("Report AVX to games", uk: "Повідомляти іграм про AVX", ru: "Сообщать играм об AVX"),
-        caption: L10n("Games that check for AVX at launch will find it.", uk: "Ігри, які перевіряють AVX під час запуску, його знайдуть.",
-                      ru: "Игры, которые проверяют AVX при запуске, его найдут."),
-        help: SettingHelp(
-            L10n("Many games since 2020 require AVX and AVX2. Rosetta can run them either way; this setting makes it report that support.",
-                 uk: "Багато ігор після 2020 року вимагають AVX і AVX2. Rosetta виконує їх у будь-якому разі; ця опція змушує її повідомляти про підтримку.",
-                 ru: "Многие игры после 2020 года требуют AVX и AVX2. Rosetta выполняет их в любом случае; эта опция заставляет её сообщать о поддержке."),
-            entries: [
-                HelpEntry(L10n("If a game misbehaves", uk: "Якщо гра поводиться дивно", ru: "Если игра ведёт себя странно"), L10n(
-                    "A game that picks a slower AVX code path may run better with this off.",
-                    uk: "Гра, що обирає повільніший шлях з AVX, може працювати краще без цього.",
-                    ru: "Игра, которая выбирает более медленный путь с AVX, может работать лучше без этого.")),
-            ]))
-
     static let gameMode = SettingCopy(
         L10n("macOS Game Mode", uk: "Ігровий режим macOS", ru: "Игровой режим macOS"),
         caption: L10n("Gives the game priority in full screen. Turn off while streaming.",
@@ -383,14 +314,4 @@ extension SettingCopy {
             L10n("Games with frame generation turn V-Sync off, and the picture then tears. On, every frame waits for the display's refresh. D3DMetal only.",
                  uk: "Ігри з генерацією кадрів вимикають V-Sync, і картинка тоді рветься. Увімкнено — кожен кадр чекає оновлення екрана. Лише D3DMetal.",
                  ru: "Игры с генерацией кадров выключают V-Sync, и картинка тогда рвётся. Включено — каждый кадр ждёт обновления экрана. Только D3DMetal.")))
-
-    static let msync = SettingCopy(
-        .same("msync+"),
-        caption: L10n("Always on. Turn it off only to test a problem in this game.",
-                      uk: "Завжди увімкнено. Вимикайте лише для перевірки проблеми в цій грі.",
-                      ru: "Всегда включён. Выключайте только для проверки проблемы в этой игре."),
-        help: SettingHelp(
-            L10n("Dormison's fast synchronisation of a game's threads through Mach semaphores. Off, the game falls back to Wine's slower server sync.",
-                 uk: "Швидка синхронізація потоків гри в Dormison через семафори Mach. Без неї гра повертається до повільнішої синхронізації через сервер Wine.",
-                 ru: "Быстрая синхронизация потоков игры в Dormison через семафоры Mach. Без неё игра возвращается к более медленной синхронизации через сервер Wine.")))
 }

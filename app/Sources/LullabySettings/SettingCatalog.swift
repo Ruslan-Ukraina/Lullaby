@@ -8,10 +8,10 @@
 import Foundation
 
 public enum SettingID: String, CaseIterable, Sendable, Codable {
-    case renderer, retina, metalfx, fps
+    case renderer, retina, fps
     case windows, filter
-    case tuning, avx, gameMode
-    case dlss, unifiedMemory, rawMouse, msync, forceVsync
+    case tuning, gameMode
+    case unifiedMemory, rawMouse, forceVsync
 }
 
 /// The groups the Advanced dialog shows, in order. What a game's bitness or age decides
@@ -170,15 +170,7 @@ public enum SettingCatalog {
             copy: .renderer, carrier: .runScript("LULLABY_RENDERER")),
         .flag(.retina, in: .picture, quick: 2, key: \.retina, copy: .retina,
               carrier: .registry(values: ["RetinaMode"], marker: "LULLABY_RETINA")),
-        // NotProton's MetalFX: DXMT enlarges every frame from the resolution the game is
-        // set to, before the window. Its row is there while the game is on DXMT.
-        .choice(
-            .metalfx, in: .picture, quick: 3, key: \.metalfx,
-            labels: [(.off, Words.off), (.x1_5, .same("1.5×")), (.x1_72, .same("1.72×")), (.x2, .same("2×")),
-                     (.x3, .same("3×"))],
-            copy: .metalfx, carrier: .environment(["DXMT_METALFX_SPATIAL_SWAPCHAIN", "DXMT_CONFIG"]))
-            .shown(with: [.dxmt]),
-        .flag(.fps, in: .picture, quick: 4, key: \.fps, copy: .fps, carrier: .environment(["MTL_HUD_ENABLED"])),
+        .flag(.fps, in: .picture, quick: 3, key: \.fps, copy: .fps, carrier: .environment(["MTL_HUD_ENABLED"])),
         .choice(
             .windows, in: .picture, key: \.windows,
             labels: [
@@ -190,9 +182,6 @@ public enum SettingCatalog {
             ],
             copy: .windows, carrier: .environment(["SEVO_RESIZABLE_WINDOWS"])),
         pictureFilterSetting,
-        // The card a game is told of follows this switch (GPUIdentity.forGame).
-        .flag(.dlss, in: .diagnostics, experimental: true, key: \.dlss, copy: .dlss,
-              carrier: .environment(["DXMT_ENABLE_NVEXT", "D3DM_ENABLE_METALFX", "LULLABY_DLSS"] + ConfigMaterializer.gpuKeys)),
         tuningSetting,
         .flag(.unifiedMemory, in: .diagnostics, key: \.unifiedMemory, copy: .unifiedMemory,
               carrier: .environment(["SEVO_FORCE_UMA"])),
@@ -200,11 +189,8 @@ public enum SettingCatalog {
         // is for finding out whether it is the cause of a problem.
         .flag(.rawMouse, in: .diagnostics, key: \.rawMouse, copy: .rawMouse,
               carrier: .environment(["LULLABY_GCMOUSE"])),
-        .flag(.avx, in: .performance, key: \.avx, copy: .avx, carrier: .environment(["ROSETTA_ADVERTISE_AVX"])),
         // The run script writes the game's bundle (compat_run.sh): LSSupportsGameMode.
         .flag(.gameMode, in: .performance, key: \.gameMode, copy: .gameMode, carrier: .environment(["LULLABY_GAME_MODE"])),
-        .flag(.msync, in: .diagnostics, levels: [.game], key: \.msync, copy: .msync,
-              carrier: .bottleOnly(["WINEMSYNC"])),
         // Lullaby's winemac.so fix 0003 (WineMetalLayer): the D3DMetal layer's sync, and the
         // present feed Lullaby's nvapi64.dll paces NVIDIA Reflex with (patches/inject/lby-rainbowdash-reflex/).
         .flag(.forceVsync, in: .diagnostics, experimental: true, key: \.forceVsync, copy: .forceVsync,
@@ -253,7 +239,6 @@ public enum SettingCatalog {
     /// (the final filter alone) + that filter" and MetalFX Spatial is "upscaler metalfx".
     static let pictureFilterChoices = [
         SettingChoice(.string(PictureFilter.off.rawValue), Words.off),
-        SettingChoice(.string(PictureFilter.nearest.rawValue), .same("Nearest")),
         SettingChoice(.string(PictureFilter.bilinear.rawValue), .same("Bilinear")),
         SettingChoice(.string(PictureFilter.lanczos.rawValue), .same("Lanczos")),
         SettingChoice(.string(PictureFilter.metalfx.rawValue), .same("MetalFX Spatial")),
@@ -294,7 +279,7 @@ public enum SettingCatalog {
     }
 
     static let tuningSetting = Setting(
-        id: .tuning, group: .performance, levels: [.global, .game], quick: nil, experimental: false,
+        id: .tuning, group: .performance, levels: [.global, .game], quick: nil, experimental: true,
         copy: .tuning, control: .tuning(tuningChoices),
         carrier: .environment(["SEVO_WAIT_SPIN", "SEVO_WAIT_SPIN_ADAPT", "SEVO_OBJECT_SPIN"]),
         read: { values in

@@ -79,8 +79,9 @@ public enum FinalFilter: String, Codable, CaseIterable, Sendable {
 
 /// The picture's last step as the player sees it (SettingCatalog.pictureFilterSetting): nothing
 /// (macOS stretches the picture), a final filter of Dormison's presenter, or MetalFX Spatial.
+/// Dormison's Nearest is not offered; a stored one reads as Lanczos.
 public enum PictureFilter: String, Codable, CaseIterable, Sendable {
-    case off, nearest, bilinear, lanczos, metalfx
+    case off, bilinear, lanczos, metalfx
 
     /// The pair of stored values a level holds; nil when neither is set.
     init?(upscaler: UpscalerChoice?, filter: FinalFilter?) {
@@ -97,7 +98,7 @@ public enum PictureFilter: String, Codable, CaseIterable, Sendable {
         switch self {
         case .off: .off
         case .metalfx: .metalfx
-        case .nearest, .bilinear, .lanczos: .lanczos
+        case .bilinear, .lanczos: .lanczos
         }
     }
 
@@ -161,12 +162,13 @@ public struct TuningParameters: Codable, Equatable, Sendable {
     }
 }
 
-/// The graphics card a game is told it runs on, chosen by Lullaby rather than by the
-/// player: an AMD card, and an NVIDIA one while DLSS → MetalFX is on, since games offer
-/// DLSS only on NVIDIA. Both match an M4 Pro the way Sevoflurane's Core/GPUEquivalence.swift
-/// does (MIT, Copyright (c) 2026 kageroumado), and both are in Dormison's tables
-/// (`dlls/win32u/sysparams.c`, `dlls/wined3d/directx.c`). The driver strings are
-/// Sevoflurane's too: a game that checks the driver reads the vendor's own shape.
+/// The graphics card every game is told it runs on: an NVIDIA one, since games offer DLSS (and
+/// Reflex) only on NVIDIA, shown under the Mac's own chip name. The vendor, device id and
+/// driver are what games and NVAPI act on; the name is only what they print. The ids match an
+/// M4 Pro the way Sevoflurane's Core/GPUEquivalence.swift does (MIT, Copyright (c) 2026
+/// kageroumado), and both are in Dormison's tables (`dlls/win32u/sysparams.c`,
+/// `dlls/wined3d/directx.c`). The driver strings are Sevoflurane's too: a game that checks the
+/// driver reads the vendor's own shape.
 public struct GPUIdentity: Codable, Equatable, Sendable {
     public var vendorID: Int
     public var deviceID: Int
@@ -176,18 +178,20 @@ public struct GPUIdentity: Codable, Equatable, Sendable {
     public var driverDate: String
     public var driverProvider: String
 
-    /// AMD Radeon RX 9060 XT, AMD Software: Adrenalin Edition 26.8.1.
-    public static let amd = GPUIdentity(
-        vendorID: 0x1002, deviceID: 0x7590, name: "AMD Radeon RX 9060 XT", memoryMB: 16384,
-        driverVersion: "32.0.26081.1001", driverDate: "8-12-2026", driverProvider: "Advanced Micro Devices, Inc.")
-
-    /// NVIDIA GeForce RTX 5060 Ti, GeForce Game Ready 610.88.
-    public static let nvidia = GPUIdentity(
-        vendorID: 0x10de, deviceID: 0x2d04, name: "NVIDIA GeForce RTX 5060 Ti", memoryMB: 16384,
+    /// NVIDIA GeForce RTX 5060 Ti ids and GeForce Game Ready 610.88 driver, under the chip's name.
+    public static let current = GPUIdentity(
+        vendorID: 0x10de, deviceID: 0x2d04, name: chipName, memoryMB: 16384,
         driverVersion: "32.0.16.1088", driverDate: "8-3-2026", driverProvider: "NVIDIA")
 
-    /// The card for a game with DLSS → MetalFX on or off.
-    public static func forGame(dlss: Bool) -> GPUIdentity { dlss ? .nvidia : .amd }
+    /// The Mac's chip ("Apple M4 Pro"), "Apple Silicon" when the system does not say.
+    public static let chipName: String = {
+        var size = 0
+        guard sysctlbyname("machdep.cpu.brand_string", nil, &size, nil, 0) == 0, size > 1 else { return "Apple Silicon" }
+        var buffer = [CChar](repeating: 0, count: size)
+        guard sysctlbyname("machdep.cpu.brand_string", &buffer, &size, nil, 0) == 0 else { return "Apple Silicon" }
+        let name = String(cString: buffer)
+        return name.hasPrefix("Apple") ? name : "Apple Silicon"
+    }()
 }
 
 /// One level of the hierarchy. A nil field inherits from the level above.

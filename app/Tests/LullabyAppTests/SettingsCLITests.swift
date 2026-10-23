@@ -24,7 +24,7 @@ struct SettingsCLITests {
         #expect(catalog["ok"] == .bool(true))
         let settings = try #require(catalog["catalog"]?.object?["settings"]?.array)
         #expect(settings.count == SettingID.allCases.count)
-        #expect(settings.compactMap { $0.object?["quick"]?.number }.sorted() == [1, 2, 3, 4])
+        #expect(settings.compactMap { $0.object?["quick"]?.number }.sorted() == [1, 2, 3])
 
         // A game whose files are not installed yet has nothing to record.
         var answer = try object(cli.panel(#"{"op":"state","app":3527291}"#).text)
@@ -135,7 +135,7 @@ struct SettingsCLITests {
         defer { fixture.cleanUp() }
         try fixture.install(1422450, name: "Deadlock", dir: "Deadlock",
                             exes: ["game/bin/win64/deadlock.exe", "game/bin/win64/vconsole2.exe"])
-        try fixture.service.store.updateGame(1422450) { $0.avx = true }
+        try fixture.service.store.updateGame(1422450) { $0.gameMode = false }
         let pfx = fixture.prefix(1422450)
         let result = SettingsCLI(service: fixture.service).run([
             "launch", "--app", "1422450", "--exe",
@@ -144,8 +144,8 @@ struct SettingsCLITests {
             "--prefix", pfx.path,
         ])
         #expect(result.status == 0, "\(result.error)")
-        #expect(fixture.read(".sevo/apps/deadlock.exe.env", in: 1422450)?.contains("ROSETTA_ADVERTISE_AVX=1") == true)
-        #expect(fixture.read(".sevo/apps/vconsole2.exe.env", in: 1422450)?.contains("ROSETTA_ADVERTISE_AVX=1") == true)
+        #expect(fixture.read(".sevo/apps/deadlock.exe.env", in: 1422450)?.contains("LULLABY_GAME_MODE=0") == true)
+        #expect(fixture.read(".sevo/apps/vconsole2.exe.env", in: 1422450)?.contains("LULLABY_GAME_MODE=0") == true)
         #expect(fixture.read(".sevo/bottle.env", in: 1422450)?.hasPrefix(ConfigMaterializer.header) == true)
 
         // A helper Steam runs in the prefix is not the game.
