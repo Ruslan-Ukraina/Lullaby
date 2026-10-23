@@ -117,7 +117,7 @@ struct SettingCatalogTests {
         #expect(env["SEVO_RESIZABLE_WINDOWS"] == "fixed", "a fixed-size window is scaled; a game that covers the screen stays as it is (native full screen is postponed)")
         #expect(env["LULLABY_NATIVE_FULLSCREEN"] == "0", "native full screen of a covering game is postponed: off, no setting")
         #expect(env["SEVO_LARGE_ADDRESS_AWARE"] == "1", "4 GB for 32-bit games")
-        #expect(env["LULLABY_LOW_LATENCY"] == "1", "Reflex is always answered")
+        #expect(env["LULLABY_LOW_LATENCY"] == "0", "Lullaby's Reflex answer is off: it cost RE9's menu 13 % of its frames")
         #expect(env["LULLABY_EMULATE_MODESET"] == nil, "compat_run.sh decides by the program's bitness")
         #expect(!program.contains { $0.hasPrefix("SEVO_FPS_LIMIT") || $0.hasPrefix("LULLABY_LOW_LATENCY") })
     }
