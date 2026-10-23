@@ -22,7 +22,7 @@ Rule: a directory or link that is not in this table is not created; a new one is
 | `.github/` | CI | workflows | | Release |
 | `LICENSE*`, `NOTICE`, `README.md`, `Makefile`, `.gitignore` | licences, attribution, entry, build | | | |
 
-Links outside `patches/steam/`: `patches/inject/lby-rarity-icons/iconmaker.swift` -> `app/helpers/iconmaker.swift`, `patches/inject/lby-rarity-icons/tests` -> `app/helpers/tests`.
+Links outside `patches/steam/`: `patches/engine/lby-octavia-gcmouse/0004-winemac-lby-octavia-gcmouse.patch` -> the patch in the winemac series, `patches/inject/lby-rarity-icons/iconmaker.swift` -> `app/helpers/iconmaker.swift`, `patches/inject/lby-rarity-icons/tests` -> `app/helpers/tests`.
 
 Git-ignored work directories used by build scripts: `build/`, `out/`, `scratch/` (disposable, never published).
 

@@ -114,7 +114,7 @@ struct SettingCatalogTests {
         let env = ConfigMaterializer.effectiveEnvironment(bottle: bottle, program: program)
         #expect(env["SEVO_FPS_LIMIT"] == "0", "no frame limit")
         #expect(env["SEVO_LINEAR_MOUSE"] == "0")
-        #expect(env["LULLABY_GCMOUSE_SCALE"] == "0.3")
+        #expect(env["LULLABY_GCMOUSE_SCALE"] == "auto", "from the mouse's resolution")
         #expect(env["SEVO_LARGE_ADDRESS_AWARE"] == "1", "4 GB for 32-bit games")
         #expect(env["LULLABY_LOW_LATENCY"] == "1", "Reflex is always answered")
         #expect(env["LULLABY_EMULATE_MODESET"] == nil, "compat_run.sh decides by the program's bitness")

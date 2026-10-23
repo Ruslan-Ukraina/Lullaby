@@ -91,8 +91,8 @@ public enum ConfigMaterializer {
     /// What is no setting any more: it is the same for every game and for every level, so
     /// a value an older version stored for it (the fields stay in ConfigValues so old files
     /// decode) changes nothing. No frame limit (the game's and the screen's own pacing), the
-    /// engine's pointer curve off (the raw GameController path is the mouse's), its scale the
-    /// calibrated 30 %, 4 GB for every 32-bit game (the engine applies it to 32-bit programs
+    /// engine's pointer curve off (the raw GameController path is the mouse's), its scale automatic
+    /// (from the mouse's resolution, 30 % when it reports none), 4 GB for every 32-bit game (the engine applies it to 32-bit programs
     /// only), and NVIDIA Reflex answered by Lullaby for D3DMetal games that use it.
     /// Display mode emulation is not here: compat_run.sh turns it on for a 32-bit program.
     ///
@@ -109,7 +109,7 @@ public enum ConfigMaterializer {
         "DXMT_METALFX_SPATIAL_SWAPCHAIN=0",
         "SEVO_FPS_LIMIT=0",
         "SEVO_LINEAR_MOUSE=0",
-        "LULLABY_GCMOUSE_SCALE=\(RawMouseScale.p30.rawValue)",
+        "LULLABY_GCMOUSE_SCALE=auto",
         "SEVO_LARGE_ADDRESS_AWARE=1",
         "LULLABY_LOW_LATENCY=1",
     ]

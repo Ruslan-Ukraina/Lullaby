@@ -1,0 +1,454 @@
+lby-octavia-gcmouse: mouse movement through GameController, rewritten for Lullaby (replaces 0004 and 0005), 2026-10-23.
+
+Origin: Elvin Hayatov's WineHQ merge request !11799 (bfa3c0fdc2da), via WineForge 0.6.0.7 (8051e02d); LGPL-2.1-or-later like
+Wine, his notice kept in cocoa_gcmouse.m. What differs from his code:
+ - no change to the build files: cocoa_gcmouse.m is included at the end of cocoa_event.m, and GameController is not
+   linked (no Makefile.in line) but loaded when the first mouse is looked for;
+ - a trackpad keeps the engine's own path "as is": AppKit's mouse-moved events are left out only while GameController
+   delivered movement in the last 40 ms, so a pointer GameController does not report (the built-in trackpad is not a
+   GCMouse here; one named "trackpad" is skipped) is not cut off or scaled;
+ - the raw counts are scaled by the mouse's own resolution: LULLABY_GCMOUSE_SCALE=<number> sets it, anything else is
+   automatic, 480 / counts-per-inch from the external mouse's HIDPointerResolution within 0.05 .. 2, and 0.3 (the
+   calibration made on the owner's mouse) when no mouse reports a resolution; the fractions are carried over;
+ - off unless the Mac driver key UseGCMouse or the environment variable LULLABY_GCMOUSE is on.
+
+Requires: 0003-winemac-lullaby-vsync-and-present-feed.patch (the series order, no code dependency).
+Verified on: built with the series on Dormison r7, 2026-10-23 (see patches/REGISTRY.md WIN... ENG-08); live check with a mouse and the trackpad by the owner.
+Switch: LULLABY_GCMOUSE=0/1 (the game's settings), LULLABY_GCMOUSE_SCALE.
+Test: patches/engine/lby-octavia-gcmouse/README.md (checks by hand: mouse speed, trackpad speed).
+
+diff --git a/dlls/winemac.drv/cocoa_event.m b/dlls/winemac.drv/cocoa_event.m
+index c3f03a4b64..fb61cf8d3b 100644
+--- a/dlls/winemac.drv/cocoa_event.m
++++ b/dlls/winemac.drv/cocoa_event.m
+@@ -834,3 +834,6 @@ void macdrv_unregister_hot_key(macdrv_event_queue q, unsigned int vkey, unsigned
+         [queue unregisterHotKey:vkey modFlags:mod_flags];
+     });
+ }
++
++/* Mouse movement through GameController (cocoa_gcmouse.m): included here so that Makefile.in stays as it is. */
++#include "cocoa_gcmouse.m"
+diff --git a/dlls/winemac.drv/cocoa_gcmouse.m b/dlls/winemac.drv/cocoa_gcmouse.m
+new file mode 100644
+index 0000000000..c77502c50b
+--- /dev/null
++++ b/dlls/winemac.drv/cocoa_gcmouse.m
+@@ -0,0 +1,279 @@
++/*
++ * MACDRV GameController mouse support
++ *
++ * Copyright 2026 Elvin Hayatov
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
++ */
++
++#import <AppKit/AppKit.h>
++/* The header only declares GameController's types; the framework is not linked (that would need a line in
++   Makefile.in) but loaded when the first mouse is looked for. The notification names are the framework's
++   own strings. */
++#import <GameController/GameController.h>
++#import <IOKit/IOKitLib.h>
++#include <time.h>
++
++#include "macdrv_cocoa.h"
++#import "cocoa_app.h"
++#import "cocoa_event.h"
++#import "cocoa_window.h"
++
++#pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
++#pragma GCC diagnostic ignored "-Wunguarded-availability-new"
++
++
++/* Lullaby, 2026-10: no change to the build files (this file is included at the end of cocoa_event.m), a trackpad
++   or any pointer GameController does not move keeps the engine's own path, and the raw counts are scaled by the
++   mouse's resolution. */
++
++static NSMutableSet *configured_mice;
++static dispatch_queue_t gcmouse_queue;
++static BOOL observing_mice;
++/* When GameController last delivered movement (CLOCK_UPTIME_RAW, ns). AppKit's mouse-moved events for the same
++   movement arrive a few milliseconds later and are not sent a second time; movement GameController did not
++   report (a trackpad) is not recent, so those events go through as the engine always sent them. */
++static uint64_t gcmouse_last_move;
++#define GCMOUSE_RECENT_NS (40ull * 1000 * 1000)
++/* The scale applied to raw counts and the part of the movement not yet sent (the event holds whole numbers).
++   Both belong to the one GameController queue. */
++static double gcmouse_scale = 0.3;
++static double gcmouse_carry_x, gcmouse_carry_y;
++/* Counts per inch at which a 1:1 scale would feel as the engine's own path does; the owner's mouse was
++   calibrated at 0.3. scale = reference / counts-per-inch, within 0.05 .. 2. */
++#define GCMOUSE_REFERENCE_CPI 480.0
++#define GCMOUSE_DEFAULT_SCALE 0.3
++
++
++@interface WineApplicationController (GCMouseAccess)
++
++    - (WineWindow *) mouseCaptureWindow;
++
++@end
++
++
++@interface WineApplicationController (GCMouseNotifications)
++
++    - (void) gcmouseDidConnect:(NSNotification *)notification;
++    - (void) gcmouseDidDisconnect:(NSNotification *)notification;
++
++@end
++
++
++static uint64_t gcmouse_now(void)
++{
++    return clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
++}
++
++
++static void post_mouse_movement(float delta_x, float delta_y)
++{
++    WineApplicationController *controller;
++    WineWindow *window;
++    macdrv_event *event;
++
++    if (!NSApp || (!delta_x && !delta_y)) return;
++
++    controller = [WineApplicationController sharedController];
++    window = [controller mouseCaptureWindow] ?: [controller frontWineWindow];
++    if (!window) return;
++
++    double sx = delta_x * gcmouse_scale + gcmouse_carry_x;
++    double sy = delta_y * gcmouse_scale + gcmouse_carry_y;
++    int ix = (int)sx, iy = (int)sy;
++
++    gcmouse_carry_x = sx - ix;
++    gcmouse_carry_y = sy - iy;
++    __atomic_store_n(&gcmouse_last_move, gcmouse_now(), __ATOMIC_RELAXED);
++    if (!ix && !iy) return;
++
++    event = macdrv_create_event(MOUSE_MOVED_RAW, window);
++    event->mouse_moved.x = ix;
++    event->mouse_moved.y = -iy;
++    event->mouse_moved.time_ms = [controller ticksForEventTime:[[NSProcessInfo processInfo] systemUptime]];
++    [window.queue postEvent:event];
++    macdrv_release_event(event);
++}
++
++
++static BOOL looks_like_trackpad(GCMouse *mouse)
++{
++    NSString *name = [mouse vendorName];
++    NSString *category = [mouse productCategory];
++    return (name && [name rangeOfString:@"trackpad" options:NSCaseInsensitiveSearch].location != NSNotFound) ||
++           (category && [category rangeOfString:@"trackpad" options:NSCaseInsensitiveSearch].location != NSNotFound);
++}
++
++
++static void configure_mouse(GCMouse *mouse)
++{
++    GCMouseInput *input;
++
++    if (!mouse || [configured_mice containsObject:mouse]) return;
++    if (looks_like_trackpad(mouse))
++    {
++        NSLog(@"gcmouse: leaving %@ to the engine's own path (a trackpad)", [mouse vendorName]);
++        return;
++    }
++
++    if (!(input = [mouse mouseInput])) return;
++
++    [mouse setHandlerQueue:gcmouse_queue];
++    [input setMouseMovedHandler:^(GCMouseInput *input, float delta_x, float delta_y) {
++        post_mouse_movement(delta_x, delta_y);
++    }];
++
++    [configured_mice addObject:mouse];
++    NSLog(@"gcmouse: reading %@, scale %.3f", [mouse vendorName], gcmouse_scale);
++}
++
++
++static void remove_mouse(GCMouse *mouse)
++{
++    if (!mouse || ![configured_mice containsObject:mouse]) return;
++
++    [[mouse mouseInput] setMouseMovedHandler:nil];
++    [configured_mice removeObject:mouse];
++}
++
++
++/* The counts per inch a connected external mouse reports (HIDPointerResolution, 16.16 fixed point), 0 when no
++   mouse says. The built-in trackpad and anything called a trackpad are not asked. GameController does not say
++   which of several mice it is talking to, so the first that answers is taken. */
++static double external_mouse_cpi(void)
++{
++    io_iterator_t iterator = 0;
++    io_service_t service;
++    double cpi = 0;
++
++    if (IOServiceGetMatchingServices(0, IOServiceMatching("IOHIDDevice"), &iterator) != KERN_SUCCESS) return 0;
++    while (!cpi && (service = IOIteratorNext(iterator)))
++    {
++        CFTypeRef page = IORegistryEntryCreateCFProperty(service, CFSTR("PrimaryUsagePage"), kCFAllocatorDefault, 0);
++        CFTypeRef usage = IORegistryEntryCreateCFProperty(service, CFSTR("PrimaryUsage"), kCFAllocatorDefault, 0);
++        CFTypeRef builtin = IORegistryEntryCreateCFProperty(service, CFSTR("Built-In"), kCFAllocatorDefault, 0);
++        CFTypeRef product = IORegistryEntryCreateCFProperty(service, CFSTR("Product"), kCFAllocatorDefault, 0);
++        CFTypeRef resolution = IORegistryEntryCreateCFProperty(service, CFSTR("HIDPointerResolution"), kCFAllocatorDefault, 0);
++
++        if (page && usage && resolution && !(builtin && CFGetTypeID(builtin) == CFBooleanGetTypeID() && CFBooleanGetValue(builtin)) &&
++            CFGetTypeID(page) == CFNumberGetTypeID() && CFGetTypeID(usage) == CFNumberGetTypeID() &&
++            CFGetTypeID(resolution) == CFNumberGetTypeID())
++        {
++            int p = 0, u = 0;
++            long long r = 0;
++            CFNumberGetValue(page, kCFNumberIntType, &p);
++            CFNumberGetValue(usage, kCFNumberIntType, &u);
++            CFNumberGetValue(resolution, kCFNumberLongLongType, &r);
++            BOOL trackpad = product && CFGetTypeID(product) == CFStringGetTypeID() &&
++                CFStringFind(product, CFSTR("rackpad"), 0).location != kCFNotFound;
++            double value = r / 65536.0;
++            if (p == 1 && u == 2 && !trackpad && value >= 100 && value <= 30000) cpi = value;
++        }
++        if (page) CFRelease(page);
++        if (usage) CFRelease(usage);
++        if (builtin) CFRelease(builtin);
++        if (product) CFRelease(product);
++        if (resolution) CFRelease(resolution);
++        IOObjectRelease(service);
++    }
++    IOObjectRelease(iterator);
++    return cpi;
++}
++
++
++/* LULLABY_GCMOUSE_SCALE: a number is the scale (0.01 .. 100); anything else, or nothing, is automatic, from the
++   mouse's resolution when it says one and 0.3 when it does not. */
++static void choose_scale(void)
++{
++    const char *env = getenv("LULLABY_GCMOUSE_SCALE");
++    double value = env ? atof(env) : 0;
++
++    if (value > 0.01 && value < 100)
++    {
++        gcmouse_scale = value;
++        return;
++    }
++    double cpi = external_mouse_cpi();
++    if (cpi > 0)
++    {
++        gcmouse_scale = MIN(2.0, MAX(0.05, GCMOUSE_REFERENCE_CPI / cpi));
++        NSLog(@"gcmouse: the mouse reports %.0f counts per inch, scale %.3f", cpi, gcmouse_scale);
++    }
++    else gcmouse_scale = GCMOUSE_DEFAULT_SCALE;
++}
++
++
++static void start_gcmouse_input(void)
++{
++    NSNotificationCenter *center;
++    WineApplicationController *controller;
++    Class mouse_class;
++
++    if (!use_gcmouse) return;
++    if (observing_mice) return;
++
++    if (@available(macOS 14.0, *))
++    {
++        [[NSBundle bundleWithPath:@"/System/Library/Frameworks/GameController.framework"] load];
++        if (!(mouse_class = NSClassFromString(@"GCMouse"))) return;
++
++        center = [NSNotificationCenter defaultCenter];
++        controller = [WineApplicationController sharedController];
++        gcmouse_queue = dispatch_queue_create("org.winehq.GCMouse", DISPATCH_QUEUE_SERIAL);
++        if (!gcmouse_queue) return;
++        dispatch_set_target_queue(gcmouse_queue,
++                                  dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0));
++        configured_mice = [[NSMutableSet alloc] init];
++        choose_scale();
++        observing_mice = TRUE;
++
++        [center addObserver:controller selector:@selector(gcmouseDidConnect:)
++                       name:@"GCMouseDidConnectNotification" object:nil];
++        [center addObserver:controller selector:@selector(gcmouseDidDisconnect:)
++                       name:@"GCMouseDidDisconnectNotification" object:nil];
++
++        for (GCMouse *mouse in [mouse_class mice])
++            configure_mouse(mouse);
++    }
++}
++
++
++@implementation WineApplicationController (GCMouseNotifications)
++
++    - (void) gcmouseDidConnect:(NSNotification *)notification
++    {
++        configure_mouse([notification object]);
++    }
++
++    - (void) gcmouseDidDisconnect:(NSNotification *)notification
++    {
++        remove_mouse([notification object]);
++    }
++
++@end
++
++
++void macdrv_start_gcmouse_input(void)
++{
++    OnMainThreadAsync(^{ start_gcmouse_input(); });
++}
++
++
++/* Whether GameController is the source of the movement right now: AppKit's events for it are then left out. */
++bool macdrv_gcmouse_input_active(void)
++{
++    uint64_t last = __atomic_load_n(&gcmouse_last_move, __ATOMIC_RELAXED);
++    return last && gcmouse_now() - last < GCMOUSE_RECENT_NS;
++}
+diff --git a/dlls/winemac.drv/event.c b/dlls/winemac.drv/event.c
+index be7f56695a..73acbb6932 100644
+--- a/dlls/winemac.drv/event.c
++++ b/dlls/winemac.drv/event.c
+@@ -55,6 +55,7 @@ static const char *dbgstr_event(int type)
+         "MOUSE_BUTTON",
+         "MOUSE_MOVED_RELATIVE",
+         "MOUSE_MOVED_ABSOLUTE",
++        "MOUSE_MOVED_RAW",
+         "MOUSE_SCROLL",
+         "QUERY_EVENT",
+         "QUERY_EVENT_NO_PREEMPT_WAIT",
+@@ -114,6 +115,7 @@ static macdrv_event_mask get_event_mask(DWORD mask)
+     {
+         event_mask |= event_mask_for_type(MOUSE_MOVED_RELATIVE);
+         event_mask |= event_mask_for_type(MOUSE_MOVED_ABSOLUTE);
++        event_mask |= event_mask_for_type(MOUSE_MOVED_RAW);
+     }
+ 
+     if (mask & QS_POSTMESSAGE)
+@@ -424,6 +426,7 @@ void macdrv_handle_event(const macdrv_event *event)
+         break;
+     case MOUSE_MOVED_RELATIVE:
+     case MOUSE_MOVED_ABSOLUTE:
++    case MOUSE_MOVED_RAW:
+         macdrv_mouse_moved(hwnd, event);
+         break;
+     case MOUSE_SCROLL:
+diff --git a/dlls/winemac.drv/macdrv_cocoa.h b/dlls/winemac.drv/macdrv_cocoa.h
+index 063ac7c834..6dc7522a5b 100644
+--- a/dlls/winemac.drv/macdrv_cocoa.h
++++ b/dlls/winemac.drv/macdrv_cocoa.h
+@@ -187,6 +187,7 @@
+ extern int cursor_confine;
+ extern int resizable_windows;
+ extern bool use_precise_scrolling;
++extern bool use_gcmouse;
+ extern int gl_surface_mode;
+ extern CFDictionaryRef localized_strings;
+ extern bool retina_enabled;  /* Whether Retina mode is enabled via registry setting. */
+@@ -346,6 +347,7 @@ static inline CGPoint cgpoint_win_from_mac(CGPoint point)
+     MOUSE_BUTTON,
+     MOUSE_MOVED_RELATIVE,
+     MOUSE_MOVED_ABSOLUTE,
++    MOUSE_MOVED_RAW,
+     MOUSE_SCROLL,
+     QUERY_EVENT,
+     QUERY_EVENT_NO_PREEMPT_WAIT,
+@@ -551,6 +553,9 @@ extern int macdrv_copy_event_from_queue(macdrv_event_queue queue,
+ extern int macdrv_register_hot_key(macdrv_event_queue q, unsigned int vkey, unsigned int mod_flags,
+                                    unsigned int keycode, unsigned int modifiers);
+ extern void macdrv_unregister_hot_key(macdrv_event_queue q, unsigned int vkey, unsigned int mod_flags);
++/* Mouse movement through GameController as WM_INPUT: Elvin Hayatov, Wine MR !11799 (bfa3c0fdc2da). */
++extern void macdrv_start_gcmouse_input(void);
++extern bool macdrv_gcmouse_input_active(void);
+ 
+ 
+ /* window */
+diff --git a/dlls/winemac.drv/macdrv_main.c b/dlls/winemac.drv/macdrv_main.c
+index 83ea1bedb4..f9387535f0 100644
+--- a/dlls/winemac.drv/macdrv_main.c
++++ b/dlls/winemac.drv/macdrv_main.c
+@@ -74,6 +74,8 @@ int linear_mouse = 0;
+ int native_menu_bar = 0;
+ int cursor_confine = 0;
+ bool use_precise_scrolling = true;
++/* Off unless the Mac driver key UseGCMouse or the environment variable LULLABY_GCMOUSE turns it on. */
++bool use_gcmouse = false;
+ int gl_surface_mode = GL_SURFACE_IN_FRONT_OPAQUE;
+ bool retina_enabled = false;
+ bool enable_app_nap = false;
+@@ -434,6 +436,13 @@ static void setup_options(void)
+     if (!get_config_key(hkey, appkey, "UsePreciseScrolling", buffer, sizeof(buffer)))
+         use_precise_scrolling = IS_OPTION_TRUE(buffer[0]);
+ 
++    if (!get_config_key(hkey, appkey, "UseGCMouse", buffer, sizeof(buffer)))
++        use_gcmouse = IS_OPTION_TRUE(buffer[0]);
++    {
++        const char *gcmouse_env = getenv("LULLABY_GCMOUSE");
++        if (gcmouse_env && *gcmouse_env) use_gcmouse = IS_OPTION_TRUE(gcmouse_env[0]);
++    }
++
+     if (!get_config_key(hkey, appkey, "OpenGLSurfaceMode", buffer, sizeof(buffer)))
+     {
+         static const WCHAR transparentW[] = {'t','r','a','n','s','p','a','r','e','n','t',0};
+@@ -661,6 +670,7 @@ static NTSTATUS macdrv_init(void *arg)
+         return STATUS_UNSUCCESSFUL;
+     }
+ 
++    macdrv_start_gcmouse_input();
+     init_user_driver();
+     return STATUS_SUCCESS;
+ }
+diff --git a/dlls/winemac.drv/mouse.c b/dlls/winemac.drv/mouse.c
+index 51ae29ae84..edb1764fc9 100644
+--- a/dlls/winemac.drv/mouse.c
++++ b/dlls/winemac.drv/mouse.c
+@@ -139,7 +139,8 @@ static void send_mouse_input(HWND hwnd, macdrv_window cocoa_window, UINT flags,
+     input.mi.time           = time;
+     input.mi.dwExtraInfo    = 0;
+ 
+-    NtUserSendHardwareInput(hwnd, 0, &input, 0);
++    /* GCMouse provides WM_INPUT movement; keep NSEvents for legacy cursor updates without duplicating it. */
++    NtUserSendHardwareInput(hwnd, macdrv_gcmouse_input_active() ? SEND_HWMSG_RAWINPUT : 0, &input, 0);
+ }
+ 
+ 
+@@ -877,12 +878,30 @@ void macdrv_mouse_button(HWND hwnd, const macdrv_event *event)
+ /***********************************************************************
+  *              macdrv_mouse_moved
+  *
+- * Handler for MOUSE_MOVED_RELATIVE and MOUSE_MOVED_ABSOLUTE events.
++ * Handler for mouse movement events.
+  */
+ void macdrv_mouse_moved(HWND hwnd, const macdrv_event *event)
+ {
+     UINT flags = MOUSEEVENTF_MOVE;
+ 
++    if (event->type == MOUSE_MOVED_RAW)
++    {
++        struct raw_mouse raw = { .count = 1 };
++        INPUT input = { .type = INPUT_MOUSE };
++
++        raw.data[0].x = event->mouse_moved.x;
++        raw.data[0].y = event->mouse_moved.y;
++        input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_MOVE_NOCOALESCE;
++        input.mi.time = event->mouse_moved.time_ms;
++
++        TRACE("win %p/%p raw (%d,%d) time %lu (%lu ticks ago)\n", hwnd, event->window,
++              event->mouse_moved.x, event->mouse_moved.y, event->mouse_moved.time_ms,
++              (NtGetTickCount() - event->mouse_moved.time_ms));
++
++        NtUserSendHardwareInput(hwnd, SEND_HWMSG_RAWINPUT, &input, (LPARAM)&raw);
++        return;
++    }
++
+     TRACE("win %p/%p %s (%d,%d) drag %d time %lu (%lu ticks ago)\n", hwnd, event->window,
+           (event->type == MOUSE_MOVED_RELATIVE) ? "relative" : "absolute",
+           event->mouse_moved.x, event->mouse_moved.y, event->mouse_moved.drag,
