@@ -105,6 +105,46 @@ static void scheduleSave(void)
     });
 }
 
+/* The size the engine believes the window has (WineWindow's wineContentSize). A size set from outside is
+ * treated like a drag only when the program answers it within a second; a game still loading answers later,
+ * and then the window is one size and the program's idea of it another, which shows as a cursor that reads
+ * too high or too low. Read through key-value coding, so an engine without it only loses the check. */
+static BOOL engineSize(NSWindow *w, NSSize *out)
+{
+    @try {
+        id v = [w valueForKey:@"wineContentSize"];
+        if ([v isKindOfClass:[NSValue class]]) {
+            *out = [v sizeValue];
+            return YES;
+        }
+    } @catch (NSException *e) {
+    }
+    return NO;
+}
+
+static void verifySize(NSWindow *w, double tw, double th, int attempt)
+{
+    if (!w || gClosing || w != gPrimary || isNative(w) || ![w isVisible]) return;
+    NSSize real = [w contentRectForFrameRect:[w frame]].size, program;
+    if (fabs(real.width - tw) > 2 || fabs(real.height - th) > 2) return;   /* the player resized it since */
+    if (!engineSize(w, &program)) {
+        say("size check: the engine's idea of the window size cannot be read");
+        return;
+    }
+    BOOL same = fabs(real.width - program.width) < 1 && fabs(real.height - program.height) < 1;
+    say("size check %d: window %.0fx%.0f, program %.0fx%.0f%s", attempt, real.width, real.height, program.width,
+        program.height, same ? "" : ", differ");
+    if (same || attempt >= 3) return;
+    /* The game answers at once now: ask again. */
+    [w setContentSize:NSMakeSize(tw + 2, th)];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [w setContentSize:NSMakeSize(tw, th)];
+    });
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        verifySize(w, tw, th, attempt + 1);
+    });
+}
+
 static void tryRestore(NSWindow *w, int attempt)
 {
     if (!w || gClosing || ![w isVisible] || !gHaveSaved) return;
@@ -114,10 +154,14 @@ static void tryRestore(NSWindow *w, int attempt)
     NSSize cur = [w contentRectForFrameRect:[w frame]].size;
     lbws_plan p = lbws_plan_restore(gSavedState, gSavedW, gSavedH, now, canNative, resizable, cur.width, cur.height);
     switch (p.action) {
-    case LBWS_SET_SIZE:
+    case LBWS_SET_SIZE: {
         say("window back to %.0fx%.0f (was %.0fx%.0f)", p.w, p.h, cur.width, cur.height);
         [w setContentSize:NSMakeSize(p.w, p.h)];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            verifySize(w, p.w, p.h, 0);
+        });
         break;
+    }
     case LBWS_ENTER_NATIVE:
         say("native fullscreen back");
         [w toggleFullScreen:nil];
