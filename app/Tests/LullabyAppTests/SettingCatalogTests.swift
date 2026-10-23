@@ -27,7 +27,7 @@ struct SettingCatalogTests {
         func advanced(_ group: SettingGroup) -> [SettingID] {
             SettingCatalog.settings(in: group, at: .game).filter { $0.quick == nil }.map(\.id)
         }
-        #expect(advanced(.picture) == [.windows, .filter])
+        #expect(advanced(.picture) == [.nativeFullscreen, .filter])
         #expect(advanced(.performance) == [.tuning, .gameMode])
         #expect(advanced(.diagnostics) == [.unifiedMemory, .rawMouse, .forceVsync])
         #expect(SettingGroup.allCases == [.picture, .performance, .diagnostics])
@@ -39,7 +39,7 @@ struct SettingCatalogTests {
         (.retina, .bool(true), "LULLABY_RETINA=1"),
         (.filter, .string("metalfx"), "SEVO_UPSCALER=metalfx"),
         (.fps, .bool(true), "MTL_HUD_ENABLED=1"),
-        (.windows, .string("all"), "SEVO_RESIZABLE_WINDOWS=all"),
+        (.nativeFullscreen, .bool(false), "LULLABY_NATIVE_FULLSCREEN=0"),
         (.filter, .string("bilinear"), "SEVO_FINAL_FILTER=bilinear"),
         (.rawMouse, .bool(false), "LULLABY_GCMOUSE=0"),
         (.tuning, .string("experimental"), "SEVO_WAIT_SPIN=5200"),
@@ -115,6 +115,8 @@ struct SettingCatalogTests {
         #expect(env["SEVO_FPS_LIMIT"] == "0", "no frame limit")
         #expect(env["SEVO_LINEAR_MOUSE"] == "0")
         #expect(env["LULLABY_GCMOUSE_SCALE"] == "auto", "from the mouse's resolution")
+        #expect(env["SEVO_RESIZABLE_WINDOWS"] == "window", "windows are always the Mac's own, a full-screen game in one")
+        #expect(env["LULLABY_NATIVE_FULLSCREEN"] == "1", "a game that covers the screen goes to native full screen")
         #expect(env["SEVO_LARGE_ADDRESS_AWARE"] == "1", "4 GB for 32-bit games")
         #expect(env["LULLABY_LOW_LATENCY"] == "1", "Reflex is always answered")
         #expect(env["LULLABY_EMULATE_MODESET"] == nil, "compat_run.sh decides by the program's bitness")
@@ -192,7 +194,7 @@ struct SettingCatalogTests {
     func invalidValues() {
         var values = ConfigValues()
         let bad: [(SettingID, JSONValue)] = [
-            (.fps, .string("yes")), (.renderer, .string("vulkan")), (.windows, .number(1)),
+            (.fps, .string("yes")), (.renderer, .string("vulkan")), (.nativeFullscreen, .string("yes")),
             (.tuning, .object(["preset": .string("custom"), "waitSpin": .number(2_000_000)])),
         ]
         for (id, value) in bad {
@@ -247,8 +249,9 @@ struct SettingCatalogTests {
     func defaultsMatchTheOldProfile() {
         let bottle = ConfigMaterializer.bottleLines(global: .empty, msync: true, cli: nil)
         let env = ConfigMaterializer.effectiveEnvironment(bottle: bottle, program: [])
-        // "1" and "fixed" are one value to winemac.drv (resizable_windows_from_option).
-        #expect(WindowTreatment(option: "1") == WindowTreatment(option: env["SEVO_RESIZABLE_WINDOWS"]!))
+        // Windows are always native now: a full-screen game in a window (winemac.drv's "window"), the old
+        // profile's "fixed" no longer applies.
+        #expect(WindowTreatment(option: env["SEVO_RESIZABLE_WINDOWS"]!) == .window)
         // The pointer confinement left the catalog; the engine's default is off.
         for (key, value) in ConfigMigration.oldProfile where key != "SEVO_RESIZABLE_WINDOWS" && key != "SEVO_CURSOR_CONFINE" {
             #expect(env[key] == value, "\(key)")

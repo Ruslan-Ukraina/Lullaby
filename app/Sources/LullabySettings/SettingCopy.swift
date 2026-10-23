@@ -178,36 +178,28 @@ extension SettingCopy {
                  uk: "Власна накладка Apple з показниками: кадри за секунду, час кадру й пам’ять GPU — дані беруться з графічного драйвера. Працює в іграх, що малюють через Metal: DXMT, DXVK і D3DMetal.",
                  ru: "Собственная панель Apple с показателями: кадры в секунду, время кадра и память GPU — данные берутся из графического драйвера. Работает в играх, которые рисуют через Metal: DXMT, DXVK и D3DMetal.")))
 
-    static let windows = SettingCopy(
-        L10n("Resizable windows", uk: "Вікна зі змінним розміром", ru: "Изменяемый размер окон"),
-        caption: L10n("Lets you resize the game window; the picture scales to fit.", uk: "Дозволяє змінювати розмір вікна гри; картинка масштабується.",
-                      ru: "Позволяет менять размер окна игры; картинка масштабируется."),
+    static let nativeFullscreen = SettingCopy(
+        L10n("Native full screen", uk: "Рідний повний екран", ru: "Нативный полный экран"),
+        caption: L10n("A game that covers the screen opens in macOS's own full screen.",
+                      uk: "Гра, що займає весь екран, відкривається в рідному повному екрані macOS.",
+                      ru: "Игра, занимающая весь экран, открывается в нативном полном экране macOS."),
         help: SettingHelp(
-            L10n("A game draws at the size it picked. With resizable windows that picture is scaled to the window, and the game thinks nothing changed.",
-                 uk: "Гра малює в обраному нею розмірі. Зі змінним розміром цю картинку масштабують під вікно, а гра вважає, що нічого не змінилося.",
-                 ru: "Игра рисует в выбранном ею размере. С изменяемым размером эту картинку масштабируют под окно, а игра считает, что ничего не изменилось."),
+            L10n("Game windows are always the Mac's own: you can move and resize them, and the picture is scaled to the window at the game's resolution. This switch is only about a game that covers the whole screen (full screen or borderless).",
+                 uk: "Вікна ігор завжди рідні для Mac: їх можна переміщати й розтягувати, а картинка масштабується під вікно в роздільності гри. Цей перемикач лише для гри, що займає весь екран (повноекранний або безрамковий режим).",
+                 ru: "Окна игр всегда родные для Mac: их можно перемещать и растягивать, а картинка масштабируется под окно в разрешении игры. Этот переключатель только для игры, занимающей весь экран (полноэкранный или безрамочный режим)."),
             entries: [
-                HelpEntry(L10n("Never", uk: "Ніколи", ru: "Никогда"), L10n(
-                    "Windows stay as the game makes them. A full-screen game covers the screen.",
-                    uk: "Вікна такі, як їх робить гра. Повноекранна гра займає весь екран.",
-                    ru: "Окна такие, как их делает игра. Полноэкранная игра занимает весь экран.")),
-                HelpEntry(L10n("Fixed-size windows", uk: "Вікна фіксованого розміру", ru: "Окна фиксированного размера"), L10n(
-                    "A window the game locks to one size gets a resize handle, and the picture scales.",
-                    uk: "Вікно, яке гра зафіксувала в одному розмірі, можна розтягувати, а картинка масштабується.",
-                    ru: "Окно, которое игра зафиксировала в одном размере, можно растягивать, а картинка масштабируется.")),
-                HelpEntry(L10n("Fixed-size and full-screen games", uk: "Фіксовані й повноекранні ігри",
-                               ru: "Фиксированные и полноэкранные игры"), L10n(
-                    "Also, a full-screen game runs in a window you can move and resize.",
-                    uk: "Також повноекранна гра йде у вікні, яке можна переміщати й розтягувати.",
-                    ru: "Также полноэкранная игра идёт в окне, которое можно перемещать и растягивать.")),
-                HelpEntry(L10n("Every window with a title bar", uk: "Кожне вікно із заголовком", ru: "Каждое окно с заголовком"), L10n(
-                    "Windows the game already lets you resize are scaled as well, instead of being redrawn.",
-                    uk: "Вікна, розмір яких гра й так дозволяє змінювати, теж масштабуються, а не перемальовуються.",
-                    ru: "Окна, размер которых игра и так позволяет менять, тоже масштабируются, а не перерисовываются.")),
+                HelpEntry(L10n("On", uk: "Увімкнено", ru: "Включено"), L10n(
+                    "The game goes to macOS's full screen: its own desktop, the game's resolution, swipe or Mission Control to leave it.",
+                    uk: "Гра переходить у повний екран macOS: окремий робочий стіл, роздільність гри, вийти можна свайпом чи Mission Control.",
+                    ru: "Игра переходит в полный экран macOS: отдельный рабочий стол, разрешение игры, выйти можно свайпом или Mission Control.")),
+                HelpEntry(L10n("Off", uk: "Вимкнено", ru: "Выключено"), L10n(
+                    "The game stays in a window you can move and resize. The green button still takes it to full screen.",
+                    uk: "Гра лишається у вікні, яке можна переміщати й розтягувати. Зелена кнопка все одно відкриває повний екран.",
+                    ru: "Игра остаётся в окне, которое можно перемещать и растягивать. Зелёная кнопка по-прежнему открывает полный экран.")),
             ],
-            footnote: L10n("View › Resizable Windows in the game's menu changes it. Lullaby remembers your choice.",
-                           uk: "View › Resizable Windows у меню гри змінює це. Lullaby запам’ятовує ваш вибір.",
-                           ru: "View › Resizable Windows в меню игры меняет это. Lullaby запоминает ваш выбор.")))
+            footnote: L10n("The window's size and a full screen you chose by hand are remembered for the next launch.",
+                           uk: "Розмір вікна й повний екран, який ви ввімкнули вручну, запам’ятовуються до наступного запуску.",
+                           ru: "Размер окна и полный экран, который вы включили вручную, запоминаются до следующего запуска.")))
 
     static let filter = SettingCopy(
         L10n("Final filter", uk: "Фінальний фільтр", ru: "Финальный фильтр"),

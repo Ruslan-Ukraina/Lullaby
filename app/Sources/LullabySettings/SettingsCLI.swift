@@ -238,7 +238,8 @@ public struct SettingsCLI {
         case "fps", "fps-graph":
             _ = try onOff(value)
             service.log("app \(app): View menu \(arguments[2])=\(value) not kept (Dormison's counter)")
-        case "windows": try service.set("windows", .string(WindowTreatment(option: value).rawValue), appID: app)
+        case "windows":
+            service.log("app \(app): View menu windows=\(value) not kept (windows are always native)")
         default: throw SettingsError.unknownSetting(arguments[2])
         }
         return .ok()

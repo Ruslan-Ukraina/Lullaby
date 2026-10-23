@@ -203,7 +203,12 @@ public struct ConfigValues: Codable, Equatable, Sendable {
     public var metalfx: SwapchainUpscale?
     /// Apple's Metal HUD (MTL_HUD_ENABLED), the panel's frame rate counter.
     public var fps: Bool?
+    /// What an older file stored for the resizable-windows choice; windows are always native now and
+    /// nothing reads it (the field stays so old files decode).
     public var windows: WindowTreatment?
+    /// A game that covers the screen goes to macOS's native full screen (its own desktop) instead of
+    /// staying in a window (LULLABY_NATIVE_FULLSCREEN; lby-pinkiepie-windowstate).
+    public var nativeFullscreen: Bool?
     public var filter: FinalFilter?
     public var emulateModeset: Bool?
     public var dlss: Bool?
@@ -255,7 +260,7 @@ public enum ConfigDefaults {
         v.upscaler = .off
         v.metalfx = .off
         v.fps = false
-        v.windows = .fixed
+        v.nativeFullscreen = true
         v.filter = .lanczos
         v.emulateModeset = false
         v.dlss = false

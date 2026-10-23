@@ -51,6 +51,15 @@ int main(void)
     p = lbws_plan_restore(LBWS_BORDERLESS, 1600, 900, false, true, true, 1280, 720);
     CHECK(p.action == LBWS_NOTHING, "borderless is the game's own to put back");
 
+    /* A game that covers the screen, shown by the engine in a window: the switch decides. */
+    CHECK(lbws_plan_fullscreen(true, true, false, true) == LBWS_FS_ENTER, "covering game, switch on: native full screen");
+    CHECK(lbws_plan_fullscreen(true, true, false, false) == LBWS_FS_WAIT, "cannot yet: wait for the window's behaviour");
+    CHECK(lbws_plan_fullscreen(true, true, true, true) == LBWS_FS_NOTHING, "already native: nothing");
+    CHECK(lbws_plan_fullscreen(true, false, false, true) == LBWS_FS_NOTHING, "switch off: stays a window");
+    CHECK(lbws_plan_fullscreen(false, true, false, true) == LBWS_FS_NOTHING, "an ordinary window is not sent to full screen");
+    CHECK(lbws_want_native(NULL) && lbws_want_native("1") && lbws_want_native("") && !lbws_want_native("0"),
+          "the switch is on unless it says 0");
+
     if (fails) { printf("core_test: %d failed\n", fails); return 1; }
     printf("core_test: the window-state decisions hold\n");
     return 0;

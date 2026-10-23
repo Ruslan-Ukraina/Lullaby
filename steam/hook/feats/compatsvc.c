@@ -218,8 +218,9 @@ static int get_compat_tools(uintptr_t request, uintptr_t response) {
         listed++;
     }
 
-    // "No tool" entry.
-    if (appid && (fallback || holds_none)) {
+    // "No tool" entry: only for a game that holds it now, so that the list can show it. Lullaby
+    // is the one tool offered otherwise; a game with a macOS build has its own entry in the page.
+    if (appid && holds_none) {
         pb_tool(&w, RESP_TOOLS, LB_COMPAT_TOOL_NONE, TOOL_NONE_LABEL,
                 holds_none, 0);
         if (!w.ok) {

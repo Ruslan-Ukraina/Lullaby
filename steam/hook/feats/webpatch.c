@@ -248,6 +248,15 @@ static const lb_gate_t g_gates_forcetool[] = {
       "and run the Windows version.\"", 1 },
 };
 
+// What the list calls the game's own macOS build: "Native" in the language Steam shows. Steam's
+// language arrives as a promise, so it is asked for once and the label takes it from the next
+// render on (the list renders after its own fetch, by when the answer is there).
+#define LB_NATIVE_LABEL \
+    "(window.LBLN===void 0&&(window.LBLN=\"\",Promise.resolve(SteamClient.Settings.GetCurrentLanguage())" \
+    ".then(function(x){window.LBLN=String(x||\"\")},function(){})),{" \
+    "ukrainian:\"\\u041d\\u0430\\u0442\\u0438\\u0432\\u043d\\u0438\\u0439\"," \
+    "russian:\"\\u041d\\u0430\\u0442\\u0438\\u0432\\u043d\\u044b\\u0439\"}[window.LBLN]||\"Native\")"
+
 // Support for new compatibility tab UI in the Steam beta
 static const lb_gate_t g_gates_selecttool[] = {
     // AppProperties Compatibility tab
@@ -265,9 +274,7 @@ static const lb_gate_t g_gates_selecttool[] = {
       LB_CX_OPTIONS_STATEMENT LB_SEL_PANEL_STATEMENT
       "function " LB_C1 "(" LB_C2 "){return(0," LB_C3 ".jsxs)(" LB_C3 ".Fragment,{children:["
       "(0," LB_C3 ".jsxs)(" LB_C4 ".XY,{label:(0," LB_C5 ".we)"
-      "(\"#Settings_SteamPlay_SteamPlay\"),children:[(0," LB_C3 ".jsx)(" LB_C6 ",{details:" LB_C2 ".details}),"
-      "(0," LB_C3 ".jsx)(" LB_C7 ".G,{setting:\"compat_show_all_tools\",label:(0," LB_C5 ".we)"
-      "(\"#Settings_SteamPlay_ShowAll\"),feature:" LB_C8 ".OK})]}),"
+      "(\"#Settings_SteamPlay_SteamPlay\"),children:[(0," LB_C3 ".jsx)(" LB_C6 ",{details:" LB_C2 ".details})]}),"
       "LBSelP(" LB_C3 "," LB_C4 ")?(0," LB_C3 ".jsx)(LBSelP(" LB_C3 "," LB_C4 ").Game,{details:" LB_C2 ".details})"
       ":(0," LB_C3 ".jsx)(MSCXOpts,{details:" LB_C2 ".details})]})}", 1 },
     // Settings > Compatibility: Lullaby's values for all games under Steam Play's own
@@ -277,10 +284,20 @@ static const lb_gate_t g_gates_selecttool[] = {
       "(\"#Settings_SteamPlay_ShowAll\"),feature:" LB_C8 ".OK})]})}",
       "function " LB_C1 "(" LB_C2 "){return(0," LB_C3 ".jsxs)(" LB_C3 ".Fragment,{children:["
       "(0," LB_C3 ".jsxs)(" LB_C4 ".XY,{label:(0," LB_C5 ".we)"
-      "(\"#Settings_SteamPlay_SteamPlay\"),children:[(0," LB_C3 ".jsx)(" LB_C6 ",{}),"
-      "(0," LB_C3 ".jsx)(" LB_C7 ".G,{setting:\"compat_show_all_tools\",label:(0," LB_C5 ".we)"
-      "(\"#Settings_SteamPlay_ShowAll\"),feature:" LB_C8 ".OK})]}),"
+      "(\"#Settings_SteamPlay_SteamPlay\"),children:[(0," LB_C3 ".jsx)(" LB_C6 ",{})]}),"
       "LBSelP(" LB_C3 "," LB_C4 ")?(0," LB_C3 ".jsx)(LBSelP(" LB_C3 "," LB_C4 ").Global,{}):null]})}", 1 },
+    // The tool list holds Lullaby and nothing else: no "Default (Lullaby)" twin of it and no "No
+    // Compatibility Tool" (compatsvc.c leaves that out too). A game with a macOS build keeps the
+    // entry that says it runs natively, named so in the player's language (Steam's own word for
+    // it reads "Default"). Where Lullaby is the default and nothing is chosen, the list shows
+    // Lullaby as the choice.
+    { "return " LB_C1 "?" LB_C2 ".unshift({data:\"\",label:(0," LB_C3 ".we)"
+      "(\"#Settings_SteamPlay_DefaultToolEntry\"," LB_C1 ")}):" LB_C2 ".unshift({data:\"\",label:(0," LB_C3 ".we)"
+      "(\"#Settings_SteamPlay_DefaultToolEntry_Fallback\")}),",
+      "return " LB_C1 "?0:" LB_C2 ".unshift({data:\"\",label:" LB_NATIVE_LABEL "}),", 1 },
+    { "rgOptions:" LB_C1 ",selectedOption:" LB_C2 ".data.selected_tool_identifier,onChange:",
+      "rgOptions:" LB_C1 ",selectedOption:" LB_C2 ".data.selected_tool_identifier||" LB_C2
+      ".data.default_tool_identifier||\"\",onChange:", 1 },
     { "get is_invalid_os_type(){return this.most_available_per_client_data.is_invalid_os_type}",
       "get is_invalid_os_type(){return false}", 1 },
     // Reminder banner for 32 bit Mac games

@@ -9,7 +9,7 @@ import Foundation
 
 public enum SettingID: String, CaseIterable, Sendable, Codable {
     case renderer, retina, fps
-    case windows, filter
+    case nativeFullscreen, filter
     case tuning, gameMode
     case unifiedMemory, rawMouse, forceVsync
 }
@@ -171,16 +171,10 @@ public enum SettingCatalog {
         .flag(.retina, in: .picture, quick: 2, key: \.retina, copy: .retina,
               carrier: .registry(values: ["RetinaMode"], marker: "LULLABY_RETINA")),
         .flag(.fps, in: .picture, quick: 3, key: \.fps, copy: .fps, carrier: .environment(["MTL_HUD_ENABLED"])),
-        .choice(
-            .windows, in: .picture, key: \.windows,
-            labels: [
-                (.off, L10n("Never", uk: "Ніколи", ru: "Никогда")),
-                (.fixed, L10n("Fixed-size windows", uk: "Вікна фіксованого розміру", ru: "Окна фиксированного размера")),
-                (.window, L10n("Fixed-size and full-screen games", uk: "Фіксовані й повноекранні ігри",
-                               ru: "Фиксированные и полноэкранные игры")),
-                (.all, L10n("Every window with a title bar", uk: "Кожне вікно із заголовком", ru: "Каждое окно с заголовком")),
-            ],
-            copy: .windows, carrier: .environment(["SEVO_RESIZABLE_WINDOWS"])),
+        // Windows are always the Mac's own (fixedLines: SEVO_RESIZABLE_WINDOWS=window); this is only whether
+        // a game that covers the screen goes on to macOS's full screen. lby-pinkiepie-windowstate acts on it.
+        .flag(.nativeFullscreen, in: .picture, key: \.nativeFullscreen, copy: .nativeFullscreen,
+              carrier: .environment(["LULLABY_NATIVE_FULLSCREEN"])),
         pictureFilterSetting,
         tuningSetting,
         .flag(.unifiedMemory, in: .diagnostics, key: \.unifiedMemory, copy: .unifiedMemory,

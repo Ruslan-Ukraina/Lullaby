@@ -433,14 +433,14 @@ static void none_entry_cases(void) {
         if (strcmp(r.tools[i].name, LB_COMPAT_TOOL_NONE) == 0) has_none = 1;
     check(!has_none, "the none entry is absent when neither fallback nor mapping names it");
 
-    // A wildcard mapping creates a fallback, so the none entry appears.
+    // A wildcard mapping creates a fallback; Lullaby is then the one choice, with no none entry.
     stub_wildcard_val = "lullaby";
     rc = get_compat_tools(build_request(REQ_HAS_APPID, 7), (uintptr_t)response_buf);
     decode_reply(&r);
     has_none = 0;
     for (int i = 0; i < r.count; i++)
         if (strcmp(r.tools[i].name, LB_COMPAT_TOOL_NONE) == 0) has_none = 1;
-    check(has_none, "the none entry appears when a wildcard mapping creates a fallback");
+    check(!has_none, "the none entry stays out when a wildcard mapping creates a fallback");
 
     // An app already holding the none name keeps the entry.
     stub_wildcard_val = NULL;

@@ -44,7 +44,6 @@ public enum ConfigMaterializer {
         let stack = ConfigStack(global: global)
         var lines = [
             "# Lullaby settings for every game. A game's own values: .sevo/apps/<program>.env",
-            "SEVO_RESIZABLE_WINDOWS=\(stack[\.windows].rawValue)",
             "SEVO_UPSCALER=\(stack[\.upscaler].rawValue)",
             "SEVO_FINAL_FILTER=\(stack[\.filter].rawValue)",
         ]
@@ -69,7 +68,6 @@ public enum ConfigMaterializer {
         let game = stack.gameWithRecipe
         var lines = ["# app \(appID)" + (game.name.map { " \($0)" } ?? "")]
         if let renderer = game.renderer { lines.append("LULLABY_RENDERER=\(renderer.rawValue)") }
-        if let windows = game.windows { lines.append("SEVO_RESIZABLE_WINDOWS=\(windows.rawValue)") }
         if let upscaler = game.upscaler { lines.append("SEVO_UPSCALER=\(upscaler.rawValue)") }
         if let filter = game.filter { lines.append("SEVO_FINAL_FILTER=\(filter.rawValue)") }
         lines += switches.compactMap { key, path in game[keyPath: path].map { "\(key)=\($0 ? "1" : "0")" } }
@@ -86,6 +84,7 @@ public enum ConfigMaterializer {
         ("SEVO_FORCE_UMA", \.unifiedMemory),
         ("LULLABY_FORCE_VSYNC", \.forceVsync),
         ("LULLABY_GCMOUSE", \.rawMouse),
+        ("LULLABY_NATIVE_FULLSCREEN", \.nativeFullscreen),
     ]
 
     /// What is no setting any more: it is the same for every game and for every level, so
@@ -102,6 +101,7 @@ public enum ConfigMaterializer {
     /// and msync+ (a launch option can still turn a variable off for one run: LULLABY_DLSS=0,
     /// WINEMSYNC=0).
     static let fixedLines = [
+        "SEVO_RESIZABLE_WINDOWS=window",
         "ROSETTA_ADVERTISE_AVX=1",
         "DXMT_ENABLE_NVEXT=1",
         "D3DM_ENABLE_METALFX=1",

@@ -8,6 +8,8 @@
  *
  * LULLABY_WINDOW_STATE_FILE  where the state lives (set by compat_run.sh); without it nothing happens
  * LULLABY_WINDOW_STATE=0     off for the run (a launch option)
+ * LULLABY_NATIVE_FULLSCREEN  0: a game that covers the screen stays in the window the engine shows it in;
+ *                            anything else: it goes on to macOS's native full screen (the game's setting)
  * LULLABY_KEEP_BUNDLE_ICON=1 the launcher bundle has Lullaby's icon: the engine's later -setApplicationIconImage:
  *                            (the program's own window icon, unstyled) is left out, so the Dock keeps it
  *
@@ -57,6 +59,21 @@ static double area(NSWindow *w) { NSSize s = [w frame].size; return s.width * s.
 static lbws_rect rect(NSRect r) { lbws_rect o = { r.origin.x, r.origin.y, r.size.width, r.size.height }; return o; }
 
 static BOOL isNative(NSWindow *w) { return ([w styleMask] & NSWindowStyleMaskFullScreen) != 0; }
+
+/* The engine shows a game's screen-covering window as a window (WineWindow.presentationWindowed). Read through
+ * key-value coding, so an engine without it only loses this. */
+static BOOL windowedPresentation(NSWindow *w)
+{
+    @try {
+        id v = [w valueForKey:@"presentationWindowed"];
+        return [v isKindOfClass:[NSNumber class]] && [v boolValue];
+    } @catch (NSException *e) {
+    }
+    return NO;
+}
+
+/* Read when it is needed: the engine applies the game's env file after this library is loaded. */
+static BOOL wantNative(void) { return lbws_want_native(getenv("LULLABY_NATIVE_FULLSCREEN")); }
 
 static void load(void)
 {
@@ -157,12 +174,34 @@ static void verifySize(NSWindow *w, double tw, double th, int attempt)
 
 static void tryRestore(NSWindow *w, int attempt)
 {
-    if (!w || gClosing || ![w isVisible] || !gHaveSaved) return;
+    if (!w || gClosing || ![w isVisible]) return;
+    BOOL presentation = windowedPresentation(w);
+    if (!gHaveSaved && !presentation) return;
     BOOL now = isNative(w);
     BOOL canNative = ([w collectionBehavior] & NSWindowCollectionBehaviorFullScreenPrimary) != 0;
     BOOL resizable = ([w styleMask] & NSWindowStyleMaskResizable) != 0;
     NSSize cur = [w contentRectForFrameRect:[w frame]].size;
-    lbws_plan p = lbws_plan_restore(gSavedState, gSavedW, gSavedH, now, canNative, resizable, cur.width, cur.height);
+    lbws_state saved = gSavedState;
+    if (presentation) {
+        /* A game that covers the screen: the switch decides, not the state it was left in. */
+        switch (lbws_plan_fullscreen(YES, wantNative(), now, canNative)) {
+        case LBWS_FS_ENTER:
+            say("native fullscreen, as the game's setting says");
+            [w toggleFullScreen:nil];
+            return;
+        case LBWS_FS_WAIT:
+            if (attempt < 4)
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                    tryRestore(w, attempt + 1);
+                });
+            return;
+        default:
+            break;
+        }
+        if (saved == LBWS_NATIVE && !wantNative()) saved = LBWS_WINDOW;   /* the setting keeps it in the window */
+        if (!gHaveSaved) return;
+    }
+    lbws_plan p = lbws_plan_restore(saved, gSavedW, gSavedH, now, canNative, resizable, cur.width, cur.height);
     switch (p.action) {
     case LBWS_SET_SIZE: {
         say("window back to %.0fx%.0f (was %.0fx%.0f)", p.w, p.h, cur.width, cur.height);

@@ -103,14 +103,14 @@
    },
    "own": null
   },
-  "windows": {
-   "effective": "fixed",
-   "inherited": "fixed",
+  "nativeFullscreen": {
+   "effective": true,
+   "inherited": true,
    "inheritedFrom": "defaults",
    "inheritedLabel": {
-    "en": "Fixed-size windows",
-    "ru": "Окна фиксированного размера",
-    "uk": "Вікна фіксованого розміру"
+    "en": "On",
+    "ru": "Вкл.",
+    "uk": "Увімк."
    },
    "own": null
   }

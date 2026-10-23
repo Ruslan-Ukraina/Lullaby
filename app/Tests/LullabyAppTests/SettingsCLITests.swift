@@ -121,7 +121,7 @@ struct SettingsCLITests {
         #expect(game.upscaler == .lanczos, "the filter picked last replaces MetalFX Spatial")
         #expect(game.filter == .bilinear)
         #expect(game.fps == nil, "the panel's counter is the Metal HUD, not Dormison's")
-        #expect(game.windows == .window)
+        #expect(game.windows == nil, "windows are always native: the View menu's choice is not kept")
 
         #expect(cli.run(["app", "config", "227300", "upscaler", "anime4k"]).status == 1, "no shader packages")
         #expect(cli.run(["app", "config", "227300", "fps", "maybe"]).status == 1)

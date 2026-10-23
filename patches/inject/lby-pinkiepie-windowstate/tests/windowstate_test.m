@@ -5,13 +5,20 @@
  *
  *   wine-windowstate-test save FILE W H      resize to WxH, leave, and expect the file to say so
  *   wine-windowstate-test restore FILE W H   a 640x480 window must come back to WxH
+ *   wine-windowstate-test fullscreen FILE 1|0   a screen-covering game's window (presentationWindowed): with the
+ *                                            switch 1 the library asks for native full screen once, with 0 never
  * LULLABY_WINDOWSTATE_DYLIB names the library; the program's name starts with "wine" like the loader's. */
 #import <AppKit/AppKit.h>
 #include <dlfcn.h>
 
+static int gToggles;
+
 @interface WineWindow : NSWindow
+@property (readonly) BOOL presentationWindowed;
 @end
 @implementation WineWindow
+- (BOOL)presentationWindowed { return getenv("LBWS_TEST_PRESENTATION") != NULL; }
+- (void)toggleFullScreen:(id)sender { gToggles++; }   /* not entered: it would take the screen */
 @end
 
 static void spin(double seconds)
@@ -34,9 +41,24 @@ int main(int argc, char **argv)
         NSWindow *win = [[WineWindow alloc] initWithContentRect:NSMakeRect(-20000, -20000, 640, 480)
                                                       styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskResizable
                                                         backing:NSBackingStoreBuffered defer:NO];
+        if (!strcmp(phase, "fullscreen")) {
+            setenv("LBWS_TEST_PRESENTATION", "1", 1);
+            setenv("LULLABY_NATIVE_FULLSCREEN", argv[3], 1);
+            [win setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
+        }
         [win orderFrontRegardless];
         NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
         [nc postNotificationName:NSWindowDidBecomeMainNotification object:win];
+        if (!strcmp(phase, "fullscreen")) {
+            spin(2.5);
+            [nc postNotificationName:NSWindowDidBecomeMainNotification object:win];   /* the window becomes main again */
+            spin(1.5);
+            int want = atoi(argv[3]) ? 1 : 0;
+            BOOL ok = gToggles == want;
+            printf("%s: the switch %s, native full screen asked for %d time(s), wanted %d\n", ok ? "ok" : "FAIL", argv[3],
+                   gToggles, want);
+            return ok ? 0 : 1;
+        }
         if (!strcmp(phase, "damaged")) {
             // The state file holds the wrong types: the library must come up and leave the window alone.
             spin(2.0);

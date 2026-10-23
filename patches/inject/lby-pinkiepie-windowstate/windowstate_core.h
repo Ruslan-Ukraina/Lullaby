@@ -84,4 +84,23 @@ static inline lbws_plan lbws_plan_restore(lbws_state saved, double saved_w, doub
     return none; /* the game's own borderless mode is the game's to put back */
 }
 
+typedef enum { LBWS_FS_NOTHING = 0, LBWS_FS_ENTER = 1, LBWS_FS_WAIT = 2 } lbws_fs_action;
+
+/* A game whose window covers the screen is shown by the engine as an ordinary window (WineWindow's
+ * presentationWindowed). With the native full screen switch on, it goes on to macOS's native full screen:
+ * its own desktop, at the game's resolution. The saved state does not decide this, the switch does.
+ *  windowed_presentation: the engine shows a screen-covering window of the game in a window;
+ *  want_native:           the switch (LULLABY_NATIVE_FULLSCREEN, on unless it says 0);
+ *  now_native, can_native: as above; the full-screen behaviour is set a moment after the window shows,
+ *                          so a window that cannot yet is waited for. */
+static inline lbws_fs_action lbws_plan_fullscreen(bool windowed_presentation, bool want_native, bool now_native,
+                                                  bool can_native)
+{
+    if (!windowed_presentation || !want_native || now_native) return LBWS_FS_NOTHING;
+    return can_native ? LBWS_FS_ENTER : LBWS_FS_WAIT;
+}
+
+/* The want_native switch from its text: on unless it is "0". */
+static inline bool lbws_want_native(const char *text) { return !(text && !strcmp(text, "0")); }
+
 #endif
