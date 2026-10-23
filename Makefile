@@ -303,6 +303,7 @@ webpatch-syntax: $(PANEL_JS_H)
 		$(OUT_DIR)/webpatch-apply "$$f" "$$tmp/patched.js" || { rm -rf "$${tmp:?}"; exit 1; }; \
 		node --check "$$tmp/patched.js" || { echo "webpatch-syntax: $$f does not parse after the webpatch"; rm -rf "$${tmp:?}"; exit 1; }; \
 		node steam/hook/tests/lbselp-check.js "$$tmp/patched.js" || { rm -rf "$${tmp:?}"; exit 1; }; \
+		node steam/hook/tests/lbtoollist-check.js "$$tmp/patched.js" || { rm -rf "$${tmp:?}"; exit 1; }; \
 		n=$$((n + 1)); \
 	done; \
 	rm -rf "$${tmp:?}"; \
