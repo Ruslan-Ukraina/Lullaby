@@ -8,7 +8,7 @@ Remembers the state a game's window was left in and puts it back at the next lau
 - A state counts once it has stood for a second, so a game leaving full screen only because it is closing is not kept.
 - Window size is restored; Native Fullscreen is re-entered; the game's own borderless mode is the game's to put back.
 - **Native full screen switch** (the game's setting "Native full screen", `LULLABY_NATIVE_FULLSCREEN`, on by default): a game whose
-  window covers the screen is shown by the engine in a window (`SEVO_RESIZABLE_WINDOWS=window`, always set); with the switch on
+  window covers the screen is shown by the engine in a window (`SEVO_RESIZABLE_WINDOWS=window`; not the default: it turned a borderless full screen into a titled window, docs/DECISIONS.md); with the switch on
   this library takes that window to macOS's native full screen once, on its own desktop, at the game's resolution. With it off the
   window stays a window (the green button still works). For such a window the switch decides, not the saved state.
   The engine's `presentationWindowed` is read through key-value coding; an engine without it only loses this.
