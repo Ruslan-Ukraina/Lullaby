@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "serial": 3,
+  "serial": 4,
   "databases": [
     {
       "file": "1788400362.json",
@@ -33,6 +33,10 @@
     {
       "file": "1792110651.json",
       "sha256": "9637053b8fb0c1404fe7bb3e7194dd3f69213dfd3d01212c2554e33a092beee7"
+    },
+    {
+      "file": "1792618285.json",
+      "sha256": "c7cf7182795cf035e69a1cfc8f2339f45f6cf8f98ed3c495d306e462b4be87e2"
     }
   ],
   "builds": [
@@ -80,6 +84,11 @@
       "build": 1792110651,
       "checked": "2026-10-16 CI anchorcheck: 18/18 anchors and recorded addresses, cut from 1791918634.json (2 new patterns)",
       "database": "1792110651.json"
+    },
+    {
+      "build": 1792618285,
+      "checked": "2026-10-23 anchorcheck on the installed client: 18/18 anchors and recorded addresses, cut from 1792110651.json (1 new pattern)",
+      "database": "1792618285.json"
     }
   ]
 }
