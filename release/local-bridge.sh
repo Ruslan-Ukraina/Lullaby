@@ -128,7 +128,24 @@ python3 -I -c 'import json,sys; sys.exit(0 if any(c.get("version") == sys.argv[2
 	"$engine_json" "$version" || die "$engine_json does not name $version, so the bridge entry could not record where the engine comes from"
 python3 -I "$here/feed.py" bridge-artifact --files-dir "$files" --b1-dir "$W/ntdll-b1" --fixes-dir "$W/engine-fixes" \
 	--engine "$version" --commit "$commit" --rev "$REV" --feed "$FEED_BASE" --engine-json "$engine_json" --out "$feed"
-python3 -I "$here/feed.py" publish-bridges --repo "$repo/bridge/bridge-manifest.json" \
+# Signed with the owner's key, this manifest is the next one of the published line: the app refuses a serial lower than
+# one it has seen, so it is built on the published manifest (verified against the key), not on the repository's alone.
+current=
+if [ -n "${RELEASE_KEY:-}" ]; then
+	GITHUB_REPOSITORY=${GITHUB_REPOSITORY:-$(python3 -I "$here/feed.py" config repository)}
+	export GITHUB_REPOSITORY
+	manifest_tag=$(python3 -I "$here/feed.py" config manifestTag)
+	rm -rf "${W:?}/published"
+	if "$here/gh-publish.sh" fetch "$manifest_tag" bridge-manifest.json "$W/published"; then
+		"$here/gh-publish.sh" verify "$pub" "$W/published/bridge-manifest.json" || die "the published bridge manifest does not carry this key's signature"
+		current="$W/published/bridge-manifest.json"
+		say "building on the published manifest, serial $(python3 -I -c 'import json,sys; print(json.load(open(sys.argv[1]))["serial"])' "$current")"
+	else
+		say "no published bridge manifest is read: this one starts from the repository's"
+	fi
+fi
+# shellcheck disable=SC2086
+python3 -I "$here/feed.py" publish-bridges --repo "$repo/bridge/bridge-manifest.json" ${current:+--current "$current"} \
 	--out "$feed/manifest/bridge-manifest.json" "$feed/$id.entry.json"
 swift "$here/sign.swift" "$signkey" "$feed/$id/$id.tar.xz" "$feed/manifest/bridge-manifest.json"
 "$here/gh-publish.sh" verify "$pub" "$feed/$id/$id.tar.xz"
