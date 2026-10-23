@@ -12,7 +12,7 @@
  * Which sync backend runs is the engine's: WINEMSYNC=1, WINEWFUSYNC=1, or neither (the
  * wineserver). Usage: syncbench.exe [case ...]   with no argument, all of them.
  *
- * Built for perf/syncbench.sh (x86_64-w64-mingw32-gcc -O2). Nothing here touches a game. */
+ * Built for tools/perf/syncbench.sh (x86_64-w64-mingw32-gcc -O2). Nothing here touches a game. */
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>

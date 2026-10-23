@@ -19,7 +19,7 @@
  * what the report divides by).
  *
  * Universal (arm64 + x86_64): the engine's wineserver may be arm64, and a dylib that does not
- * load into a process makes dyld end it. Build: perf/frametap.sh. */
+ * load into a process makes dyld end it. Build: tools/perf/frametap.sh. */
 
 #import <Foundation/Foundation.h>
 #import <QuartzCore/QuartzCore.h>

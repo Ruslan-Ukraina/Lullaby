@@ -1,12 +1,12 @@
 #!/bin/sh
-# Thread-waiting benchmark (perf/syncbench.c) under one engine, in several sync modes, in a
+# Thread-waiting benchmark (tools/perf/syncbench.c) under one engine, in several sync modes, in a
 # throw-away prefix. Rounds go mode by mode, round after round, so heat and background
 # load hit every mode alike. One CSV row per case, round and mode.
 #
-#   perf/syncbench.sh [--engine-env FILE] [--runs N] [--mode LABEL:VAR=v,VAR=v]... [--out CSV]
+#   tools/perf/syncbench.sh [--engine-env FILE] [--runs N] [--mode LABEL:VAR=v,VAR=v]... [--out CSV]
 #                     [--wait-quiet PERCENT]
 #
-#   --engine-env  a lullaby-engine.env (see perf/common.sh); default: the installed engine
+#   --engine-env  a lullaby-engine.env (see tools/perf/common.sh); default: the installed engine
 #   --runs        rounds per mode, default 3
 #   --mode        a label and the environment of that mode; the default pair is
 #                 "server:" (the wineserver does the waiting) and "msync:WINEMSYNC=1".
@@ -19,8 +19,8 @@
 # numbers mean nothing. Needs mingw-w64.
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
-root=$(cd "$here/.." && pwd)
-# shellcheck source=perf/common.sh
+root=$(cd "$here/../.." && pwd)
+# shellcheck source=tools/perf/common.sh
 . "$here/common.sh"
 
 envfile=""

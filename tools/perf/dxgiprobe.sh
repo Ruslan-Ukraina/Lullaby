@@ -1,9 +1,9 @@
 #!/bin/sh
 # What DXGI tells a game about memory, through D3DMetal and through the engine's own DXGI, in a throw-away prefix.
-#   perf/dxgiprobe.sh [VAR=value ...]    the variables go to the probe's environment (e.g. SEVO_GPU_MEMORY_MB=12288)
+#   tools/perf/dxgiprobe.sh [VAR=value ...]    the variables go to the probe's environment (e.g. SEVO_GPU_MEMORY_MB=12288)
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
-# shellcheck source=perf/common.sh
+# shellcheck source=tools/perf/common.sh
 . "$here/common.sh"
 perf_engine_load "${LB_ENGINE_ENV:-}" || exit 2
 perf_require_no_wine || exit 2

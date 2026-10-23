@@ -81,7 +81,7 @@ all: $(TARGET) $(APP_PAYLOAD)
 $(APP_PAYLOAD):
 	@mkdir -p $(APP_PAYLOAD)
 
-TEST_PATHS := dylib/tests overlay-shim/tests app/Tests
+TEST_PATHS := dylib/tests steam/overlay/tests app/Tests
 
 tests-list:
 	@for p in $(TEST_PATHS); do echo $$p; done
@@ -422,7 +422,7 @@ $(PANEL_JS_H): dylib/feats/panel.js dylib/embed_js.py
 $(OUT_DIR)/dylib/feats/webpatch.o: $(PANEL_JS_H)
 
 SUPPORT_DIR        := $(HOME)/Library/Application Support/lullaby
-OVERLAY_SHIM_SRC   := overlay-shim/overlay_shim.m
+OVERLAY_SHIM_SRC   := steam/overlay/overlay_shim.m
 OVERLAY_SHIM_ARM   := $(OUT_DIR)/overlay-shim.arm64.dylib
 OVERLAY_SHIM_X86   := $(OUT_DIR)/overlay-shim.x86_64.dylib
 OVERLAY_SHIM       := $(OUT_DIR)/overlay-shim.dylib
@@ -430,7 +430,7 @@ OVERLAY_SHIM_FLAGS := -mmacosx-version-min=$(MIN_VER) -dynamiclib -O2 -Wall -Wex
                       -install_name @rpath/overlay-shim.dylib \
                       -framework Metal -framework QuartzCore \
                       -framework CoreGraphics -framework CoreFoundation
-OVERLAY_SHIM_TESTS := overlay-shim/tests
+OVERLAY_SHIM_TESTS := steam/overlay/tests
 OVERLAY_SHIM_TEST_FLAGS := -mmacosx-version-min=$(MIN_VER) -O2 -Wall -Wextra \
                       -framework Metal -framework Foundation -framework QuartzCore
 

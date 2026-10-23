@@ -2,10 +2,10 @@
 """On-screen frame intervals of a game from Lullaby's present feed (ENG-07, LULLABY_PRESENT_FEED=1).
 
 The feed (<prefix>/.sevo/run/<Windows pid>.present) holds, for each of the last 256 drawables, the moment it reached
-the screen (addPresentedHandler). Unlike perf/frames.py (the moments of the present call) these are what the player
+the screen (addPresentedHandler). Unlike tools/perf/frames.py (the moments of the present call) these are what the player
 sees. Waits for a feed that starts presenting, lets the game settle, then reads the ring for a while.
 
-  perf/presentfeed.py [--settle 45] [--seconds 30] [--label NAME] [--csv FILE] [--timeout 240]
+  tools/perf/presentfeed.py [--settle 45] [--seconds 30] [--label NAME] [--csv FILE] [--timeout 240]
 prints: label shown fps p50 p95 p99 max std, and the share of intervals within 1 ms of the median.
 """
 import argparse, glob, mmap, os, statistics as st, struct, sys, time

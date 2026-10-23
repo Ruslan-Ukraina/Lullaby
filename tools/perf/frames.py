@@ -6,7 +6,7 @@ Dormison keeps a page per drawing process at <prefix>/.sevo/run/<pid>.stats
 frames. This samples it for a while and prints the average rate, the 1 % low and
 frame time percentiles. Nothing touches the game.
 
-    perf/frames.py <compatdata dir or prefix> [--seconds 20] [--label NAME] [--csv FILE]
+    tools/perf/frames.py <compatdata dir or prefix> [--seconds 20] [--label NAME] [--csv FILE]
 """
 import argparse
 import glob

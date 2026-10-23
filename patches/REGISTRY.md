@@ -19,7 +19,7 @@
    2. собираются только затронутые модули (минуты, не весь Wine);
    3. экспортируемые символы равны релизным;
    4. модуль без патчей совпадает с релизом по инструкциям (Dormison: `build-fixes.sh`, измерено для `winemac.so` dormison-b2: 126 067 инструкций, различий нет; WineForge: под вопросом, §2.7 `WINEFORGE_PORT.md`);
-   5. проходят тесты: стенд `perf/`, пробные программы `patches/engine/tests/`, `make app-tests`;
+   5. проходят тесты: стенд `tools/perf/`, пробные программы `patches/engine/tests/`, `make app-tests`;
    6. публикуется подписанный манифест `engineFiles` (sha256 чистого и патченого файла, патчи с sha256), как у моста;
    7. не прошёл любой шаг — новая основа у пользователей не ставится, в интерфейсе причина.
 8. **Откат.** Рядом с заменённым модулем лежит `<файл>.lullaby-orig`; предыдущая пара «основа + оверлей» хранится.
@@ -107,7 +107,7 @@
 | STM-05 | Блокировка обновления Steam без сигнатур | `updategate.c`, `UpdateBlock` | подписанный манифест сигнатур |
 | STM-06 | Правки интерфейса Steam (webpatch) | `webpatch.c`, `webui.c` | фикстуры `webpatch-fixtures` |
 | STM-07 | Доступ ко вводу | `input_access.c` | с приложением |
-| STM-08 | Оверлей Steam в игре | `overlay-shim/` → `overlay-shim.dylib` (arm64 + x86_64) | с приложением |
+| STM-08 | Оверлей Steam в игре | `steam/overlay/` → `overlay-shim.dylib` (arm64 + x86_64) | с приложением |
 | STM-09 | База сигнатур клиента | `signatures/macos.arm64/<сборка>.json`, `signatures/manifest.json` | CI по расписанию + `anchorcheck`, подпись |
 
 ### 3.7 Скрипт запуска и приложение
@@ -138,7 +138,7 @@
 | TST-02 | Сборка и проверка модулей Dormison | `patches/engine/build-fixes.sh` |
 | TST-03 | Проверка реестра | `patches/engine/check-registry.sh` |
 | TST-04 | Пробные программы движка | `patches/engine/tests/` |
-| TST-05 | Стенд замеров | `perf/` (`syncbench`, `gfxbench`, `threadcpu`, `frametap`, `report.py`) |
+| TST-05 | Стенд замеров | `tools/perf/` (`syncbench`, `gfxbench`, `threadcpu`, `frametap`, `report.py`) |
 
 ## 4. Как добавить функцию
 

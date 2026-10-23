@@ -1,10 +1,10 @@
 #!/bin/sh
 # Builds the stand's native tools into out/: threadcpu (per-thread processor time) and
 # frametap.dylib (the frame tap, universal arm64 + x86_64, ad-hoc signed).
-#   perf/build.sh
+#   tools/perf/build.sh
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
-root=$(cd "$here/.." && pwd)
+root=$(cd "$here/../.." && pwd)
 mkdir -p "$root/out"
 clang -O2 -Wall -Wextra -o "$root/out/threadcpu" "$here/threadcpu.c"
 clang -O2 -Wall -Wextra -Wno-unused-parameter -fobjc-arc -dynamiclib -arch arm64 -arch x86_64 \

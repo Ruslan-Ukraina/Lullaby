@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Frame statistics from a frametap CSV (see perf/frametap.m).
+"""Frame statistics from a frametap CSV (see tools/perf/frametap.m).
 
-    perf/frametap-stats.py FILE... [--skip SECONDS]
+    tools/perf/frametap-stats.py FILE... [--skip SECONDS]
 
 One line of key=value pairs for the file with the most shown frames (the game's process; the
 others, if any, are processes that drew a few things). The frame times are the intervals

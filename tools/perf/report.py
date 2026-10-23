@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """A table from the stand's CSV files: median of the rounds, and how far the rounds stray.
 
-    perf/report.py syncbench scratch/perf/syncbench.csv [--baseline MODE] [--limit 3]
-    perf/report.py gfxbench  scratch/perf/gfxbench.csv  [--baseline CONFIG] [--limit 3]
-    perf/report.py threads   scratch/perf/gfxbench-threads.csv [--top 8]
+    tools/perf/report.py syncbench scratch/perf/syncbench.csv [--baseline MODE] [--limit 3]
+    tools/perf/report.py gfxbench  scratch/perf/gfxbench.csv  [--baseline CONFIG] [--limit 3]
+    tools/perf/report.py threads   scratch/perf/gfxbench-threads.csv [--top 8]
 
 syncbench: one row per (engine, mode, case): the median of the rounds for the rate and for
 the latencies, the spread (the largest distance of a round from the median, in per cent),

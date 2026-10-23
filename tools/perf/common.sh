@@ -1,5 +1,5 @@
 #!/bin/sh
-# Shared by the stand's scripts (perf/syncbench.sh, perf/gfxbench.sh): pick an engine, make
+# Shared by the stand's scripts (tools/perf/syncbench.sh, tools/perf/gfxbench.sh): pick an engine, make
 # a throw-away prefix, stage a renderer from that engine's own files, keep the Wine server
 # honest. Sourced, not run. Every name starts with perf_.
 #

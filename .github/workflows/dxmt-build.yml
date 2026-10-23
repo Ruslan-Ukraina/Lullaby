@@ -3,7 +3,7 @@ name: dxmt-build
 # DXMT from a pinned commit of 3Shain/dxmt (docs/DXMT_PIN.md, STACK_PLAN stage 7): the same
 # recipe as DXMT's own CI for the v0.80 release (gcc, release, x86_64 and x86, D3D12 off),
 # so the result is a drop-in for the dxmt/ folder of the engine. Nothing is published:
-# the run's artifact is a candidate for the A/B on the bench (perf/gfxbench.sh), and
+# the run's artifact is a candidate for the A/B on the bench (tools/perf/gfxbench.sh), and
 # v0.80 stays the fallback until the owner accepts it.
 # Manual only. DXMT is LGPL; we build it, we do not send code to it.
 

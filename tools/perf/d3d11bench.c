@@ -11,7 +11,7 @@
  * presents with a sync interval of 1, otherwise 0. Frame times are the intervals between
  * Present calls returning. One line of key=value pairs at the end; BENCH_CSV names a file
  * for every frame time (ms). Nothing here reads or writes anything of a game.
- * Built by perf/stand.sh (x86_64-w64-mingw32-gcc -O2 -ld3d11 -ldxgi -ld3dcompiler_47). */
+ * Built by tools/perf/stand.sh (x86_64-w64-mingw32-gcc -O2 -ld3d11 -ldxgi -ld3dcompiler_47). */
 
 #define COBJMACROS
 #define WIN32_LEAN_AND_MEAN

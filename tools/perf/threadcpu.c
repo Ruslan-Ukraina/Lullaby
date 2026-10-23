@@ -9,7 +9,7 @@
  *
  * Prints one line a group (cpu% of one core, averaged over the run) and, with --csv, one
  * row a group: label,pid,group,threads,cpu_pct. Nothing is written to the process.
- * Build: clang -O2 -o out/threadcpu perf/threadcpu.c */
+ * Build: clang -O2 -o out/threadcpu tools/perf/threadcpu.c */
 
 #include <libproc.h>
 #include <stdint.h>

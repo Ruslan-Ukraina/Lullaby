@@ -1,10 +1,10 @@
 #!/bin/sh
-# The synthetic Direct3D 11 scene (perf/d3d11bench.c) through DXMT under one engine, in several
+# The synthetic Direct3D 11 scene (tools/perf/d3d11bench.c) through DXMT under one engine, in several
 # configurations, with the processor time of the game's threads sampled beside it
-# (perf/threadcpu.c). Rounds go configuration by configuration, round after round, so drift
+# (tools/perf/threadcpu.c). Rounds go configuration by configuration, round after round, so drift
 # in the Mac's load hits all alike. A window opens on the screen for each run.
 #
-#   perf/gfxbench.sh [--engine-env FILE] [--runs N] [--config LABEL:VAR=v,VAR=v]...
+#   tools/perf/gfxbench.sh [--engine-env FILE] [--runs N] [--config LABEL:VAR=v,VAR=v]...
 #                    [--bench cpu|gpu]... [--seconds S] [--out CSV] [--wait-quiet PERCENT]
 #                    [--min-idle S] [--no-threads] [--no-tap] [--renderer dxmt|d3dmetal]
 #
@@ -20,15 +20,15 @@
 #   --min-idle    refuse unless the user has been idle this many seconds (default 20): a
 #                 window pops up, and a user at the keyboard disturbs the numbers
 #   --no-threads  skip the thread sampling
-#   --no-tap      skip the frame tap (perf/frametap.m): the frames then come from the program's
+#   --no-tap      skip the frame tap (tools/perf/frametap.m): the frames then come from the program's
 #                 own count only; with it, tap_* columns carry what reached the screen
 #
 # Round 0 of each configuration is a warm-up (in the CSV, left out of the report).
 # Needs mingw-w64 and Xcode's clang. Refuses to run while a Wine server is alive.
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
-root=$(cd "$here/.." && pwd)
-# shellcheck source=perf/common.sh
+root=$(cd "$here/../.." && pwd)
+# shellcheck source=tools/perf/common.sh
 . "$here/common.sh"
 
 envfile=""
