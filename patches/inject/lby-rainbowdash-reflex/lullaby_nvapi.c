@@ -137,6 +137,7 @@ static double synced; /* average of "this interval was whole refreshes", 0..1 */
    latency as without Reflex (48 ms against 49; the plain rule 36 ms). LULLABY_REFLEX_DEPTH=<n> sets the fixed depth (0 = the plain rule),
    LULLABY_REFLEX_ADAPT=1 turns the control on. */
 static unsigned adapt_depth, just_lowered;
+static BOOL vsync_latched;
 static BOOL adapt_fixed = TRUE;   /* the depth is fixed at extra_depth unless the control is asked for */
 static double norm_sum, probe_sum;
 static unsigned norm_n, probe_n, adapt_quiet, lower_wait = 4, lower_wait_left;
@@ -473,7 +474,11 @@ static NvAPI_Status __cdecl lb_Sleep(void *dev)
         {
             /* the extra frame only where the screen's grid and the compositor stand behind the GPU (V-Sync): without it the plain rule
                loses nothing (the simulator: latency x0.44, frames the same) */
-            unsigned depth = synced > 0.7 ? (adapt_fixed ? extra_depth : adapt_depth + (probe_left ? 1 : 0)) : 0;
+            /* latched: on above 0.7, off only below 0.3, so that the average hovering at the threshold cannot flip the depth every few
+               frames (RE9's menu then drifted to 84..92 frames a second and 52 ms instead of holding 95 and 48) */
+            if (synced > 0.7) vsync_latched = TRUE;
+            else if (synced < 0.3) vsync_latched = FALSE;
+            unsigned depth = vsync_latched ? (adapt_fixed ? extra_depth : adapt_depth + (probe_left ? 1 : 0)) : 0;
             if (depth > 3) depth = 3;
             if (depth && frame_no > depth + 1) back += depth;
         }
