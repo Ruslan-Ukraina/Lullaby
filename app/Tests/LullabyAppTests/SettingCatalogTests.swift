@@ -114,7 +114,7 @@ struct SettingCatalogTests {
         #expect(env["SEVO_FPS_LIMIT"] == "0", "no frame limit")
         #expect(env["SEVO_LINEAR_MOUSE"] == "0")
         #expect(env["LULLABY_GCMOUSE_SCALE"] == "auto", "from the mouse's resolution")
-        #expect(env["SEVO_RESIZABLE_WINDOWS"] == "window", "windows are always the Mac's own, a full-screen game in one")
+        #expect(env["SEVO_RESIZABLE_WINDOWS"] == "fixed", "a fixed-size window is scaled; a game that covers the screen stays as it is (native full screen is postponed)")
         #expect(env["LULLABY_NATIVE_FULLSCREEN"] == "0", "native full screen of a covering game is postponed: off, no setting")
         #expect(env["SEVO_LARGE_ADDRESS_AWARE"] == "1", "4 GB for 32-bit games")
         #expect(env["LULLABY_LOW_LATENCY"] == "1", "Reflex is always answered")
@@ -248,9 +248,8 @@ struct SettingCatalogTests {
     func defaultsMatchTheOldProfile() {
         let bottle = ConfigMaterializer.bottleLines(global: .empty, msync: true, cli: nil)
         let env = ConfigMaterializer.effectiveEnvironment(bottle: bottle, program: [])
-        // Windows are always native now: a full-screen game in a window (winemac.drv's "window"), the old
-        // profile's "fixed" no longer applies.
-        #expect(WindowTreatment(option: env["SEVO_RESIZABLE_WINDOWS"]!) == .window)
+        // "1" and "fixed" are one value to winemac.drv (resizable_windows_from_option).
+        #expect(WindowTreatment(option: "1") == WindowTreatment(option: env["SEVO_RESIZABLE_WINDOWS"]!))
         // The pointer confinement left the catalog; the engine's default is off.
         for (key, value) in ConfigMigration.oldProfile where key != "SEVO_RESIZABLE_WINDOWS" && key != "SEVO_CURSOR_CONFINE" {
             #expect(env[key] == value, "\(key)")

@@ -100,7 +100,7 @@ public enum ConfigMaterializer {
     /// and msync+ (a launch option can still turn a variable off for one run: LULLABY_DLSS=0,
     /// WINEMSYNC=0).
     static let fixedLines = [
-        "SEVO_RESIZABLE_WINDOWS=window",
+        "SEVO_RESIZABLE_WINDOWS=fixed",
         "LULLABY_NATIVE_FULLSCREEN=0",
         "ROSETTA_ADVERTISE_AVX=1",
         "DXMT_ENABLE_NVEXT=1",

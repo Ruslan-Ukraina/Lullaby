@@ -27,7 +27,7 @@
 
 #define MAX_HOOKS 96
 
-typedef enum { SIG_OBJ, SIG_OBJ_DOUBLE, SIG_VOID, SIG_DOUBLE, SIG_PTR_COUNT, SIG_PTR_COUNT_OPT, SIG_RET_OBJ, SIG_BOOL, SIG_UINT } sig_kind;
+typedef enum { SIG_OBJ, SIG_OBJ_DOUBLE, SIG_VOID, SIG_DOUBLE, SIG_PTR_COUNT, SIG_PTR_COUNT_OPT, SIG_RET_OBJ, SIG_BOOL, SIG_UINT, SIG_GENERIC } sig_kind;
 
 typedef struct {
     Class cls;
@@ -84,15 +84,6 @@ static NSString *setting(NSString *key)
     return nil;
 }
 
-static hook_t *find_hook(id self, SEL sel)
-{
-    int n = atomic_load(&gHookCount);
-    for (Class c = object_getClass(self); c; c = class_getSuperclass(c))
-        for (int i = 0; i < n; i++)
-            if (gHooks[i].cls == c && gHooks[i].sel == sel) return &gHooks[i];
-    return NULL;
-}
-
 static void note(hook_t *h, double arg, BOOL hasArg)
 {
     unsigned long long t = tid();
@@ -122,81 +113,78 @@ static void install(Class cls, SEL sel, sig_kind kind)
     switch (kind) {
     case SIG_OBJ:
         replacement = imp_implementationWithBlock(^(id self, id a) {
-            hook_t *x = find_hook(self, sel); if (x) note(x, 0, NO);
-            ((void (*)(id, SEL, id))x->orig)(self, sel, a); });
+            note(h, 0, NO);
+            ((void (*)(id, SEL, id))h->orig)(self, sel, a); });
         break;
     case SIG_OBJ_DOUBLE:
         replacement = imp_implementationWithBlock(^(id self, id a, double d) {
-            hook_t *x = find_hook(self, sel); if (x) note(x, d, YES);
-            ((void (*)(id, SEL, id, double))x->orig)(self, sel, a, d); });
+            note(h, d, YES);
+            ((void (*)(id, SEL, id, double))h->orig)(self, sel, a, d); });
         break;
     case SIG_VOID:
         replacement = imp_implementationWithBlock(^(id self) {
-            hook_t *x = find_hook(self, sel); if (x) note(x, 0, NO);
-            ((void (*)(id, SEL))x->orig)(self, sel); });
+            note(h, 0, NO);
+            ((void (*)(id, SEL))h->orig)(self, sel); });
         break;
     case SIG_DOUBLE:
         replacement = imp_implementationWithBlock(^(id self, double d) {
-            hook_t *x = find_hook(self, sel); if (x) note(x, d, YES);
-            ((void (*)(id, SEL, double))x->orig)(self, sel, d); });
+            note(h, d, YES);
+            ((void (*)(id, SEL, double))h->orig)(self, sel, d); });
         break;
     case SIG_PTR_COUNT:
         replacement = imp_implementationWithBlock(^(id self, const void *p, NSUInteger n) {
-            hook_t *x = find_hook(self, sel); if (x) note(x, 0, NO);
-            ((void (*)(id, SEL, const void *, NSUInteger))x->orig)(self, sel, p, n); });
+            note(h, 0, NO);
+            ((void (*)(id, SEL, const void *, NSUInteger))h->orig)(self, sel, p, n); });
         break;
     case SIG_PTR_COUNT_OPT:
         replacement = imp_implementationWithBlock(^(id self, const void *p, NSUInteger n, id o) {
-            hook_t *x = find_hook(self, sel); if (x) note(x, 0, NO);
-            ((void (*)(id, SEL, const void *, NSUInteger, id))x->orig)(self, sel, p, n, o); });
+            note(h, 0, NO);
+            ((void (*)(id, SEL, const void *, NSUInteger, id))h->orig)(self, sel, p, n, o); });
         break;
     case SIG_RET_OBJ:
         replacement = imp_implementationWithBlock(^id(id self) {
-            hook_t *x = find_hook(self, sel); if (x) note(x, 0, NO);
-            return ((id (*)(id, SEL))x->orig)(self, sel); });
+            note(h, 0, NO);
+            return ((id (*)(id, SEL))h->orig)(self, sel); });
         break;
     case SIG_BOOL:
         replacement = imp_implementationWithBlock(^(id self, BOOL b) {
-            hook_t *x = find_hook(self, sel); if (x) note(x, b, YES);
-            ((void (*)(id, SEL, BOOL))x->orig)(self, sel, b); });
+            note(h, b, YES);
+            ((void (*)(id, SEL, BOOL))h->orig)(self, sel, b); });
+        break;
+    case SIG_GENERIC:
+        /* Any method of up to four integer-class arguments and two doubles: the registers the original reads are the
+         * ones passed on (System V and AAPCS64 hand integers and doubles out of separate register files), whatever the
+         * order the original declares them in. The return is a word (or void). */
+        replacement = imp_implementationWithBlock(^uintptr_t(id self, uintptr_t a1, uintptr_t a2, uintptr_t a3, uintptr_t a4, double d1, double d2) {
+            note(h, d1, NO);
+            return ((uintptr_t (*)(id, SEL, uintptr_t, uintptr_t, uintptr_t, uintptr_t, double, double))h->orig)(self, sel, a1, a2, a3, a4, d1, d2); });
         break;
     case SIG_UINT:
         replacement = imp_implementationWithBlock(^(id self, NSUInteger u) {
-            hook_t *x = find_hook(self, sel); if (x) note(x, (double)u, YES);
-            ((void (*)(id, SEL, NSUInteger))x->orig)(self, sel, u); });
+            note(h, (double)u, YES);
+            ((void (*)(id, SEL, NSUInteger))h->orig)(self, sel, u); });
         break;
     }
     method_setImplementation(m, replacement);
     say("hooked -[%s %s]", class_getName(cls), sel_getName(sel));
 }
 
-static BOOL declares(Class cls, SEL sel)
+/* A method whose name says it presents or deals in a drawable, with a call shape the generic wrapper can pass on. */
+static BOOL passable(Method m)
 {
-    unsigned count = 0;
-    Method *list = class_copyMethodList(cls, &count);
-    BOOL found = NO;
-    for (unsigned i = 0; i < count && !found; i++) found = method_getName(list[i]) == sel;
-    free(list);
-    return found;
+    char ret[16];
+    method_getReturnType(m, ret, sizeof ret);
+    if (ret[0] == 'd' || ret[0] == 'f' || ret[0] == '{' || ret[0] == '(' || ret[0] == '[') return NO;
+    unsigned args = method_getNumberOfArguments(m), ints = 0, dbls = 0;
+    for (unsigned a = 2; a < args; a++) {
+        char t[16];
+        method_getArgumentType(m, a, t, sizeof t);
+        if (t[0] == 'd') dbls++;
+        else if (t[0] == 'f' || t[0] == '{' || t[0] == '(' || t[0] == '[') return NO;
+        else ints++;
+    }
+    return ints <= 4 && dbls <= 2;
 }
-
-typedef struct { const char *name; sig_kind kind; } probe_t;
-
-/* The calls a frame can be shown through: Metal's command-buffer and drawable presents, Metal 4's queue
- * signal/wait for a drawable, and the layer's own acquire. */
-static const probe_t kProbes[] = {
-    { "presentDrawable:", SIG_OBJ },
-    { "presentDrawable:atTime:", SIG_OBJ_DOUBLE },
-    { "presentDrawable:afterMinimumDuration:", SIG_OBJ_DOUBLE },
-    { "present", SIG_VOID },
-    { "presentAtTime:", SIG_DOUBLE },
-    { "presentAfterMinimumDuration:", SIG_DOUBLE },
-    { "signalDrawable:", SIG_OBJ },
-    { "waitForDrawable:", SIG_OBJ },
-    { "nextDrawable", SIG_RET_OBJ },
-    { "setDisplaySyncEnabled:", SIG_BOOL },
-    { "setMaximumDrawableCount:", SIG_UINT },
-};
 
 static void hook_all(void)
 {
@@ -209,21 +197,38 @@ static void hook_all(void)
         if (!(strstr(name, "CommandBuffer") || strstr(name, "CommandQueue") || strstr(name, "Drawable") ||
               strstr(name, "MetalLayer") || strstr(name, "AGX") || strncmp(name, "MTL", 3) == 0 || strncmp(name, "_MTL", 4) == 0))
             continue;
-        if (strstr(name, "NSKVONotifying")) continue;
-        for (unsigned p = 0; p < sizeof(kProbes) / sizeof(kProbes[0]); p++) {
-            SEL sel = sel_registerName(kProbes[p].name);
-            if (!declares(cls, sel)) continue;
+        if (strstr(name, "NSKVONotifying") || strstr(name, "HUD") || strstr(name, "NSHMD")) continue;
+        unsigned count = 0;
+        Method *list = class_copyMethodList(cls, &count);
+        for (unsigned k = 0; k < count; k++) {
+            SEL sel = method_getName(list[k]);
+            const char *sn = sel_getName(sel);
+            if (!(strstr(sn, "resent") || strstr(sn, "rawable") || strstr(sn, "DisplaySync") || strstr(sn, "aximumDrawable"))) continue;
+            if (!passable(list[k])) continue;
             BOOL done = NO;
-            int count = atomic_load(&gHookCount);
-            for (int k = 0; k < count && !done; k++) done = gHooks[k].cls == cls && gHooks[k].sel == sel;
-            if (!done) install(cls, sel, kProbes[p].kind);
+            int have = atomic_load(&gHookCount);
+            for (int h = 0; h < have && !done; h++) done = gHooks[h].cls == cls && gHooks[h].sel == sel;
+            if (!done) install(cls, sel, SIG_GENERIC);
         }
+        free(list);
     }
     free(classes);
 }
 
+/* Metal's and D3DMetal's classes come as the game starts its renderer, which can be a minute after the process starts:
+ * look again whenever the number of classes has changed. */
+static void rescan_if_new_classes(void)
+{
+    static int known;
+    int now = objc_getClassList(NULL, 0);
+    if (now == known) return;
+    known = now;
+    hook_all();
+}
+
 static void summarize(void)
 {
+    rescan_if_new_classes();
     int n = atomic_load(&gHookCount);
     BOOL any = NO;
     for (int i = 0; i < n; i++) {
@@ -234,8 +239,7 @@ static void summarize(void)
         say("-[%s %s] %llu calls (+%llu in 5 s), first thread %llu, main thread %llu%s", class_getName(gHooks[i].cls),
             sel_getName(gHooks[i].sel), calls, calls - last, atomic_load(&gHooks[i].first_thread),
             atomic_load(&gHooks[i].main_thread_calls),
-            (gHooks[i].kind == SIG_OBJ_DOUBLE || gHooks[i].kind == SIG_DOUBLE || gHooks[i].kind == SIG_BOOL || gHooks[i].kind == SIG_UINT)
-                ? [[NSString stringWithFormat:@", argument %g .. %g", gHooks[i].arg_min, gHooks[i].arg_max] UTF8String] : "");
+            "");
     }
     if (!any) say("no hooked call was made in the last 5 s");
 }
@@ -254,9 +258,7 @@ __attribute__((constructor)) static void pacer_init(void)
         if (log.length) gLog = fopen([log UTF8String], "a");
         say("mode %s", [gMode UTF8String]);
         if ([gMode isEqualToString:@"probe"]) {
-            /* Metal and D3DMetal load classes as the game starts its renderer: look again for a while. */
-            for (int s = 0; s < 8; s++)
-                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(s * 5.0 * NSEC_PER_SEC)), gQueue, ^{ hook_all(); });
+            hook_all();
             dispatch_source_t t = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, gQueue);
             dispatch_source_set_timer(t, dispatch_time(DISPATCH_TIME_NOW, 6ull * NSEC_PER_SEC), 5ull * NSEC_PER_SEC, NSEC_PER_SEC / 10);
             dispatch_source_set_event_handler(t, ^{ summarize(); });

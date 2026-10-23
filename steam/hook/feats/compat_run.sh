@@ -427,7 +427,7 @@ write_bottle_env() {
     cat > "$bottle" <<'BOTTLE'
 # Dormison settings for every program in this prefix, first written by Lullaby.
 # One KEY=VALUE per line; .sevo/apps/<program>.env overrides them per program.
-SEVO_RESIZABLE_WINDOWS=window
+SEVO_RESIZABLE_WINDOWS=1
 SEVO_UPSCALER=off
 SEVO_FINAL_FILTER=lanczos
 SEVO_FPS=0
