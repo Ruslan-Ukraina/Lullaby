@@ -56,22 +56,17 @@
 | ENG-01 | `0001-ntdll-commit-charge-is-the-footprint.patch` | `PagefileUsage` = phys_footprint, а не адресное пространство (игры сравнивают с физической памятью) | `ntdll.so`, `dlls/ntdll/unix/process.c` | Highball 0018, LGPL | в мосту | OK |
 | ENG-02 | `0001-win32u-d3dkmt-hardware-gpu-scheduling.patch` | `KMTQAITYPE_WDDM_2_7_CAPS` = HAGS включён: без него Streamline не предлагает генерацию кадров DLSS | `win32u.so`, `dlls/win32u/d3dkmt.c` | Lullaby | в мосту | OK |
 | ENG-03 | `0001-winemac-retina-horzres-not-doubled.patch` | `HORZRES`/`VERTRES` не удваиваются при Retina | `winemac.so`, `dlls/winemac.drv/gdi.c` | athei/wine fa43d6db2 через Highball 0020, LGPL | в мосту | OK |
-| ENG-04 | `0002-ntdll-d3dmetal-4b3-dispatch-layout.patch` | раскладка диспетчера win32 для D3DMetal 4.0 beta 3 | `ntdll.so`, `dlls/ntdll/unix/loader.c` | Lullaby | **эксперимент** (`engine-fixes/experiments/`; нужен только GPTK 4.0 beta 3, в выпуск не входит; 2026-10-19 откат на beta 2) | FAIL |
-| ENG-05 | `0003-ntdll-d3dmetal-4b3-find-best-window.patch` | поиск окна для D3DMetal 4.0 beta 3 (сторона ntdll) | `ntdll.so`, `dlls/ntdll/unix/loader.c` | Lullaby | **эксперимент** (`engine-fixes/experiments/`; нужен только GPTK 4.0 beta 3, в выпуск не входит; 2026-10-19 откат на beta 2) | FAIL |
-| ENG-06 | `0002-winemac-d3dmetal-find-best-window.patch` | то же, сторона winemac | `winemac.so`, `dlls/winemac.drv/d3dmetal.c` | Lullaby | **эксперимент** (`engine-fixes/experiments/`; нужен только GPTK 4.0 beta 3, в выпуск не входит; 2026-10-19 откат на beta 2) | fuzz |
+| ENG-04 | `0002-ntdll-d3dmetal-4b3-dispatch-layout.patch` | раскладка диспетчера win32 для D3DMetal 4.0 beta 3 | `ntdll.so`, `dlls/ntdll/unix/loader.c` | Lullaby | в выпуск (нужен GPTK 4.0 beta 3)| FAIL |
+| ENG-05 | `0003-ntdll-d3dmetal-4b3-find-best-window.patch` | поиск окна для D3DMetal 4.0 beta 3 (сторона ntdll) | `ntdll.so`, `dlls/ntdll/unix/loader.c` | Lullaby | в выпуск (нужен GPTK 4.0 beta 3)| FAIL |
+| ENG-06 | `0002-winemac-d3dmetal-find-best-window.patch` | то же, сторона winemac | `winemac.so`, `dlls/winemac.drv/d3dmetal.c` | Lullaby | в выпуск (нужен GPTK 4.0 beta 3)| fuzz |
 | ENG-07 | `0003-winemac-lullaby-vsync-and-present-feed.patch` | `LULLABY_FORCE_VSYNC`, `LULLABY_PRESENT_FEED` (лента показа для Reflex) | `winemac.so`, `d3dmetal_objc.m`, `macdrv_main.c` | Lullaby | в мосту | FAIL |
 | ENG-08 | `0004-winemac-gcmouse-raw-input.patch` | мышь через GameController как WM_INPUT (WineForge, Elvin Hayatov, Wine MR !11799); **выключено**, включается `LULLABY_GCMOUSE=1` или `UseGCMouse=Y` | `winemac.so`, `cocoa_gcmouse.m`, `mouse.c`, `event.c`, `macdrv_main.c`, `Makefile.in` | Hayatov, LGPL | в мосту с r5-5-го (по слову владельца 2026-10-19; включается настройкой «Сира миша», по умолчанию выключено; проба мыши: 500 против 120 событий/с) | FAIL |
 | ENG-09 | `0005-winemac-gcmouse-scale.patch` | масштаб сырых отсчётов GCMouse, `LULLABY_GCMOUSE_SCALE` (0,01…100), с переносом дробной части | `winemac.so`, `cocoa_gcmouse.m` | Lullaby | в мосту; Requires: ENG-08 | — |
-| SRV-01 | `0001-server-native-arm64-wineserver-serves-translated-x86-guests.patch` | нативный arm64 `wineserver` обслуживает транслируемых клиентов (`P_TRANSLATED`, x86-машины в реестре) | `wineserver`, `server/mach.c`, `server/registry.c` | Dormison 3b55f4eac, LGPL | в базе | OK |
-| SYN-03 | `0001-wfusync-look-again-before-blocking.patch` | настоящий spin перед блокировкой, перед регистрацией слота на сервере; `WINEWFUSYNC_SPIN`, `WINEWFUSYNC_SPIN_MULTI` | `ntdll.so`, `dlls/ntdll/unix/wfusync.c` | Lullaby (идея: код msync+ и `low_latency_layer` не берутся) | — | OK |
 
 Мост (с 2026-10-19 `bridge-dormison-r5-6`) несёт три изменённых модуля: `ntdll.so`, `win32u.so`, `winemac.so` (`bridge.json`: sha256 чистого и патченого файла); это ENG-01, ENG-02, ENG-03, ENG-07, ENG-08, ENG-09. Список патчей по именам в установленном `bridge.json` не хранится, он есть в репозитории (`engine-fixes/patches/`).
 
 Проверка применимости, не правильности: «OK» означает, что строки не менялись, а не что патч нужен или верен; это проверяют сборка и тесты.
 
-Не встраиваются (лежат в `engine-fixes/`, но не в мосту):
-- `rejected-0002-winemac-native-full-screen-offers-the-program-its-size.patch` — отклонён;
-- `experiments/`: `0004-winemac-lullaby-direct-display-re9.patch` и четыре родственных — прямой вывод/полный экран RE9, не собираются, записаны в `NOTCH_FULLSCREEN.md`.
 
 Заведены, но патчами не оформлены (нужен анализ, нужны ли они на WineForge): Dormison 90bd24fa0 (спросить про Rosetta один раз, кэш), 5562e98ef (сигнал мёртвому потоку, связан с msync+) — на всех 8 релизах WineForge не применяются.
 
@@ -80,9 +75,6 @@
 | ID | Функция | Где | Происхождение | Состояние |
 |---|---|---|---|---|
 | SYN-01 | msync+ (Mach-семафоры, бюджеты spin `PerformanceTuning`, обработка смерти процесса и потока, проверка потерянных пробуждений) | в Dormison | CrossOver 26.3 msync (LGPL) + kageroumado | в базе, включён всегда; отключается на игру (`LULLABY_MSYNC`) |
-| SYN-02 | WFUSync (`os_sync_wait_on_address`, события/мьютексы/семафоры в общей памяти, остальное на сервер) | в WineForge | Alien4042x, LGPL | в базе, включается `WINEWFUSYNC=1` |
-| SYN-03 | см. §3.2 | | | патч готов, замер — `WINEFORGE_PORT.md` §4.1 |
-| SYN-04 | Выбор бэкенда на игру (`sync: msync|wfusync`) | каталог исправлений | Lullaby | идея; требует оба бэкенда в одном движке |
 
 ### 3.4 Мост со Steam (на каждый коммит основы)
 

@@ -1,0 +1,97 @@
+ENG-04  ntdll reads D3DMetal 4.0 beta 3's Win32Dispatch layout.
+
+dlls/ntdll/unix/loader.c (ntdll.so). Lullaby, 2026-10-16 (commit ee9e3c7). LGPL-2.1-or-later like Wine.
+Base: Dormison r6 (wine-staging 11.16): the D3DMetal glue it patches (init_win32_dispatch,
+__wine_d3dmetal_set_host_callbacks, libd3dshared_load_addr) is Dormison's.
+
+What: beta 2's table is 0x230 bytes with the host callbacks at 0x148. Beta 3 adds a wrapper
+(pack_FindBestWindowHWND) at 0x148, so its callbacks start at 0x150 and Win32DispatchInit copies
+0x248 bytes. The table is now allocated at 0x400 and the layout is read off what
+PatchWin32DispatchFunctions filled in, so either toolkit works.
+Switch: none; it acts only when the toolkit's libd3dshared loads.
+Requires: nothing. ENG-05 builds on it.
+Other bases: does not apply to WineForge 0.6.0.0-0.6.0.7 (its loader.c lacks this glue; it loads D3DMetal
+with its own d3dmetal_loader.c). Whether WineForge needs the same fix is for the D3DMetal run on it to say.
+Test: engine-fixes/tests/d3dmetal-composition-swapchain.c, a D3D12 game under GPTK 4.0 beta 3.
+
+diff --git a/dlls/ntdll/unix/loader.c b/dlls/ntdll/unix/loader.c
+index 9d0846838f7..1883bc8ffa7 100644
+--- a/dlls/ntdll/unix/loader.c
++++ b/dlls/ntdll/unix/loader.c
+@@ -1441,15 +1441,25 @@ void *libd3dshared_load_addr = NULL;
+ void *libd3dshared_code_end = NULL;
+ static bool (*p_supports_non_native_code_regions)( void );
+ 
+-/* The Win32Dispatch table D3DMetal 4.0 works from, 0x230 bytes: the toolkit's
+- * own ms_abi wrappers in the first 0x148, then the host callbacks region it
+- * keeps a pointer into (g_callbacks = table + 0x148) and reads at every call,
+- * so the region can be filled after Win32DispatchInit. winemac.drv fills it
+- * from its DllMain with the PE-side functions the toolkit reaches through
+- * KeUserDispatchCallback; before that each slot is NULL and
+- * KeUserDispatchCallback answers STATUS_ENTRYPOINT_NOT_FOUND. */
+-#define WIN32_DISPATCH_TABLE_SIZE      0x230
+-#define WIN32_DISPATCH_CALLBACKS_OFFSET 0x148
++/* The Win32Dispatch table D3DMetal 4.0 works from: the toolkit's own ms_abi
++ * wrappers first, then the host callbacks region it keeps a pointer into
++ * (g_callbacks) and reads at every call, so the region can be filled after
++ * Win32DispatchInit. winemac.drv fills it from its DllMain with the PE-side
++ * functions the toolkit reaches through KeUserDispatchCallback; before that
++ * each slot is NULL and KeUserDispatchCallback answers
++ * STATUS_ENTRYPOINT_NOT_FOUND.
++ *
++ * 4.0 beta 2: 0x230 bytes, callbacks at 0x148. 4.0 beta 3 adds a wrapper
++ * (pack_FindBestWindowHWND) at 0x148, so its callbacks start at 0x150 and
++ * Win32DispatchInit copies 0x248 bytes. The table is allocated for the larger
++ * one and the layout read off what PatchWin32DispatchFunctions filled in. */
++#define WIN32_DISPATCH_TABLE_ALLOC     0x400
++#define WIN32_DISPATCH_TABLE_SIZE_4B2  0x230
++#define WIN32_DISPATCH_CALLBACKS_4B2   0x148
++#define WIN32_DISPATCH_TABLE_SIZE_4B3  0x248
++#define WIN32_DISPATCH_CALLBACKS_4B3   0x150
++static unsigned int win32_dispatch_table_size = WIN32_DISPATCH_TABLE_SIZE_4B2;
++static unsigned int win32_dispatch_callbacks_offset = WIN32_DISPATCH_CALLBACKS_4B2;
+ static void *win32_dispatch_table;
+ static void (*p_MonitorEnumCallbackHandler)( void * );
+ 
+@@ -1518,11 +1528,11 @@ NTSTATUS d3dmetal_user_callback_off_stack( ULONG id, const void *args, ULONG len
+ 
+ DECLSPEC_EXPORT void __wine_d3dmetal_set_host_callbacks( const UINT64 *callbacks, unsigned int count )
+ {
+-    unsigned int max = (WIN32_DISPATCH_TABLE_SIZE - WIN32_DISPATCH_CALLBACKS_OFFSET) / sizeof(UINT64);
++    unsigned int max = (win32_dispatch_table_size - win32_dispatch_callbacks_offset) / sizeof(UINT64);
+ 
+     if (!win32_dispatch_table) return;
+     if (count > max) count = max;
+-    memcpy( (char *)win32_dispatch_table + WIN32_DISPATCH_CALLBACKS_OFFSET, callbacks, count * sizeof(UINT64) );
++    memcpy( (char *)win32_dispatch_table + win32_dispatch_callbacks_offset, callbacks, count * sizeof(UINT64) );
+     TRACE( "%u host callbacks installed\n", count );
+ }
+ 
+@@ -1601,7 +1611,7 @@ static BOOL enum_display_monitors_for_d3dmetal( HDC hdc, RECT *rect, MONITORENUM
+     if (p_win32u_GetDesktopWindow) p_win32u_GetDesktopWindow();
+     if (!proc)
+     {
+-        void **slot = (void **)((char *)win32_dispatch_table + WIN32_DISPATCH_CALLBACKS_OFFSET + 0x90);
++        void **slot = (void **)((char *)win32_dispatch_table + win32_dispatch_callbacks_offset + 0x90);
+         unsigned char devmode[512] = { 0 };
+ 
+         if (p_win32u_EnumDisplaySettings) p_win32u_EnumDisplaySettings( NULL, ~0u, devmode, 0 );
+@@ -1643,10 +1653,17 @@ static void init_win32_dispatch( void *handle )
+ 
+     load_win32u_for_dispatch();
+ 
+-    table = calloc( 1, WIN32_DISPATCH_TABLE_SIZE );
++    table = calloc( 1, WIN32_DISPATCH_TABLE_ALLOC );
+     if (!table) return;
+ 
+     p_PatchWin32DispatchFunctions( table );
++    if (*(void **)((char *)table + WIN32_DISPATCH_CALLBACKS_4B2))
++    {
++        win32_dispatch_table_size = WIN32_DISPATCH_TABLE_SIZE_4B3;
++        win32_dispatch_callbacks_offset = WIN32_DISPATCH_CALLBACKS_4B3;
++    }
++    TRACE( "dispatch table %#x bytes, host callbacks at %#x\n",
++           win32_dispatch_table_size, win32_dispatch_callbacks_offset );
+     p_Win32DispatchInit( table );
+     win32_dispatch_table = table;
+     p_MonitorEnumCallbackHandler = dlsym( handle, "MonitorEnumCallbackHandler" );

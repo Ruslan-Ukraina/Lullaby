@@ -1,0 +1,67 @@
+ENG-06  winemac finds the window for a D3DMetal swapchain made without one.
+
+dlls/winemac.drv/d3dmetal.c (winemac.so): __wine_d3dmetal_find_best_window(width, height). Lullaby,
+2026-10-16 (commit fe14e47). LGPL-2.1-or-later like Wine.
+
+What: D3DMetal 4.0 beta 3's WineSwapchainCallbacks::FindBestWindowHWND, for CreateSwapChainForComposition
+and the like: the toolkit passes DXGI_SWAP_CHAIN_DESC1's width and height and takes the window to present
+into. The answer is a visible top-level window of this process: the one whose client area is the
+swapchain's size (the foreground one if several are), else the foreground window if it is ours, else the
+largest; NULL if the process has none. ntdll reaches it through ENG-05.
+Switch: none. Requires: ENG-05.
+Other bases: applies to WineForge only with a shifted context (fuzz) on all eight releases, and is useless
+there unless ENG-05 is: WineForge has its own d3dmetal.c.
+Test: engine-fixes/tests/d3dmetal-composition-swapchain.c.
+
+--- a/dlls/winemac.drv/d3dmetal.c
++++ b/dlls/winemac.drv/d3dmetal.c
+@@ -453,6 +453,49 @@
+     return STATUS_SUCCESS;
+ }
+ 
++/* D3DMetal 4.0 beta 3's WineSwapchainCallbacks::FindBestWindowHWND, for a
++ * swapchain made without a window (CreateSwapChainForComposition and the
++ * like): the toolkit passes DXGI_SWAP_CHAIN_DESC1's Width and Height and takes
++ * the window to present into. ntdll fills that slot of the Win32Dispatch
++ * table with a wrapper that reaches this function on a syscall frame, since
++ * the win32u calls below need one.
++ *
++ * The answer is a visible top-level window of this process: the one whose
++ * client area is the swapchain's size (the foreground one if several are),
++ * else the foreground window if it is ours, else the largest. NULL when the
++ * process has no visible window. */
++DECLSPEC_EXPORT HWND __wine_d3dmetal_find_best_window( UINT width, UINT height )
++{
++    DWORD pid = HandleToUlong( NtCurrentTeb()->ClientId.UniqueProcess ), owner;
++    HWND hwnd = 0, exact = 0, largest = 0, foreground = NtUserGetForegroundWindow();
++    LONGLONG largest_area = -1;
++    BOOL foreground_ours = FALSE;
++    RECT rect;
++
++    while ((hwnd = NtUserFindWindowEx( 0, hwnd, NULL, NULL, 0 )))
++    {
++        LONGLONG w, h;
++
++        owner = 0;
++        NtUserGetWindowThread( hwnd, &owner );
++        if (owner != pid || !NtUserIsWindowVisible( hwnd )) continue;
++        if (!NtUserGetClientRect( hwnd, &rect, 0 )) continue;
++        w = rect.right - rect.left;
++        h = rect.bottom - rect.top;
++        if (hwnd == foreground) foreground_ours = TRUE;
++        if (w == width && h == height && (!exact || hwnd == foreground)) exact = hwnd;
++        if (w * h > largest_area)
++        {
++            largest_area = w * h;
++            largest = hwnd;
++        }
++    }
++    hwnd = exact ? exact : foreground_ours ? foreground : largest;
++    TRACE( "%ux%u -> %p (exact %p, foreground %p%s, largest %p)\n", width, height, hwnd, exact,
++           foreground, foreground_ours ? "" : " not ours", largest );
++    return hwnd;
++}
++
+ DECLSPEC_EXPORT struct macdrv_functions_t macdrv_functions =
+ {
+     &my_macdrv_init_display_devices,
