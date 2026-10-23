@@ -215,9 +215,9 @@ extension SettingCopy {
                       uk: "Як картинку, меншу за вікно, підганяють під нього.",
                       ru: "Как картинку, меньшую окна, подгоняют под него."),
         help: SettingHelp(
-            L10n("The last step between the game and the window. Off leaves it to macOS; the others run Lullaby's own presenter.",
-                 uk: "Останній крок між грою та вікном. «Вимк.» залишає це macOS; решта запускають власний презентер.",
-                 ru: "Последний шаг между игрой и окном. «Выкл.» оставляет это macOS; остальные запускают собственный презентер."),
+            L10n("The last step between the game and the window. Off leaves it to macOS and is right for almost every game. The others run Dormison's own presenter: HDR then shows pale and the Steam overlay may not appear.",
+                 uk: "Останній крок між грою та вікном. «Вимк.» залишає це macOS і підходить майже всім іграм. Решта запускають власний презентер Dormison: HDR тоді виглядає блідо, а оверлей Steam може не з’явитися.",
+                 ru: "Последний шаг между игрой и окном. «Выкл.» оставляет это macOS и подходит почти всем играм. Остальные запускают собственный презентер Dormison: HDR тогда выглядит бледно, а оверлей Steam может не появиться."),
             entries: [
                 HelpEntry(Words.off, L10n(
                     "macOS stretches the picture softly. A smaller picture keeps black borders.",
