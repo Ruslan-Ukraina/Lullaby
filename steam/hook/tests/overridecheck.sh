@@ -39,5 +39,15 @@ fresh; ( LULLABY_AVX=1 launch_overrides "$work/bottle.env" )
 check "only 0 switches AVX off" "ROSETTA_ADVERTISE_AVX=1" "$(grep ROSETTA "$work/bottle.env")"
 check "the file keeps its other lines" "5" "$(grep -c . "$work/bottle.env")"
 
-[ "$fail" -eq 0 ] && echo "==> overridecheck: launch options turn AVX and DLSS off for one run"
+fresh; printf '%s\n' 'LULLABY_GCMOUSE_SCALE=auto' >> "$work/bottle.env"; ( LULLABY_GCMOUSE_SCALE=0.2 launch_overrides "$work/bottle.env" )
+check "mouse scale replaces auto" "LULLABY_GCMOUSE_SCALE=0.2" "$(grep GCMOUSE "$work/bottle.env")"
+check "mouse scale leaves one line" "1" "$(grep -c GCMOUSE "$work/bottle.env")"
+
+fresh; printf '%s\n' 'LULLABY_GCMOUSE_SCALE=auto' >> "$work/bottle.env"; ( LULLABY_GCMOUSE_SCALE='0.2;rm' launch_overrides "$work/bottle.env" )
+check "a scale that is not a number changes nothing" "LULLABY_GCMOUSE_SCALE=auto" "$(grep GCMOUSE "$work/bottle.env")"
+
+fresh; printf '%s\n' 'LULLABY_GCMOUSE_SCALE=auto' >> "$work/bottle.env"; ( LULLABY_GCMOUSE_SCALE=1.2.3 launch_overrides "$work/bottle.env" )
+check "two dots change nothing" "LULLABY_GCMOUSE_SCALE=auto" "$(grep GCMOUSE "$work/bottle.env")"
+
+[ "$fail" -eq 0 ] && echo "==> overridecheck: launch options turn AVX and DLSS off and set the mouse speed for one run"
 exit "$fail"

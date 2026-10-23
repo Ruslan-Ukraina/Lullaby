@@ -33,7 +33,7 @@ new file mode 100644
 index 0000000000..c77502c50b
 --- /dev/null
 +++ b/dlls/winemac.drv/cocoa_gcmouse.m
-@@ -0,0 +1,279 @@
+@@ -0,0 +1,281 @@
 +/*
 + * MACDRV GameController mouse support
 + *
@@ -187,7 +187,9 @@ index 0000000000..c77502c50b
 +
 +/* The counts per inch a connected external mouse reports (HIDPointerResolution, 16.16 fixed point), 0 when no
 +   mouse says. The built-in trackpad and anything called a trackpad are not asked. GameController does not say
-+   which of several mice it is talking to, so the first that answers is taken. */
++   which of several mice it is talking to, so the first that answers is taken. 400 is what macOS fills in for a
++   device that does not know its resolution (the trackpad and a mouse such as the Hator Pulsar both say it), so it
++   counts as no answer. */
 +static double external_mouse_cpi(void)
 +{
 +    io_iterator_t iterator = 0;
@@ -215,7 +217,7 @@ index 0000000000..c77502c50b
 +            BOOL trackpad = product && CFGetTypeID(product) == CFStringGetTypeID() &&
 +                CFStringFind(product, CFSTR("rackpad"), 0).location != kCFNotFound;
 +            double value = r / 65536.0;
-+            if (p == 1 && u == 2 && !trackpad && value >= 100 && value <= 30000) cpi = value;
++            if (p == 1 && u == 2 && !trackpad && value >= 100 && value <= 30000 && fabs(value - 400) > 1) cpi = value;
 +        }
 +        if (page) CFRelease(page);
 +        if (usage) CFRelease(usage);
