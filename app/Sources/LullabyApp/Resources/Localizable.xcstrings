@@ -2689,6 +2689,30 @@
         }
       }
     },
+    "The names and structures behind the NVIDIA Reflex answer for D3DMetal games.": {
+      "extractionState": "manual",
+      "generatesSymbol": false,
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The names and structures behind the NVIDIA Reflex answer for D3DMetal games."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Назви й структури, на яких тримається відповідь NVIDIA Reflex для ігор на D3DMetal."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Имена и структуры, на которых держится ответ NVIDIA Reflex для игр на D3DMetal."
+          }
+        }
+      }
+    },
     "Hooks functions inside Steam, so Steam shows Steam Play.": {
       "extractionState": "manual",
       "generatesSymbol": false,
