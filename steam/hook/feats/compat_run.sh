@@ -398,6 +398,22 @@ env_file_set() {
 # Lullaby's defaults; after that the keys are the user's and stay, except the
 # two this script owns: WINEMSYNC, which only the bottle file may set and the
 # server has to share, and SEVO_CLI (S1).
+# One-run switches from the launch options (VAR=value %command%). The engine applies bottle.env
+# over the process environment, so a launch option is written into the file; lullaby-settings
+# writes the file again at the next launch, which drops it. WINEMSYNC=0 is handled with the
+# sync above (the server's own variable).
+#   LULLABY_AVX=0    do not advertise AVX to the game
+#   LULLABY_DLSS=0   DLSS through MetalFX off (DXMT's and D3DMetal's switches; the card stays NVIDIA)
+launch_overrides() {
+  if [ "${LULLABY_AVX:-}" = 0 ]; then
+    env_file_set "$1" ROSETTA_ADVERTISE_AVX 0
+  fi
+  if [ "${LULLABY_DLSS:-}" = 0 ]; then
+    env_file_set "$1" DXMT_ENABLE_NVEXT ''
+    env_file_set "$1" D3DM_ENABLE_METALFX ''
+  fi
+}
+
 write_bottle_env() {
   sevo="$WINEPREFIX/.sevo"
   bottle="$sevo/bottle.env"
@@ -417,6 +433,7 @@ BOTTLE
   fi
   env_file_set "$bottle" WINEMSYNC "$WINEMSYNC"
   env_file_set "$bottle" SEVO_CLI "$sevo_cli"
+  launch_overrides "$bottle"
   echo "bottle.env: $(grep -v '^#' "$bottle" | tr '\n' ' ')" >> "$log" 2>&1 || true
 }
 

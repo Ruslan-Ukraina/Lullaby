@@ -93,7 +93,7 @@ runcheck:
 	@if ! command -v shellcheck >/dev/null 2>&1; then \
 		$(call SKIP,runcheck,shellcheck); exit 0; fi; \
 	shellcheck steam/hook/feats/compat_run.sh && sh -n steam/hook/feats/compat_run.sh && \
-	shellcheck steam/hook/tests/termcheck.sh steam/hook/tests/stubcheck.sh steam/hook/tests/watchdogcheck.sh steam/hook/tests/routecheck.sh steam/hook/tests/settingscheck.sh steam/hook/tests/bitnesscheck.sh && sh steam/hook/tests/termcheck.sh && sh steam/hook/tests/stubcheck.sh && sh steam/hook/tests/watchdogcheck.sh && sh steam/hook/tests/routecheck.sh steam/hook/feats/compat_run.sh && sh steam/hook/tests/settingscheck.sh steam/hook/feats/compat_run.sh && sh steam/hook/tests/bitnesscheck.sh && \
+	shellcheck steam/hook/tests/termcheck.sh steam/hook/tests/stubcheck.sh steam/hook/tests/watchdogcheck.sh steam/hook/tests/routecheck.sh steam/hook/tests/settingscheck.sh steam/hook/tests/bitnesscheck.sh steam/hook/tests/overridecheck.sh && sh steam/hook/tests/termcheck.sh && sh steam/hook/tests/stubcheck.sh && sh steam/hook/tests/watchdogcheck.sh && sh steam/hook/tests/routecheck.sh steam/hook/feats/compat_run.sh && sh steam/hook/tests/settingscheck.sh steam/hook/feats/compat_run.sh && sh steam/hook/tests/bitnesscheck.sh && sh steam/hook/tests/overridecheck.sh && \
 	echo "==> runcheck: the run script lints and parses clean"
 
 # runcheck owns compat_run.sh, whose warnings wait for a change that can move
