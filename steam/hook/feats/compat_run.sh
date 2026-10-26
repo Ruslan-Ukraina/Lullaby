@@ -448,6 +448,7 @@ BOTTLE
 
 # A value the game's own env file (then the prefix's) sets, for the keys that are
 # Lullaby's rather than the engine's: the engine reads those files itself.
+exe_name=$(basename "$1")
 exe_lc=$(basename "$1" | tr '[:upper:]' '[:lower:]')
 env_value() {
   for f in "$WINEPREFIX/.sevo/apps/$exe_lc.env" "$WINEPREFIX/.sevo/bottle.env"; do
@@ -1105,12 +1106,8 @@ apiscout_notice_needed() { # STATUS ELAPSED_SECONDS
   case "$1" in ''|*[!0-9]*) return 1 ;; esac
   [ "$1" -ne 0 ] && [ "$1" -ne 143 ] && [ "$2" -lt 120 ]
 }
-apiscout_notice_text() { # LANGUAGE GAME BACKEND API
-  case "$1" in
-    uk*) printf '%s\n' "$(printf '%s \320\275\320\265 \320\267\320\260\320\277\321\203\321\201\321\202\320\270\320\273\320\260\321\201\321\217 \320\267 \321\200\320\265\320\275\320\264\320\265\321\200\320\265\321\200\320\276\320\274 %s (%s). \320\243 Steam \320\262\321\226\320\264\320\272\321\200\320\270\320\271\321\202\320\265 \320\222\320\273\320\260\321\201\321\202\320\270\320\262\320\276\321\201\321\202\321\226 \320\263\321\200\320\270, \320\241\321\203\320\274\321\226\321\201\320\275\321\226\321\201\321\202\321\214, \321\226 \320\262\320\270\320\261\320\265\321\200\321\226\321\202\321\214 \320\264\320\273\321\217 \321\206\321\226\321\224\321\227 \320\263\321\200\320\270 \321\226\320\275\321\210\320\270\320\271 \321\200\320\265\320\275\320\264\320\265\321\200\320\265\321\200.' "$2" "$3" "$4")" ;;
-    ru*) printf '%s\n' "$(printf '%s \320\275\320\265 \320\267\320\260\320\277\321\203\321\201\321\202\320\270\320\273\320\260\321\201\321\214 \321\201 \321\200\320\265\320\275\320\264\320\265\321\200\320\265\321\200\320\276\320\274 %s (%s). \320\222 Steam \320\276\321\202\320\272\321\200\320\276\320\271\321\202\320\265 \320\241\320\262\320\276\320\271\321\201\321\202\320\262\320\260 \320\270\320\263\321\200\321\213, \320\241\320\276\320\262\320\274\320\265\321\201\321\202\320\270\320\274\320\276\321\201\321\202\321\214, \320\270 \320\262\321\213\320\261\320\265\321\200\320\270\321\202\320\265 \320\264\320\273\321\217 \321\215\321\202\320\276\320\271 \320\270\320\263\321\200\321\213 \320\264\321\200\321\203\320\263\320\276\320\271 \321\200\320\265\320\275\320\264\320\265\321\200\320\265\321\200.' "$2" "$3" "$4")" ;;
-    *) echo "$2 did not start with the $3 renderer ($4). In Steam open the game's Properties, Compatibility, and choose another renderer for this game." ;;
-  esac
+apiscout_notice_text() { # GAME BACKEND API: the English text, used when lullaby-settings is not there
+  echo "$1 did not start with the $2 renderer ($3). In Steam open the game's Properties, Compatibility, and choose another renderer for this game."
 }
 # --- apiscout end ---
 # Launch option first (the Steam page's renderer list, or the old CX_GRAPHICS_BACKEND
@@ -1615,6 +1612,22 @@ open_pid=$!
 # A game pad does not count as activity: keep the Mac and its display awake while the game runs (upstream
 # NotProton 1.2.0).
 [ -x /usr/bin/caffeinate ] && { /usr/bin/caffeinate -d -i -w "$open_pid" >> "$log" 2>&1 & }
+# The one thing the API scout ever shows: the game did not start, and where to change the backend.
+# Steam ends this script as soon as the game is gone, so the notice is started the moment the
+# game's launcher has returned, before the waits and the prefix clean-up.
+scout_notice() { # STATUS
+  [ "$verb" = waitforexitandrun ] || return 0
+  apiscout_notice_needed "$1" "$(( $(date +%s) - run_started ))" || [ "$LULLABY_SCOUT_NOTICE_TEST" = 1 ] || return 0
+  notice_game=${exe_name%.exe}
+  echo "=== notice: $notice_game did not start with $renderer (${scout_api:-?}) ===" >> "$log" 2>&1 || true
+  notice_cli="$support/lullaby-settings"
+  if [ -x "$notice_cli" ]; then
+    ( nohup "$notice_cli" notice game-not-started --game "$notice_game" --renderer "$renderer" --api "${scout_api:-?}" --center-on Steam >/dev/null 2>&1 & ) || true
+  else
+    notice=$(apiscout_notice_text "$notice_game" "$renderer" "${scout_api:-?}")
+    ( nohup osascript -e "display dialog \"$notice\" with title \"Lullaby\" buttons {\"OK\"} default button 1 with icon caution giving up after 120" >/dev/null 2>&1 & ) || true
+  fi
+}
 start_watchdog
 status=0
 seen=0
@@ -1629,6 +1642,7 @@ while :; do
   if ! kill -0 "$open_pid" 2>/dev/null; then
     wait "$open_pid" || status=$?
     echo "=== bundle exited status=$status ===" >> "$log" 2>&1 || true
+    scout_notice "$status"
     if [ "$status" -le 128 ]; then
       wait_prefix_idle
     fi
@@ -1644,11 +1658,4 @@ done
 echo "=== game exited status=$status, killing wine prefix ===" >> "$log" 2>&1 || true
 kill_wine_prefix
 echo "=== wine prefix killed, session ending ===" >> "$log" 2>&1 || true
-# The one thing the API scout ever shows: the game did not start, and where to change the backend.
-if [ "$verb" = waitforexitandrun ] && { apiscout_notice_needed "$status" "$(( $(date +%s) - run_started ))" || [ "$LULLABY_SCOUT_NOTICE_TEST" = 1 ]; }; then
-  notice_lang=$(defaults read -g AppleLanguages 2>/dev/null | sed -n 's/^ *"\{0,1\}\([a-z][a-z]\).*/\1/p' | head -n 1)
-  notice=$(apiscout_notice_text "$notice_lang" "$(basename "$1" .exe)" "$renderer" "${scout_api:-?}")
-  echo "=== notice: $notice ===" >> "$log" 2>&1 || true
-  ( osascript -e "display dialog \"$notice\" with title \"Lullaby\" buttons {\"OK\"} default button 1 with icon caution giving up after 120" >/dev/null 2>&1 & ) || true
-fi
 exit $status

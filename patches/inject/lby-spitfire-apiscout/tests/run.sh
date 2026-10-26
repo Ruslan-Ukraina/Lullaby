@@ -111,9 +111,7 @@ for c in "0 10" "143 10" "1 120" "1 600" "x 5"; do
   set -- $c
   if apiscout_notice_needed "$1" "$2"; then check "notice not needed $c" 0 1; else check "notice not needed $c" 0 0; fi
 done
-check "notice english" "Game did not start with the dxmt renderer (dx11). In Steam open the game's Properties, Compatibility, and choose another renderer for this game." "$(apiscout_notice_text en Game dxmt dx11)"
-case "$(apiscout_notice_text uk Гра d3dmetal dx12)" in *Сумісність*d3dmetal*|*d3dmetal*Сумісність*) check "notice ukrainian names the page and the renderer" ok ok ;; *) check "notice ukrainian names the page and the renderer" ok bad ;; esac
-case "$(apiscout_notice_text ru Игра dxmt dx11)" in *Совместимость*) check "notice russian" ok ok ;; *) check "notice russian" ok bad ;; esac
+check "notice english fallback" "Game did not start with the dxmt renderer (dx11). In Steam open the game's Properties, Compatibility, and choose another renderer for this game." "$(apiscout_notice_text Game dxmt dx11)"
 
 # 6. backends
 check "backend dx12" d3dmetal "$(apiscout_backend dx12)"

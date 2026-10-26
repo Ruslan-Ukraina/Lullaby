@@ -4,6 +4,11 @@
 import Foundation
 import LullabySettings
 
+// `notice` is the one command that shows a window (Notice.swift); the rest print.
+if CommandLine.arguments.dropFirst().first == "notice" {
+    exit(Notice.run(Array(CommandLine.arguments.dropFirst(2))))
+}
+
 let (cli, arguments) = SettingsCLI.configured(Array(CommandLine.arguments.dropFirst()))
 let result = cli.run(arguments)
 if !result.output.isEmpty { print(result.output) }
