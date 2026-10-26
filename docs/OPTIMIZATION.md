@@ -1,5 +1,7 @@
 # OPTIMIZATION — замеры до и после (Фаза 9, часть C)
 
+> Исторический документ эпохи NotProton (до 2026-10-10 проект так назывался). Актуальное: `docs/BACKLOG.md` разделы S8–S12, `patches/REGISTRY.md`. Имена файлов с пометкой «(не в репозитории)» лежат в приватном архиве.
+
 10.10.2026, ветка `phase-8`, Mac владельца (M4 Pro, 14 ядер, от сети). Графику, разрешение и конфиги игр не трогал; код запуска игр (`compat_run.sh`, dylib) не менялся.
 
 ## Итог
@@ -33,7 +35,7 @@
 | `steam-signatures` | Linux-ворота + macOS | 2 | 0,9 | 1,0 |
 | `lint` | Linux | 10 | 0,3 | 0,5 |
 
-В приватном репозитории минута macOS = 10 «Linux-минут» (P6-13). Ускорение тестов (−24 с) сокращает `app.yml` и `release.yml` примерно на 0,4 мин стены; с округлением GitHub до минуты на задачу — экономия 0–1 мин macOS (= 0–10 «Linux-минут») за прогон. Главное для приватного репозитория — не скорость, а частота (D5 в `PHASE6_PLAN.md`: `NP_CI_ON_PUSH=false`, Steam раз в 6 ч).
+В приватном репозитории минута macOS = 10 «Linux-минут» (P6-13). Ускорение тестов (−24 с) сокращает `app.yml` и `release.yml` примерно на 0,4 мин стены; с округлением GitHub до минуты на задачу — экономия 0–1 мин macOS (= 0–10 «Linux-минут») за прогон. Главное для приватного репозитория — не скорость, а частота (D5 в PHASE6_PLAN.md (не в репозитории): `NP_CI_ON_PUSH=false`, Steam раз в 6 ч).
 
 ## Что изменено (безопасное)
 
@@ -43,7 +45,7 @@
    - в `SystemStatus`: `retryInstall`, `confirmPendingInstall`, `requestInstall`, `openSteam`, `requestEngineRemoval`/`cancel…`/`removePendingEngine`, `switchEngine`, `fetchValveBinaries`, `setNativeSteamWindows`, `restartSteam`, `installBridge`, `rollbackBridge`, `setUpdateBlock`, перечисление вопросов `Confirmation` и связанные свойства;
    - `measureRunnerSizes` + `EngineStore.size`: при каждом `refresh()` (3 раза за запуск) считали размер папок движков для столбца старой таблицы, который никто не показывает;
    - `Support/Clean.swift`, `Support/TextWidth.swift` — без ссылок.
-   - **Не тронуто:** `repairSteam`, `removeEverything` (CLAUDE.md §8: Repair и Remove не трогать), модели `SteamRepair`, `Uninstall`, `ValveFetcher`, `BridgeUpdater`, `SteamUpdateGate`, CLI.
+   - **Не тронуто:** `repairSteam`, `removeEverything` (CLAUDE.md (не в репозитории) §8: Repair и Remove не трогать), модели `SteamRepair`, `Uninstall`, `ValveFetcher`, `BridgeUpdater`, `SteamUpdateGate`, CLI.
    - Тест «вопрос запоминается» проверял только удалённое свойство — удалён вместе с ним (412 → 411).
 
 Проверка: `make app-tests` — код 0 (411), `make app` — код 0; C-код не менялся.
@@ -55,8 +57,8 @@
 | № | Что | Выигрыш | Работа | Риск |
 |---|---|---|---|---|
 | **O1** | **Мост без отладочной информации** (`strip --strip-debug` для `lsteamclient.dll` x86_64/i386 и `steam.exe` при сборке моста) | файлы моста 79 → 12 МБ; тарбол 6,1 → 1,2 МБ; приложение ~94 → ~25 МБ; каждый установленный мост в `bridges/` 82 → ~15 МБ (у вас их два) | 0,5 сессии: шаг в `lsteamclient/build.sh`/`steam-shim/build.sh`, новый `rev` моста, тесты | средний: новый мост → проверка PEAK и RE9 (запуск, ачивки через lsteamclient); в падениях Wine меньше имён функций (адреса остаются). Удобно сделать в Фазе 6, когда мост и так пересобирается с боевым ключом |
-| **O2** | **Не хранить мост в приложении дважды**: сейчас `payload/bridge/` (79 МБ, несжатые) и тот же мост в `engine-support/bridge-…tar.xz` (7 МБ). Оставить только тарбол; сравнение версий в Status (CLAUDE.md §8.1) и запасной путь Install читать из него | ещё −79 МБ (или −12 МБ после O1) | 1 сессия: `BridgePayload`, `PatchComparison`, `SteamInstaller`, `Makefile`, `release.yml`, `check-release.sh`, тесты | средний: трогает Install/Update и сравнение установленного; после O1 выигрыш мал — **советую только O1** |
-| **O3** ✅ сделано 10.10 (P9-9) | Убрать инструменты B2 (`ntdll-patch/resolve.py`, `apply.py`, `build*.sh`, `detour*.c`, `shim*.S`, `link*.ld`, `patch-dormison.sh`, `verify.py`, цель `ntdll-resolve`) | чище репозиторий; на размер и скорость не влияет | 20 мин | низкий, но B2 записан в CLAUDE.md §4 как запасной путь — решать вам (код останется в истории git) |
+| **O2** | **Не хранить мост в приложении дважды**: сейчас `payload/bridge/` (79 МБ, несжатые) и тот же мост в `engine-support/bridge-…tar.xz` (7 МБ). Оставить только тарбол; сравнение версий в Status (CLAUDE.md (не в репозитории) §8.1) и запасной путь Install читать из него | ещё −79 МБ (или −12 МБ после O1) | 1 сессия: `BridgePayload`, `PatchComparison`, `SteamInstaller`, `Makefile`, `release.yml`, `check-release.sh`, тесты | средний: трогает Install/Update и сравнение установленного; после O1 выигрыш мал — **советую только O1** |
+| **O3** ✅ сделано 10.10 (P9-9) | Убрать инструменты B2 (`ntdll-patch/resolve.py`, `apply.py`, `build*.sh`, `detour*.c`, `shim*.S`, `link*.ld`, `patch-dormison.sh`, `verify.py`, цель `ntdll-resolve`) | чище репозиторий; на размер и скорость не влияет | 20 мин | низкий, но B2 записан в CLAUDE.md (не в репозитории) §4 как запасной путь — решать вам (код останется в истории git) |
 | **O4** | Один снимок состояния при открытии окна вместо трёх (`refresh` + `checkReleases` ×2) | < 0,5 с при запуске | 0,5 сессии | низкий/средний: порядок проверок в окне (P8-7); выигрыш мал — не советую сейчас |
 | **O5** | `hdiutil attach` на macOS 27 печатает «deprecated, use `diskutil image attach`». Сейчас работает; на будущих macOS может пропасть → установка GPTK из образа | — (риск, не скорость) | 30 мин + тест | низкий; записать в RISKS и сделать при первом признаке поломки |
 
