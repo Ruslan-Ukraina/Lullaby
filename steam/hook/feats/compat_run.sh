@@ -918,6 +918,135 @@ stage_renderer() {
     return 1
   done
 }
+# --- apiscout begin: the API scout, patches/inject/lby-spitfire-apiscout (tests extract this block) ---
+# GNU and BSD stat differ; the run script runs on macOS, the tests may not.
+apiscout_stat() {
+  stat -f '%m %z' "$1" 2>/dev/null || stat -c '%Y %s' "$1" 2>/dev/null || echo "0 0"
+}
+
+apiscout_backend() {
+  case "$1" in
+    dx12) echo d3dmetal ;;
+    dx11) echo dxmt ;;
+    dx9) echo mtld3d ;;
+    vk) echo kosmickrisp ;;
+    gl) echo winemetalgl ;;
+    *) echo dxmt ;;
+  esac
+}
+
+# Flags of the engines seen so far (Unity, Source 2, Unreal, SCS). The first match wins.
+apiscout_from_args() {
+  prev=""
+  for a in "$@"; do
+    case "$a" in
+      -force-d3d12|-force-dx12|-dx12|-d3d12) echo "dx12 $a"; return 0 ;;
+      -force-d3d11|-force-d3d11-singlethreaded|-force-dx11|-dx11|-d3d11) echo "dx11 $a"; return 0 ;;
+      -force-d3d9|-dx9|-d3d9) echo "dx9 $a"; return 0 ;;
+      -force-vulkan|-vulkan) echo "vk $a"; return 0 ;;
+      -force-glcore|-force-opengl|-opengl|-gl) echo "gl $a"; return 0 ;;
+    esac
+    if [ "$prev" = "-rdevice" ]; then
+      case "$a" in
+        dx9|d3d9) echo "dx9 -rdevice $a"; return 0 ;;
+        dx11|d3d11) echo "dx11 -rdevice $a"; return 0 ;;
+        opengl|gl) echo "gl -rdevice $a"; return 0 ;;
+      esac
+    fi
+    prev="$a"
+  done
+  return 1
+}
+
+# Source 2: boot.vcfg "DefaultRenderSystemOption" "-vulkan"; SCS: config.cfg `uset r_device "<value>"`;
+apiscout_from_settings() {
+  gamedir=$1; userdir=$2
+  f=$(find "$gamedir/game" -maxdepth 3 -name boot.vcfg 2>/dev/null | head -n 1)
+  if [ -n "$f" ]; then
+    v=$(sed -n 's/.*"DefaultRenderSystemOption"[[:space:]]*"\([^"]*\)".*/\1/p' "$f" | head -n 1)
+    case "$v" in
+      -vulkan) echo "vk $f"; return 0 ;;
+      -dx11) echo "dx11 $f"; return 0 ;;
+      "") echo "dx11 $f (no option: Source 2 default)"; return 0 ;;
+    esac
+  fi
+  for c in "$userdir"/Documents/*/config.cfg; do
+    [ -f "$c" ] || continue
+    v=$(sed -n 's/^uset r_device "\(.*\)"/\1/p' "$c" | head -n 1)
+    case "$v" in
+      "") ;;
+      *[dD][xX]9*|*d3d9*) echo "dx9 $c"; return 0 ;;
+      *[dD][xX]11*|*d3d11*) echo "dx11 $c"; return 0 ;;
+      *[oO]pen[gG][lL]*) echo "gl $c"; return 0 ;;
+    esac
+  done
+  return 1
+}
+
+# Unity: the first Direct3D/Vulkan/OpenGL line of Player.log. It is the previous run's log, not a
+# setting, so it is reported as source=lastrun.
+apiscout_from_lastrun() {
+  gamedir=$1; userdir=$2
+  for l in "$userdir"/AppData/LocalLow/*/*/Player.log; do
+    [ -f "$l" ] || continue
+    v=$(grep -E 'Direct3D 1[12]\.0|^ *Vulkan|Renderer: .*OpenGL|Direct3D 9' "$l" 2>/dev/null | head -n 1)
+    case "$v" in
+      *"Direct3D 12"*) echo "dx12 $l"; return 0 ;;
+      *"Direct3D 11"*) echo "dx11 $l"; return 0 ;;
+      *Vulkan*) echo "vk $l"; return 0 ;;
+      *OpenGL*) echo "gl $l"; return 0 ;;
+    esac
+  done
+  return 1
+}
+
+# Names beside the exe that only suggest, never decide: a D3D12 folder or *_dx12.dll is a
+# candidate, so it is reported as "files" and used only when nothing else spoke.
+apiscout_from_files() {
+  gamedir=$1
+  if [ -d "$gamedir/D3D12" ] || ls "$gamedir"/*_dx12.dll >/dev/null 2>&1; then
+    echo "dx12 $gamedir (D3D12 folder or *_dx12.dll)"; return 0
+  fi
+  return 1
+}
+
+apiscout_detect() {
+  gamedir=$1; userdir=$2; shift 2
+  if r=$(apiscout_from_args "$@"); then
+    echo "api=${r%% *} source=arg evidence=${r#* }"; return 0
+  fi
+  if r=$(apiscout_from_settings "$gamedir" "$userdir"); then
+    echo "api=${r%% *} source=settings evidence=${r#* }"; return 0
+  fi
+  if r=$(apiscout_from_lastrun "$gamedir" "$userdir"); then
+    echo "api=${r%% *} source=lastrun evidence=${r#* }"; return 0
+  fi
+  if r=$(apiscout_from_files "$gamedir"); then
+    echo "api=${r%% *} source=files evidence=${r#* }"; return 0
+  fi
+  echo "api=none source=none evidence=nothing known, DXMT"
+}
+
+# The places of a verdict, so that a launch looks at those only.
+apiscout_remember() {
+  state=$1; shift
+  : > "$state"
+  for p in "$@"; do
+    [ -e "$p" ] && printf '%s|%s\n' "$p" "$(apiscout_stat "$p")" >> "$state"
+  done
+}
+
+# Prints the paths whose mtime or size changed since apiscout_remember; returns 0 if any did.
+apiscout_changed() {
+  state=$1; any=1
+  [ -f "$state" ] || return 0
+  while IFS='|' read -r p rest; do
+    now=$(apiscout_stat "$p")
+    if [ "$now" != "$rest" ]; then echo "$p"; any=0; fi
+  done < "$state"
+  return $any
+}
+# --- apiscout end ---
 # Launch option first (the Steam page's renderer list, or the old CX_GRAPHICS_BACKEND
 # some games still carry), then the game's Game Settings.
 renderer="${LULLABY_RENDERER:-${CX_GRAPHICS_BACKEND:-$(env_value LULLABY_RENDERER)}}"
@@ -952,14 +1081,26 @@ if [ "$renderer" != wined3d ]; then
   if stage_renderer "$renderer_dir"; then
     export WINEDLLPATH_PREPEND="$renderers/$renderer_dir"
     export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:+$WINEDLLOVERRIDES;}$renderer_overrides"
-  elif [ "$renderer" = d3dmetal ] && stage_renderer dxmt; then
-    echo "=== $renderer unavailable, using DXMT ===" >> "$log" 2>&1 || true
-    renderer=dxmt
-    export WINEDLLPATH_PREPEND="$renderers/dxmt"
-    export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:+$WINEDLLOVERRIDES;}$renderer_overrides"
   else
+    # A backend of another API is never put in silently (DXMT cannot run a D3D12 game):
+    # the game starts on Wine's own and the log says why.
+    [ "$renderer" = d3dmetal ] && echo "=== d3dmetal is not set up (add the Game Porting Toolkit in Lullaby), no other renderer is substituted ===" >> "$log" 2>&1 || true
     renderer=wined3d
   fi
+fi
+# The API scout so far only says in the log what it would choose; it changes nothing.
+# Its places are remembered in the game's compatdata (lullaby-apiscout), nowhere in Steam.
+scout_user="${WINEPREFIX:-$STEAM_COMPAT_DATA_PATH/pfx}/drive_c/users/steamuser"
+scout_state="$STEAM_COMPAT_DATA_PATH/lullaby-apiscout"
+scout_line=$(apiscout_detect "$STEAM_COMPAT_INSTALL_PATH" "$scout_user" "$@" 2>/dev/null) || scout_line=""
+if [ -n "$scout_line" ]; then
+  scout_api=${scout_line#api=}; scout_api=${scout_api%% *}
+  scout_src=${scout_line#*source=}; scout_src=${scout_src%% *}
+  scout_ev=${scout_line#*evidence=}; scout_ev=${scout_ev%% (*}
+  scout_backend=$(apiscout_backend "$scout_api")
+  echo "apiscout: $scout_line backend=$scout_backend (log only, the renderer stays $renderer)" >> "$log" 2>&1 || true
+  apiscout_changed "$scout_state" 2>/dev/null | while read -r p; do echo "apiscout: changed since the last launch: $p" >> "$log" 2>&1 || true; done
+  case "$scout_src" in settings|lastrun|files) apiscout_remember "$scout_state" "$scout_ev" 2>/dev/null || true ;; esac
 fi
 echo "renderer: $renderer${WINEDLLPATH_PREPEND:+ from $WINEDLLPATH_PREPEND}" >> "$log" 2>&1 || true
 if [ -n "$launch_dll_overrides" ]; then

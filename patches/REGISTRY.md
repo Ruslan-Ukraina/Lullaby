@@ -1,8 +1,10 @@
 # Реестр функций: что смешивается с движком и что обновляется
 
+> Имена файлов с пометкой «(не в репозитории)» лежат в приватном архиве; ссылками они не являются.
+
 Один список всего, что Lullaby добавляет к чужому коду (Wine, Steam) или обновляет отдельно, и правила, по которым это встраивается так, чтобы обновление основы не превращалось в ручную работу. Создан 2026-10-18, ведётся вместе с кодом: `patches/engine/check-registry.sh` (цель `make patchcheck`) падает, если патч есть в `patches/engine/`, а в этом файле его нет, и наоборот.
 
-Связанные документы: `WINEFORGE_PORT.md` (план переноса, исследования), `STACK_PLAN.md` (общий план, этапы), `PERF_STAND.md` (замеры).
+Связанные документы: WINEFORGE_PORT.md (не в репозитории) (план переноса, исследования), STACK_PLAN.md (общий план, этапы), PERF_STAND.md (замеры).
 
 ## 1. Правила встраиваемости патчей
 
@@ -14,11 +16,11 @@
 4. **Поведение под переключателем.** Исправление явной ошибки (commit charge, HAGS, retina) включено всегда. Всё, что меняет поведение игр (V-Sync, лента показа, прямой вывод), выключено, пока не включено переменной `LULLABY_*`; сломавшуюся на обновлении функцию тогда можно выключить для одной игры, не откатывая движок.
 5. **Независимость.** Патч не зависит от другого, кроме явной строки `Requires:` в заголовке; порядок применения — по номеру.
 6. **Серия на основу.** `patches/engine/<основа>/<модуль>/NNNN-….patch`. Патчи, которые «не для этой основы», лежат в `patches/engine/patches/` (Dormison) и не копируются в чужую серию, пока не переписаны.
-7. **Гейт на новый релиз основы** (CI; пилот — `patches/engine/rehearse.sh`, исследования в §2.7 `WINEFORGE_PORT.md`): 
+7. **Гейт на новый релиз основы** (CI; пилот — `patches/engine/rehearse.sh`, исследования в §2.7 WINEFORGE_PORT.md (не в репозитории)): 
    1. `patches/engine/rehearse.sh` — патчи применяются к новому тегу;
    2. собираются только затронутые модули (минуты, не весь Wine);
    3. экспортируемые символы равны релизным;
-   4. модуль без патчей совпадает с релизом по инструкциям (Dormison: `build-fixes.sh`, измерено для `winemac.so` dormison-b2: 126 067 инструкций, различий нет; WineForge: под вопросом, §2.7 `WINEFORGE_PORT.md`);
+   4. модуль без патчей совпадает с релизом по инструкциям (Dormison: `build-fixes.sh`, измерено для `winemac.so` dormison-b2: 126 067 инструкций, различий нет; WineForge: под вопросом, §2.7 WINEFORGE_PORT.md (не в репозитории));
    5. проходят тесты: стенд `tools/perf/`, пробные программы `patches/engine/tests/`, `make app-tests`;
    6. публикуется подписанный манифест `engineFiles` (sha256 чистого и патченого файла, патчи с sha256), как у моста;
    7. не прошёл любой шаг — новая основа у пользователей не ставится, в интерфейсе причина.
@@ -94,6 +96,7 @@
 | CMP-04 | `lullaby-nvapi64.dll`: NVIDIA Reflex поверх D3DMetal (`nvapimt` переименован) | `patches/inject/lby-rainbowdash-reflex/` | Lullaby (идея `low_latency_layer`, MIT; код свой) | не зависит от основы; нужна лента показа ENG-07 |
 | WIN-01 | `lby-pinkiepie-windowstate`: запоминает состояние окна игры (окно и его размер / нативный полный экран / окно на весь экран) и возвращает его при следующем запуске | `patches/inject/lby-pinkiepie-windowstate`, `lullaby-windowstate.dylib` через `DYLD_INSERT_LIBRARIES` в загрузчик Wine | Lullaby, только публичный API AppKit (`NSWindow`, уведомления); движок не затронут | выключается `LULLABY_WINDOW_STATE=0` (параметр запуска); тесты `make windowstate-tests`; проверено на PEAK (Dormison r7) |
 | PAC-01 | `lby-ponthree-pacer`: темп показа кадров игры на Metal; режимы `probe` (считает, какими вызовами игра показывает кадр), `meter` (частота и ровность того, что дошло до экрана; любая игра на Metal) и `adaptive` (время показа каждого drawable выравнивается) | `patches/inject/lby-ponthree-pacer`, `lullaby-pacer.dylib` через `DYLD_INSERT_LIBRARIES` в загрузчик Wine (его ставит `compat_run.sh`, когда библиотека лежит в папке поддержки) | Lullaby; Metal и среда выполнения Objective-C, движок и D3DMetal не затронуты | выключен, пока нет `PACER_MODE` (среда или `<prefix>/.sevo/lullaby-pacer.conf`; по умолчанию `off`); сборка `make pacer` (arm64 + x86_64); замеры `tools/perf/presentfeed.py`; ступеньки показа даёт композитор, пейсер внутри игры их не убирает (S8, `BACKLOG.md`), поэтому `meter` только измеряет |
+| CMP-07 | `lby-spitfire-apiscout`: разведчик API игры (S10). За 3–5 с до первого запуска собирает признаки (пункт запуска Steam, сохранённые настройки движка игры только на чтение, память прошлого запуска, каталог, файлы рядом с exe), называет API и выбирает бэкенд (DX12 D3DMetal, DX11 DXMT, DX9 mtld3d, Vulkan KosmicKrisp, OpenGL WineMetalGL); помнит, откуда взят вывод, и перечитывает только эти места; ничего не известно — DXMT; не стартовало — ошибка и выбор бэкенда игроком | `patches/inject/lby-spitfire-apiscout` | Lullaby | читатели готовы и подключены только в лог (код в `steam/hook/feats/compat_run.sh`, блок apiscout; `make apiscout-tests`), выбор не меняют; без запросов разрешений macOS |
 | CMP-05 | Прокси `d3d12`: единая память (UMA=1) | — | Lullaby, по `sevo_uma.c` Dormison | запланирован (Э3) |
 | CMP-06 | WFDXCompat (D3D12/D3D11 пробелы D3DMetal) | `lib/wfdxcompat` WineForge | WineForge | оценить на RE9 |
 
@@ -115,7 +118,7 @@
 
 | ID | Функция | Где | Заметка |
 |---|---|---|---|
-| RUN-01 | `compat_run.sh`: запуск игры, пакет игры (имя, значок, Game Mode), настройки `.sevo/*.env`, подготовка рендерера (DXMT, DXVK, D3DMetal), `DYLD_INSERT_LIBRARIES` | `steam/hook/feats/compat_run.sh`, встроен в dylib (`embed_script.py`) | читает у движка `LB_ENGINE_{NAME,UNIX_DIR,WINELOADER,WINESERVER}`; **опирается на функции Dormison** (§3.1 `WINEFORGE_PORT.md`) |
+| RUN-01 | `compat_run.sh`: запуск игры, пакет игры (имя, значок, Game Mode), настройки `.sevo/*.env`, подготовка рендерера (DXMT, DXVK, D3DMetal), `DYLD_INSERT_LIBRARIES` | `steam/hook/feats/compat_run.sh`, встроен в dylib (`embed_script.py`) | читает у движка `LB_ENGINE_{NAME,UNIX_DIR,WINELOADER,WINESERVER}`; **опирается на функции Dormison** (§3.1 WINEFORGE_PORT.md (не в репозитории)) |
 | APP-01 | Приложение: движок, мост, сигнатуры, установка в Steam, настройки | `app/` | Sparkle |
 | APP-02 | Обновление движка, моста, сигнатур, приложения | `EngineUpdater`, `BridgeCatalog`, `SignatureCatalog`, `ReleaseFeed` | подписи Ed25519, атомарно, откат |
 

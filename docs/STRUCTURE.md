@@ -10,7 +10,7 @@ Rule: a directory or link that is not in this table is not created; a new one is
 | `patches/` | everything added to other people's code (see PROJECT_RULES) | see below | | Patches |
 | `patches/REGISTRY.md` | the single registry: ID, origin, verified releases, switch | | | Patches |
 | `patches/engine/` | patches to Dormison modules per module, `lby-discord-ntdllhook`, rebuild/rehearsal tools, probe programs | `.patch` with header, tests | whole foreign sources | Patches |
-| `patches/inject/` | components injected without rebuilding the engine (`lby-rainbowdash-reflex`, `lby-pinkiepie-windowstate`, `lby-ponthree-pacer`), and `lby-rarity-icons`, links to the icon maker that lives in `app/helpers/` | one directory per component | | Patches |
+| `patches/inject/` | components injected without rebuilding the engine (`lby-rainbowdash-reflex`, `lby-pinkiepie-windowstate`, `lby-ponthree-pacer`, `lby-spitfire-apiscout`), and `lby-rarity-icons`, links to the icon maker that lives in `app/helpers/` | one directory per component | | Patches |
 | `patches/steam/` | links to the components that patch Steam: `lby-luna-steamhook` -> `steam/hook`, `lby-spike-overlay` -> `steam/overlay` | links only | real files | Patches |
 | `steam/hook/` | library loaded into Steam: hooks, resolver, Steam Play entry, panel, game launch script | C/ObjC/JS/sh, tests, fixtures | | App |
 | `steam/overlay/` | Steam overlay in games | `.m`, tests | | Patches |
@@ -22,7 +22,7 @@ Rule: a directory or link that is not in this table is not created; a new one is
 | `.github/` | CI | workflows | | Release |
 | `LICENSE*`, `NOTICE`, `README.md`, `Makefile`, `.gitignore` | licences, attribution, entry, build | | | |
 
-Links outside `patches/steam/`: `patches/engine/lby-octavia-gcmouse/0004-winemac-lby-octavia-gcmouse.patch` -> the patch in the winemac series, `patches/inject/lby-rarity-icons/iconmaker.swift` -> `app/helpers/iconmaker.swift`, `patches/inject/lby-rarity-icons/tests` -> `app/helpers/tests`.
+Links outside `patches/steam/`: `patches/engine/lby-octavia-gcmouse/0004-winemac-lby-octavia-gcmouse.patch` -> the patch in the winemac series, `patches/inject/lby-rarity-icons/iconmaker.swift` -> `app/helpers/iconmaker.swift`, `patches/inject/lby-rarity-icons/tests` -> `app/helpers/tests`, `patches/inject/lby-spitfire-apiscout/compat_run.sh` -> `steam/hook/feats/compat_run.sh` (where its code lives). `patches/inject/lby-spitfire-apiscout/compatdata` -> the Steam `compatdata` folder, which holds the scout's memory file `<appid>/lullaby-apiscout` (a relative link from the repository to `~/Library/Application Support/Steam/steamapps/compatdata`: it carries no user name and is simply dangling on a machine where the repository or Steam lies elsewhere).
 
 Git-ignored work directories used by build scripts: `build/`, `out/`, `scratch/` (disposable, never published).
 

@@ -1,0 +1,1 @@
+../../../steam/hook/feats/compat_run.sh
