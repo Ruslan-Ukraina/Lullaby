@@ -58,6 +58,7 @@ r8 поки не підтримується: його архів містить 
 | Назви й структури для відповіді NVIDIA Reflex | [nvapi](https://github.com/NVIDIA/nvapi) від NVIDIA | MIT |
 | Перехоплення функцій усередині Steam | [Dobby](https://github.com/jmpews/Dobby) від Jmpews | Apache-2.0 |
 | Оновлення застосунку | [Sparkle](https://sparkle-project.org) | MIT |
+| Малюнок Місяцівни у повідомленні, коли гра не запустилася (шана автору) | [Tamers12345](https://youtube.com/@tamers12345mlp) | авторська робота, ліцензію не вказано |
 | D3DMetal (ваш) | Apple Game Porting Toolkit | ліцензія Apple, не поширюється |
 
 Подробиці й те, які файли до якої частини належать, — у [NOTICE](NOTICE).

@@ -102,6 +102,11 @@ controller handling, the batched prefix registry import, steam.exe's std handles
 Ubisoft Connect's install path values come from upstream NotProton 1.1.x (GPL-3.0),
 adapted to Dormison.
 
+The picture of Luna in the notice that appears when a game did not start
+(app/Sources/lullaby-settings/LunaPicture.swift, a 462 x 512 copy) is the work of Tamers12345
+(https://youtube.com/@tamers12345mlp), shown here as a tribute to their work. The artwork is
+theirs and is not covered by this repository's licence; no licence for it is stated.
+
 D3DMetal is Apple's, from the Game Porting Toolkit each player downloads from Apple and
 adds; NotProton neither ships nor downloads it.
 

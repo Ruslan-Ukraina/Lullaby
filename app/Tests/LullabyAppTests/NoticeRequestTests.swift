@@ -33,4 +33,11 @@ struct NoticeRequestTests {
         #expect(throws: NoticeRequest.Failure.self) { try NoticeRequest.parse(["game-not-started", "--game"], language: .en) }
         #expect(throws: NoticeRequest.Failure.self) { try NoticeRequest.parse(["game-not-started", "stray"], language: .en) }
     }
+
+    @Test("A picture of one's own can be named for the alert")
+    func icon() throws {
+        let base = ["game-not-started", "--game", "G"]
+        #expect(try NoticeRequest.parse(base, language: .en).icon == nil)
+        #expect(try NoticeRequest.parse(base + ["--icon", "/tmp/x.png"], language: .en).icon == "/tmp/x.png")
+    }
 }

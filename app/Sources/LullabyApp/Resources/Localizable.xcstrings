@@ -1825,6 +1825,54 @@
       },
       "generatesSymbol": false
     },
+    "Fan artwork, no licence stated": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fan artwork, no licence stated"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Авторская работа поклонника, лицензия не указана"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Авторська робота шанувальника, ліцензію не вказано"
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "The picture in the notice that appears when a game did not start. A tribute.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The picture in the notice that appears when a game did not start. A tribute."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Рисунок в сообщении, когда игра не запустилась. Дань автору."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Малюнок у повідомленні, коли гра не запустилася. Шана автору."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
     "Steam bridge": {
       "extractionState": "manual",
       "localizations": {
