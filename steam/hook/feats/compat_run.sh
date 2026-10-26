@@ -1098,6 +1098,20 @@ apiscout_changed() {
   done < "$state"
   return $any
 }
+
+# A game that ends with an error status (not a plain exit 0, not Steam's stop signal 143) within two
+# minutes did not start on the backend chosen for it. The notice says where to change the backend.
+apiscout_notice_needed() { # STATUS ELAPSED_SECONDS
+  case "$1" in ''|*[!0-9]*) return 1 ;; esac
+  [ "$1" -ne 0 ] && [ "$1" -ne 143 ] && [ "$2" -lt 120 ]
+}
+apiscout_notice_text() { # LANGUAGE GAME BACKEND API
+  case "$1" in
+    uk*) printf '%s\n' "$(printf '%s \320\275\320\265 \320\267\320\260\320\277\321\203\321\201\321\202\320\270\320\273\320\260\321\201\321\217 \320\267 \321\200\320\265\320\275\320\264\320\265\321\200\320\265\321\200\320\276\320\274 %s (%s). \320\243 Steam \320\262\321\226\320\264\320\272\321\200\320\270\320\271\321\202\320\265 \320\222\320\273\320\260\321\201\321\202\320\270\320\262\320\276\321\201\321\202\321\226 \320\263\321\200\320\270, \320\241\321\203\320\274\321\226\321\201\320\275\321\226\321\201\321\202\321\214, \321\226 \320\262\320\270\320\261\320\265\321\200\321\226\321\202\321\214 \320\264\320\273\321\217 \321\206\321\226\321\224\321\227 \320\263\321\200\320\270 \321\226\320\275\321\210\320\270\320\271 \321\200\320\265\320\275\320\264\320\265\321\200\320\265\321\200.' "$2" "$3" "$4")" ;;
+    ru*) printf '%s\n' "$(printf '%s \320\275\320\265 \320\267\320\260\320\277\321\203\321\201\321\202\320\270\320\273\320\260\321\201\321\214 \321\201 \321\200\320\265\320\275\320\264\320\265\321\200\320\265\321\200\320\276\320\274 %s (%s). \320\222 Steam \320\276\321\202\320\272\321\200\320\276\320\271\321\202\320\265 \320\241\320\262\320\276\320\271\321\201\321\202\320\262\320\260 \320\270\320\263\321\200\321\213, \320\241\320\276\320\262\320\274\320\265\321\201\321\202\320\270\320\274\320\276\321\201\321\202\321\214, \320\270 \320\262\321\213\320\261\320\265\321\200\320\270\321\202\320\265 \320\264\320\273\321\217 \321\215\321\202\320\276\320\271 \320\270\320\263\321\200\321\213 \320\264\321\200\321\203\320\263\320\276\320\271 \321\200\320\265\320\275\320\264\320\265\321\200\320\265\321\200.' "$2" "$3" "$4")" ;;
+    *) echo "$2 did not start with the $3 renderer ($4). In Steam open the game's Properties, Compatibility, and choose another renderer for this game." ;;
+  esac
+}
 # --- apiscout end ---
 # Launch option first (the Steam page's renderer list, or the old CX_GRAPHICS_BACKEND
 # some games still carry), then the game's Game Settings.
@@ -1630,4 +1644,11 @@ done
 echo "=== game exited status=$status, killing wine prefix ===" >> "$log" 2>&1 || true
 kill_wine_prefix
 echo "=== wine prefix killed, session ending ===" >> "$log" 2>&1 || true
+# The one thing the API scout ever shows: the game did not start, and where to change the backend.
+if [ "$verb" = waitforexitandrun ] && { apiscout_notice_needed "$status" "$(( $(date +%s) - run_started ))" || [ "$LULLABY_SCOUT_NOTICE_TEST" = 1 ]; }; then
+  notice_lang=$(defaults read -g AppleLanguages 2>/dev/null | sed -n 's/^ *"\{0,1\}\([a-z][a-z]\).*/\1/p' | head -n 1)
+  notice=$(apiscout_notice_text "$notice_lang" "$(basename "$1" .exe)" "$renderer" "${scout_api:-?}")
+  echo "=== notice: $notice ===" >> "$log" 2>&1 || true
+  ( osascript -e "display dialog \"$notice\" with title \"Lullaby\" buttons {\"OK\"} default button 1 with icon caution giving up after 120" >/dev/null 2>&1 & ) || true
+fi
 exit $status

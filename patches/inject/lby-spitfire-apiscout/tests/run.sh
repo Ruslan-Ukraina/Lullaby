@@ -102,6 +102,19 @@ check "monogame windowsdx" dx11 "$(apiscout_detect "$t/mg2" "$user" | api)"
 printf 'xx nothing yy' > "$t/mg3/MonoGame.Framework.dll"
 check "monogame unknown build" none "$(apiscout_detect "$t/mg3" "$user" | api)"
 
+# 5c. the notice: when it is needed and what it says
+for c in "1 10" "139 119" "255 0"; do
+  set -- $c
+  if apiscout_notice_needed "$1" "$2"; then check "notice needed $c" 1 1; else check "notice needed $c" 1 0; fi
+done
+for c in "0 10" "143 10" "1 120" "1 600" "x 5"; do
+  set -- $c
+  if apiscout_notice_needed "$1" "$2"; then check "notice not needed $c" 0 1; else check "notice not needed $c" 0 0; fi
+done
+check "notice english" "Game did not start with the dxmt renderer (dx11). In Steam open the game's Properties, Compatibility, and choose another renderer for this game." "$(apiscout_notice_text en Game dxmt dx11)"
+case "$(apiscout_notice_text uk Гра d3dmetal dx12)" in *Сумісність*d3dmetal*|*d3dmetal*Сумісність*) check "notice ukrainian names the page and the renderer" ok ok ;; *) check "notice ukrainian names the page and the renderer" ok bad ;; esac
+case "$(apiscout_notice_text ru Игра dxmt dx11)" in *Совместимость*) check "notice russian" ok ok ;; *) check "notice russian" ok bad ;; esac
+
 # 6. backends
 check "backend dx12" d3dmetal "$(apiscout_backend dx12)"
 check "backend dx11" dxmt "$(apiscout_backend dx11)"
