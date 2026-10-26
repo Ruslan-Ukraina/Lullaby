@@ -82,8 +82,8 @@
 | ID | Функция | Где | Происхождение | Как обновляется |
 |---|---|---|---|---|
 | BRG-01 | пара `ntdll.dll` (x86_64, i386) с подгрузкой `lsteamclient` (B1) | `patches/engine/lby-discord-ntdllhook` (`0001-ntdll-redirect-steamclient-to-lsteamclient.patch`), наложение на движок | Lullaby, по идее `use_lsteamclient` Proton | `build-b1.sh`: PE-модуль из того же коммита, что релиз; WineForge строит свой мост |
-| BRG-02 | `lsteamclient.dll` (x86_64, i386), `lsteamclient.so` (x86_64) | `bridge/lsteamclient/`, `bridge/` | Valve, лицензия Steamworks SDK | `bridge/setup-wine-tree.sh` из исходников **того же коммита** основы |
-| BRG-03 | `steam.exe` (шим, std handles, код выхода игры) | `bridge/steam-shim/` | BSD-3 | вместе с мостом |
+| BRG-02 | `lsteamclient.dll` (x86_64, i386), `lsteamclient.so` (x86_64) | `bridge/lsteamclient/` (ссылка `patches/engine/lby-applejack-steambridge`), `bridge/` | Valve, лицензия Steamworks SDK | `bridge/setup-wine-tree.sh` из исходников **того же коммита** основы |
+| BRG-03 | `steam.exe` (шим, std handles, код выхода игры) | `bridge/steam-shim/` (ссылка `patches/engine/lby-bigmack-steamexe`) | BSD-3 | вместе с мостом |
 | BRG-04 | подписанный `bridge-manifest.json` (совместимость основа ↔ мост ↔ оверлей, `engineFiles`) | `bridge/`, релиз форка | Lullaby | CI на каждый тег основы; новая основа не ставится, пока нет моста |
 
 ### 3.5 Компоненты (слой 3, подключаются через путь поиска DLL)
