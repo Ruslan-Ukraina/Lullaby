@@ -139,7 +139,7 @@ static int out_expand(lb_out_t *o, const char *replace, const lb_cap_t *caps) {
     "ps.forEach(p=>{if(p[1])a.unshift(p[0]+\"=\"+p[1])});" \
     "SteamClient.Apps.SetAppLaunchOptions(t.unAppID,a.join(\" \"))}," \
     "b=g(\"LULLABY_RENDERER\")," \
-    "B=[{data:\"\",label:\"Automatic (DXMT)\"}," \
+    "B=[{data:\"\",label:\"Automatic (by the game's API)\"}," \
     "{data:\"dxmt\",label:\"DXMT\"}," \
     "{data:\"dxvk\",label:\"DXVK\"}," \
     "{data:\"wined3d\",label:\"WineD3D\"}];" \

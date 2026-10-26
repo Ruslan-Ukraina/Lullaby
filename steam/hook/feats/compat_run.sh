@@ -1049,7 +1049,8 @@ apiscout_from_lastrun() {
 # candidate, so it is reported as "files" and used only when nothing else spoke.
 apiscout_from_files() {
   gamedir=$1
-  if [ -d "$gamedir/D3D12" ] || ls "$gamedir"/*_dx12.dll >/dev/null 2>&1; then
+  # A Unity game carries its D3D12 files (Agility SDK) whatever API it starts with, so there they say nothing.
+  if [ ! -f "$gamedir/UnityPlayer.dll" ] && { [ -d "$gamedir/D3D12" ] || ls "$gamedir"/*_dx12.dll >/dev/null 2>&1; }; then
     echo "dx12 $gamedir (D3D12 folder or *_dx12.dll)"; return 0
   fi
   # MonoGame: the DesktopGL build draws with OpenGL, the WindowsDX build (SharpDX) with D3D11
@@ -1101,7 +1102,36 @@ apiscout_changed() {
 # Launch option first (the Steam page's renderer list, or the old CX_GRAPHICS_BACKEND
 # some games still carry), then the game's Game Settings.
 renderer="${LULLABY_RENDERER:-${CX_GRAPHICS_BACKEND:-$(env_value LULLABY_RENDERER)}}"
-renderer="${renderer:-dxmt}"
+# The API scout (patches/inject/lby-spitfire-apiscout) names the API the game will draw with and
+# so the renderer, unless the player chose one (launch option or Game Settings): that choice wins.
+# Its places are remembered in the game's compatdata (lullaby-apiscout), nowhere in Steam.
+# Backends not integrated yet (mtld3d, KosmicKrisp, WineMetalGL) leave the game to Wine's own.
+scout_user="${WINEPREFIX:-$STEAM_COMPAT_DATA_PATH/pfx}/drive_c/users/steamuser"
+scout_state="$STEAM_COMPAT_DATA_PATH/lullaby-apiscout"
+scout_line=""
+# Only the game's own run: Steam also runs helpers (the install-script evaluator) through this script.
+if [ "$verb" = waitforexitandrun ]; then
+  scout_line=$(apiscout_detect "$STEAM_COMPAT_INSTALL_PATH" "$scout_user" "$@" 2>/dev/null) || scout_line=""
+fi
+scout_renderer=""
+if [ -n "$scout_line" ]; then
+  scout_api=${scout_line#api=}; scout_api=${scout_api%% *}
+  scout_src=${scout_line#*source=}; scout_src=${scout_src%% *}
+  scout_ev=${scout_line#*evidence=}; scout_ev=${scout_ev%% (*}
+  scout_backend=$(apiscout_backend "$scout_api")
+  case "$scout_backend" in
+    d3dmetal|dxmt) scout_renderer=$scout_backend ;;
+    *) scout_renderer=wined3d ;;
+  esac
+  apiscout_changed "$scout_state" 2>/dev/null | while read -r p; do echo "apiscout: changed since the last launch: $p" >> "$log" 2>&1 || true; done
+  case "$scout_src" in settings|lastrun|files) apiscout_remember "$scout_state" "$scout_ev" 2>/dev/null || true ;; esac
+fi
+if [ -z "$renderer" ]; then
+  renderer="${scout_renderer:-dxmt}"
+  [ -n "$scout_line" ] && echo "apiscout: $scout_line backend=$scout_backend, renderer $renderer" >> "$log" 2>&1 || true
+else
+  [ -n "$scout_line" ] && echo "apiscout: $scout_line backend=$scout_backend; the player's renderer $renderer is used" >> "$log" 2>&1 || true
+fi
 [ -n "$LULLABY_D3DMETAL" ] || LULLABY_D3DMETAL=$(env_value LULLABY_D3DMETAL)
 case "$renderer" in
   dxmt|dxvk|wined3d|d3dmetal) ;;
@@ -1138,24 +1168,6 @@ if [ "$renderer" != wined3d ]; then
     [ "$renderer" = d3dmetal ] && echo "=== d3dmetal is not set up (add the Game Porting Toolkit in Lullaby), no other renderer is substituted ===" >> "$log" 2>&1 || true
     renderer=wined3d
   fi
-fi
-# The API scout so far only says in the log what it would choose; it changes nothing.
-# Its places are remembered in the game's compatdata (lullaby-apiscout), nowhere in Steam.
-scout_user="${WINEPREFIX:-$STEAM_COMPAT_DATA_PATH/pfx}/drive_c/users/steamuser"
-scout_state="$STEAM_COMPAT_DATA_PATH/lullaby-apiscout"
-# Only the game's own run: Steam also runs helpers (the install-script evaluator) through this script.
-scout_line=""
-if [ "$verb" = waitforexitandrun ]; then
-  scout_line=$(apiscout_detect "$STEAM_COMPAT_INSTALL_PATH" "$scout_user" "$@" 2>/dev/null) || scout_line=""
-fi
-if [ -n "$scout_line" ]; then
-  scout_api=${scout_line#api=}; scout_api=${scout_api%% *}
-  scout_src=${scout_line#*source=}; scout_src=${scout_src%% *}
-  scout_ev=${scout_line#*evidence=}; scout_ev=${scout_ev%% (*}
-  scout_backend=$(apiscout_backend "$scout_api")
-  echo "apiscout: $scout_line backend=$scout_backend (log only, the renderer stays $renderer)" >> "$log" 2>&1 || true
-  apiscout_changed "$scout_state" 2>/dev/null | while read -r p; do echo "apiscout: changed since the last launch: $p" >> "$log" 2>&1 || true; done
-  case "$scout_src" in settings|lastrun|files) apiscout_remember "$scout_state" "$scout_ev" 2>/dev/null || true ;; esac
 fi
 echo "renderer: $renderer${WINEDLLPATH_PREPEND:+ from $WINEDLLPATH_PREPEND}" >> "$log" 2>&1 || true
 if [ -n "$launch_dll_overrides" ]; then

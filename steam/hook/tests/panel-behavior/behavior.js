@@ -26,7 +26,7 @@ for (const form of Object.keys(FORMS)) {
   t.ok(!('label' in r.find(x => x.type === 'Dropdown').props), 'the dropdown carries no label column');
 
   const backends = r.find(x => x.type === 'Dropdown').props.rgOptions;
-  t.ok(backends.map(o => o.label).join(',') === 'Automatic (DXMT),DXMT,DXVK,WineD3D',
+  t.ok(backends.map(o => o.label).join(',') === 'Automatic (by the game\'s API),DXMT,DXVK,WineD3D',
        `the renderers name themselves (${backends.map(o => o.label).join(',')})`);
   t.ok(backends.map(o => o.data).join(',') === ',dxmt,dxvk,wined3d',
        'the renderer values stay as the run script reads them');

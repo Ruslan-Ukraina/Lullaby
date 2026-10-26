@@ -89,6 +89,8 @@ mkdir -p "$game/D3D12"
 check "files dx12" dx12 "$(apiscout_detect "$game" "$user" | api)"
 check "files source" files "$(apiscout_detect "$game" "$user" | src)"
 check "args beat files" dx11 "$(apiscout_detect "$game" "$user" -dx11 | api)"
+mkdir -p "$t/unity12/D3D12"; : > "$t/unity12/UnityPlayer.dll"
+check "unity D3D12 folder says nothing" none "$(apiscout_detect "$t/unity12" "$user" | api)"
 rmdir "$game/D3D12"
 
 # 5b. MonoGame builds, each in a folder of its own (the temporary directory goes away at the end)
