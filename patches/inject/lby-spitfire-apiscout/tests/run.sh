@@ -39,6 +39,16 @@ check "source2 default" dx11 "$(apiscout_detect "$game" "$user" | api)"
 check "arg beats settings" dx12 "$(apiscout_detect "$game" "$user" -force-d3d12 | api)"
 rm -rf "${game:?}/game"
 
+# 2b. RE Engine config.ini in the game folder
+printf '[GameOption]\nA=1\n[Render]\nCapability=DirectX12\n[Render/Adapter]\n' > "$game/config.ini"
+check "re engine dx12" dx12 "$(apiscout_detect "$game" "$user" | api)"
+check "re engine source" settings "$(apiscout_detect "$game" "$user" | src)"
+printf '[Render]\r\nCapability=DirectX11\r\n' > "$game/config.ini"
+check "re engine dx11 with CRLF" dx11 "$(apiscout_detect "$game" "$user" | api)"
+printf '[Render]\nCapability=Other\n' > "$game/config.ini"
+check "re engine unknown value says nothing" none "$(apiscout_detect "$game" "$user" | api)"
+rm -f "$game/config.ini"
+
 # 3. SCS config.cfg
 mkdir -p "$user/Documents/Euro Truck Simulator 2"
 printf 'uset r_mode_width "3024"\nuset r_device ""\n' > "$user/Documents/Euro Truck Simulator 2/config.cfg"
@@ -62,6 +72,15 @@ check "files dx12" dx12 "$(apiscout_detect "$game" "$user" | api)"
 check "files source" files "$(apiscout_detect "$game" "$user" | src)"
 check "args beat files" dx11 "$(apiscout_detect "$game" "$user" -dx11 | api)"
 rmdir "$game/D3D12"
+
+# 5b. MonoGame builds, each in a folder of its own (the temporary directory goes away at the end)
+mkdir -p "$t/mg1" "$t/mg2" "$t/mg3"
+printf 'xx DesktopGL OpenGL yy' > "$t/mg1/MonoGame.Framework.dll"
+check "monogame desktopgl" gl "$(apiscout_detect "$t/mg1" "$user" | api)"
+printf 'xx SharpDX Direct3D11 yy' > "$t/mg2/MonoGame.Framework.dll"
+check "monogame windowsdx" dx11 "$(apiscout_detect "$t/mg2" "$user" | api)"
+printf 'xx nothing yy' > "$t/mg3/MonoGame.Framework.dll"
+check "monogame unknown build" none "$(apiscout_detect "$t/mg3" "$user" | api)"
 
 # 6. backends
 check "backend dx12" d3dmetal "$(apiscout_backend dx12)"

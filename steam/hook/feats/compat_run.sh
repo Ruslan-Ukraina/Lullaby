@@ -970,6 +970,14 @@ apiscout_from_settings() {
       "") echo "dx11 $f (no option: Source 2 default)"; return 0 ;;
     esac
   fi
+  # RE Engine: config.ini in the game folder, [Render] Capability=DirectX12 (or DirectX11)
+  if [ -f "$gamedir/config.ini" ]; then
+    v=$(sed -n 's/^Capability=\(.*\)/\1/p' "$gamedir/config.ini" | head -n 1 | tr -d '\r')
+    case "$v" in
+      DirectX12) echo "dx12 $gamedir/config.ini"; return 0 ;;
+      DirectX11) echo "dx11 $gamedir/config.ini"; return 0 ;;
+    esac
+  fi
   for c in "$userdir"/Documents/*/config.cfg; do
     [ -f "$c" ] || continue
     v=$(sed -n 's/^uset r_device "\(.*\)"/\1/p' "$c" | head -n 1)
@@ -1006,6 +1014,12 @@ apiscout_from_files() {
   gamedir=$1
   if [ -d "$gamedir/D3D12" ] || ls "$gamedir"/*_dx12.dll >/dev/null 2>&1; then
     echo "dx12 $gamedir (D3D12 folder or *_dx12.dll)"; return 0
+  fi
+  # MonoGame: the DesktopGL build draws with OpenGL, the WindowsDX build (SharpDX) with D3D11
+  mg="$gamedir/MonoGame.Framework.dll"
+  if [ -f "$mg" ]; then
+    if grep -qa 'SharpDX' "$mg" 2>/dev/null; then echo "dx11 $mg (MonoGame WindowsDX)"; return 0; fi
+    if grep -qa 'DesktopGL' "$mg" 2>/dev/null; then echo "gl $mg (MonoGame DesktopGL)"; return 0; fi
   fi
   return 1
 }
