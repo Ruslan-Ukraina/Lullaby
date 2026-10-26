@@ -25,5 +25,16 @@ if [ -s /tmp/lby-cs.$$ ]; then cat /tmp/lby-cs.$$ >&2; fail=1; fi; rm -f /tmp/lb
 for d in $(grep -oE '^\| `[a-zA-Z0-9._/-]+/`' "$map" | tr -d '|` '); do
   [ -e "$d" ] || { echo "check-structure: $map lists $d/, which does not exist" >&2; fail=1; }
 done
+# documents -> files: a NAME.md named in docs/*.md or a component README must exist somewhere in the tree, unless its line says "не в репозитории" or the allow file has `doc:NAME.md`
+for f in $(git ls-files 'docs/*.md' '*/README.md' | grep -v '^vendor/'); do
+  grep -noE '[A-Z][A-Z0-9_]{3,}\.md' "$f" | while IFS=: read -r ln name; do
+    if ! git ls-files | grep -qE "(^|/)$name\$"; then
+      grep -qxF "doc:$name" "$allow" && continue
+      sed -n "${ln}p" "$f" | grep -q 'не в репозитории' && continue
+      echo "check-structure: $f:$ln names $name, which is not in the repository" >&2
+    fi
+  done
+done > /tmp/lby-cs2.$$ 2>&1 || true
+if [ -s /tmp/lby-cs2.$$ ]; then cat /tmp/lby-cs2.$$ >&2; fail=1; fi; rm -f /tmp/lby-cs2.$$
 [ "$fail" -eq 0 ] && echo "==> check-structure: tree and map agree"
 exit "$fail"
