@@ -36,5 +36,19 @@ for f in $(git ls-files 'docs/*.md' '*/README.md' | grep -v '^vendor/'); do
   done
 done > /tmp/lby-cs2.$$ 2>&1 || true
 if [ -s /tmp/lby-cs2.$$ ]; then cat /tmp/lby-cs2.$$ >&2; fail=1; fi; rm -f /tmp/lby-cs2.$$
+# links: relative, no user name, target inside the repository and tracked; a link to a folder outside it
+# (Steam's compatdata) only when the allow file says `link-outside:<link>` (PROJECT_RULES 2.11)
+git ls-files -s | awk '$1=="120000" {print $4}' | while read -r l; do
+  tg=$(readlink "$l")
+  case "$tg" in /*|*/Users/*) echo "check-structure: link $l has an absolute or personal target ($tg)" >&2; continue ;; esac
+  d=$(cd -P "$(dirname "$l")/$(dirname "$tg")" 2>/dev/null && pwd -P) || d=""
+  abs="$d/$(basename "$tg")"; rel=${abs#"$repo"/}
+  if [ -z "$d" ] || [ "$rel" = "$abs" ]; then
+    grep -qxF "link-outside:$l" "$allow" || echo "check-structure: link $l points outside the repository or nowhere ($tg); allow it with link-outside:$l or fix it" >&2
+  elif [ -z "$(git ls-files -- "$rel" | head -n 1)" ]; then
+    echo "check-structure: link $l points to $rel, which is not tracked" >&2
+  fi
+done > /tmp/lby-cs3.$$ 2>&1 || true
+if [ -s /tmp/lby-cs3.$$ ]; then cat /tmp/lby-cs3.$$ >&2; fail=1; fi; rm -f /tmp/lby-cs3.$$
 [ "$fail" -eq 0 ] && echo "==> check-structure: tree and map agree"
 exit "$fail"
