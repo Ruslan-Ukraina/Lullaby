@@ -33,6 +33,28 @@ enum Notice {
     }
 
 
+    /// Text only: the alert's icon (always there, 64 points at the top) is hidden and the window is
+    /// shortened by the room it took above the title, nothing else moves.
+    @MainActor
+    static func removeIcon(of window: NSWindow) {
+        guard let content = window.contentView else { return }
+        func find(_ view: NSView) -> NSView? {
+            if view is NSImageView, view.frame.width == 64, view.frame.height == 64 { return view }
+            for sub in view.subviews { if let found = find(sub) { return found } }
+            return nil
+        }
+        guard let icon = find(content) else { return }
+        icon.isHidden = true
+        let others = content.subviews.filter { $0 !== icon }
+        guard let top = others.map({ $0.frame.maxY }).max() else { return }
+        let shrink = content.bounds.height - (top + 20)
+        guard shrink > 0 else { return }
+        for sub in content.subviews { sub.autoresizingMask = [] }
+        var frame = window.frame
+        frame.size.height -= shrink
+        window.setFrame(frame, display: false)
+    }
+
     @MainActor
     static func run(_ arguments: [String]) -> Int32 {
         let request: NoticeRequest
@@ -50,15 +72,9 @@ enum Notice {
         let ok = alert.addButton(withTitle: "OK")
         ok.target = button
         ok.action = #selector(NoticeButton.pressed(_:))
-        // Lullaby's own icon, as in the app's alerts; the command line tool has none of its own.
-        // Lullaby's own icon, as in the app's alerts; the command line tool has none of its own.
-        for path in ["/Applications/Lullaby.app", NSHomeDirectory() + "/Applications/Lullaby.app"]
-        where FileManager.default.fileExists(atPath: path) {
-            alert.icon = NSWorkspace.shared.icon(forFile: path)
-            break
-        }
         alert.layout()
         let window = alert.window
+        Notice.removeIcon(of: window)
         // Where the alert goes: the middle of the other application's window, else the screen's middle.
         // The system seats a modal window itself when it starts, so the place is taken again just after.
         let place = { @MainActor in
