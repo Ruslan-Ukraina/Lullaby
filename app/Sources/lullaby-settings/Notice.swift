@@ -102,6 +102,7 @@ enum Notice {
             } else {
                 window.center()
             }
+            window.makeKeyAndOrderFront(nil)
         }
         place()
         for delay in [0.05, 0.25] {
@@ -118,6 +119,7 @@ enum Notice {
             RunLoop.main.add(press, forMode: .common)
         }
         app.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
         app.runModal(for: window)
         window.orderOut(nil)
         return 0
