@@ -911,6 +911,56 @@ stage_renderer() {
         echo "reflex: Lullaby's nvapi64 in front of D3DMetal's" >> "$log" 2>&1 || true
       fi
       ;;
+    mtld3d)
+      # mtld3d (Direct3D 9 on Metal, zlib): the release bundle unpacked in components/mtld3d.
+      # Its builtin-marked d3d9.dll is found on the dll path like DXMT's; mtld3d.dll is not one of
+      # Wine's names, so its copy goes into the prefix too (as winemetal's does above).
+      src="$support/components/mtld3d/wine"
+      [ -f "$src/x86_64-windows/d3d9.dll" ] && [ -f "$src/x86_64-unix/mtld3d.so" ] || {
+        echo "=== mtld3d is not installed in $support/components/mtld3d ===" >> "$log" 2>&1 || true
+        return 1; }
+      mkdir -p "$dir/x86_64-windows" "$dir/i386-windows" "$dir/x86_64-unix" || return 1
+      for f in d3d9 mtld3d; do
+        ln -sfn "$src/x86_64-windows/$f.dll" "$dir/x86_64-windows/$f.dll"
+        ln -sfn "$src/i386-windows/$f.dll" "$dir/i386-windows/$f.dll"
+      done
+      ln -sfn "$src/x86_64-unix/mtld3d.so" "$dir/x86_64-unix/mtld3d.so"
+      if [ -n "$WINEPREFIX" ]; then
+        for pair in "system32:x86_64-windows" "syswow64:i386-windows"; do
+          sysdir="$WINEPREFIX/drive_c/windows/${pair%%:*}"
+          [ -d "$sysdir" ] || continue
+          cmp -s "$src/${pair#*:}/mtld3d.dll" "$sysdir/mtld3d.dll" && continue
+          cp -f "$src/${pair#*:}/mtld3d.dll" "$sysdir/mtld3d.dll" || return 1
+        done
+      fi
+      renderer_overrides="d3d9,mtld3d=b"
+      ;;
+    winemetalgl)
+      # WineMetalGL (OpenGL on Metal, LGPL-3.0+): the x86_64 package's module/ unpacked in
+      # components/winemetalgl. As its installer does for a prefix: opengl32.dll forwards to
+      # winemetalgl.dll, both in system32 and syswow64, and opengl32 is a native override.
+      src="$support/components/winemetalgl/module"
+      [ -f "$src/x86_64-windows/winemetalgl.dll" ] && [ -f "$src/x86_64-unix/winemetalgl.so" ] || {
+        echo "=== WineMetalGL is not installed in $support/components/winemetalgl ===" >> "$log" 2>&1 || true
+        return 1; }
+      mkdir -p "$dir/x86_64-windows" "$dir/i386-windows" "$dir/x86_64-unix" || return 1
+      ln -sfn "$src/x86_64-windows/winemetalgl.dll" "$dir/x86_64-windows/winemetalgl.dll"
+      ln -sfn "$src/i386-windows/winemetalgl.dll" "$dir/i386-windows/winemetalgl.dll"
+      for f in winemetalgl.so libwinemetalgl.dylib; do
+        ln -sfn "$src/x86_64-unix/$f" "$dir/x86_64-unix/$f"
+      done
+      if [ -n "$WINEPREFIX" ]; then
+        for pair in "system32:x86_64-windows" "syswow64:i386-windows"; do
+          sysdir="$WINEPREFIX/drive_c/windows/${pair%%:*}"
+          [ -d "$sysdir" ] || continue
+          for f in opengl32 winemetalgl; do
+            cmp -s "$src/${pair#*:}/$f.dll" "$sysdir/$f.dll" && continue
+            cp -f "$src/${pair#*:}/$f.dll" "$sysdir/$f.dll" || return 1
+          done
+        done
+      fi
+      renderer_overrides="opengl32=n;winemetalgl=b"
+      ;;
     *) return 1 ;;
   esac
   for f in "$dir"/*/*; do
@@ -1145,7 +1195,7 @@ else
 fi
 [ -n "$LULLABY_D3DMETAL" ] || LULLABY_D3DMETAL=$(env_value LULLABY_D3DMETAL)
 case "$renderer" in
-  dxmt|dxvk|wined3d|d3dmetal) ;;
+  dxmt|dxvk|wined3d|d3dmetal|mtld3d|winemetalgl) ;;
   *)
     echo "=== unknown renderer $renderer, using DXMT ===" >> "$log" 2>&1 || true
     renderer=dxmt ;;
