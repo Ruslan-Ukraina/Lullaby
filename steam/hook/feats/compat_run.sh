@@ -953,6 +953,24 @@ apiscout_from_args() {
         opengl|gl) echo "gl -rdevice $a"; return 0 ;;
       esac
     fi
+    # Source 1: -dxlevel 80..98 is Direct3D 9 and older, 100 and 110 Direct3D 10/11
+    if [ "$prev" = "-dxlevel" ]; then
+      case "$a" in
+        80|81|90|95|98) echo "dx9 -dxlevel $a"; return 0 ;;
+        100|110) echo "dx11 -dxlevel $a"; return 0 ;;
+      esac
+    fi
+    # Godot 4: --rendering-driver vulkan|d3d12|opengl3[_angle|_es], --rendering-method gl_compatibility
+    if [ "$prev" = "--rendering-driver" ]; then
+      case "$a" in
+        d3d12) echo "dx12 --rendering-driver $a"; return 0 ;;
+        vulkan) echo "vk --rendering-driver $a"; return 0 ;;
+        opengl3|opengl3_angle|opengl3_es) echo "gl --rendering-driver $a"; return 0 ;;
+      esac
+    fi
+    if [ "$prev" = "--rendering-method" ] && [ "$a" = gl_compatibility ]; then
+      echo "gl --rendering-method $a"; return 0
+    fi
     prev="$a"
   done
   return 1
@@ -978,6 +996,25 @@ apiscout_from_settings() {
       DirectX11) echo "dx11 $gamedir/config.ini"; return 0 ;;
     esac
   fi
+  # Source 1: <mod>/cfg/videoconfig.txt, "setting.dxlevel" "90"
+  for v in "$gamedir"/*/cfg/videoconfig.txt; do
+    [ -f "$v" ] || continue
+    lvl=$(sed -n 's/.*"setting.dxlevel"[[:space:]]*"\([0-9]*\)".*/\1/p' "$v" | head -n 1)
+    case "$lvl" in
+      80|81|90|95|98) echo "dx9 $v"; return 0 ;;
+      100|110) echo "dx11 $v"; return 0 ;;
+    esac
+  done
+  # CryEngine: system.cfg or user.cfg in the game folder, r_Driver = DX11 | DX12 | Vk
+  for c in "$gamedir/system.cfg" "$gamedir/user.cfg"; do
+    [ -f "$c" ] || continue
+    v=$(sed -n 's/^[[:space:]]*[rR]_[dD]river[[:space:]]*=[[:space:]]*"\{0,1\}\([A-Za-z0-9]*\).*/\1/p' "$c" | tail -n 1 | tr -d '\r')
+    case "$v" in
+      DX12) echo "dx12 $c"; return 0 ;;
+      DX11) echo "dx11 $c"; return 0 ;;
+      Vk|VK|Vulkan) echo "vk $c"; return 0 ;;
+    esac
+  done
   for c in "$userdir"/Documents/*/config.cfg; do
     [ -f "$c" ] || continue
     v=$(sed -n 's/^uset r_device "\(.*\)"/\1/p' "$c" | head -n 1)
@@ -1106,7 +1143,11 @@ fi
 # Its places are remembered in the game's compatdata (lullaby-apiscout), nowhere in Steam.
 scout_user="${WINEPREFIX:-$STEAM_COMPAT_DATA_PATH/pfx}/drive_c/users/steamuser"
 scout_state="$STEAM_COMPAT_DATA_PATH/lullaby-apiscout"
-scout_line=$(apiscout_detect "$STEAM_COMPAT_INSTALL_PATH" "$scout_user" "$@" 2>/dev/null) || scout_line=""
+# Only the game's own run: Steam also runs helpers (the install-script evaluator) through this script.
+scout_line=""
+if [ "$verb" = waitforexitandrun ]; then
+  scout_line=$(apiscout_detect "$STEAM_COMPAT_INSTALL_PATH" "$scout_user" "$@" 2>/dev/null) || scout_line=""
+fi
 if [ -n "$scout_line" ]; then
   scout_api=${scout_line#api=}; scout_api=${scout_api%% *}
   scout_src=${scout_line#*source=}; scout_src=${scout_src%% *}
