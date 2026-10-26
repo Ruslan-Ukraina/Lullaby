@@ -104,10 +104,12 @@ check "monogame unknown build" none "$(apiscout_detect "$t/mg3" "$user" | api)"
 
 # 5c. the notice: when it is needed and what it says
 for c in "1 10" "139 119" "255 0"; do
+  # shellcheck disable=SC2086 # the pair is split on purpose
   set -- $c
   if apiscout_notice_needed "$1" "$2"; then check "notice needed $c" 1 1; else check "notice needed $c" 1 0; fi
 done
 for c in "0 10" "143 10" "1 120" "1 600" "x 5"; do
+  # shellcheck disable=SC2086 # the pair is split on purpose
   set -- $c
   if apiscout_notice_needed "$1" "$2"; then check "notice not needed $c" 0 1; else check "notice not needed $c" 0 0; fi
 done
