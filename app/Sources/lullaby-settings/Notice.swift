@@ -72,9 +72,15 @@ enum Notice {
         let ok = alert.addButton(withTitle: "OK")
         ok.target = button
         ok.action = #selector(NoticeButton.pressed(_:))
+        // The game's own icon, the one Lullaby made for its launcher in the macOS shape; without it, text only.
+        var textOnly = true
+        if let bundle = request.iconOf, FileManager.default.fileExists(atPath: bundle) {
+            alert.icon = NSWorkspace.shared.icon(forFile: bundle)
+            textOnly = false
+        }
         alert.layout()
         let window = alert.window
-        Notice.removeIcon(of: window)
+        if textOnly { Notice.removeIcon(of: window) }
         // Where the alert goes: the middle of the other application's window, else the screen's middle.
         // The system seats a modal window itself when it starts, so the place is taken again just after.
         let place = { @MainActor in

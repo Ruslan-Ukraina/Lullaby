@@ -1618,11 +1618,11 @@ open_pid=$!
 scout_notice() { # STATUS
   [ "$verb" = waitforexitandrun ] || return 0
   apiscout_notice_needed "$1" "$(( $(date +%s) - run_started ))" || [ "$LULLABY_SCOUT_NOTICE_TEST" = 1 ] || return 0
-  notice_game=${exe_name%.exe}
+  notice_game=${bundle_name:-${exe_name%.exe}}
   echo "=== notice: $notice_game did not start with $renderer (${scout_api:-?}) ===" >> "$log" 2>&1 || true
   notice_cli="$support/lullaby-settings"
   if [ -x "$notice_cli" ]; then
-    ( nohup "$notice_cli" notice game-not-started --game "$notice_game" --renderer "$renderer" --api "${scout_api:-?}" --center-on Steam >/dev/null 2>&1 & ) || true
+    ( nohup "$notice_cli" notice game-not-started --game "$notice_game" --renderer "$renderer" --api "${scout_api:-?}" --center-on Steam --icon-of "$loader_app" >/dev/null 2>&1 & ) || true
   else
     notice=$(apiscout_notice_text "$notice_game" "$renderer" "${scout_api:-?}")
     ( nohup osascript -e "display dialog \"$notice\" with title \"Lullaby\" buttons {\"OK\"} default button 1 with icon caution giving up after 120" >/dev/null 2>&1 & ) || true

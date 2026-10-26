@@ -11,6 +11,8 @@ public struct NoticeRequest: Equatable, Sendable {
     /// The name of the application whose window the alert is centred on, if any.
     public var centerOn: String?
     public var timeout: Int
+    /// A bundle (the game's launcher app) whose icon the alert shows; none: the alert shows text only.
+    public var iconOf: String?
 
     public static let gameNotStartedTitle = L10n(
         "The game did not start",
@@ -28,7 +30,7 @@ public struct NoticeRequest: Equatable, Sendable {
 
     public static func parse(_ arguments: [String], language: Language) throws -> NoticeRequest {
         guard arguments.first == "game-not-started" else {
-            throw Failure.usage("notice game-not-started --game NAME --renderer R --api A [--center-on APP] [--timeout SECONDS]")
+            throw Failure.usage("notice game-not-started --game NAME --renderer R --api A [--center-on APP] [--timeout SECONDS] [--icon-of BUNDLE]")
         }
         var values: [String: String] = [:]
         var rest = Array(arguments.dropFirst())
@@ -44,6 +46,7 @@ public struct NoticeRequest: Equatable, Sendable {
             message: gameNotStartedMessage(
                 game: game, renderer: values["--renderer"] ?? "?", api: values["--api"] ?? "?")[language],
             centerOn: values["--center-on"],
-            timeout: max(5, min(timeout, 600)))
+            timeout: max(5, min(timeout, 600)),
+            iconOf: values["--icon-of"])
     }
 }

@@ -33,4 +33,11 @@ struct NoticeRequestTests {
         #expect(throws: NoticeRequest.Failure.self) { try NoticeRequest.parse(["game-not-started", "--game"], language: .en) }
         #expect(throws: NoticeRequest.Failure.self) { try NoticeRequest.parse(["game-not-started", "stray"], language: .en) }
     }
+
+    @Test("The game's launcher bundle can be named for its icon; without it the alert is text only")
+    func iconOf() throws {
+        let base = ["game-not-started", "--game", "G"]
+        #expect(try NoticeRequest.parse(base, language: .en).iconOf == nil)
+        #expect(try NoticeRequest.parse(base + ["--icon-of", "/x/G.app"], language: .en).iconOf == "/x/G.app")
+    }
 }
