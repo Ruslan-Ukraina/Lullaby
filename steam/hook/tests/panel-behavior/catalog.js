@@ -111,8 +111,8 @@ for (const lang of ['en', 'uk', 'ru']) {
   const tree = api.view(ctx);
   const quick = catalog.settings.filter(s => s.quick !== undefined).sort((a, b) => a.quick - b.quick);
   const titles = rowsOf(tree).map(n => text(n.props.label));
-  t.ok(quick.length === 3 && quick.every((s, i) => titles[i] && titles[i].startsWith(s.title[lang])),
-    `${lang}: the three quick rows in the catalog's order (${titles.join(' | ')})`);
+  t.ok(quick.length === 4 && quick.every((s, i) => titles[i] && titles[i].startsWith(s.title[lang])),
+    `${lang}: the four quick rows in the catalog's order (${titles.join(' | ')})`);
   t.ok(text(tree).includes(catalog.text.section[lang]), `${lang}: the header is the catalog's`);
   t.ok(text(tree).includes(catalog.text.advanced[lang]), `${lang}: Advanced settings button`);
   const extra = foreign(tree, lang, ['peak.exe', 'PEAK', 'Lullaby']);
@@ -196,7 +196,7 @@ t.ok(catalog.settings.every(x => !x.renderers || x.renderers.length === 0), 'no 
   const tree = api.view(ctx);
   const titles = rowsOf(tree).map(n => text(n.props.label));
   t.ok(!titles.some(l => l.startsWith(titleOf('renderer', 'ru'))), 'no renderer for all games');
-  t.ok(titles.length === 2, `two quick rows for all games (${titles.join(' | ')})`);
+  t.ok(titles.length === 3, `three quick rows for all games (${titles.join(' | ')})`);
   t.ok(text(tree).includes(catalog.text.globalSection.ru), 'its own header');
   const retina = rowFor(tree, 'retina', 'ru');
   t.ok(text(retina.props.description).includes(catalog.text.defaultValue.ru.replace('%@', '\u0412\u044b\u043a\u043b.')),

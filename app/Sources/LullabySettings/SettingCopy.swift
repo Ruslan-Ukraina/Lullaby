@@ -186,6 +186,22 @@ extension SettingCopy {
                  uk: "Власна накладка Apple з показниками: кадри за секунду, час кадру й пам’ять GPU — дані беруться з графічного драйвера. Працює в іграх, що малюють через Metal: DXMT, DXVK і D3DMetal.",
                  ru: "Собственная панель Apple с показателями: кадры в секунду, время кадра и память GPU — данные берутся из графического драйвера. Работает в играх, которые рисуют через Metal: DXMT, DXVK и D3DMetal.")))
 
+    static let nativeFullscreen = SettingCopy(
+        L10n("Native full screen", uk: "Рідний повний екран", ru: "Нативный полный экран"),
+        caption: L10n("A game that covers the screen goes to macOS full screen by itself.",
+                      uk: "Гра, що закриває екран, сама переходить у повний екран macOS.",
+                      ru: "Игра, закрывающая экран, сама переходит в полный экран macOS."),
+        help: SettingHelp(
+            L10n("A game's borderless window as big as the screen (\"Window (full screen)\") is taken to macOS's own full screen: its own desktop, the picture under the notch at the screen's full resolution, the game told the size it has. Switching it off leaves the game's window as the game made it; the green button of the window still works.",
+                 uk: "Безрамкове вікно гри на весь екран («Вікно (повний екран)») переходить у власний повний екран macOS: окремий робочий стіл, картинка під вирізом у повній роздільності екрана, грі повідомляють справжній розмір. Якщо вимкнути, вікно лишається таким, яким його зробила гра; зелена кнопка вікна працює.",
+                 ru: "Безрамочное окно игры на весь экран («Окно (полный экран)») переходит в собственный полный экран macOS: отдельный рабочий стол, картинка под вырезом в полном разрешении экрана, игре сообщают настоящий размер. Если выключить, окно остаётся таким, каким его сделала игра; зелёная кнопка окна работает."),
+            entries: [
+                HelpEntry(L10n("Games that start in a window", uk: "Ігри, що стартують у вікні", ru: "Игры, которые стартуют в окне"), L10n(
+                    "A game that opens a launcher or a small window first is not touched until its screen-covering window comes. A game left in native full screen is put back there.",
+                    uk: "Гра, що спершу відкриває лаунчер або маленьке вікно, не чіпається, доки не з’явиться вікно на весь екран. Гру, залишену в рідному повному екрані, повертають туди.",
+                    ru: "Игра, которая сначала открывает лаунчер или маленькое окно, не трогается, пока не появится окно на весь экран. Игру, оставленную в нативном полном экране, возвращают туда.")),
+            ]))
+
     static let filter = SettingCopy(
         L10n("Final filter", uk: "Фінальний фільтр", ru: "Финальный фильтр"),
         caption: L10n("How a picture smaller than the window is fitted to it.",

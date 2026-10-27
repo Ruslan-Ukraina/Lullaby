@@ -22,7 +22,7 @@ struct SettingCatalogTests {
 
     @Test("the four quick settings, in order; the Advanced groups: what is automatic has no row")
     func quickSettings() {
-        #expect(SettingCatalog.quick.map(\.id) == [.renderer, .retina, .fps])
+        #expect(SettingCatalog.quick.map(\.id) == [.renderer, .retina, .fps, .nativeFullscreen])
         #expect(SettingCatalog.setting(.renderer).levels == [.game])
         func advanced(_ group: SettingGroup) -> [SettingID] {
             SettingCatalog.settings(in: group, at: .game).filter { $0.quick == nil }.map(\.id)
@@ -39,6 +39,7 @@ struct SettingCatalogTests {
         (.retina, .bool(true), "LULLABY_RETINA=1"),
         (.filter, .string("metalfx"), "SEVO_UPSCALER=metalfx"),
         (.fps, .bool(true), "MTL_HUD_ENABLED=1"),
+        (.nativeFullscreen, .bool(false), "LULLABY_NATIVE_FULLSCREEN=0"),
         (.filter, .string("bilinear"), "SEVO_FINAL_FILTER=bilinear"),
         (.rawMouse, .bool(false), "LULLABY_GCMOUSE=0"),
         (.tuning, .string("experimental"), "SEVO_WAIT_SPIN=5200"),
@@ -115,7 +116,7 @@ struct SettingCatalogTests {
         #expect(env["SEVO_LINEAR_MOUSE"] == "0")
         #expect(env["LULLABY_GCMOUSE_SCALE"] == "auto", "from the mouse's resolution")
         #expect(env["SEVO_RESIZABLE_WINDOWS"] == "fixed", "a fixed-size window is scaled; a game that covers the screen is not turned into a titled window")
-        #expect(env["LULLABY_NATIVE_FULLSCREEN"] == nil, "native full screen of a covering game is on by itself (windowstate's default): no line, no setting")
+        #expect(env["LULLABY_NATIVE_FULLSCREEN"] == "1", "native full screen of a covering game is on for every game")
         #expect(env["SEVO_LARGE_ADDRESS_AWARE"] == "1", "4 GB for 32-bit games")
         #expect(env["LULLABY_LOW_LATENCY"] == "1", "Reflex is always answered (it no longer costs frames)")
         #expect(env["LULLABY_EMULATE_MODESET"] == nil, "compat_run.sh decides by the program's bitness")

@@ -7,8 +7,8 @@ Remembers the state a game's window was left in and puts it back at the next lau
   `NSWindow` API and notifications. The state is kept in `<prefix>/.sevo/lullaby-window.json`, never in the game's files.
 - A state counts once it has stood for a second, so a game leaving full screen only because it is closing is not kept.
 - Window size is restored; Native Fullscreen is re-entered; the game's own borderless mode is the game's to put back.
-- **Borderless covering window** (the usual "Window (full screen)" of a game; no setting, always on, `LULLABY_NATIVE_FULLSCREEN=0` as a launch option
-  turns it off for one run): the window the game made, no title bar and as big as the screen, is taken to native full screen as it is;
+- **Borderless covering window** (the usual "Window (full screen)" of a game; the setting "Native full screen", on for every game; off
+  for a game or for all games in Lullaby's panel, or `LULLABY_NATIVE_FULLSCREEN=0` as a launch option for one run): the window the game made, no title bar and as big as the screen, is taken to native full screen as it is;
   this library gives it AppKit's full-screen-primary behaviour first. macOS puts it below the menu bar and notch (1512x949 points on a
   14" MacBook Pro, 3024x1898 pixels); the engine tells the game that size ([ENG-12](../../engine/patches/winemac.so/0006-winemac-native-fullscreen-reports-its-size.patch), `LULLABY_FULLSCREEN_SIZE=0` keeps the scaled picture).
   Not turned into a titled window, so the window is never 32 points taller than the screen. Checked again 1.5 and 4 seconds after each

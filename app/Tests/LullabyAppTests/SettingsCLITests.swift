@@ -24,7 +24,7 @@ struct SettingsCLITests {
         #expect(catalog["ok"] == .bool(true))
         let settings = try #require(catalog["catalog"]?.object?["settings"]?.array)
         #expect(settings.count == SettingID.allCases.count)
-        #expect(settings.compactMap { $0.object?["quick"]?.number }.sorted() == [1, 2, 3])
+        #expect(settings.compactMap { $0.object?["quick"]?.number }.sorted() == [1, 2, 3, 4])
 
         // A game whose files are not installed yet has nothing to record.
         var answer = try object(cli.panel(#"{"op":"state","app":3527291}"#).text)

@@ -8,7 +8,7 @@
 import Foundation
 
 public enum SettingID: String, CaseIterable, Sendable, Codable {
-    case renderer, retina, fps
+    case renderer, retina, fps, nativeFullscreen
     case filter
     case tuning, gameMode
     case unifiedMemory, rawMouse, forceVsync
@@ -172,6 +172,10 @@ public enum SettingCatalog {
         .flag(.retina, in: .picture, quick: 2, key: \.retina, copy: .retina,
               carrier: .registry(values: ["RetinaMode"], marker: "LULLABY_RETINA")),
         .flag(.fps, in: .picture, quick: 3, key: \.fps, copy: .fps, carrier: .environment(["MTL_HUD_ENABLED"])),
+        // lby-pinkiepie-windowstate and winemac patch ENG-12: a game whose window covers the screen goes to
+        // macOS's native full screen by itself; on for every game.
+        .flag(.nativeFullscreen, in: .picture, quick: 4, key: \.nativeFullscreen, copy: .nativeFullscreen,
+              carrier: .environment(["LULLABY_NATIVE_FULLSCREEN"])),
         pictureFilterSetting,
         tuningSetting,
         .flag(.unifiedMemory, in: .diagnostics, key: \.unifiedMemory, copy: .unifiedMemory,

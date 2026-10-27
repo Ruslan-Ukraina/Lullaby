@@ -80,6 +80,7 @@ public enum ConfigMaterializer {
     /// Switches that reach a game as one variable each.
     static let switches: [(key: String, path: KeyPath<ConfigValues, Bool?> & Sendable)] = [
         ("MTL_HUD_ENABLED", \.fps),
+        ("LULLABY_NATIVE_FULLSCREEN", \.nativeFullscreen),
         ("LULLABY_GAME_MODE", \.gameMode),
         ("SEVO_FORCE_UMA", \.unifiedMemory),
         ("LULLABY_FORCE_VSYNC", \.forceVsync),

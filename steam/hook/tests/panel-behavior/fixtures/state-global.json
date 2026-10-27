@@ -49,6 +49,17 @@
    },
    "own": null
   },
+  "nativeFullscreen": {
+   "effective": true,
+   "inherited": true,
+   "inheritedFrom": "defaults",
+   "inheritedLabel": {
+    "en": "On",
+    "ru": "Вкл.",
+    "uk": "Увімк."
+   },
+   "own": null
+  },
   "rawMouse": {
    "effective": false,
    "inherited": false,
