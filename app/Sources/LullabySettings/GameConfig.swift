@@ -212,8 +212,8 @@ public struct ConfigValues: Codable, Equatable, Sendable {
     /// What an older file stored for the resizable-windows choice; windows are always native now and
     /// nothing reads it (the field stays so old files decode).
     public var windows: WindowTreatment?
-    /// Native full screen of a screen-covering game: postponed, no setting (docs/BACKLOG.md); the run script
-    /// and lby-pinkiepie-windowstate get LULLABY_NATIVE_FULLSCREEN=0 from the fixed lines.
+    /// Native full screen of a screen-covering game: always on, no setting (lby-pinkiepie-windowstate; the launch
+    /// option LULLABY_NATIVE_FULLSCREEN=0 turns it off for one run). Nothing reads this field; it stays so old files decode.
     public var nativeFullscreen: Bool?
     public var filter: FinalFilter?
     public var emulateModeset: Bool?

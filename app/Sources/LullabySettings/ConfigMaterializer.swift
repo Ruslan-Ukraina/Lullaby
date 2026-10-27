@@ -103,7 +103,6 @@ public enum ConfigMaterializer {
     /// WINEMSYNC=0).
     static let fixedLines = [
         "SEVO_RESIZABLE_WINDOWS=fixed",
-        "LULLABY_NATIVE_FULLSCREEN=0",
         "ROSETTA_ADVERTISE_AVX=1",
         "DXMT_ENABLE_NVEXT=1",
         "D3DM_ENABLE_METALFX=1",
