@@ -5,12 +5,13 @@ The feed (<prefix>/.sevo/run/<Windows pid>.present) holds, for each of the last 
 the screen (addPresentedHandler). Unlike tools/perf/frames.py (the moments of the present call) these are what the player
 sees. Waits for a feed that starts presenting, lets the game settle, then reads the ring for a while.
 
-  tools/perf/presentfeed.py [--settle 45] [--seconds 30] [--label NAME] [--csv FILE] [--timeout 240]
+  [PRESENT_FEED_APP=<app id>] tools/perf/presentfeed.py [--settle 45] [--seconds 30] [--label NAME] [--csv FILE] [--timeout 240]
 prints: label shown fps p50 p95 p99 max std, and the share of intervals within 1 ms of the median.
 """
 import argparse, glob, mmap, os, statistics as st, struct, sys, time
 
-RUN = os.path.expanduser("~/Library/Application Support/Steam/steamapps/compatdata/4022369388/pfx/.sevo/run")
+APP = os.environ.get("PRESENT_FEED_APP", "4022369388")  # the Steam app id whose prefix holds the feed (default RE9)
+RUN = os.path.expanduser(f"~/Library/Application Support/Steam/steamapps/compatdata/{APP}/pfx/.sevo/run")
 RING = 256
 HEAD = struct.Struct("<QQQQ")  # magic, version, acquired, presented
 ENTRY = struct.Struct("<QQ")   # acquire_ns, present_ns

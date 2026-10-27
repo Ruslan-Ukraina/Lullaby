@@ -65,7 +65,7 @@ TARGET      := $(OUT_DIR)/lullaby.dylib
 OBJS := $(patsubst %.c,$(OUT_DIR)/%.o,$(SRCS)) $(patsubst %.m,$(OUT_DIR)/%.o,$(OBJC_SRCS))
 DEPS := $(OBJS:.o=.d)
 
-.PHONY: all iconmaker-tests windowstate windowstate-tests glfixes glfixes-tests apiscout-tests pacer nvapi-shim reflex-sim patchcheck clean rebuild dobby deploy dylib-install sigcheck componentcheck app-payload app app-zip app-config \
+.PHONY: all iconmaker-tests windowstate windowstate-tests glfixes glfixes-tests apiscout-tests pacer pacer-tests nvapi-shim reflex-sim patchcheck clean rebuild dobby deploy dylib-install sigcheck componentcheck app-payload app app-zip app-config \
         anchorcheck callscheck sigdb-fixtures webpatch-fixtures peicon-fixtures panel-behavior app-tests launch-shell \
         tests-list overlay-shim overlay-shim-install overlay-shim-tests \
         overlay-shim-bench iconmaker icon \
@@ -500,7 +500,18 @@ $(WINDOWSTATE): $(WINDOWSTATE_DIR)/windowstate.m $(WINDOWSTATE_DIR)/windowstate_
 PACER_DIR   := patches/inject/lby-ponthree-pacer
 PACER       := $(OUT_DIR)/lullaby-pacer.dylib
 PACER_FLAGS := -mmacosx-version-min=$(MIN_VER) -dynamiclib -O2 -Wall -Wextra -fobjc-arc \
-               -install_name @rpath/lullaby-pacer.dylib -framework Foundation -framework Metal -framework QuartzCore
+               -install_name @rpath/lullaby-pacer.dylib -framework AppKit -framework Foundation -framework Metal -framework QuartzCore
+
+pacer-tests: $(PACER)
+	@for a in arm64 x86_64; do \
+		$(CC) -arch $$a -fobjc-arc -framework Foundation -framework Metal -framework QuartzCore \
+			-o $(OUT_DIR)/wine-pacer-test.$$a $(PACER_DIR)/tests/direct_test.m || exit 1; \
+		LULLABY_DIRECT=1 DYLD_INSERT_LIBRARIES=$(PACER) $(OUT_DIR)/wine-pacer-test.$$a on || exit 1; \
+		LULLABY_DIRECT=0 DYLD_INSERT_LIBRARIES=$(PACER) $(OUT_DIR)/wine-pacer-test.$$a off || exit 1; \
+		DYLD_INSERT_LIBRARIES=$(PACER) $(OUT_DIR)/wine-pacer-test.$$a off || exit 1; \
+		LULLABY_DIRECT=1 DYLD_INSERT_LIBRARIES=$(PACER) $(OUT_DIR)/wine-pacer-test.$$a sync || exit 1; \
+	done
+	@echo "==> pacer tests: an RGB-ordered layer format becomes BGR-ordered only with LULLABY_DIRECT=1, V-Sync is the game's own outside native full screen, arm64 and x86_64"
 
 pacer: $(PACER)
 
@@ -709,7 +720,7 @@ bridge:
 	bridge/steam-shim/build.sh
 	@echo "==> Built the bridge, now run: $(MAKE) app-payload"
 
-app-payload: $(TARGET) $(OVERLAY_SHIM) $(ICONMAKER) $(APPINFO) $(NVAPI_SHIM) $(WINDOWSTATE) $(GLFIXES)
+app-payload: $(TARGET) $(OVERLAY_SHIM) $(ICONMAKER) $(APPINFO) $(NVAPI_SHIM) $(WINDOWSTATE) $(GLFIXES) $(PACER)
 	@mkdir -p "$(APP_PAYLOAD)/signatures/macos.arm64"
 	@mkdir -p "$(APP_PAYLOAD)/bridge"
 	cp -f $(TARGET) "$(APP_PAYLOAD)/lullaby.dylib"
@@ -719,6 +730,7 @@ app-payload: $(TARGET) $(OVERLAY_SHIM) $(ICONMAKER) $(APPINFO) $(NVAPI_SHIM) $(W
 	cp -f $(NVAPI_SHIM) "$(APP_PAYLOAD)/lullaby-nvapi64.dll"
 	cp -f $(WINDOWSTATE) "$(APP_PAYLOAD)/lullaby-windowstate.dylib"
 	cp -f $(GLFIXES) "$(APP_PAYLOAD)/lullaby-glfixes.dylib"
+	cp -f $(PACER) "$(APP_PAYLOAD)/lullaby-pacer.dylib"
 	swift build --package-path app -c release --product lullaby-settings
 	cp -f "$$(swift build --package-path app -c release --show-bin-path)/lullaby-settings" \
 		"$(APP_PAYLOAD)/lullaby-settings"

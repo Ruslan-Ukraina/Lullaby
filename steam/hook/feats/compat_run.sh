@@ -1266,6 +1266,18 @@ if [ "$renderer" = moltenvk ]; then
   renderer=wined3d
   echo "renderer: MoltenVK chosen, Vulkan games use the engine's MoltenVK" >> "$log" 2>&1 || true
 fi
+# Direct (lby-ponthree-pacer): the Metal layer of a D3DMetal or DXMT game is made BGR-ordered so that macOS shows it straight to
+# the display, and keeps V-Sync in native full screen. It rides with the "Native full screen" setting (on for every game):
+# off, or another renderer (MoltenVK, mtld3d, WineMetalGL, WineD3D), the layer is left as it is made.
+lullaby_direct=0
+case "$renderer" in
+  d3dmetal|dxmt)
+    native_fullscreen="${LULLABY_NATIVE_FULLSCREEN:-$(env_value LULLABY_NATIVE_FULLSCREEN)}"
+    [ "$native_fullscreen" = 0 ] || lullaby_direct=1 ;;
+esac
+LULLABY_DIRECT=$lullaby_direct
+export LULLABY_DIRECT
+echo "direct: $lullaby_direct (renderer $renderer, native full screen ${native_fullscreen:-on})" >> "$log" 2>&1 || true
 unset WINEDLLPATH_PREPEND
 renderer_dir="$renderer"
 if [ "$renderer" = dxmt ] && [ "$LULLABY_DLSS" = 1 ]; then

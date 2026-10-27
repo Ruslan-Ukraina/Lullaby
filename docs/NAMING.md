@@ -16,7 +16,7 @@
 | Движок (слот Dormison r8, не наш код) | `lby-celestia-engine` | поднимает солнце: основа, не меняется |
 | Хук lsteamclient в `ntdll.dll` (B1, если остаётся) | `lby-discord-ntdllhook` | вмешивается в чужой порядок вещей |
 | Reflex поверх D3DMetal | `lby-rainbowdash-reflex` | скорость отклика |
-| V-Sync пейсер (S8) | `lby-ponthree-pacer` | диджей, ритм кадров |
+| Пейсер: Direct и VRR, V-Sync (S8, S13) | `lby-ponthree-pacer` | диджей, ритм кадров |
 | GCMouse | `lby-octavia-gcmouse` | точные руки |
 | Состояние окна игры (S4) | `lby-pinkiepie-windowstate` | помнит всех и вся (последнее состояние) |
 | Мелкие исправления чужого кода: в Wine (commit charge, HAGS, retina, вид окна для WineMetalGL, звук следует за устройством: серия патчей движка) и в WineMetalGL (32 бита цвета, чёрная первая текстура окна: внедряемая библиотека, исчезает, когда исправят у автора) | `lby-derpy-fixes` | мелкие поправки, доставка |

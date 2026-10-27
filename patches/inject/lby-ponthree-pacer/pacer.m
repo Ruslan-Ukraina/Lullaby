@@ -4,7 +4,15 @@
  * Dormison's WineMetalLayer live in that process, so the Metal calls a game's frames go through can be seen and, later,
  * timed from here without touching either.
  *
- * It does nothing unless asked. The setting is PACER_MODE, read a moment after start (the engine applies the game's
+ * Direct (S13, always on when the run script says so): a game's Metal layer is shown straight to the display ("Direct" in the
+ * Metal HUD) instead of through the window compositor ("Composited") when its pixel format is BGR-ordered; D3DMetal and DXMT
+ * make an RGB-ordered one (RGB10A2, RGBA8), which macOS always composites. With LULLABY_DIRECT=1 (set by compat_run.sh for the
+ * D3DMetal and DXMT renderers while "Native full screen" is on) the format is turned into its BGR twin when the layer is made
+ * (HDR is kept: PQ and extended range work with BGR10A2), and a layer of a window that is in native full screen keeps V-Sync on,
+ * which on a ProMotion display is what makes the refresh follow the game (VRR). A layer that is not Direct-capable, or a window
+ * that is not in native full screen, is left as the game made it: the plain V-Sync of the game's own settings, as before.
+ *
+ * Everything else here does nothing unless asked. The setting is PACER_MODE, read a moment after start (the engine applies the game's
  * env files after this library is loaded), from the environment or from <prefix>/.sevo/lullaby-pacer.conf (KEY=VALUE):
  *   PACER_MODE=off      nothing at all (the default)
  *   PACER_MODE=probe    only counts which present calls the game's Metal path makes, and logs a summary every 5 s
@@ -13,6 +21,7 @@
  *   PACER_CAP=<fps>     with adaptive: never faster than this (0 = no cap)
  *   PACER_LOG=<path>    where the lines go (default: stderr, i.e. the game's log)
  * The modes that change a frame's time come after the probe has said which path to take. */
+#import <AppKit/AppKit.h>
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
 #import <QuartzCore/QuartzCore.h>
@@ -558,12 +567,139 @@ static void summarize(void)
     if (!any) say("no hooked call was made in the last 5 s");
 }
 
+/* ---- Direct ------------------------------------------------------------------------------------------------------------- */
+#define PF_RGBA8 70
+#define PF_RGBA8_SRGB 71
+#define PF_BGRA8 80
+#define PF_BGRA8_SRGB 81
+#define PF_RGB10A2 90
+#define PF_BGR10A2 94
+#define PF_RGBA16F 115
+#define PF_BGRA10_XR 552
+#define PF_BGRA10_XR_SRGB 553
+#define PF_BGR10_XR 554
+
+static IMP gSetFormatOrig, gSetSyncOrig;
+static char kAskedSync, kForceSync, kSeen;
+
+/* LULLABY_DIRECT=1 is set by compat_run.sh for the renderers that make the layer (D3DMetal, DXMT); read at the call, after the engine has applied the env files. */
+static BOOL direct_on(void)
+{
+    const char *v = getenv("LULLABY_DIRECT");
+    return v && !strcmp(v, "1");
+}
+
+static NSUInteger direct_twin(NSUInteger f)
+{
+    switch (f) {
+    case PF_RGB10A2: return PF_BGR10A2;
+    case PF_RGBA8: return PF_BGRA8;
+    case PF_RGBA8_SRGB: return PF_BGRA8_SRGB;
+    }
+    return f;
+}
+
+/* The formats macOS shows straight to the display (measured on macOS 27.2, M4 Pro, arm64 and x86_64, docs/BACKLOG.md S13). */
+static BOOL direct_capable(NSUInteger f)
+{
+    return f == PF_BGRA8 || f == PF_BGRA8_SRGB || f == PF_BGR10A2 || f == PF_RGBA16F || f == PF_BGRA10_XR ||
+           f == PF_BGRA10_XR_SRGB || f == PF_BGR10_XR;
+}
+
+static void direct_setPixelFormat(id self, SEL _cmd, NSUInteger f)
+{
+    NSUInteger g = f;
+    @try {
+        if (direct_on()) g = direct_twin(f);
+        if (g != f && !objc_getAssociatedObject(self, &kSeen)) {
+            objc_setAssociatedObject(self, &kSeen, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+            say("direct: layer %p format %lu -> %lu", self, (unsigned long)f, (unsigned long)g);
+        }
+    } @catch (NSException *e) {
+        g = f;
+    }
+    ((void (*)(id, SEL, NSUInteger))gSetFormatOrig)(self, _cmd, g);
+}
+
+/* The game's own asks are kept; while the layer is Direct in native full screen, V-Sync stays on whatever the game asks. */
+static void direct_setDisplaySync(id self, SEL _cmd, BOOL on)
+{
+    BOOL v = on;
+    objc_setAssociatedObject(self, &kAskedSync, @(on), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    if ([objc_getAssociatedObject(self, &kForceSync) boolValue]) v = YES;
+    ((void (*)(id, SEL, BOOL))gSetSyncOrig)(self, _cmd, v);
+}
+
+static void direct_sync_layer(CALayer *l, BOOL fullscreen, int *changed)
+{
+    Class metal = NSClassFromString(@"CAMetalLayer");
+    if (metal && [l isKindOfClass:metal]) {
+        CAMetalLayer *m = (CAMetalLayer *)l;
+        BOOL want = fullscreen && m.opaque && direct_capable((NSUInteger)m.pixelFormat);
+        BOOL had = [objc_getAssociatedObject(m, &kForceSync) boolValue];
+        if (want != had) {
+            objc_setAssociatedObject(m, &kForceSync, @(want), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+            NSNumber *asked = objc_getAssociatedObject(m, &kAskedSync);
+            m.displaySyncEnabled = want ? YES : (asked ? asked.boolValue : m.displaySyncEnabled);
+            say("direct: layer %p %s (format %lu, V-Sync %s)", m, want ? "is Direct in native full screen" : "left native full screen",
+                (unsigned long)m.pixelFormat, m.displaySyncEnabled ? "on" : "off");
+            (*changed)++;
+        }
+    }
+    for (CALayer *s in [l sublayers]) direct_sync_layer(s, fullscreen, changed);
+}
+
+/* Every second, and when a window enters or leaves native full screen: the layers of the game's windows are looked at again (a
+ * game makes a new layer when its settings change, and that layer is born inside a window that is already full screen). */
+static void direct_tick(void)
+{
+    if (!direct_on()) return;
+    Class wine = NSClassFromString(@"WineWindow");
+    if (!wine) return;
+    @try {
+        for (NSWindow *w in [NSApp windows]) {
+            if (![w isKindOfClass:wine]) continue;
+            int changed = 0;
+            CALayer *root = [[w contentView] layer];
+            if (root) direct_sync_layer(root, ([w styleMask] & NSWindowStyleMaskFullScreen) != 0, &changed);
+        }
+    } @catch (NSException *e) {
+        say("direct: %s", [[e reason] UTF8String]);
+    }
+}
+
+static void direct_install(void)
+{
+    Class metal = NSClassFromString(@"CAMetalLayer");
+    if (!metal) return;
+    Method f = class_getInstanceMethod(metal, @selector(setPixelFormat:));
+    Method s = class_getInstanceMethod(metal, @selector(setDisplaySyncEnabled:));
+    if (!f || !s) return;
+    gSetFormatOrig = method_getImplementation(f);
+    gSetSyncOrig = method_getImplementation(s);
+    method_setImplementation(f, (IMP)direct_setPixelFormat);
+    method_setImplementation(s, (IMP)direct_setDisplaySync);
+    NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
+    for (NSNotificationName n in @[NSWindowDidEnterFullScreenNotification, NSWindowDidExitFullScreenNotification])
+        [nc addObserverForName:n object:nil queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification *note) { (void)note; direct_tick(); }];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        dispatch_source_t t = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_main_queue());
+        dispatch_source_set_timer(t, dispatch_time(DISPATCH_TIME_NOW, NSEC_PER_SEC), NSEC_PER_SEC, NSEC_PER_SEC / 10);
+        dispatch_source_set_event_handler(t, ^{ direct_tick(); });
+        dispatch_resume(t);
+        static dispatch_source_t keep_direct;
+        keep_direct = t;
+        (void)keep_direct;
+    });
+}
+
 __attribute__((constructor)) static void pacer_init(void)
 {
     const char *name = getprogname();
     if (!name || strncmp(name, "wine", 4) || !strcmp(name, "wineserver")) return;   /* the Wine loader's processes only */
     mach_timebase_info(&gTimebase);
     gQueue = dispatch_queue_create("lullaby.pacer", DISPATCH_QUEUE_SERIAL);
+    direct_install();   /* gated at each call by LULLABY_DIRECT, which the engine has applied by then */
     /* The engine applies the game's env files a little after this library is loaded: look then. */
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)), gQueue, ^{
         NSString *mode = setting(@"PACER_MODE") ?: @"off";
