@@ -1582,7 +1582,7 @@ if [ -f "\$window_state" ]; then
   export DYLD_INSERT_LIBRARIES="\$window_state\${DYLD_INSERT_LIBRARIES:+:\$DYLD_INSERT_LIBRARIES}"
   export LULLABY_WINDOW_STATE_FILE="$WINEPREFIX/.sevo/lullaby-window.json"
 fi
-# Two faults of WineMetalGL worked around (lby-derpy-glfixes): the library does nothing unless the process runs
+# Two faults of WineMetalGL worked around (lby-derpy-fixes): the library does nothing unless the process runs
 # WineMetalGL; LULLABY_GL_COLOR_BITS=0 and LULLABY_GL_CLEAR=0 as launch options turn them off for a run.
 glfixes="$HOME/Library/Application Support/lullaby/lullaby-glfixes.dylib"
 if [ -f "\$glfixes" ]; then

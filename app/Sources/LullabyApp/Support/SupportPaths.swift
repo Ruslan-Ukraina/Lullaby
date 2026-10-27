@@ -46,7 +46,7 @@ enum SupportPaths {
     /// The window-state library injected into a game's Wine loader (patches/inject/lby-pinkiepie-windowstate/).
     static var windowState: URL { support.appending(path: windowStateName) }
     static let windowStateName = "lullaby-windowstate.dylib"
-    /// The WineMetalGL workarounds injected into a game's Wine loader (patches/inject/lby-derpy-glfixes/).
+    /// The WineMetalGL workarounds injected into a game's Wine loader (patches/lby-derpy-fixes/).
     static var glFixes: URL { support.appending(path: glFixesName) }
     static let glFixesName = "lullaby-glfixes.dylib"
     static let settingsCLIName = "lullaby-settings"

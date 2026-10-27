@@ -1,4 +1,4 @@
-/* lby-derpy-glfixes: two faults of WineMetalGL (OpenGL on Metal) worked around from outside, until the author mends them.
+/* lby-derpy-fixes: two faults of WineMetalGL (OpenGL on Metal) worked around from outside, until the author mends them.
  * Injected into the Wine loader's process (DYLD_INSERT_LIBRARIES, like lby-pinkiepie-windowstate); does nothing unless the
  * process runs WineMetalGL (WINEDLLOVERRIDES names winemetalgl). Uses names only (a symbol, a label), no offsets.
  *

@@ -512,10 +512,10 @@ $(PACER): $(PACER_DIR)/pacer.m
 	codesign -fs - $@
 	@lipo -info $@
 
-# lby-derpy-glfixes (patches/inject/): two faults of WineMetalGL worked around until the author mends them
+# lby-derpy-fixes (patches/inject/): two faults of WineMetalGL worked around until the author mends them
 # (32 colour bits in the pixel formats, a black first window texture). Loaded into the Wine loader's process
 # like the window-state library; does nothing unless the process runs WineMetalGL.
-GLFIXES_DIR   := patches/inject/lby-derpy-glfixes
+GLFIXES_DIR   := patches/lby-derpy-fixes
 GLFIXES       := $(OUT_DIR)/lullaby-glfixes.dylib
 GLFIXES_FLAGS := -mmacosx-version-min=$(MIN_VER) -dynamiclib -O2 -Wall -Wextra -fobjc-arc \
                  -install_name @rpath/lullaby-glfixes.dylib -framework Metal -framework Foundation
