@@ -4,7 +4,7 @@
 # and nothing is installed; the result is two files in OUT. Stock Mesa, no patches.
 #
 #   tools/build-kosmickrisp-local.sh                 # Mesa tag and SDK pinned below
-#   MESA_TAG=mesa-26.2.5 tools/build-kosmickrisp-local.sh
+#   MESA_REF=mesa-26.2.5 tools/build-kosmickrisp-local.sh      # another tag, or a branch such as main
 #
 # Needs, from the owner (Homebrew arm64): meson ninja pkg-config cmake llvm libclc spirv-tools
 # spirv-llvm-translator; and a Python environment with mako packaging pyyaml (PYTHON_VENV, default
@@ -16,7 +16,7 @@
 # this Mac first (arm64), then the driver is cross-built for x86_64 with `-Dmesa-clc=system`.
 set -eu
 repo=$(cd "$(dirname "$0")/.." && pwd)
-MESA_TAG=${MESA_TAG:-mesa-26.2.4}
+MESA_REF=${MESA_REF:-${MESA_TAG:-mesa-26.2.4}}   # a tag (mesa-26.2.4) or a branch (main)
 WORK=${WORK:-$repo/scratch/kk}
 OUT=${OUT:-$WORK/out}
 PYTHON_VENV=${PYTHON_VENV:-$repo/../Workspace/.venv-mesa}
@@ -44,10 +44,13 @@ mkdir -p "$WORK" "$OUT"
 PATH="$WORK/tools/bin:$PYTHON_VENV/bin:$BREW/bin:/usr/bin:/bin:/usr/sbin:/sbin"; export PATH
 
 if [ ! -d "$WORK/mesa/.git" ]; then
-  say "Mesa $MESA_TAG (shallow clone of the official repository)"
-  git clone --quiet --depth 1 --branch "$MESA_TAG" https://gitlab.freedesktop.org/mesa/mesa.git "$WORK/mesa"
+  say "Mesa $MESA_REF (shallow clone of the official repository)"
+  git clone --quiet --depth 1 --branch "$MESA_REF" https://gitlab.freedesktop.org/mesa/mesa.git "$WORK/mesa"
 fi
-[ "$(git -C "$WORK/mesa" describe --tags --exact-match 2>/dev/null || true)" = "$MESA_TAG" ] || { echo "kosmickrisp: $WORK/mesa is not at $MESA_TAG" >&2; exit 1; }
+case "$MESA_REF" in
+  mesa-*) [ "$(git -C "$WORK/mesa" describe --tags --exact-match 2>/dev/null || true)" = "$MESA_REF" ] || { echo "kosmickrisp: $WORK/mesa is not at $MESA_REF" >&2; exit 1; } ;;
+esac
+mesa_commit=$(git -C "$WORK/mesa" rev-parse --short=10 HEAD)
 
 say "static SPIRV-Tools (x86_64 and arm64) out of the SDK's installer archive"
 if [ ! -f "$WORK/sysroot/lib/libSPIRV-Tools.a" ]; then
@@ -151,4 +154,4 @@ cat > "$OUT/kosmickrisp_icd.json" <<'EOF'
   }
 }
 EOF
-say "built: $OUT/libvulkan_kosmickrisp.dylib ($(lipo -info "$OUT/libvulkan_kosmickrisp.dylib" | sed 's/.*are: //;s/.*architecture: //'), $MESA_TAG, sha256 $(shasum -a 256 "$OUT/libvulkan_kosmickrisp.dylib" | cut -c1-16)...)"
+say "built: $OUT/libvulkan_kosmickrisp.dylib ($(lipo -info "$OUT/libvulkan_kosmickrisp.dylib" | sed 's/.*are: //;s/.*architecture: //'), $MESA_REF at $mesa_commit, sha256 $(shasum -a 256 "$OUT/libvulkan_kosmickrisp.dylib" | cut -c1-16)...)"
