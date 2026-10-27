@@ -1,0 +1,66 @@
+ENG-12  A program in native full screen is told the size it has, not the size it drew at.
+
+dlls/winemac.drv/cocoa_window.m (winemac.so). Lullaby, 2026-10-27. LGPL-2.1-or-later like Wine.
+
+What: a window the engine lets scale (presentationScalable: a program that refused a resize, or a borderless window
+shown as a window) keeps Wine's size and fits it into the real one. Native full screen is below the menu bar and notch
+(1512x949 points on a 14" MacBook Pro), the program's borderless window was the whole screen (1512x982): the engine fitted
+982 into 949 (scale 0.966), left a black strip at the side and a stale line at the bottom, and the program never heard of
+its new size (windowDidResize posted the size Wine already believed in). Now, in native full screen and outside a drag,
+windowDidResize posts the real frame (fullscreen = TRUE). The program gets its WM_SIZE, answers with setFrameFromWine, and
+the stage is 1:1 again. Leaving full screen posts the old frame as before (windowWillExitFullScreen).
+Requires: nothing. Used by: windowstate asking a borderless covering window for native full screen (S12).
+Other bases: stock Wine has no scaling stage; the patch is for Dormison's cocoa_window.m only.
+Test: RE9 (D3DMetal) goes to native full screen: HUD 3024x1898, picture fills the screen, no side strip
+(layer-dump: no 0.966 transform); ETS2, PEAK and Isaac unchanged.
+Verified on: see ledger (2026-10-27).
+Switch: LULLABY_FULLSCREEN_SIZE=0 keeps the scaled picture; on by default.
+
+diff --git a/dlls/winemac.drv/cocoa_window.m b/dlls/winemac.drv/cocoa_window.m
+--- a/dlls/winemac.drv/cocoa_window.m
++++ b/dlls/winemac.drv/cocoa_window.m
+@@ -1573,6 +1573,12 @@ - (BOOL) isOpaque
+ @end
+ 
+ 
++static BOOL fullscreen_size_reported(void)
++{
++    const char *value = getenv("LULLABY_FULLSCREEN_SIZE");
++    return !value || strcmp(value, "0") != 0;
++}
++
+ @implementation WineWindow
+ 
+     static WineWindow* causing_becomeKeyWindow;
+@@ -4000,6 +4006,9 @@ - (void) windowDidEnterFullScreen:(NSNotification*)notification
+     {
+         enteringFullScreen = FALSE;
+         enteredFullScreenTime = [[NSProcessInfo processInfo] systemUptime];
++        /* The style says full screen only now; the program hears of the size it has. */
++        if (self.stageScales && fullscreen_size_reported())
++            [self windowDidResize:nil skipSizeMove:TRUE];
+         if (pendingOrderOut)
+             [self doOrderOut];
+     }
+@@ -4071,6 +4080,21 @@ - (void)windowDidResize:(NSNotification *)notification skipSizeMove:(BOOL)skipSi
+             [self layoutPresentation];
+         }
+         frame = self.wine_fractionalFrame;
++        /* Native full screen is a size the user chose, not a drag: the program is told it (its own
++           size is the screen below the menu bar and notch), or the stage would keep scaling the
++           size it drew at into it. The switch LULLABY_FULLSCREEN_SIZE=0 keeps the scaled picture. */
++        if (self.stageScales && ([self styleMask] & NSWindowStyleMaskFullScreen) && !exitingFullScreen &&
++            ![self inLiveResize] && fullscreen_size_reported())
++        {
++            frame = self.frame;
++            if (!NSEqualSizes(frame.size, wineFrame.size))
++            {
++                /* The report is Wine's new size; the stage fits it 1:1 from here. */
++                wineFrame = frame;
++                wineContentRect = [self contentRectForFrameRect:frame];
++                [self layoutPresentation];
++            }
++        }
+ 
+         if ([self inLiveResize])
+         {
