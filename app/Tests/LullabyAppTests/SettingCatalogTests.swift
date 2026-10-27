@@ -210,12 +210,12 @@ struct SettingCatalogTests {
         global.retina = true
         var game = ConfigValues()
         game.retina = true
-        game.renderer = .dxmt
+        game.renderer = .auto
         game.gameMode = false
         game.exes = ["a.exe"]
         let kept = SettingCatalog.withoutInherited(game, level: .game, global: global)
         #expect(kept.retina == nil, "the shared value")
-        #expect(kept.renderer == nil, "Lullaby's default renderer")
+        #expect(kept.renderer == nil, "Lullaby's default renderer, Auto")
         #expect(kept.gameMode == false)
         #expect(kept.exes == ["a.exe"])
         #expect(SettingCatalog.withoutInherited(global, level: .global, global: .empty).retina == true)

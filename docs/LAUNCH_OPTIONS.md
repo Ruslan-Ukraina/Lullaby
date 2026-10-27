@@ -14,3 +14,13 @@ remove the line and the default is back. Everything below is on for every game a
 Why they are written into `<prefix>/.sevo/bottle.env` by the run script: the engine applies that file over the process
 environment, so a plain environment variable would lose. `lullaby-settings` writes the file again at the next launch.
 Tests: `steam/hook/tests/overridecheck.sh`.
+
+## Renderer and Vulkan driver (the list in Properties > Compatibility; these variables do the same for one run)
+| Variable | Value | Meaning |
+|---|---|---|
+| `LULLABY_RENDERER=` | `auto` or nothing | Lullaby names the game's API and picks the renderer (the base choice; only here the automatic choice works) |
+| | `d3dmetal`, `dxmt`, `mtld3d`, `winemetalgl` | DX12, DX11, DX9, OpenGL as named; used as it is |
+| | `moltenvk` | Vulkan games on the engine's MoltenVK, no Direct3D layer |
+| | `dxvk`, `wined3d` | no longer in the list; still read from an old setting or launch option |
+| `LULLABY_VULKAN=kosmickrisp` | | Vulkan games on Lullaby's own KosmicKrisp build instead of MoltenVK (experimental, see BACKLOG) |
+

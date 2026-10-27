@@ -109,7 +109,13 @@ public enum PictureFilter: String, Codable, CaseIterable, Sendable {
 /// What draws Direct3D. D3DMetal (Direct3D 11 and 12) is offered once the player has
 /// added Apple's Game Porting Toolkit (D3DMetalStore).
 public enum RendererChoice: String, Codable, CaseIterable, Sendable {
-    case d3dmetal, dxmt, dxvk, wined3d, mtld3d, winemetalgl
+    /// Lullaby names the game's API and picks the renderer (the scout); the base default.
+    case auto
+    case d3dmetal, dxmt, mtld3d, winemetalgl
+    /// Vulkan games on the engine's MoltenVK (no Direct3D layer).
+    case moltenvk
+    /// No longer offered in the list; kept so that a stored choice, a recipe or a launch option still reads.
+    case dxvk, wined3d
 }
 
 /// Dormison's `LinearMouse`.
@@ -255,7 +261,7 @@ public struct ConfigValues: Codable, Equatable, Sendable {
 public enum ConfigDefaults {
     public static let values: ConfigValues = {
         var v = ConfigValues()
-        v.renderer = .dxmt
+        v.renderer = .auto
         v.retina = false
         v.upscaler = .off
         v.metalfx = .off

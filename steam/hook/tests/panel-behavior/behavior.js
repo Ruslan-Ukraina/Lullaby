@@ -26,9 +26,9 @@ for (const form of Object.keys(FORMS)) {
   t.ok(!('label' in r.find(x => x.type === 'Dropdown').props), 'the dropdown carries no label column');
 
   const backends = r.find(x => x.type === 'Dropdown').props.rgOptions;
-  t.ok(backends.map(o => o.label).join(',') === 'Automatic (by the game\'s API),DXMT (DX11),DXVK,WineD3D,mtld3d (DX9),WineMetalGL (OpenGL)',
+  t.ok(backends.map(o => o.label).join(',') === 'Auto,DXMT (DX11),mtld3d (DX9),WineMetalGL (OpenGL),MoltenVK (Vulkan)',
        `the renderers name themselves (${backends.map(o => o.label).join(',')})`);
-  t.ok(backends.map(o => o.data).join(',') === ',dxmt,dxvk,wined3d,mtld3d,winemetalgl',
+  t.ok(backends.map(o => o.data).join(',') === ',dxmt,mtld3d,winemetalgl,moltenvk',
        'the renderer values stay as the run script reads them');
 
   t.ok(nodes('LULLABY_RENDERER=dxvk').find(x => x.type === 'Dropdown').props.selectedOption === 'dxvk',

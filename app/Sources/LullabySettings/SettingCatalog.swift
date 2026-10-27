@@ -165,9 +165,9 @@ public enum SettingCatalog {
     public static let all: [Setting] = [
         .choice(
             .renderer, in: .picture, levels: [.game], quick: 1, key: \.renderer,
-            labels: [(.d3dmetal, .same("D3DMetal (DX12)")), (.dxmt, .same("DXMT (DX11)")), (.dxvk, .same("DXVK")),
-                     (.wined3d, .same("WineD3D")), (.mtld3d, .same("mtld3d (DX9)")),
-                     (.winemetalgl, .same("WineMetalGL (OpenGL)"))],
+            labels: [(.auto, L10n("Auto", uk: "Авто", ru: "Авто")), (.d3dmetal, .same("D3DMetal (DX12)")),
+                     (.dxmt, .same("DXMT (DX11)")), (.mtld3d, .same("mtld3d (DX9)")),
+                     (.winemetalgl, .same("WineMetalGL (OpenGL)")), (.moltenvk, .same("MoltenVK (Vulkan)"))],
             copy: .renderer, carrier: .runScript("LULLABY_RENDERER")),
         .flag(.retina, in: .picture, quick: 2, key: \.retina, copy: .retina,
               carrier: .registry(values: ["RetinaMode"], marker: "LULLABY_RETINA")),

@@ -1206,6 +1206,8 @@ apiscout_notice_text() { # GAME BACKEND API: the English text, used when lullaby
 # Launch option first (the Steam page's renderer list, or the old CX_GRAPHICS_BACKEND
 # some games still carry), then the game's Game Settings.
 renderer="${LULLABY_RENDERER:-${CX_GRAPHICS_BACKEND:-$(env_value LULLABY_RENDERER)}}"
+# "auto" is the base choice of the list: nothing chosen, the scout below names the renderer.
+case "$renderer" in auto) renderer="" ;; esac
 # The API scout (patches/inject/lby-spitfire-apiscout) names the API the game will draw with and
 # so the renderer, unless the player chose one (launch option or Game Settings): that choice wins.
 # Its places are remembered in the game's compatdata (lullaby-apiscout), nowhere in Steam.
@@ -1241,10 +1243,18 @@ fi
 [ -n "$LULLABY_D3DMETAL" ] || LULLABY_D3DMETAL=$(env_value LULLABY_D3DMETAL)
 case "$renderer" in
   dxmt|dxvk|wined3d|d3dmetal|mtld3d|winemetalgl) ;;
+  moltenvk) ;;
   *)
     echo "=== unknown renderer $renderer, using DXMT ===" >> "$log" 2>&1 || true
     renderer=dxmt ;;
 esac
+# MoltenVK in the list: Vulkan games on the engine's own MoltenVK, no Direct3D layer (nothing is put on the dll path).
+renderer_moltenvk=0
+if [ "$renderer" = moltenvk ]; then
+  renderer_moltenvk=1
+  renderer=wined3d
+  echo "renderer: MoltenVK chosen, Vulkan games use the engine's MoltenVK" >> "$log" 2>&1 || true
+fi
 unset WINEDLLPATH_PREPEND
 renderer_dir="$renderer"
 if [ "$renderer" = dxmt ] && [ "$LULLABY_DLSS" = 1 ]; then
@@ -1289,6 +1299,7 @@ vk_icd="$wine_unix/vulkan/icd.d/MoltenVK_icd.json"
 # LULLABY_VULKAN=kosmickrisp (launch option or Game Settings file) takes Lullaby's own x86_64 build of
 # Mesa's KosmicKrisp from components/kosmickrisp instead; without it, MoltenVK stays.
 vk_driver="${LULLABY_VULKAN:-$(env_value LULLABY_VULKAN)}"
+[ "$renderer_moltenvk" = 1 ] && vk_driver=moltenvk
 if [ "$vk_driver" = kosmickrisp ]; then
   if [ -f "$support/components/kosmickrisp/kosmickrisp_icd.json" ]; then
     vk_icd="$support/components/kosmickrisp/kosmickrisp_icd.json"

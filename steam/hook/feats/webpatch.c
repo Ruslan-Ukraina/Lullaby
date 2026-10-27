@@ -139,12 +139,11 @@ static int out_expand(lb_out_t *o, const char *replace, const lb_cap_t *caps) {
     "ps.forEach(p=>{if(p[1])a.unshift(p[0]+\"=\"+p[1])});" \
     "SteamClient.Apps.SetAppLaunchOptions(t.unAppID,a.join(\" \"))}," \
     "b=g(\"LULLABY_RENDERER\")," \
-    "B=[{data:\"\",label:\"Automatic (by the game's API)\"}," \
+    "B=[{data:\"\",label:\"Auto\"}," \
     "{data:\"dxmt\",label:\"DXMT (DX11)\"}," \
-    "{data:\"dxvk\",label:\"DXVK\"}," \
-    "{data:\"wined3d\",label:\"WineD3D\"}," \
     "{data:\"mtld3d\",label:\"mtld3d (DX9)\"}," \
-    "{data:\"winemetalgl\",label:\"WineMetalGL (OpenGL)\"}];" \
+    "{data:\"winemetalgl\",label:\"WineMetalGL (OpenGL)\"}," \
+    "{data:\"moltenvk\",label:\"MoltenVK (Vulkan)\"}];" \
     "if(t.unAppID<2147483648&&(t.vecPlatforms||[]).indexOf(\"osx\")>=0" \
     "&&!t.strCompatToolName)return null;" \
     "o!==r&&SteamClient.Apps.SetAppLaunchOptions(t.unAppID,o);" \

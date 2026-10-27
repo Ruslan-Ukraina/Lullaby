@@ -122,10 +122,14 @@ extension SettingCopy {
     static let renderer = SettingCopy(
         L10n("Renderer", uk: "Рендерер", ru: "Рендерер"),
         help: SettingHelp(
-            L10n("How the game's graphics (Direct3D) are shown on your Mac. If a game looks wrong or won't start, try another option.",
-                 uk: "Як графіка гри (Direct3D) показується на вашому Mac. Якщо гра виглядає неправильно або не запускається, спробуйте інший варіант.",
-                 ru: "Как графика игры (Direct3D) показывается на вашем Mac. Если игра выглядит неправильно или не запускается, попробуйте другой вариант."),
+            L10n("How the game's graphics are shown on your Mac. Leave it on Auto; if a game looks wrong or won't start, try another option.",
+                 uk: "Як графіка гри показується на вашому Mac. Залиште «Авто»; якщо гра виглядає неправильно або не запускається, спробуйте інший варіант.",
+                 ru: "Как графика игры показывается на вашем Mac. Оставьте «Авто»; если игра выглядит неправильно или не запускается, попробуйте другой вариант."),
             entries: [
+                HelpEntry(L10n("Auto", uk: "Авто", ru: "Авто"), L10n(
+                    "Lullaby finds out which graphics API the game uses (from its Steam launch option, its own settings and the last run) and picks the renderer for it. Only in Auto does this work: any other choice is used as it is.",
+                    uk: "Lullaby з'ясовує, яку графіку використовує гра (за пунктом запуску Steam, її власними налаштуваннями та минулим запуском) і сам вибирає рендерер. Лише в режимі «Авто» це працює: будь-який інший вибір застосовується як є.",
+                    ru: "Lullaby выясняет, какую графику использует игра (по пункту запуска Steam, её собственным настройкам и прошлому запуску), и сам выбирает рендерер. Только в режиме «Авто» это работает: любой другой выбор применяется как есть.")),
                 HelpEntry(.same("D3DMetal (DX12)"), L10n(
                     "Apple's Direct3D 11 and 12 from the Game Porting Toolkit you add. Needed for Direct3D 12 games.",
                     uk: "Direct3D 11 і 12 від Apple з Game Porting Toolkit, який ви додаєте. Потрібен для ігор на Direct3D 12.",
@@ -134,14 +138,6 @@ extension SettingCopy {
                     "Direct3D 10 and 11 straight through Metal. The fastest option for most games.",
                     uk: "Direct3D 10 і 11 напряму через Metal. Найшвидший варіант для більшості ігор.",
                     ru: "Direct3D 10 и 11 напрямую через Metal. Самый быстрый вариант для большинства игр.")),
-                HelpEntry(.same("DXVK"), L10n(
-                    "Direct3D 10 and 11 through Vulkan (MoltenVK). Try it if DXMT draws a game wrong.",
-                    uk: "Direct3D 10 і 11 через Vulkan (MoltenVK). Спробуйте, якщо DXMT неправильно малює гру.",
-                    ru: "Direct3D 10 и 11 через Vulkan (MoltenVK). Попробуйте, если DXMT неправильно рисует игру.")),
-                HelpEntry(.same("WineD3D"), L10n(
-                    "Wine's built-in renderer (OpenGL). Direct3D 9 games always use it; Direct3D 11 games only at feature level 9_3.",
-                    uk: "Вбудований рендерер Wine (OpenGL). Ігри на Direct3D 9 завжди йдуть через нього, а Direct3D 11 — лише на рівні 9_3.",
-                    ru: "Встроенный рендерер Wine (OpenGL). Игры на Direct3D 9 всегда идут через него, а Direct3D 11 — только на уровне 9_3.")),
                 HelpEntry(.same("mtld3d (DX9)"), L10n(
                     "Direct3D 9 straight through Metal. Lullaby downloads it from its author the first time a game needs it. Young: try Wine's WineD3D if a game looks wrong.",
                     uk: "Direct3D 9 напряму через Metal. Lullaby завантажує його в автора, коли він уперше знадобиться грі. Молодий проєкт: якщо гра виглядає неправильно, спробуйте WineD3D від Wine.",
@@ -150,6 +146,10 @@ extension SettingCopy {
                     "OpenGL (up to 4.6) straight through Metal, for games that draw with OpenGL. Lullaby downloads it from its author the first time a game needs it.",
                     uk: "OpenGL (до 4.6) напряму через Metal, для ігор, що малюють через OpenGL. Lullaby завантажує його в автора, коли він уперше знадобиться грі.",
                     ru: "OpenGL (до 4.6) напрямую через Metal для игр, которые рисуют через OpenGL. Lullaby скачивает его у автора, когда он впервые понадобится игре.")),
+                HelpEntry(.same("MoltenVK (Vulkan)"), L10n(
+                    "For games that draw with Vulkan: Vulkan through Metal (MoltenVK, part of the engine). The Vulkan driver Lullaby uses today.",
+                    uk: "Для ігор, що малюють через Vulkan: Vulkan через Metal (MoltenVK, частина рушія). Драйвер Vulkan, який Lullaby використовує сьогодні.",
+                    ru: "Для игр, которые рисуют через Vulkan: Vulkan через Metal (MoltenVK, часть движка). Драйвер Vulkan, который Lullaby использует сегодня.")),
             ],
             footnote: L10n("Direct3D 12 needs D3DMetal from Apple's Game Porting Toolkit. You add it yourself.",
                            uk: "Для Direct3D 12 потрібен D3DMetal із Game Porting Toolkit від Apple. Ви додаєте його самі.",
