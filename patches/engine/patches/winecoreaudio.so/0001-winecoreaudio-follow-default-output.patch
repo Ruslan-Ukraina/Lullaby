@@ -4,16 +4,23 @@ dlls/winecoreaudio.drv/coreaudio.c (winecoreaudio.so). Lullaby, 2026-10-27. LGPL
 
 What: the driver binds a stream's audio unit to one device (kAudioOutputUnitProperty_CurrentDevice) when the stream is opened and
 never looks again, so a game that has no choice of audio device keeps playing on the speakers after headphones are plugged in
-(Windows moves such streams itself). Now a render stream whose device is the default output device when it is opened is kept in a
-list; one listener (kAudioHardwarePropertyDefaultOutputDevice, on a dispatch queue) stops each such unit, points it at the new
-default, sets its format on the unit's input side again, initialises and starts it. The stream's buffers, position and volume are
+(Windows moves such streams itself). Now a render stream whose device is the default output device when it is opened follows it:
+one listener (kAudioHardwarePropertyDefaultOutputDevice) only counts the changes; the stream notices the count at its next call
+from the game (get_current_padding, get_render_buffer) or in its timer thread, makes a new audio unit for the new default device the
+way the first one was made, stops the old unit, puts the new one in its place and starts it. The buffers, position and volume are
 not touched, so the sound goes on from where it was after a gap of a few milliseconds. A stream opened on another device than the
 default, a capture stream and an exclusive choice of the game are left alone.
+Why on the game's thread and not in the listener: in Resident Evil Requiem a question to CoreAudio from the listener's thread
+(the device's buffer sizes, a unit's device) was never answered, so the move never finished and the stream stayed on the
+unplugged device (silence). The same questions from the thread the stream was made on are answered.
+Also: ca_render_cb no longer waits for the stream's lock (silence for that buffer if it is taken): get_latency holds the lock while
+it asks CoreAudio about the device, and a callback waiting there can end in a circle with a unit being stopped.
 Requires: nothing.
 Other bases: the driver is Wine's own; the same change applies to any Wine with winecoreaudio.drv (WineForge too, by hand).
 Test: patches/engine/tests/wasapi-default-follow.c plays a quiet tone on the default device; with WINEDEBUG=+coreaudio the driver says
 "output device A -> B" when the default output changes (plug headphones in and out, or switch the output in System Settings).
-Verified on: Dormison r7, built in scratch/local-bridge/dormison-r7 (2026-10-27): the stream plays; the change of device is checked with the owner (ledger).
+Verified on: Dormison r7, built in scratch/local-bridge/dormison-r7 (2026-10-27): Resident Evil Requiem, default output switched from the
+speakers to the headphones and back, both moves done; heard by the owner on other games; Isaac, ETS 2, PEAK not rechecked after the last change.
 Switch: LULLABY_AUDIO_FOLLOW=0 as a launch option turns it off for a run; on by default (a fix of a plain fault).
 
 diff --git a/dlls/winecoreaudio.drv/coreaudio.c b/dlls/winecoreaudio.drv/coreaudio.c
@@ -27,26 +34,42 @@ diff --git a/dlls/winecoreaudio.drv/coreaudio.c b/dlls/winecoreaudio.drv/coreaud
  #include <math.h>
  #include <unistd.h>
  
-@@ -96,6 +97,7 @@
+@@ -96,6 +97,8 @@
      AudioConverterRef converter;
      AudioStreamBasicDescription dev_desc; /* audio unit format, not necessarily the same as fmt */
      AudioDeviceID dev_id;
-+    BOOL follow_default; /* a render stream opened on the default output device: it moves with it (follow_default_device) */
++    BOOL follow_default; /* a render stream opened on the default output device: it moves with it (follow_check) */
++    int seen_changes, moving;
  
      /* The stream's volume, as a gain per channel of fmt applied to its samples: for a render
       * stream in the render callback, for a capture stream as the captured frames are converted.
-@@ -952,7 +954,143 @@
+@@ -486,7 +489,13 @@
+     struct coreaudio_stream *stream = user;
+     UINT32 to_copy_bytes, to_copy_frames, chunk_bytes, lcl_offs_bytes;
+ 
+-    os_unfair_lock_lock(&stream->lock);
++    /* A callback that waits for the lock can end up in a circle with the thread that holds it: that thread asks CoreAudio
++     * about the device (get_latency) while the unit is being stopped to move it, and the stop waits for this callback.
++     * A callback should not wait: silence for this buffer if the lock is taken. */
++    if(!os_unfair_lock_trylock(&stream->lock)){
++        silence_buffer(stream, data->mBuffers[0].mData, nframes);
++        return noErr;
++    }
+ 
+     if(stream->playing){
+         lcl_offs_bytes = stream->lcl_offs_frames * stream->fmt->nBlockAlign;
+@@ -951,8 +960,132 @@
+ 
      *n_samples_per_sec = rate;
      return S_OK;
- }
++}
 +
 +/* A render stream opened on the default output device goes with it. Without this a game that has no choice of device keeps
-+ * playing on the speakers after headphones are plugged in (Windows moves such streams itself). The listener runs on a dispatch
-+ * queue; the streams that follow are kept in a list under a lock of their own, taken before a stream's lock, never inside it.
-+ * LULLABY_AUDIO_FOLLOW=0 turns it off. */
-+#define MAX_FOLLOWING 64
-+static os_unfair_lock following_lock = OS_UNFAIR_LOCK_INIT;
-+static struct coreaudio_stream *following[MAX_FOLLOWING];
++ * playing on the speakers after headphones are plugged in (Windows moves such streams itself). One listener counts the changes
++ * of the default output device and does nothing else: a question to CoreAudio from the thread it runs on is never answered in
++ * some processes (a game that takes the device first on a change), so the stream itself notices the count at its next call from
++ * the game (or the timer thread) and moves on the game's own thread, as it was made. LULLABY_AUDIO_FOLLOW=0 turns it off. */
++static int default_output_changes;
 +
 +static AudioDeviceID default_output_device(void)
 +{
@@ -62,67 +85,72 @@ diff --git a/dlls/winecoreaudio.drv/coreaudio.c b/dlls/winecoreaudio.drv/coreaud
 +    if(AudioObjectGetPropertyData(kAudioObjectSystemObject, &addr, 0, NULL, &size, &id) != noErr)
 +        return kAudioObjectUnknown;
 +    return id;
-+}
-+
+ }
+ 
++/* A new unit is made the way the stream's first one was, and only then does it take the old one's place. */
 +static void follow_default_device(struct coreaudio_stream *stream, AudioDeviceID new_id)
 +{
++    AudioComponentInstance unit, old_unit;
 +    AudioStreamBasicDescription desc;
 +    AudioConverterRef unused = NULL;
 +    AURenderCallbackStruct input;
 +    unsigned int min_frames, max_frames;
-+    AudioDeviceID old_id = stream->dev_id;
 +    OSStatus sc;
 +
-+    TRACE("stream %p: output device %u -> %u\n", stream, (unsigned int)old_id, (unsigned int)new_id);
- 
-+    /* the unit is stopped before anything of the stream's is touched: a render callback in flight takes the stream's lock */
-+    AudioOutputUnitStop(stream->unit);
-+    AudioUnitUninitialize(stream->unit);
++    TRACE("stream %p: output device %u -> %u\n", stream, (unsigned int)stream->dev_id, (unsigned int)new_id);
 +
-+    sc = AudioUnitSetProperty(stream->unit, kAudioOutputUnitProperty_CurrentDevice,
-+                              kAudioUnitScope_Global, 0, &new_id, sizeof(new_id));
-+    if(sc != noErr){
-+        WARN("Couldn't move the stream to device %u: %x\n", (unsigned int)new_id, (int)sc);
-+        new_id = old_id;
-+        AudioUnitSetProperty(stream->unit, kAudioOutputUnitProperty_CurrentDevice,
-+                             kAudioUnitScope_Global, 0, &new_id, sizeof(new_id));
-+    }
-+
-+    if(new_id != old_id &&
-+       SUCCEEDED(get_device_period_frame_range(new_id, eRender, &min_frames, &max_frames)))
++    if(SUCCEEDED(get_device_period_frame_range(new_id, eRender, &min_frames, &max_frames)))
 +        request_device_period_frame_size(new_id, eRender,
 +                                         max(min_frames, min(stream->period_frames, max_frames)));
 +
-+    /* the format on the unit's input side is set again: the device decides what its output side is */
-+    if(FAILED(ca_setup_audiounit(eRender, stream->unit, stream->fmt, &desc, &unused)))
++    if(!(unit = get_audiounit(eRender, new_id))){
++        WARN("Couldn't make an audio unit for device %u, the stream stays where it is\n", (unsigned int)new_id);
++        return;
++    }
++    if(FAILED(ca_setup_audiounit(eRender, unit, stream->fmt, &desc, &unused))){
 +        WARN("Couldn't set the stream's format on device %u\n", (unsigned int)new_id);
++        AudioComponentInstanceDispose(unit);
++        return;
++    }
 +    input.inputProc = ca_render_cb;
 +    input.inputProcRefCon = stream;
-+    AudioUnitSetProperty(stream->unit, kAudioUnitProperty_SetRenderCallback,
-+                         kAudioUnitScope_Input, 0, &input, sizeof(input));
++    AudioUnitSetProperty(unit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 0, &input, sizeof(input));
++    sc = AudioUnitInitialize(unit);
++    if(sc != noErr){
++        WARN("Couldn't initialize the unit for device %u: %x\n", (unsigned int)new_id, (int)sc);
++        AudioComponentInstanceDispose(unit);
++        return;
++    }
 +
-+    sc = AudioUnitInitialize(stream->unit);
-+    if(sc != noErr) WARN("Couldn't initialize after the move: %x\n", (int)sc);
-+    sc = AudioOutputUnitStart(stream->unit);
-+    if(sc != noErr) WARN("Unit failed to start after the move: %x\n", (int)sc);
-+
++    /* the old unit stops first, so that two units do not take the same frames from the buffer */
++    old_unit = stream->unit;
++    AudioOutputUnitStop(old_unit);
 +    os_unfair_lock_lock(&stream->lock);
++    stream->unit = unit;
 +    stream->dev_id = new_id;
 +    stream->dev_desc = desc;
 +    os_unfair_lock_unlock(&stream->lock);
++    sc = AudioOutputUnitStart(unit);
++    if(sc != noErr) WARN("Unit failed to start on device %u: %x\n", (unsigned int)new_id, (int)sc);
++    AudioComponentInstanceDispose(old_unit);
 +}
 +
-+static void default_output_changed(void)
++/* On the game's thread, before the stream's own work: has the default output device changed since this stream looked? */
++static void follow_check(struct coreaudio_stream *stream)
 +{
-+    AudioDeviceID id = default_output_device();
-+    UINT32 i;
++    AudioDeviceID id;
++    int changes;
 +
-+    if(id == kAudioObjectUnknown) return;
-+    os_unfair_lock_lock(&following_lock);
-+    for(i = 0; i < MAX_FOLLOWING; i++)
-+        if(following[i] && following[i]->dev_id != id)
-+            follow_default_device(following[i], id);
-+    os_unfair_lock_unlock(&following_lock);
++    if(!stream->follow_default) return;
++    changes = __atomic_load_n(&default_output_changes, __ATOMIC_SEQ_CST);
++    if(changes == stream->seen_changes) return;
++    if(__atomic_exchange_n(&stream->moving, 1, __ATOMIC_SEQ_CST)) return;   /* another thread is on it */
++
++    stream->seen_changes = changes;
++    id = default_output_device();
++    if(id != kAudioObjectUnknown && id != stream->dev_id)
++        follow_default_device(stream, id);
++    __atomic_store_n(&stream->moving, 0, __ATOMIC_SEQ_CST);
 +}
 +
 +static void install_default_listener(void)
@@ -138,7 +166,9 @@ diff --git a/dlls/winecoreaudio.drv/coreaudio.c b/dlls/winecoreaudio.drv/coreaud
 +        };
 +        dispatch_queue_t queue = dispatch_queue_create("org.winehq.coreaudio.default-output", DISPATCH_QUEUE_SERIAL);
 +        OSStatus sc = AudioObjectAddPropertyListenerBlock(kAudioObjectSystemObject, &addr, queue,
-+                                                          ^(UInt32 count, const AudioObjectPropertyAddress *addrs){ default_output_changed(); });
++                                                          ^(UInt32 count, const AudioObjectPropertyAddress *addrs){
++                                                              __atomic_add_fetch(&default_output_changes, 1, __ATOMIC_SEQ_CST);
++                                                          });
 +        if(sc != noErr) WARN("Couldn't listen for a change of the default output device: %x\n", (int)sc);
 +    });
 +}
@@ -146,40 +176,22 @@ diff --git a/dlls/winecoreaudio.drv/coreaudio.c b/dlls/winecoreaudio.drv/coreaud
 +static void follow_default_add(struct coreaudio_stream *stream)
 +{
 +    const char *off = getenv("LULLABY_AUDIO_FOLLOW");
-+    UINT32 i;
 +
 +    if((off && !strcmp(off, "0")) || stream->flow != eRender || stream->dev_id == kAudioObjectUnknown ||
 +       stream->dev_id != default_output_device())
 +        return;
 +
-+    os_unfair_lock_lock(&following_lock);
-+    for(i = 0; i < MAX_FOLLOWING; i++){
-+        if(!following[i]){
-+            following[i] = stream;
-+            stream->follow_default = TRUE;
-+            break;
-+        }
-+    }
-+    os_unfair_lock_unlock(&following_lock);
-+    if(stream->follow_default) install_default_listener();
-+}
-+
-+static void follow_default_remove(struct coreaudio_stream *stream)
-+{
-+    UINT32 i;
-+
-+    if(!stream->follow_default) return;
-+    os_unfair_lock_lock(&following_lock);
-+    for(i = 0; i < MAX_FOLLOWING; i++)
-+        if(following[i] == stream) following[i] = NULL;
-+    os_unfair_lock_unlock(&following_lock);
-+    stream->follow_default = FALSE;
++    install_default_listener();
++    stream->seen_changes = __atomic_load_n(&default_output_changes, __ATOMIC_SEQ_CST);
++    stream->follow_default = TRUE;
++    TRACE("stream %p (device %u, %u ch, %u Hz) follows the default output\n", stream,
++          (unsigned int)stream->dev_id, stream->fmt->nChannels, (unsigned int)stream->fmt->nSamplesPerSec);
 +}
 +
  static NTSTATUS unix_create_stream(void *args)
  {
      struct create_stream_params *params = args;
-@@ -1064,6 +1202,7 @@
+@@ -1064,6 +1197,7 @@
          stream->cap_buffer = malloc(stream->cap_bufsize_frames * stream->fmt->nBlockAlign);
      }
      params->result = S_OK;
@@ -187,12 +199,27 @@ diff --git a/dlls/winecoreaudio.drv/coreaudio.c b/dlls/winecoreaudio.drv/coreaud
  
  end:
      if(FAILED(params->result)){
-@@ -1092,6 +1231,8 @@
-         NtClose(stream->timer_thread);
-     }
+@@ -1627,6 +1761,7 @@
+     struct get_current_padding_params *params = args;
+     struct coreaudio_stream *stream = handle_get_stream(params->stream);
  
-+    follow_default_remove(stream);
-+
-     if(stream->unit){
-         AudioOutputUnitStop(stream->unit);
-         AudioComponentInstanceDispose(stream->unit);
++    follow_check(stream);
+     os_unfair_lock_lock(&stream->lock);
+     *params->padding = get_current_padding_nolock(stream);
+     os_unfair_lock_unlock(&stream->lock);
+@@ -1645,6 +1780,7 @@
+     next.QuadPart = last.QuadPart + stream->period;
+ 
+     while(!stream->please_quit){
++        follow_check(stream);
+         NtSetEvent(stream->event, NULL);
+         NtDelayExecution(FALSE, &delay);
+         NtQueryPerformanceCounter(&last, NULL);
+@@ -1737,6 +1873,7 @@
+     SIZE_T size;
+     UINT32 pad;
+ 
++    follow_check(stream);
+     os_unfair_lock_lock(&stream->lock);
+ 
+     pad = get_current_padding_nolock(stream);
