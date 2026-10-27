@@ -11,12 +11,12 @@ struct PayloadManifestTests {
         let manifest = try PayloadManifest.bundled()
 
         // Eighteen files: six built here (Dormison has no aarch64 unix half), the B1
-        // ntdll pair built from Dormison's source (docs/DECISIONS.md P3-1), ten from
+        // ntdll pair built from Dormison's source (docs/DECISIONS.md P3-1), twelve from
         // pinned Valve client packages.
-        #expect(manifest.entries.count == 18)
+        #expect(manifest.entries.count == 20)
         #expect(manifest.paths(origin: .built).count == 6)
         #expect(manifest.paths(origin: .patched).count == 2)
-        #expect(manifest.paths(origin: .valve).count == 10)
+        #expect(manifest.paths(origin: .valve).count == 12)
 
         // Every payload file is fetchable from Valve or produced here, which is what dropping
         // the steam_api pair bought. A fourth origin would mean a file with no way to get it.
@@ -94,8 +94,8 @@ struct PayloadInspectionTests {
 
         let state = PayloadInspector.inspect(bridge: bridge)
         #expect(state.manifestProblem == nil)
-        #expect(state.expected == 18)
-        #expect(state.present == 10)
+        #expect(state.expected == 20)
+        #expect(state.present == 12)
         #expect(state.missing(origin: .valve).isEmpty)
         #expect(state.missing(origin: .built).count == 6)
         #expect(state.missing(origin: .patched).count == 2)

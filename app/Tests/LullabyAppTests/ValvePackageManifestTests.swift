@@ -10,9 +10,9 @@ struct ValvePackageManifestTests {
     func shippedManifestIsComplete() throws {
         let manifest = try ValvePackageManifest.bundled()
 
-        // Ten files out of two packages, over three hosts that serve identical bytes.
-        #expect(manifest.files.count == 10)
-        #expect(manifest.packages.count == 2)
+        // Twelve files out of three packages, over three hosts that serve identical bytes.
+        #expect(manifest.files.count == 12)
+        #expect(manifest.packages.count == 3)
         #expect(manifest.bases.count == 3)
 
         // Akamai first. The order is the order they are tried in, so it is not

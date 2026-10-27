@@ -728,7 +728,7 @@ install_legacycompat() {
   done
 }
 
-bridge_files="steamclient64.dll steamclient.dll tier0_s64.dll vstdlib_s64.dll"
+bridge_files="steamclient64.dll steamclient.dll tier0_s64.dll vstdlib_s64.dll tier0_s.dll vstdlib_s.dll"
 bridge_files="$bridge_files lsteamclient.dll lsteamclient.so steam.exe"
 if [ -d "$bridge_src" ] && [ -n "$WINEPREFIX" ]; then
   stage_step="bridge staging"
@@ -746,6 +746,14 @@ if [ -d "$bridge_src" ] && [ -n "$WINEPREFIX" ]; then
     cp -c -f "$src" "$prefix_steam/$f" 2>/dev/null || cp -f "$src" "$prefix_steam/$f" || \
       echo "=== failed to stage $f ===" >> "$log" 2>&1
   done
+  # A 32-bit game looks for lsteamclient.dll in i386-windows first; the plain file above is x86_64 and
+  # is refused by a 32-bit process (0xc000007b).
+  if [ -f "$bridge_src/i386-windows/lsteamclient.dll" ]; then
+    mkdir -p "$prefix_steam/i386-windows"
+    cp -c -f "$bridge_src/i386-windows/lsteamclient.dll" "$prefix_steam/i386-windows/lsteamclient.dll" 2>/dev/null || \
+      cp -f "$bridge_src/i386-windows/lsteamclient.dll" "$prefix_steam/i386-windows/lsteamclient.dll" || \
+      echo "=== failed to stage i386-windows/lsteamclient.dll ===" >> "$log" 2>&1
+  fi
   for f in "$prefix_steam"/*.dll "$prefix_steam"/*.so "$prefix_steam"/*.exe; do
     [ -f "$f" ] || continue
     case " $bridge_files " in

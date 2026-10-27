@@ -22,7 +22,7 @@ struct ValveFetcherTests {
         return bridge
     }
 
-    @Test("An empty bridge gets all ten files, each matching its pin")
+    @Test("An empty bridge gets all twelve files, each matching its pin")
     func fillsAnEmptyBridge() async throws {
         let bridge = try scratchBridge()
         defer { try? FileManager.default.removeItem(at: bridge) }
@@ -34,7 +34,7 @@ struct ValveFetcherTests {
         }
         let phases = log.labels
 
-        #expect(outcome.installed.count == 10)
+        #expect(outcome.installed.count == 12)
         #expect(outcome.unchanged.isEmpty)
         #expect(!outcome.wroteNothing)
 
@@ -73,7 +73,7 @@ struct ValveFetcherTests {
         let again = try await ValveFetcher.run(manifest: manifest, bridge: bridge, downloads: TestCache.valvePackages)
 
         #expect(again.installed.isEmpty)
-        #expect(again.unchanged.count == 10)
+        #expect(again.unchanged.count == 12)
         #expect(again.wroteNothing)
     }
 
@@ -95,7 +95,7 @@ struct ValveFetcherTests {
         let repair = try await ValveFetcher.run(manifest: manifest, bridge: bridge, downloads: TestCache.valvePackages)
 
         #expect(Set(repair.installed) == [deleted, corrupted])
-        #expect(repair.unchanged.count == 8)
+        #expect(repair.unchanged.count == 10)
         for path in [deleted, corrupted] {
             let want = manifest.files.first { $0.bridgePath == path }?.sha256
             #expect(Digest.sha256IfPresent(bridge.appending(path: path)) == want)

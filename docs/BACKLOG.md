@@ -253,13 +253,17 @@
 
 ---
 
-## 11. i386-путь lsteamclient не проверен на живой игре — фаза не назначена
+## 11. i386-путь lsteamclient — проверен на Isaac (2026-10-27), осталась проверка Alien Swarm
 
-**Что есть.** Хук B1 в i386 `ntdll.dll` реализован (P3-1) и покрыт `patches/engine/lby-discord-ntdllhook/test-b1.sh`: `steamclient.dll` грузится, `CreateInterface` и точка входа ведут в `lsteamclient`; без B1 — ошибка 126. Интерфейсы i386 на живом клиенте — `lsteamclient/tests/ifacecheck.sh`.
+**Что было.** Хук B1 в i386 `ntdll.dll` и интерфейсы i386 покрыты тестами, но 32-битная игра на живом Steam не запускалась: The Binding of Isaac: Rebirth (`isaac-ng.exe`, 32-бит) молча выходил с кодом 0 при любом рендерере.
 
-**Чего нет.** Проверки на настоящей 32-битной игре: у тебя нет 32-битных игр, проверку Isaac пропустили (твоё решение, 2026-10-06). CS:S запускается как 64-битная (R35).
+**Две причины, обе исправлены (2026-10-27).**
+1. В префикс клались только 64-битные `tier0_s64.dll` и `vstdlib_s64.dll`; 32-битному `steamclient.dll` нужны `tier0_s.dll` и `vstdlib_s.dll`. Теперь они приходят из пакета Valve `bins_win32` (в `valve-packages.manifest`, тот же способ, что для win64) и кладутся в префикс (`compat_run.sh`, `bridge_files`).
+2. 32-битный процесс находил в папке Steam префикса x86_64 `lsteamclient.dll`, отвергал его (`is for arch 8664`, 0xc000007b) и до i386-файла не доходил. i386-файл теперь кладётся в `Steam/i386-windows/` префикса.
 
-**Кандидат:** Alien Swarm (appid 630, бесплатная, 32-битная, Steamworks). Порядок — как в SPIKE_TEST §9.2: «Принудительно использовать → Dormison (NotProton)» до установки, затем engine/spike-check.sh (не в репозитории) 630`, п. 2 — `steamclient.dll: 40 exports …`.
+**Проверено.** Isaac под WineMetalGL: `steamclient.dll: 40 exports and the entry point lead to lsteamclient.dll`, заставка рисуется, 38 конвейеров. Игра идёт под Auto/WineMetalGL; на DXMT не повторяли.
+
+**Чего нет.** Мост для релиза пересобирается с ключом владельца (r4): новые файлы входят в манифест моста. Alien Swarm (appid 630) как вторая 32-битная игра не проверялась. Win32-пакет Valve от 2026-01-29: Valve прекратила развивать 32-битный клиент, версия не должна меняться.
 
 ---
 
