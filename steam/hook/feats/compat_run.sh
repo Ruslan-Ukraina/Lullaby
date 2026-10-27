@@ -794,6 +794,47 @@ place_nvidia_dlls() {
   done
 }
 
+# A component from its author's release, pinned by sha256 and fetched the first time a game needs it
+# into components/<name> (nothing else is trusted: a wrong hash installs nothing, no network leaves
+# the game on Wine's own renderer). Pins are the same as release/components.json.
+mtld3d_url="https://github.com/athei/mtld3d/releases/download/v0.15.1/mtld3d.tar.xz"
+mtld3d_sha256="115d9089323b20010738d2b4835e79e6652d41690c4b360141e8b0433faff972"
+winemetalgl_url="https://github.com/metalsharp/WineMetalGL/releases/download/winemetalgl-3.7.0/winemetalgl-3.7.0-x86_64.tar.gz"
+winemetalgl_sha256="7eaaf6d5525494a855ff368d6ce15b753fd213b7d16254f0eddd45b166eac2af"
+fetch_component() { # NAME URL SHA256 SUBDIR_OF_ARCHIVE_TO_KEEP ("" for the whole archive)
+  fc_name=$1; fc_url=$2; fc_want=$3; fc_keep=$4
+  fc_dest="$support/components/$fc_name"
+  [ "$(cat "$fc_dest/.sha256" 2>/dev/null)" = "$fc_want" ] && return 0
+  fc_tmp=$(mktemp -d "${TMPDIR:-/tmp}/lullaby-$fc_name.XXXXXX") || return 1
+  echo "component $fc_name: fetching $fc_url" >> "$log" 2>&1 || true
+  if curl -fsSL --connect-timeout 8 --max-time 120 -o "$fc_tmp/archive" "$fc_url" 2>>"$log"; then
+    fc_got=$(shasum -a 256 "$fc_tmp/archive" | cut -d' ' -f1)
+    if [ "$fc_got" = "$fc_want" ]; then
+      mkdir -p "$fc_tmp/x"
+      if ! tar -xf "$fc_tmp/archive" -C "$fc_tmp/x" 2>>"$log"; then rm -rf "${fc_tmp:?}"; return 1; fi
+      fc_src="$fc_tmp/x"
+      if [ -n "$fc_keep" ]; then
+        for fc_top in "$fc_tmp/x"/*; do fc_src="$fc_top/$fc_keep"; break; done
+      fi
+      if [ -d "$fc_src" ]; then
+        mkdir -p "$support/components"
+        rm -rf "${fc_dest:?}"
+        if ! mkdir -p "$fc_dest"; then rm -rf "${fc_tmp:?}"; return 1; fi
+        if [ -n "$fc_keep" ]; then mv "$fc_src" "$fc_dest/$fc_keep"; else mv "$fc_src"/* "$fc_dest/"; fi
+        printf '%s' "$fc_want" > "$fc_dest/.sha256"
+        rm -rf "${fc_tmp:?}"
+        echo "component $fc_name: installed" >> "$log" 2>&1 || true
+        return 0
+      fi
+    else
+      echo "component $fc_name: sha256 $fc_got is not the pinned $fc_want, not installed" >> "$log" 2>&1 || true
+    fi
+  else
+    echo "component $fc_name: download failed" >> "$log" 2>&1 || true
+  fi
+  rm -rf "${fc_tmp:?}"
+  return 1
+}
 stage_renderer() {
   dir="$renderers/$1"
   case "$1" in
@@ -916,6 +957,7 @@ stage_renderer() {
       # Its builtin-marked d3d9.dll is found on the dll path like DXMT's; mtld3d.dll is not one of
       # Wine's names, so its copy goes into the prefix too (as winemetal's does above).
       src="$support/components/mtld3d/wine"
+      fetch_component mtld3d "$mtld3d_url" "$mtld3d_sha256" "" || true
       [ -f "$src/x86_64-windows/d3d9.dll" ] && [ -f "$src/x86_64-unix/mtld3d.so" ] || {
         echo "=== mtld3d is not installed in $support/components/mtld3d ===" >> "$log" 2>&1 || true
         return 1; }
@@ -937,9 +979,10 @@ stage_renderer() {
       ;;
     winemetalgl)
       # WineMetalGL (OpenGL on Metal, LGPL-3.0+): the x86_64 package's module/ unpacked in
-      # components/winemetalgl. As its installer does for a prefix: opengl32.dll forwards to
+      # components/winemetalgl (fetched, pinned). As its installer does for a prefix: opengl32.dll forwards to
       # winemetalgl.dll, both in system32 and syswow64, and opengl32 is a native override.
       src="$support/components/winemetalgl/module"
+      fetch_component winemetalgl "$winemetalgl_url" "$winemetalgl_sha256" module || true
       [ -f "$src/x86_64-windows/winemetalgl.dll" ] && [ -f "$src/x86_64-unix/winemetalgl.so" ] || {
         echo "=== WineMetalGL is not installed in $support/components/winemetalgl ===" >> "$log" 2>&1 || true
         return 1; }
@@ -1166,7 +1209,7 @@ renderer="${LULLABY_RENDERER:-${CX_GRAPHICS_BACKEND:-$(env_value LULLABY_RENDERE
 # The API scout (patches/inject/lby-spitfire-apiscout) names the API the game will draw with and
 # so the renderer, unless the player chose one (launch option or Game Settings): that choice wins.
 # Its places are remembered in the game's compatdata (lullaby-apiscout), nowhere in Steam.
-# Backends not integrated yet (mtld3d, KosmicKrisp, WineMetalGL) leave the game to Wine's own.
+# KosmicKrisp is not chosen by it (MoltenVK stays the Vulkan driver, LULLABY_VULKAN opts in).
 scout_user="${WINEPREFIX:-$STEAM_COMPAT_DATA_PATH/pfx}/drive_c/users/steamuser"
 scout_state="$STEAM_COMPAT_DATA_PATH/lullaby-apiscout"
 scout_line=""
@@ -1182,6 +1225,8 @@ if [ -n "$scout_line" ]; then
   scout_backend=$(apiscout_backend "$scout_api")
   case "$scout_backend" in
     d3dmetal|dxmt) scout_renderer=$scout_backend ;;
+    # fetched on first use; a game that cannot have them goes on Wine's own (stage_renderer failing)
+    mtld3d|winemetalgl) scout_renderer=$scout_backend ;;
     *) scout_renderer=wined3d ;;
   esac
   apiscout_changed "$scout_state" 2>/dev/null | while read -r p; do echo "apiscout: changed since the last launch: $p" >> "$log" 2>&1 || true; done

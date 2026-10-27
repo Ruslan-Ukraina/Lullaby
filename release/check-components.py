@@ -60,6 +60,15 @@ def validate(components):
             problems.append(f"{cid}: check has no repo")
         if chk.get("type") == "git-tags" and not chk.get("url", "").startswith("https://"):
             problems.append(f"{cid}: git-tags has no https url")
+        a = c.get("asset")
+        if a:
+            if not str(a.get("url", "")).startswith("https://") or not re.fullmatch(r"[0-9a-f]{64}", a.get("sha256", "")):
+                problems.append(f"{cid}: asset needs an https url and a sha256")
+            run_script = os.path.join(REPO, "steam", "hook", "feats", "compat_run.sh")
+            with open(run_script, encoding="utf-8") as f:
+                text = f.read()
+            if a["url"] not in text or a["sha256"] not in text:
+                problems.append(f"{cid}: the asset url or sha256 differs from the pin in steam/hook/feats/compat_run.sh")
         v = c.get("verify")
         if v:
             path = os.path.join(REPO, v["file"])

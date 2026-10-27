@@ -115,6 +115,28 @@ for c in "0 10" "143 10" "1 120" "1 600" "x 5"; do
 done
 check "notice english fallback" "Game did not start with the dxmt renderer (dx11). In Steam open the game's Properties, Compatibility, and choose another renderer for this game." "$(apiscout_notice_text Game dxmt dx11)"
 
+# 5d. fetching a pinned component (file:// stands in for the author's release)
+sed -n '/^fetch_component() {/,/^}/p' "$runscript" > "$t/fetch.sh"
+[ -s "$t/fetch.sh" ] || { echo "FAIL: no fetch_component in $runscript"; exit 1; }
+# shellcheck source=/dev/null
+. "$t/fetch.sh"
+mkdir -p "$t/pkg/top/module/x86_64-unix" "$t/sup" "$t/tmpdir"
+printf 'dll' > "$t/pkg/top/module/x86_64-unix/a.so"
+tar -czf "$t/pkg.tar.gz" -C "$t/pkg" top
+good=$(shasum -a 256 "$t/pkg.tar.gz" | cut -d' ' -f1)
+support="$t/sup"; log="$t/fetch.log"; TMPDIR="$t/tmpdir"
+export support log TMPDIR  # the sourced function reads support and log
+fetch_component demo "file://$t/pkg.tar.gz" "0000000000000000000000000000000000000000000000000000000000000000" module && r=0 || r=1
+check "wrong hash installs nothing" "1 absent" "$r $([ -e "$t/sup/components/demo" ] && echo present || echo absent)"
+fetch_component demo "file://$t/pkg.tar.gz" "$good" module && r=0 || r=1
+check "good hash installs" "0 yes" "$r $([ -f "$t/sup/components/demo/module/x86_64-unix/a.so" ] && echo yes || echo no)"
+check "marker holds the hash" "$good" "$(cat "$t/sup/components/demo/.sha256")"
+fetch_component demo "file://$t/does-not-exist" "$good" module && r=0 || r=1
+check "second call needs no network" "0" "$r"
+fetch_component other "file://$t/does-not-exist" "$good" module && r=0 || r=1
+check "a failed download installs nothing" "1 absent" "$r $([ -e "$t/sup/components/other" ] && echo present || echo absent)"
+check "no temporary directory is left" "0" "$(find "$t/tmpdir" -mindepth 1 -maxdepth 1 | wc -l | tr -d ' ')"
+
 # 6. backends
 check "backend dx12" d3dmetal "$(apiscout_backend dx12)"
 check "backend dx11" dxmt "$(apiscout_backend dx11)"

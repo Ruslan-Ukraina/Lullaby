@@ -58,6 +58,8 @@ r8 поки не підтримується: його архів містить 
 | Назви й структури для відповіді NVIDIA Reflex | [nvapi](https://github.com/NVIDIA/nvapi) від NVIDIA | MIT |
 | Перехоплення функцій усередині Steam | [Dobby](https://github.com/jmpews/Dobby) від Jmpews | Apache-2.0 |
 | Оновлення застосунку | [Sparkle](https://sparkle-project.org) | MIT |
+| Direct3D 9 через Metal (завантажується в автора, коли знадобиться) | [mtld3d](https://github.com/athei/mtld3d) від athei | zlib |
+| OpenGL через Metal (завантажується в автора, коли знадобиться) | [WineMetalGL](https://github.com/metalsharp/WineMetalGL) від MetalSharp | LGPL-3.0-or-later |
 | D3DMetal (ваш) | Apple Game Porting Toolkit | ліцензія Apple, не поширюється |
 
 Подробиці й те, які файли до якої частини належать, — у [NOTICE](NOTICE).

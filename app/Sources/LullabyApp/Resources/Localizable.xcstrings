@@ -1825,6 +1825,54 @@
       },
       "generatesSymbol": false
     },
+    "Direct3D 9 on Metal, for games that use it. Downloaded from its author the first time a game needs it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct3D 9 on Metal, for games that use it. Downloaded from its author the first time a game needs it."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct3D 9 через Metal для игр, которые его используют. Скачивается у автора, когда он впервые понадобится игре."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Direct3D 9 через Metal, для ігор, що його використовують. Завантажується в автора, коли він уперше знадобиться грі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
+    "OpenGL on Metal, for games that use it. Downloaded from its author the first time a game needs it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenGL on Metal, for games that use it. Downloaded from its author the first time a game needs it."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenGL через Metal для игр, которые его используют. Скачивается у автора, когда он впервые понадобится игре."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenGL через Metal, для ігор, що його використовують. Завантажується в автора, коли він уперше знадобиться грі."
+          }
+        }
+      },
+      "generatesSymbol": false
+    },
     "Steam bridge": {
       "extractionState": "manual",
       "localizations": {

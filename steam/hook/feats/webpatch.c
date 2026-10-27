@@ -140,9 +140,11 @@ static int out_expand(lb_out_t *o, const char *replace, const lb_cap_t *caps) {
     "SteamClient.Apps.SetAppLaunchOptions(t.unAppID,a.join(\" \"))}," \
     "b=g(\"LULLABY_RENDERER\")," \
     "B=[{data:\"\",label:\"Automatic (by the game's API)\"}," \
-    "{data:\"dxmt\",label:\"DXMT\"}," \
+    "{data:\"dxmt\",label:\"DXMT (DX11)\"}," \
     "{data:\"dxvk\",label:\"DXVK\"}," \
-    "{data:\"wined3d\",label:\"WineD3D\"}];" \
+    "{data:\"wined3d\",label:\"WineD3D\"}," \
+    "{data:\"mtld3d\",label:\"mtld3d (DX9)\"}," \
+    "{data:\"winemetalgl\",label:\"WineMetalGL (OpenGL)\"}];" \
     "if(t.unAppID<2147483648&&(t.vecPlatforms||[]).indexOf(\"osx\")>=0" \
     "&&!t.strCompatToolName)return null;" \
     "o!==r&&SteamClient.Apps.SetAppLaunchOptions(t.unAppID,o);" \

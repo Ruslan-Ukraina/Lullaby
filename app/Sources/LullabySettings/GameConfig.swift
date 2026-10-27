@@ -109,7 +109,7 @@ public enum PictureFilter: String, Codable, CaseIterable, Sendable {
 /// What draws Direct3D. D3DMetal (Direct3D 11 and 12) is offered once the player has
 /// added Apple's Game Porting Toolkit (D3DMetalStore).
 public enum RendererChoice: String, Codable, CaseIterable, Sendable {
-    case d3dmetal, dxmt, dxvk, wined3d
+    case d3dmetal, dxmt, dxvk, wined3d, mtld3d, winemetalgl
 }
 
 /// Dormison's `LinearMouse`.
