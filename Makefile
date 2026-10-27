@@ -483,7 +483,7 @@ overlay-shim-tests: $(OVERLAY_SHIM)
 WINDOWSTATE_DIR  := patches/inject/lby-pinkiepie-windowstate
 WINDOWSTATE      := $(OUT_DIR)/lullaby-windowstate.dylib
 WINDOWSTATE_FLAGS := -mmacosx-version-min=$(MIN_VER) -dynamiclib -O2 -Wall -Wextra -fobjc-arc \
-                      -install_name @rpath/lullaby-windowstate.dylib -framework AppKit
+                      -install_name @rpath/lullaby-windowstate.dylib -framework AppKit -framework Metal
 
 windowstate: $(WINDOWSTATE)
 

@@ -19,6 +19,7 @@
  * it is closing, or a window mid-animation, is not the state to come back to. */
 #import <AppKit/AppKit.h>
 #import <QuartzCore/QuartzCore.h>
+#import <Metal/Metal.h>
 #include <dispatch/dispatch.h>
 #include <objc/message.h>
 #include <objc/runtime.h>
@@ -429,10 +430,59 @@ static void keepBundleIcon(void)
     method_setImplementation(m, ignore);
 }
 
+/* WineMetalGL never clears the colour texture it makes for a window ("default framebuffer", private storage), at the
+   start and when the window changes size. A game that swaps before it has drawn (a loading screen) shows whatever the
+   GPU's memory held: a flat magenta rectangle at the switch to native full screen. The texture gets its label the
+   moment it is made, so a texture given that label is cleared to black at once, before WineMetalGL copies the old
+   picture into it. Only in a process that runs WineMetalGL; LULLABY_GL_CLEAR=0 turns it off. */
+static IMP gOrigSetLabel;
+
+static void clearToBlack(id<MTLTexture> texture)
+{
+    static id<MTLCommandQueue> queue;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{ queue = [[texture device] newCommandQueue]; });
+    if (!queue || !(texture.usage & MTLTextureUsageRenderTarget)) return;
+    MTLRenderPassDescriptor *pass = [MTLRenderPassDescriptor renderPassDescriptor];
+    pass.colorAttachments[0].texture = texture;
+    pass.colorAttachments[0].loadAction = MTLLoadActionClear;
+    pass.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 1);
+    pass.colorAttachments[0].storeAction = MTLStoreActionStore;
+    id<MTLCommandBuffer> buffer = [queue commandBuffer];
+    [[buffer renderCommandEncoderWithDescriptor:pass] endEncoding];
+    [buffer commit];
+    [buffer waitUntilCompleted];   /* before WineMetalGL's own commands touch the texture */
+}
+
+static void labelHook(id self, SEL _cmd, NSString *label)
+{
+    ((void (*)(id, SEL, NSString *))gOrigSetLabel)(self, _cmd, label);
+    if ([label isEqualToString:@"default framebuffer"] && [self conformsToProtocol:@protocol(MTLTexture)])
+        clearToBlack((id<MTLTexture>)self);
+}
+
+static void zeroDefaultFramebuffers(void)
+{
+    const char *off = getenv("LULLABY_GL_CLEAR"), *over = getenv("WINEDLLOVERRIDES");
+    if ((off && !strcmp(off, "0")) || !over || !strstr(over, "winemetalgl")) return;
+    id<MTLDevice> device = MTLCreateSystemDefaultDevice();
+    if (!device) return;
+    MTLTextureDescriptor *d = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm width:4 height:4 mipmapped:NO];
+    d.storageMode = MTLStorageModePrivate;
+    d.usage = MTLTextureUsageRenderTarget;
+    id<MTLTexture> probe = [device newTextureWithDescriptor:d];
+    Method m = probe ? class_getInstanceMethod(object_getClass(probe), @selector(setLabel:)) : NULL;
+    if (!m) return;
+    gOrigSetLabel = method_getImplementation(m);
+    method_setImplementation(m, (IMP)labelHook);
+    say("WineMetalGL: new window textures are cleared to black");
+}
+
 __attribute__((constructor)) static void lbws_init(void)
 {
     const char *name = getprogname();
     if (!name || strncmp(name, "wine", 4) || !strcmp(name, "wineserver")) return;   /* the Wine loader's processes only */
+    zeroDefaultFramebuffers();
     const char *keep = getenv("LULLABY_KEEP_BUNDLE_ICON");
     if (keep && !strcmp(keep, "1")) keepBundleIcon();
     const char *off = getenv("LULLABY_WINDOW_STATE");
