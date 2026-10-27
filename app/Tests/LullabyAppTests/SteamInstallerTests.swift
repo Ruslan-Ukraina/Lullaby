@@ -50,6 +50,7 @@ struct SteamInstallerTests {
         try FileManager.default.copyItem(at: dylib, to: appinfo)
         try FileManager.default.copyItem(at: dylib, to: root.appending(path: SupportPaths.nvapiShimName))
         try FileManager.default.copyItem(at: dylib, to: root.appending(path: SupportPaths.windowStateName))
+        try FileManager.default.copyItem(at: dylib, to: root.appending(path: SupportPaths.glFixesName))
         try FileManager.default.copyItem(at: dylib, to: root.appending(path: SupportPaths.settingsCLIName))
 
         try Data("#!/bin/sh\necho shipped\n".utf8)
@@ -75,6 +76,7 @@ struct SteamInstallerTests {
         var appinfo: URL { support.appending(path: "appinfo") }
         var nvapiShim: URL { support.appending(path: SupportPaths.nvapiShimName) }
         var windowState: URL { support.appending(path: SupportPaths.windowStateName) }
+        var glFixes: URL { support.appending(path: SupportPaths.glFixesName) }
         var settingsCLI: URL { support.appending(path: SupportPaths.settingsCLIName) }
         var deployedVersion: URL { support.appending(path: "dylib.version") }
         var backups: URL { support.appending(path: "backups") }
@@ -120,6 +122,7 @@ struct SteamInstallerTests {
             appinfo: fixture.appinfo,
             nvapiShim: fixture.nvapiShim,
             windowState: fixture.windowState,
+            glFixes: fixture.glFixes,
             settingsCLI: fixture.settingsCLI,
             deployedVersion: fixture.deployedVersion,
             backups: fixture.backups,

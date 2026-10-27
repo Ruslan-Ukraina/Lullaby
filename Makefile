@@ -65,7 +65,7 @@ TARGET      := $(OUT_DIR)/lullaby.dylib
 OBJS := $(patsubst %.c,$(OUT_DIR)/%.o,$(SRCS)) $(patsubst %.m,$(OUT_DIR)/%.o,$(OBJC_SRCS))
 DEPS := $(OBJS:.o=.d)
 
-.PHONY: all iconmaker-tests windowstate windowstate-tests apiscout-tests pacer nvapi-shim reflex-sim patchcheck clean rebuild dobby deploy dylib-install sigcheck componentcheck app-payload app app-zip app-config \
+.PHONY: all iconmaker-tests windowstate windowstate-tests glfixes glfixes-tests apiscout-tests pacer nvapi-shim reflex-sim patchcheck clean rebuild dobby deploy dylib-install sigcheck componentcheck app-payload app app-zip app-config \
         anchorcheck callscheck sigdb-fixtures webpatch-fixtures peicon-fixtures panel-behavior app-tests launch-shell \
         tests-list overlay-shim overlay-shim-install overlay-shim-tests \
         overlay-shim-bench iconmaker icon \
@@ -483,7 +483,7 @@ overlay-shim-tests: $(OVERLAY_SHIM)
 WINDOWSTATE_DIR  := patches/inject/lby-pinkiepie-windowstate
 WINDOWSTATE      := $(OUT_DIR)/lullaby-windowstate.dylib
 WINDOWSTATE_FLAGS := -mmacosx-version-min=$(MIN_VER) -dynamiclib -O2 -Wall -Wextra -fobjc-arc \
-                      -install_name @rpath/lullaby-windowstate.dylib -framework AppKit -framework Metal
+                      -install_name @rpath/lullaby-windowstate.dylib -framework AppKit
 
 windowstate: $(WINDOWSTATE)
 
@@ -511,6 +511,42 @@ $(PACER): $(PACER_DIR)/pacer.m
 	lipo -create $(OUT_DIR)/lullaby-pacer.arm64.dylib $(OUT_DIR)/lullaby-pacer.x86_64.dylib -output $@
 	codesign -fs - $@
 	@lipo -info $@
+
+# lby-derpy-glfixes (patches/inject/): two faults of WineMetalGL worked around until the author mends them
+# (32 colour bits in the pixel formats, a black first window texture). Loaded into the Wine loader's process
+# like the window-state library; does nothing unless the process runs WineMetalGL.
+GLFIXES_DIR   := patches/inject/lby-derpy-glfixes
+GLFIXES       := $(OUT_DIR)/lullaby-glfixes.dylib
+GLFIXES_FLAGS := -mmacosx-version-min=$(MIN_VER) -dynamiclib -O2 -Wall -Wextra -fobjc-arc \
+                 -install_name @rpath/lullaby-glfixes.dylib -framework Metal -framework Foundation
+
+glfixes: $(GLFIXES)
+
+$(GLFIXES): $(GLFIXES_DIR)/glfixes.m
+	@mkdir -p $(OUT_DIR)
+	$(CC) -arch arm64 $(GLFIXES_FLAGS) -o $(OUT_DIR)/lullaby-glfixes.arm64.dylib $<
+	$(CC) -arch x86_64 $(GLFIXES_FLAGS) -o $(OUT_DIR)/lullaby-glfixes.x86_64.dylib $<
+	lipo -create $(OUT_DIR)/lullaby-glfixes.arm64.dylib $(OUT_DIR)/lullaby-glfixes.x86_64.dylib -output $@
+	codesign -fs - $@
+	@lipo -info $@
+
+# The library inserted into a program named like the Wine loader that "runs WineMetalGL": the formats a fake core
+# library lists, and a texture with the label WineMetalGL gives its window texture; each way, on and off, both architectures.
+glfixes-tests: $(GLFIXES)
+	@mkdir -p $(OUT_DIR)
+	$(CC) -arch arm64 -arch x86_64 -dynamiclib -o $(OUT_DIR)/libglfakecore.dylib $(GLFIXES_DIR)/tests/fakecore.c
+	@for a in arm64 x86_64; do \
+		$(CC) -arch $$a -mmacosx-version-min=$(MIN_VER) -fobjc-arc -framework Metal -framework Foundation \
+			-o $(OUT_DIR)/wine-glfixes-test.$$a $(GLFIXES_DIR)/tests/glfixes_test.m || exit 1; \
+		export WINEDLLOVERRIDES="opengl32=n;winemetalgl=b"; \
+		DYLD_INSERT_LIBRARIES=$(GLFIXES) $(OUT_DIR)/wine-glfixes-test.$$a formats $(OUT_DIR)/libglfakecore.dylib 32 || exit 1; \
+		LULLABY_GL_COLOR_BITS=0 DYLD_INSERT_LIBRARIES=$(GLFIXES) $(OUT_DIR)/wine-glfixes-test.$$a formats $(OUT_DIR)/libglfakecore.dylib 24 || exit 1; \
+		DYLD_INSERT_LIBRARIES=$(GLFIXES) $(OUT_DIR)/wine-glfixes-test.$$a texture clear || exit 1; \
+		LULLABY_GL_CLEAR=0 DYLD_INSERT_LIBRARIES=$(GLFIXES) $(OUT_DIR)/wine-glfixes-test.$$a texture off || exit 1; \
+		WINEDLLOVERRIDES="opengl32=n" DYLD_INSERT_LIBRARIES=$(GLFIXES) $(OUT_DIR)/wine-glfixes-test.$$a formats $(OUT_DIR)/libglfakecore.dylib 24 || exit 1; \
+		WINEDLLOVERRIDES="opengl32=n" DYLD_INSERT_LIBRARIES=$(GLFIXES) $(OUT_DIR)/wine-glfixes-test.$$a texture off || exit 1; \
+	done
+	@echo "==> glfixes tests: 32 colour bits and a black window texture only in a process that runs WineMetalGL, arm64 and x86_64"
 
 # The decisions in plain C, then the library in a process with a WineWindow, on both architectures, with
 # freed memory scribbled and zombies on: a static that outlives its autorelease pool fails the run.
@@ -673,7 +709,7 @@ bridge:
 	bridge/steam-shim/build.sh
 	@echo "==> Built the bridge, now run: $(MAKE) app-payload"
 
-app-payload: $(TARGET) $(OVERLAY_SHIM) $(ICONMAKER) $(APPINFO) $(NVAPI_SHIM) $(WINDOWSTATE)
+app-payload: $(TARGET) $(OVERLAY_SHIM) $(ICONMAKER) $(APPINFO) $(NVAPI_SHIM) $(WINDOWSTATE) $(GLFIXES)
 	@mkdir -p "$(APP_PAYLOAD)/signatures/macos.arm64"
 	@mkdir -p "$(APP_PAYLOAD)/bridge"
 	cp -f $(TARGET) "$(APP_PAYLOAD)/lullaby.dylib"
@@ -682,6 +718,7 @@ app-payload: $(TARGET) $(OVERLAY_SHIM) $(ICONMAKER) $(APPINFO) $(NVAPI_SHIM) $(W
 	cp -f $(APPINFO) "$(APP_PAYLOAD)/appinfo"
 	cp -f $(NVAPI_SHIM) "$(APP_PAYLOAD)/lullaby-nvapi64.dll"
 	cp -f $(WINDOWSTATE) "$(APP_PAYLOAD)/lullaby-windowstate.dylib"
+	cp -f $(GLFIXES) "$(APP_PAYLOAD)/lullaby-glfixes.dylib"
 	swift build --package-path app -c release --product lullaby-settings
 	cp -f "$$(swift build --package-path app -c release --show-bin-path)/lullaby-settings" \
 		"$(APP_PAYLOAD)/lullaby-settings"

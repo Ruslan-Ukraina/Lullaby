@@ -19,9 +19,7 @@
  * it is closing, or a window mid-animation, is not the state to come back to. */
 #import <AppKit/AppKit.h>
 #import <QuartzCore/QuartzCore.h>
-#import <Metal/Metal.h>
 #include <dispatch/dispatch.h>
-#include <dlfcn.h>
 #include <objc/message.h>
 #include <objc/runtime.h>
 #include <stdarg.h>
@@ -304,26 +302,8 @@ static void tryRestore(NSWindow *w, int attempt)
     }
 }
 
-/* A window whose picture comes from a renderer's own Metal view (WineMetalGL) never has the engine's windowDidDrawContent
-   called, so it stays in the clear, non-opaque state it is created in and its title bar is see-through. The engine's own
-   checkTransparency (what windowDidDrawContent starts) makes it opaque again unless it really needs transparency. */
-static void settleTitlebar(NSWindow *w)
-{
-    SEL check = NSSelectorFromString(@"checkTransparency");
-    if (![w respondsToSelector:check] || !([w styleMask] & NSWindowStyleMaskTitled)) return;
-    for (NSNumber *t in @[@0.5, @2, @6])
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)([t doubleValue] * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            if (![w isOpaque] && [w isVisible]) {
-                ((void (*)(id, SEL))objc_msgSend)(w, check);
-                if ([w isOpaque]) say("title bar: window made opaque (its renderer never drew through the engine)");
-            }
-        });
-}
-
 static void becameMain(NSWindow *w)
 {
-    Class wine = NSClassFromString(@"WineWindow");
-    if (wine && [w isKindOfClass:wine]) settleTitlebar(w);
     if (!isGameWindow(w)) return;
     scheduleAutoFullscreen(w);
     /* A window that only later becomes the screen-covering one, with no notification the library hears. */
@@ -431,100 +411,10 @@ static void keepBundleIcon(void)
     method_setImplementation(m, ignore);
 }
 
-/* WineMetalGL lists its RGBA8 pixel formats with cColorBits 24 (the colour without alpha); NVIDIA, AMD, Intel and Wine's
-   own driver say 32 for the same format, and a game written for them asks for WGL_COLOR_BITS >= 32 and finds no format
-   (Euro Truck Simulator 2: "no devices found"). WineMetalGL's unix side gets the list from the core library with
-   dlsym(wmgl_get_pixel_formats); this library takes that one lookup and gives back a function that fixes the list.
-   Only in a process that runs WineMetalGL; LULLABY_GL_COLOR_BITS=0 turns it off. Goes when WineMetalGL reports 32. */
-struct lbws_wmgl_format {   /* the start of struct wmgl_pixel_format (WineMetalGL 3.x) */
-    int draw_to_window, draw_to_pbuffer, double_buffer, stereo;
-    int color_bits, red_bits, green_bits, blue_bits, alpha_bits;
-};
-typedef unsigned (*lbws_get_formats_t)(struct lbws_wmgl_format *, unsigned, unsigned *);
-static lbws_get_formats_t gRealGetFormats;
-static int gFixColorBits = -1;   /* -1: not decided yet */
-
-static unsigned fixedGetFormats(struct lbws_wmgl_format *formats, unsigned max, unsigned *onscreen)
-{
-    unsigned n = gRealGetFormats(formats, max, onscreen);
-    for (unsigned i = 0; formats && i < n && i < max; i++)
-        if (formats[i].color_bits == 24 && formats[i].alpha_bits == 8) formats[i].color_bits = 32;
-    return n;
-}
-
-static void *lbws_dlsym(void *handle, const char *name)
-{
-    void *p = dlsym(handle, name);
-    if (p && name && !strcmp(name, "wmgl_get_pixel_formats")) {
-        if (gFixColorBits < 0) {
-            const char *off = getenv("LULLABY_GL_COLOR_BITS"), *over = getenv("WINEDLLOVERRIDES");
-            gFixColorBits = !(off && !strcmp(off, "0")) && over && strstr(over, "winemetalgl");
-        }
-        if (gFixColorBits) {
-            gRealGetFormats = (lbws_get_formats_t)p;
-            return (void *)fixedGetFormats;
-        }
-    }
-    return p;
-}
-#define LBWS_INTERPOSE(replacement, replacee) \
-    __attribute__((used)) static struct { const void *r; const void *o; } lbws_interpose_##replacee \
-    __attribute__((section("__DATA,__interpose"))) = { (const void *)(unsigned long)&replacement, (const void *)(unsigned long)&replacee };
-LBWS_INTERPOSE(lbws_dlsym, dlsym)
-
-/* WineMetalGL never clears the colour texture it makes for a window ("default framebuffer", private storage), at the
-   start and when the window changes size. A game that swaps before it has drawn (a loading screen) shows whatever the
-   GPU's memory held: a flat magenta rectangle at the switch to native full screen. The texture gets its label the
-   moment it is made, so a texture given that label is cleared to black at once, before WineMetalGL copies the old
-   picture into it. Only in a process that runs WineMetalGL; LULLABY_GL_CLEAR=0 turns it off. */
-static IMP gOrigSetLabel;
-
-static void clearToBlack(id<MTLTexture> texture)
-{
-    static id<MTLCommandQueue> queue;
-    static dispatch_once_t once;
-    dispatch_once(&once, ^{ queue = [[texture device] newCommandQueue]; });
-    if (!queue || !(texture.usage & MTLTextureUsageRenderTarget)) return;
-    MTLRenderPassDescriptor *pass = [MTLRenderPassDescriptor renderPassDescriptor];
-    pass.colorAttachments[0].texture = texture;
-    pass.colorAttachments[0].loadAction = MTLLoadActionClear;
-    pass.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 1);
-    pass.colorAttachments[0].storeAction = MTLStoreActionStore;
-    id<MTLCommandBuffer> buffer = [queue commandBuffer];
-    [[buffer renderCommandEncoderWithDescriptor:pass] endEncoding];
-    [buffer commit];
-    [buffer waitUntilCompleted];   /* before WineMetalGL's own commands touch the texture */
-}
-
-static void labelHook(id self, SEL _cmd, NSString *label)
-{
-    ((void (*)(id, SEL, NSString *))gOrigSetLabel)(self, _cmd, label);
-    if ([label isEqualToString:@"default framebuffer"] && [self conformsToProtocol:@protocol(MTLTexture)])
-        clearToBlack((id<MTLTexture>)self);
-}
-
-static void zeroDefaultFramebuffers(void)
-{
-    const char *off = getenv("LULLABY_GL_CLEAR"), *over = getenv("WINEDLLOVERRIDES");
-    if ((off && !strcmp(off, "0")) || !over || !strstr(over, "winemetalgl")) return;
-    id<MTLDevice> device = MTLCreateSystemDefaultDevice();
-    if (!device) return;
-    MTLTextureDescriptor *d = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm width:4 height:4 mipmapped:NO];
-    d.storageMode = MTLStorageModePrivate;
-    d.usage = MTLTextureUsageRenderTarget;
-    id<MTLTexture> probe = [device newTextureWithDescriptor:d];
-    Method m = probe ? class_getInstanceMethod(object_getClass(probe), @selector(setLabel:)) : NULL;
-    if (!m) return;
-    gOrigSetLabel = method_getImplementation(m);
-    method_setImplementation(m, (IMP)labelHook);
-    say("WineMetalGL: new window textures are cleared to black");
-}
-
 __attribute__((constructor)) static void lbws_init(void)
 {
     const char *name = getprogname();
     if (!name || strncmp(name, "wine", 4) || !strcmp(name, "wineserver")) return;   /* the Wine loader's processes only */
-    zeroDefaultFramebuffers();
     const char *keep = getenv("LULLABY_KEEP_BUNDLE_ICON");
     if (keep && !strcmp(keep, "1")) keepBundleIcon();
     const char *off = getenv("LULLABY_WINDOW_STATE");

@@ -64,6 +64,7 @@ enum SteamInstaller {
         appinfo: URL = SupportPaths.appinfo,
         nvapiShim: URL = SupportPaths.nvapiShim,
         windowState: URL = SupportPaths.windowState,
+        glFixes: URL = SupportPaths.glFixes,
         settingsCLI: URL = SupportPaths.settingsCLI,
         deployedVersion: URL = SupportPaths.deployedVersion,
         backups: URL = SupportPaths.backups,
@@ -124,6 +125,7 @@ enum SteamInstaller {
         try install(payload.appinfo, at: appinfo)
         try install(payload.nvapiShim, at: nvapiShim)
         try install(payload.windowState, at: windowState)
+        try install(payload.glFixes, at: glFixes)
         try install(payload.settingsCLI, at: settingsCLI)
         try installRunScript(payload.runScript, at: runScript)
 

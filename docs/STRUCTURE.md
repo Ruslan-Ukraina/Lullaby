@@ -10,7 +10,7 @@ Rule: a directory or link that is not in this table is not created; a new one is
 | `patches/` | everything added to other people's code (see PROJECT_RULES) | see below | | Patches |
 | `patches/REGISTRY.md` | the single registry: ID, origin, verified releases, switch | | | Patches |
 | `patches/engine/` | patches to Dormison modules per module, `lby-discord-ntdllhook`, the bridge as links (`lby-applejack-steambridge` -> `bridge/lsteamclient`, `lby-bigmack-steamexe` -> `bridge/steam-shim`), rebuild/rehearsal tools, probe programs | `.patch` with header, tests | whole foreign sources | Patches |
-| `patches/inject/` | components injected without rebuilding the engine (`lby-rainbowdash-reflex`, `lby-pinkiepie-windowstate`, `lby-ponthree-pacer`, `lby-spitfire-apiscout`), and `lby-rarity-icons`, links to the icon maker that lives in `app/helpers/` | one directory per component | | Patches |
+| `patches/inject/` | components injected without rebuilding the engine (`lby-rainbowdash-reflex`, `lby-pinkiepie-windowstate`, `lby-ponthree-pacer`, `lby-spitfire-apiscout`, `lby-derpy-glfixes`), and `lby-rarity-icons`, links to the icon maker that lives in `app/helpers/` | one directory per component | | Patches |
 | `patches/steam/` | links to the components that patch Steam: `lby-luna-steamhook` -> `steam/hook`, `lby-spike-overlay` -> `steam/overlay` | links only | real files | Patches |
 | `steam/hook/` | library loaded into Steam: hooks, resolver, Steam Play entry, panel, game launch script | C/ObjC/JS/sh, tests, fixtures | | App |
 | `steam/overlay/` | Steam overlay in games | `.m`, tests | | Patches |
