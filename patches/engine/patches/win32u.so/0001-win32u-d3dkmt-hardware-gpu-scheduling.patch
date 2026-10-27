@@ -6,6 +6,7 @@ LGPL-2.1-or-later like Wine.
 Why: NVIDIA Streamline asks KMTQAITYPE_WDDM_2_7_CAPS and offers DLSS Frame Generation only when
 HwSchSupported, HwSchEnabled and HwSchEnabledByDefault are set; D3DMetal runs the generation on Metal and
 the Mac's GPU schedules its own work, so the answer is "on" (0x7). Plain DLSS does not need it.
+Verified on: Dormison r7, built into bridge-dormison-r7-1 (2026-10-23), which the owner ran with RE9, PEAK and ETS2 (not each patch on its own).
 Switch: none (the query is answered the same for every program). Requires: nothing.
 Other bases: applies unchanged to all eight WineForge releases (patches/engine/rehearse.sh, 2026-10-18).
 Test: patches/engine/tests/d3dkmt-hags-caps.c (D3DKMTQueryAdapterInfo, WDDM_2_7_CAPS: expects 0x7); in a game

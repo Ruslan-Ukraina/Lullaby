@@ -15,6 +15,8 @@ Requires: nothing in the patch; Reflex needs patches/inject/lby-rainbowdash-refl
 Other bases: FAIL on every WineForge release; it patches Dormison's WineMetalLayer, WineForge's
 d3dmetal_objc.m is different code. Needs rewriting for it; Reflex and V-Sync depend on it.
 Test: make reflex-sim (the feed is simulated there); in a game, lullaby-nvapi.log.
+Verified on: Dormison r7, built into bridge-dormison-r7-1 (2026-10-23), which the owner ran with RE9, PEAK and ETS2 (not each patch on its own).
+Switch: LULLABY_FORCE_VSYNC=1 and LULLABY_PRESENT_FEED=1; both are off unless set (the game settings' V-Sync and Reflex switches set them).
 
 diff --git a/dlls/winemac.drv/d3dmetal_objc.m b/dlls/winemac.drv/d3dmetal_objc.m
 index 777a351e975..7942d075858 100644

@@ -8,6 +8,7 @@ and the like: the toolkit passes DXGI_SWAP_CHAIN_DESC1's width and height and ta
 into. The answer is a visible top-level window of this process: the one whose client area is the
 swapchain's size (the foreground one if several are), else the foreground window if it is ours, else the
 largest; NULL if the process has none. ntdll reaches it through ENG-05.
+Verified on: Dormison r7, built into bridge-dormison-r7-1 (2026-10-23), which the owner ran with RE9, PEAK and ETS2 (not each patch on its own).
 Switch: none. Requires: ENG-05.
 Other bases: applies to WineForge only with a shifted context (fuzz) on all eight releases, and is useless
 there unless ENG-05 is: WineForge has its own d3dmetal.c.
