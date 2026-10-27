@@ -1241,6 +1241,16 @@ echo "WINEDLLOVERRIDES=$WINEDLLOVERRIDES" >> "$log" 2>&1 || true
 # bundle's copy of the loader, so without this it takes whatever /usr/local offers
 # (KosmicKrisp, another MoltenVK) and DXVK fails on VK_KHR_surface (DECISIONS P7A-18).
 vk_icd="$wine_unix/vulkan/icd.d/MoltenVK_icd.json"
+# LULLABY_VULKAN=kosmickrisp (launch option or Game Settings file) takes Lullaby's own x86_64 build of
+# Mesa's KosmicKrisp from components/kosmickrisp instead; without it, MoltenVK stays.
+vk_driver="${LULLABY_VULKAN:-$(env_value LULLABY_VULKAN)}"
+if [ "$vk_driver" = kosmickrisp ]; then
+  if [ -f "$support/components/kosmickrisp/kosmickrisp_icd.json" ]; then
+    vk_icd="$support/components/kosmickrisp/kosmickrisp_icd.json"
+  else
+    echo "=== KosmicKrisp is not installed in $support/components/kosmickrisp, MoltenVK stays ===" >> "$log" 2>&1 || true
+  fi
+fi
 if [ -f "$vk_icd" ]; then
   export VK_DRIVER_FILES="$vk_icd" VK_ICD_FILENAMES="$vk_icd"
   echo "vulkan: $vk_icd" >> "$log" 2>&1 || true
