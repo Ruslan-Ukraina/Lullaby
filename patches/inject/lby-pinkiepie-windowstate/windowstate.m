@@ -350,10 +350,27 @@ static void dumpLayer(CALayer *l, int depth)
     if ([NSStringFromClass([l class]) containsString:@"Host"]) {
         @try { extra = [NSString stringWithFormat:@" contextId=%@", [l valueForKey:@"contextId"]]; } @catch (NSException *e) {}
     }
-    say("layer %*s%s frame=%s bounds=%s position=%s anchor=%s transform=[a %.3f d %.3f tx %.1f ty %.1f]%s", depth * 2, "",
+    NSMutableString *props = [NSMutableString stringWithFormat:@" opaque=%d opacity=%.2f scale=%.1f bg=%d clip=%d hidden=%d",
+        (int)[l isOpaque], [l opacity], [l contentsScale], [l backgroundColor] != NULL, (int)[l masksToBounds], (int)[l isHidden]];
+    if ([l isKindOfClass:NSClassFromString(@"CAMetalLayer")]) {
+        CGColorSpaceRef cs = (__bridge CGColorSpaceRef)[l valueForKey:@"colorspace"];
+        CFStringRef name = cs ? CGColorSpaceCopyName(cs) : NULL;
+        [props appendFormat:@" colorspace=%@ edrMetadata=%d", name ? (__bridge NSString *)name : @"nil", [l valueForKey:@"EDRMetadata"] != nil];
+        if (name) CFRelease(name);
+    }
+    for (NSString *key in @[@"drawableSize", @"framebufferOnly", @"pixelFormat", @"displaySyncEnabled", @"wantsExtendedDynamicRangeContent",
+                            @"maximumDrawableCount", @"presentsWithTransaction", @"allowsNextDrawableTimeout"]) {
+        @try {
+            if ([NSStringFromClass([l class]) containsString:@"Metal"] || [l isKindOfClass:NSClassFromString(@"CAMetalLayer")]) {
+                id v = [l valueForKey:key];
+                if (v) [props appendFormat:@" %@=%@", key, [v isKindOfClass:[NSValue class]] && !strcmp([v objCType], @encode(CGSize)) ? NSStringFromSize(NSSizeFromCGSize([v sizeValue])) : v];
+            }
+        } @catch (NSException *e) {}
+    }
+    say("layer %*s%s frame=%s bounds=%s position=%s anchor=%s transform=[a %.3f d %.3f tx %.1f ty %.1f]%s%s", depth * 2, "",
         [NSStringFromClass([l class]) UTF8String], [NSStringFromRect(NSRectFromCGRect([l frame])) UTF8String],
         [NSStringFromRect(NSRectFromCGRect([l bounds])) UTF8String], [NSStringFromPoint(NSPointFromCGPoint([l position])) UTF8String],
-        [NSStringFromPoint(NSPointFromCGPoint([l anchorPoint])) UTF8String], t.m11, t.m22, t.m41, t.m42, [extra UTF8String]);
+        [NSStringFromPoint(NSPointFromCGPoint([l anchorPoint])) UTF8String], t.m11, t.m22, t.m41, t.m42, [extra UTF8String], [props UTF8String]);
     if (depth < 6) for (CALayer *s in [l sublayers]) dumpLayer(s, depth + 1);
 }
 
@@ -361,6 +378,16 @@ static void dumpWindow(NSWindow *w)
 {
     say("layer dump of a window, frame %s, content view frame %s, native %d", [NSStringFromRect([w frame]) UTF8String],
         [NSStringFromRect([[w contentView] frame]) UTF8String], (int)isNative(w));
+    say("window opaque=%d alpha=%.2f level=%ld style=0x%lx behavior=0x%lx shadow=%d bg=%s screen=%s occlusion=0x%lx toolbar=%d cursor-hidden-frame=%s",
+        (int)[w isOpaque], [w alphaValue], (long)[w level], (unsigned long)[w styleMask], (unsigned long)[w collectionBehavior], (int)[w hasShadow],
+        [[[w backgroundColor] description] UTF8String], [[[[w screen] localizedName] description] UTF8String], (unsigned long)[w occlusionState],
+        [w toolbar] != nil, [NSStringFromRect([[w screen] frame]) UTF8String]);
+    say("presentation options 0x%lx, content view class %s opaque=%d", (unsigned long)[NSApp presentationOptions],
+        [NSStringFromClass([[w contentView] class]) UTF8String], (int)[[w contentView] isOpaque]);
+    for (NSWindow *o in [NSApp windows])
+        say("app window %p%s class=%s frame=%s level=%ld visible=%d opaque=%d alpha=%.2f onActiveSpace=%d style=0x%lx", o, o == w ? " (the game's)" : "",
+            [NSStringFromClass([o class]) UTF8String], [NSStringFromRect([o frame]) UTF8String], (long)[o level], (int)[o isVisible], (int)[o isOpaque],
+            [o alphaValue], (int)[o isOnActiveSpace], (unsigned long)[o styleMask]);
     CALayer *root = [[w contentView] layer];
     if (root) dumpLayer(root, 0);
 }
