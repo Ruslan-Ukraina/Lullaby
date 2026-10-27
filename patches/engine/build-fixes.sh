@@ -46,6 +46,7 @@ engine_path() {
 		winemac.so) echo wine/lib/wine/x86_64-unix/winemac.so ;;
 		ntdll.so) echo wine/lib/wine/x86_64-unix/ntdll.so ;;
 		win32u.so) echo wine/lib/wine/x86_64-unix/win32u.so ;;
+		winecoreaudio.so) echo wine/lib/wine/x86_64-unix/winecoreaudio.so ;;
 		*) die "no recipe for $1" ;;
 	esac
 }
@@ -54,6 +55,7 @@ make_target() {
 		winemac.so) echo dlls/winemac.drv/winemac.so ;;
 		ntdll.so) echo dlls/ntdll/ntdll.so ;;
 		win32u.so) echo dlls/win32u/win32u.so ;;
+		winecoreaudio.so) echo dlls/winecoreaudio.drv/winecoreaudio.so ;;
 	esac
 }
 prepare() {
