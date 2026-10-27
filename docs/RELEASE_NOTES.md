@@ -1,19 +1,16 @@
-Lullaby r4 (1.1.0)
+Lullaby r5 (1.1.0)
 
-Changes since r3
-- A game now picks its own renderer. Auto (the default) reads which graphics API the game uses and chooses: DX12 on D3DMetal, DX11 on DXMT, DX9 on mtld3d, OpenGL on WineMetalGL, Vulkan on MoltenVK. Your own choice in the game's properties still wins. mtld3d and WineMetalGL are downloaded the first time a game needs them (pinned and checked).
-- A game that covers the screen goes to macOS's own full screen by itself: its own desktop, the picture under the notch at the screen's full resolution (3024x1898 on a 14" MacBook Pro), and the game is told that size. A new row "Native full screen" in the game's properties (and in Steam's Compatibility settings for all games) is on for every game; LULLABY_NATIVE_FULLSCREEN=0 turns it off for one run, LULLABY_FULLSCREEN_SIZE=0 keeps the old scaled picture.
-- Sound follows the output device: connect headphones and the game's sound moves to them, disconnect and it comes back, with no restart (LULLABY_AUDIO_FOLLOW=0 turns it off for one run). The microphone does not follow yet.
-- 32-bit games (for example The Binding of Isaac: Rebirth) run: the bridge carries the 32-bit Steam files.
-- OpenGL games: Euro Truck Simulator 2 no longer says "no devices found" on OpenGL, and a window that grows no longer flashes magenta; the picture of an OpenGL game follows its window.
-- Every external part Lullaby is made of is listed with its pinned version in release/components.json; a script checks what is newer (nothing changes by itself).
+Changes since r4
+- Direct presentation and variable refresh for D3DMetal and DXMT games. A game that goes to native full screen (the "Native full screen" row in the game's properties, on for every game) is now shown straight to the display, as the Metal HUD says ("Direct" instead of "Composited"), with V-Sync on, so a ProMotion screen follows the game's frame rate. Resident Evil Requiem: 70-80 steady frames a second in its heaviest opening scene with no tearing and no ladder steps (20-30 more than before, and even), a faster menu and lighter input; Euro Truck Simulator 2 follows its frame rate between 60 and 120 smoothly. HDR is kept. Games on MoltenVK, mtld3d, WineMetalGL or WineD3D, and a game with the row switched off, are shown as in r4.
+- The pacer (lby-ponthree-pacer) is part of the app and always on in Direct; there is no switch for it: switching "Native full screen" off turns it off with the rest.
 
 Known limits
+- Resident Evil Requiem froze once when a save was changed during testing and did not again; if it happens to you, Lullaby does not know why yet.
 - Dormison r8 is not supported yet (its archive carries Apple's files).
 - On OpenGL (WineMetalGL) the picture can stay at the old size after a window changes size; the Metal HUD frame counter does not show there.
 - Resident Evil Requiem with HDR on shows a pale picture; not rechecked in native full screen yet.
 - Native Vulkan games run on MoltenVK; KosmicKrisp is opt-in only (LULLABY_VULKAN=kosmickrisp) and not recommended yet.
-- Launch options that change one run: LULLABY_AVX=0, LULLABY_DLSS=0, WINEMSYNC=0, LULLABY_GCMOUSE_SCALE=<number>, LULLABY_LOW_LATENCY=0, LULLABY_NATIVE_FULLSCREEN=0, LULLABY_FULLSCREEN_SIZE=0, LULLABY_AUDIO_FOLLOW=0.
+- Launch options that change one run: LULLABY_AVX=0, LULLABY_DLSS=0, WINEMSYNC=0, LULLABY_GCMOUSE_SCALE=<number>, LULLABY_LOW_LATENCY=0, LULLABY_NATIVE_FULLSCREEN=0 (also turns Direct off), LULLABY_FULLSCREEN_SIZE=0, LULLABY_AUDIO_FOLLOW=0.
 
 Windows games from your Steam library on a Mac, in the ordinary Steam for macOS, on the Dormison r7 engine.
 - Engine: Dormison r7 (Wine with wine-staging), msync+ always on, signed downloads with an update that can be rolled back.
