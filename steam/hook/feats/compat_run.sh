@@ -983,7 +983,7 @@ stage_renderer() {
           cp -f "$src/${pair#*:}/mtld3d.dll" "$sysdir/mtld3d.dll" || return 1
         done
       fi
-      renderer_overrides="d3d9,mtld3d=b"
+      renderer_overrides="d3d9,mtld3d=b;nvapi64,nvapi=d"   # D3DMetal's nvapi64.dll answers NULL for what it does not know
       ;;
     winemetalgl)
       # WineMetalGL (OpenGL on Metal, LGPL-3.0+): the x86_64 package's module/ unpacked in
@@ -1010,7 +1010,10 @@ stage_renderer() {
           done
         done
       fi
-      renderer_overrides="opengl32=n;winemetalgl=b"
+      # The prefix keeps D3DMetal's nvapi64.dll, which answers NvAPI_QueryInterface with NULL for what it does not know;
+      # a game that finds NVAPI (Euro Truck Simulator 2 on OpenGL) calls that NULL and crashes. Without it the game sees
+      # no NVIDIA API, as on any other GPU.
+      renderer_overrides="opengl32=n;winemetalgl=b;nvapi64,nvapi=d"
       ;;
     *) return 1 ;;
   esac

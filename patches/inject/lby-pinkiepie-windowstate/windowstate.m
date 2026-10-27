@@ -21,6 +21,7 @@
 #import <QuartzCore/QuartzCore.h>
 #import <Metal/Metal.h>
 #include <dispatch/dispatch.h>
+#include <dlfcn.h>
 #include <objc/message.h>
 #include <objc/runtime.h>
 #include <stdarg.h>
@@ -429,6 +430,47 @@ static void keepBundleIcon(void)
     });
     method_setImplementation(m, ignore);
 }
+
+/* WineMetalGL lists its RGBA8 pixel formats with cColorBits 24 (the colour without alpha); NVIDIA, AMD, Intel and Wine's
+   own driver say 32 for the same format, and a game written for them asks for WGL_COLOR_BITS >= 32 and finds no format
+   (Euro Truck Simulator 2: "no devices found"). WineMetalGL's unix side gets the list from the core library with
+   dlsym(wmgl_get_pixel_formats); this library takes that one lookup and gives back a function that fixes the list.
+   Only in a process that runs WineMetalGL; LULLABY_GL_COLOR_BITS=0 turns it off. Goes when WineMetalGL reports 32. */
+struct lbws_wmgl_format {   /* the start of struct wmgl_pixel_format (WineMetalGL 3.x) */
+    int draw_to_window, draw_to_pbuffer, double_buffer, stereo;
+    int color_bits, red_bits, green_bits, blue_bits, alpha_bits;
+};
+typedef unsigned (*lbws_get_formats_t)(struct lbws_wmgl_format *, unsigned, unsigned *);
+static lbws_get_formats_t gRealGetFormats;
+static int gFixColorBits = -1;   /* -1: not decided yet */
+
+static unsigned fixedGetFormats(struct lbws_wmgl_format *formats, unsigned max, unsigned *onscreen)
+{
+    unsigned n = gRealGetFormats(formats, max, onscreen);
+    for (unsigned i = 0; formats && i < n && i < max; i++)
+        if (formats[i].color_bits == 24 && formats[i].alpha_bits == 8) formats[i].color_bits = 32;
+    return n;
+}
+
+static void *lbws_dlsym(void *handle, const char *name)
+{
+    void *p = dlsym(handle, name);
+    if (p && name && !strcmp(name, "wmgl_get_pixel_formats")) {
+        if (gFixColorBits < 0) {
+            const char *off = getenv("LULLABY_GL_COLOR_BITS"), *over = getenv("WINEDLLOVERRIDES");
+            gFixColorBits = !(off && !strcmp(off, "0")) && over && strstr(over, "winemetalgl");
+        }
+        if (gFixColorBits) {
+            gRealGetFormats = (lbws_get_formats_t)p;
+            return (void *)fixedGetFormats;
+        }
+    }
+    return p;
+}
+#define LBWS_INTERPOSE(replacement, replacee) \
+    __attribute__((used)) static struct { const void *r; const void *o; } lbws_interpose_##replacee \
+    __attribute__((section("__DATA,__interpose"))) = { (const void *)(unsigned long)&replacement, (const void *)(unsigned long)&replacee };
+LBWS_INTERPOSE(lbws_dlsym, dlsym)
 
 /* WineMetalGL never clears the colour texture it makes for a window ("default framebuffer", private storage), at the
    start and when the window changes size. A game that swaps before it has drawn (a loading screen) shows whatever the
