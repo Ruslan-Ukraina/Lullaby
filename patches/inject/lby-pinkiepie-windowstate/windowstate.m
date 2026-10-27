@@ -302,8 +302,26 @@ static void tryRestore(NSWindow *w, int attempt)
     }
 }
 
+/* A window whose picture comes from a renderer's own Metal view (WineMetalGL) never has the engine's windowDidDrawContent
+   called, so it stays in the clear, non-opaque state it is created in and its title bar is see-through. The engine's own
+   checkTransparency (what windowDidDrawContent starts) makes it opaque again unless it really needs transparency. */
+static void settleTitlebar(NSWindow *w)
+{
+    SEL check = NSSelectorFromString(@"checkTransparency");
+    if (![w respondsToSelector:check] || !([w styleMask] & NSWindowStyleMaskTitled)) return;
+    for (NSNumber *t in @[@0.5, @2, @6])
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)([t doubleValue] * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            if (![w isOpaque] && [w isVisible]) {
+                ((void (*)(id, SEL))objc_msgSend)(w, check);
+                if ([w isOpaque]) say("title bar: window made opaque (its renderer never drew through the engine)");
+            }
+        });
+}
+
 static void becameMain(NSWindow *w)
 {
+    Class wine = NSClassFromString(@"WineWindow");
+    if (wine && [w isKindOfClass:wine]) settleTitlebar(w);
     if (!isGameWindow(w)) return;
     scheduleAutoFullscreen(w);
     /* A window that only later becomes the screen-covering one, with no notification the library hears. */
