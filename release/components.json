@@ -1,0 +1,138 @@
+{
+  "comment": "Every external part Lullaby is made of, tries or watches, with the version it is pinned to and how to look for a newer one. release/check-components.py reads this file; `make componentcheck` checks it offline. A pin moves only in a commit that says why. Sections: ship = reaches players, try = tried here and not shipped, watch = followed for ideas or for the future.",
+  "components": [
+    {
+      "id": "dormison", "name": "Dormison (the Wine engine)", "group": "ship",
+      "source": "https://github.com/kageroumado/dormison", "license": "LGPL-2.1-or-later",
+      "pinned": "r7", "verify": {"file": "bridge/bridge-manifest.json", "contains": "dormison-r7"},
+      "check": {"type": "github-release", "repo": "kageroumado/dormison"},
+      "policy": "r8 is out but its tarball ships Apple's D3DMetal files and fails engine-manifest.json (agent/bugs/dormison-r8-staged-gptk); stay on r7, read the new release before moving; the bridge is rebuilt per engine commit."
+    },
+    {
+      "id": "wine-staging", "name": "Wine + wine-staging inside Dormison", "group": "ship",
+      "source": "https://github.com/wine-staging/wine-staging", "license": "LGPL-2.1-or-later",
+      "pinned": "11.16", "verify": {"file": "patches/REGISTRY.md", "contains": "wine-staging 11.16"},
+      "check": {"type": "github-tags", "repo": "wine-staging/wine-staging", "regex": "^v\\d+\\.\\d+$"},
+      "policy": "comes with the engine; shown to see how far behind the engine is."
+    },
+    {
+      "id": "dxmt", "name": "DXMT (Direct3D 10/11 on Metal)", "group": "ship",
+      "source": "https://github.com/3Shain/dxmt", "license": "LGPL-2.1-or-later",
+      "pinned": "v0.80", "verify": {"file": "docs/DXMT_PIN.md", "contains": "v0.80"},
+      "check": {"type": "github-release", "repo": "3Shain/dxmt"},
+      "policy": "comes with Dormison; a newer main commit was tried and refused (Deadlock black window), docs/DXMT_PIN.md."
+    },
+    {
+      "id": "dxvk-macos", "name": "DXVK for macOS", "group": "ship",
+      "source": "https://github.com/Gcenx/DXVK-macOS", "license": "zlib",
+      "pinned": "v1.10.3", "verify": {"file": "patches/REGISTRY.md", "contains": "v1.10.3"},
+      "check": {"type": "github-release", "repo": "Gcenx/DXVK-macOS"},
+      "policy": "comes with Dormison; the same line since 2023."
+    },
+    {
+      "id": "moltenvk", "name": "MoltenVK (Vulkan on Metal), the default Vulkan driver", "group": "ship",
+      "source": "https://github.com/KhronosGroup/MoltenVK", "license": "Apache-2.0",
+      "pinned": "1.4.0",
+      "check": {"type": "github-release", "repo": "KhronosGroup/MoltenVK"},
+      "policy": "comes with Dormison r7 (driverInfo 1.4.0, read by a probe under Wine); changes with the engine, not on its own."
+    },
+    {
+      "id": "d3dmetal", "name": "D3DMetal (Apple's Game Porting Toolkit)", "group": "ship",
+      "source": "https://developer.apple.com/games/game-porting-toolkit/", "license": "Apple's, added by the player",
+      "pinned": "4.0 beta 3", "verify": {"file": "patches/REGISTRY.md", "contains": "4.0 beta 3"},
+      "check": {"type": "manual", "note": "Apple's page and the toolkit's Read Me: a new GPTK needs the ntdll/winemac patches ENG-04 to ENG-06 rechecked."},
+      "policy": "not distributed; the player adds it."
+    },
+    {
+      "id": "sparkle", "name": "Sparkle (app updates)", "group": "ship",
+      "source": "https://github.com/sparkle-project/Sparkle", "license": "MIT",
+      "pinned": "2.10.0", "verify": {"file": "app/Package.resolved", "contains": "2.10.0"},
+      "check": {"type": "github-release", "repo": "sparkle-project/Sparkle"},
+      "policy": "a security fix is taken at once, otherwise with the next release."
+    },
+    {
+      "id": "dobby", "name": "Dobby (function hooks inside Steam)", "group": "ship",
+      "source": "https://github.com/jmpews/Dobby", "license": "Apache-2.0",
+      "pinned": "5dfc8546954c", "verify": {"file": "vendor/README.md", "contains": "5dfc8546954ce3b3198132ab13fddb89ee92cdd7"},
+      "check": {"type": "github-commit", "repo": "jmpews/Dobby"},
+      "policy": "pinned on purpose: a newer commit changes the code generated for hooks (vendor/README.md); move only with a hook test on every supported Steam."
+    },
+    {
+      "id": "cjson", "name": "cJSON", "group": "ship",
+      "source": "https://github.com/DaveGamble/cJSON", "license": "MIT",
+      "pinned": "1.7.19", "verify": {"file": "vendor/cJSON.h", "contains": "CJSON_VERSION_PATCH 19"},
+      "check": {"type": "github-release", "repo": "DaveGamble/cJSON"},
+      "policy": "vendored in the repository."
+    },
+    {
+      "id": "nvapi", "name": "NVAPI headers (names for the Reflex answer)", "group": "ship",
+      "source": "https://github.com/NVIDIA/nvapi", "license": "MIT",
+      "pinned": "2024",
+      "check": {"type": "github-commit", "repo": "NVIDIA/nvapi"},
+      "policy": "names and structures only; no code is taken."
+    },
+    {
+      "id": "mtld3d", "name": "mtld3d (Direct3D 9 on Metal)", "group": "try",
+      "source": "https://github.com/athei/mtld3d", "license": "zlib",
+      "pinned": "v0.15.1",
+      "check": {"type": "github-release", "repo": "athei/mtld3d"},
+      "policy": "tried 2026-10-27 as the renderer mtld3d (device created, 363 frames in 4 s); not shipped yet: the app has to fetch, verify and install it first."
+    },
+    {
+      "id": "winemetalgl", "name": "WineMetalGL (OpenGL on Metal)", "group": "try",
+      "source": "https://github.com/metalsharp/WineMetalGL", "license": "LGPL-3.0-or-later",
+      "pinned": "3.7.0",
+      "check": {"type": "github-release", "repo": "metalsharp/WineMetalGL"},
+      "policy": "tried 2026-10-27 as the renderer winemetalgl (OpenGL 4.6, 439 frames in 4 s); not shipped yet; young project (releases a day apart)."
+    },
+    {
+      "id": "kosmickrisp", "name": "KosmicKrisp (Mesa's Vulkan on Metal 4), built by us for x86_64", "group": "try",
+      "source": "https://gitlab.freedesktop.org/mesa/mesa", "license": "MIT",
+      "pinned": "mesa-26.3.0-rc2", "verify": {"file": "tools/build-kosmickrisp-local.sh", "contains": "mesa-26.3.0-rc2"},
+      "check": {"type": "git-tags", "url": "https://gitlab.freedesktop.org/mesa/mesa.git", "regex": "^mesa-\\d+\\.\\d+\\.\\d+(-rc\\d+)?$"},
+      "policy": "the goal for native Vulkan games, MoltenVK until the five conditions at the end of docs/BACKLOG.md are met; watch for the fix of the vertex-shader subgroup bug (reports/mesa-issue-draft-kosmickrisp-vertex-subgroup) and rebuild with tools/build-kosmickrisp-local.sh."
+    },
+    {
+      "id": "vulkan-sdk", "name": "LunarG Vulkan SDK for macOS (source of static SPIRV-Tools, reference KosmicKrisp)", "group": "try",
+      "source": "https://vulkan.lunarg.com/sdk/home", "license": "SDK terms; KosmicKrisp MIT",
+      "pinned": "1.4.363.0", "verify": {"file": "tools/build-kosmickrisp-local.sh", "contains": "1.4.363.0"},
+      "check": {"type": "lunarg-mac"},
+      "policy": "its own KosmicKrisp is arm64 only: useful once the engine's Wine is native arm64 (RULES section 7); sha256 of the pinned zip is in the build script."
+    },
+    {
+      "id": "wine-build-arm64", "name": "athei/wine-build (native arm64 Wine, uses KosmicKrisp and mtld3d)", "group": "watch",
+      "source": "https://github.com/athei/wine-build", "license": "LGPL-2.1-or-later",
+      "pinned": "arm64-11.20-3",
+      "check": {"type": "github-release", "repo": "athei/wine-build"},
+      "policy": "candidate base for the native arm64 Wine; not evaluated yet."
+    },
+    {
+      "id": "gcenx-wine", "name": "Gcenx macOS Wine builds (what the DOOM 2016 launcher uses)", "group": "watch",
+      "source": "https://github.com/Gcenx/macOS_Wine_builds", "license": "LGPL-2.1-or-later",
+      "pinned": "11.18",
+      "check": {"type": "github-release", "repo": "Gcenx/macOS_Wine_builds"},
+      "policy": "reference for how others ship an x86_64 Wine with KosmicKrisp."
+    },
+    {
+      "id": "highball-engine", "name": "Highball engine (source of two engine fixes)", "group": "watch",
+      "source": "https://github.com/gauthierpiarrette/highball-engine", "license": "LGPL-2.1-or-later",
+      "pinned": "d3dmetal-tsshim-20261020",
+      "check": {"type": "github-release", "repo": "gauthierpiarrette/highball-engine"},
+      "policy": "ENG-01 and ENG-03 come from it."
+    },
+    {
+      "id": "wineforge", "name": "WineForge (source of GCMouse)", "group": "watch",
+      "source": "https://github.com/Alien4042x/WineForge", "license": "LGPL-2.1-or-later",
+      "pinned": "0.6.0.7",
+      "check": {"type": "github-release", "repo": "Alien4042x/WineForge"},
+      "policy": "GCMouse (ENG-08) was taken from 0.6.0.7."
+    },
+    {
+      "id": "sevoflurane", "name": "Sevoflurane (shape of the settings catalog)", "group": "watch",
+      "source": "https://github.com/kageroumado/sevoflurane", "license": "MIT",
+      "pinned": "v1.9.0",
+      "check": {"type": "github-release", "repo": "kageroumado/sevoflurane"},
+      "policy": "catalog shape, env file format and help texts follow it (NOTICE)."
+    }
+  ]
+}

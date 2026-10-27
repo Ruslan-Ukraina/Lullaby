@@ -143,6 +143,7 @@
 | TST-02 | Сборка и проверка модулей Dormison | `patches/engine/build-fixes.sh` |
 | TST-03 | Проверка реестра | `patches/engine/check-registry.sh` |
 | TST-04 | Пробные программы движка | `patches/engine/tests/` |
+| TST-06 | Список внешних компонентов и проверка новых версий | `release/components.json`, `release/check-components.py` (`make componentcheck` — офлайн) |
 | TST-05 | Стенд замеров | `tools/perf/` (`syncbench`, `gfxbench`, `threadcpu`, `frametap`, `report.py`) |
 
 ## 4. Как добавить функцию

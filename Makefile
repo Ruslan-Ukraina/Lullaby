@@ -65,7 +65,7 @@ TARGET      := $(OUT_DIR)/lullaby.dylib
 OBJS := $(patsubst %.c,$(OUT_DIR)/%.o,$(SRCS)) $(patsubst %.m,$(OUT_DIR)/%.o,$(OBJC_SRCS))
 DEPS := $(OBJS:.o=.d)
 
-.PHONY: all iconmaker-tests windowstate windowstate-tests apiscout-tests pacer nvapi-shim reflex-sim patchcheck clean rebuild dobby deploy dylib-install sigcheck app-payload app app-zip app-config \
+.PHONY: all iconmaker-tests windowstate windowstate-tests apiscout-tests pacer nvapi-shim reflex-sim patchcheck clean rebuild dobby deploy dylib-install sigcheck componentcheck app-payload app app-zip app-config \
         anchorcheck callscheck sigdb-fixtures webpatch-fixtures peicon-fixtures panel-behavior app-tests launch-shell \
         tests-list overlay-shim overlay-shim-install overlay-shim-tests \
         overlay-shim-bench iconmaker icon \
@@ -586,6 +586,11 @@ $(APPINFO): app/helpers/appinfo.swift
 NVAPI_SHIM := $(OUT_DIR)/lullaby-nvapi64.dll
 
 nvapi-shim: $(NVAPI_SHIM)
+
+# release/components.json is well formed and every pin is true to the repository (offline). The real
+# comparison with what the sources publish now is `python3 -I release/check-components.py` (needs the network).
+componentcheck:
+	python3 -I release/check-components.py --validate
 
 # The API scout on made-up copies of what engines write (patches/inject/lby-spitfire-apiscout/tests/run.sh).
 # Starts no game and needs no engine.

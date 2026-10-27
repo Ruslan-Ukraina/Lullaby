@@ -16,7 +16,7 @@
 # this Mac first (arm64), then the driver is cross-built for x86_64 with `-Dmesa-clc=system`.
 set -eu
 repo=$(cd "$(dirname "$0")/.." && pwd)
-MESA_REF=${MESA_REF:-${MESA_TAG:-mesa-26.2.4}}   # a tag (mesa-26.2.4) or a branch (main)
+MESA_REF=${MESA_REF:-${MESA_TAG:-mesa-26.3.0-rc2}}   # a tag (mesa-26.2.4) or a branch (main)
 WORK=${WORK:-$repo/scratch/kk}
 OUT=${OUT:-$WORK/out}
 PYTHON_VENV=${PYTHON_VENV:-$repo/../Workspace/.venv-mesa}
