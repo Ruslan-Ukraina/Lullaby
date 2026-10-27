@@ -1,0 +1,53 @@
+ENG-10  WineMetalGL gets the window's own metal view: it follows the window and the title bar stays opaque.
+
+dlls/winemac.drv/d3dmetal.c (winemac.so). Lullaby, 2026-10-27. LGPL-2.1-or-later like Wine.
+
+What: the table `macdrv_functions` the engine exports is shaped for D3DMetal (hwnd, cocoa_window, cocoa_view,
+client_cocoa_view, ...). WineMetalGL, built against stock Wine 11 (hwnd, cocoa_window, client_view), asks for
+`get_win_data` and reads the client view from the third field, which was empty. It then gave up winemac's metal view
+and put a view of its own into the window, placed from the window's geometry: the picture did not follow a window that
+was moved, black areas appeared, and, as that view never goes through windowDidDrawContent, the window stayed see-through
+(a transparent title bar). Now a caller from winemetalgl.so (dladdr on the return address) gets the client view in the
+third field too; any other caller, D3DMetal included, gets the data exactly as before.
+Requires: WineMetalGL 3.x (CMP-10); nothing for other renderers.
+Other bases: unchanged table in WineForge/Whisky-style builds is not known; the patch touches only Dormison's d3dmetal.c.
+Test: Isaac (32-bit, OpenGL) under WineMetalGL: WineMetalGL's log (WINEMETALGL_LOG=trace) says "winemac metal view"
+instead of "own view in the Cocoa window" for each window.
+Verified on: Dormison r7, built in scratch/local-bridge/dormison-r7 (2026-10-27); WineMetalGL's trace line checked there; moving and resizing by the owner (see ledger).
+Switch: none.
+
+diff --git a/dlls/winemac.drv/d3dmetal.c b/dlls/winemac.drv/d3dmetal.c
+--- a/dlls/winemac.drv/d3dmetal.c
++++ b/dlls/winemac.drv/d3dmetal.c
+@@ -121,10 +121,23 @@
+ static void my_macdrv_init_display_devices(BOOL p1)
+ {
+     TRACE("%d - no-op\n", p1);
++}
++
++/* WineMetalGL (a renderer built against stock Wine 11, struct macdrv_win_data { hwnd, cocoa_window, client_view })
++ * asks for this table too and reads the client view from the third field, where D3DMetal's older layout holds
++ * cocoa_view. Left empty there, WineMetalGL gives up the window's own metal view and places a view of its own, which
++ * neither follows the window when it moves nor goes through windowDidDrawContent (a see-through title bar). Only a
++ * caller from winemetalgl.so gets the client view in that field; D3DMetal sees what it always saw. */
++static BOOL caller_is_winemetalgl(void *address)
++{
++    Dl_info info;
++
++    return dladdr(address, &info) && info.dli_fname && strstr(info.dli_fname, "winemetalgl");
+ }
+ 
+ static struct d3dmetal_macdrv_win_data *my_get_win_data(HWND hwnd)
+ {
++    void *caller = __builtin_return_address(0);
+     struct macdrv_win_data *data;
+     struct d3dmetal_macdrv_win_data *d3dm_data;
+     struct macdrv_client_surface *surface;
+@@ -163,6 +176,7 @@
+     d3dm_data->hwnd = data->hwnd;
+     d3dm_data->cocoa_window = data->cocoa_window;
+     d3dm_data->client_cocoa_view = surface->cocoa_view;
++    if (caller_is_winemetalgl(caller)) d3dm_data->cocoa_view = surface->cocoa_view;
+     d3dm_data->window_rect = data->rects.window;
+     d3dm_data->whole_rect = data->rects.visible;
+     d3dm_data->client_rect = data->rects.client;
