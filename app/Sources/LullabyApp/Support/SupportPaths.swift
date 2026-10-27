@@ -49,6 +49,9 @@ enum SupportPaths {
     /// The WineMetalGL workarounds injected into a game's Wine loader (patches/lby-derpy-fixes/).
     static var glFixes: URL { support.appending(path: glFixesName) }
     static let glFixesName = "lullaby-glfixes.dylib"
+    /// The pacer injected into a game's Wine loader: Direct presentation and VRR (patches/inject/lby-ponthree-pacer/).
+    static var pacer: URL { support.appending(path: pacerName) }
+    static let pacerName = "lullaby-pacer.dylib"
     static let settingsCLIName = "lullaby-settings"
     /// The settings CLI (LullabySettings): the Steam panel's writer, and what the stand-in
     /// below hands Dormison's View menu calls to.

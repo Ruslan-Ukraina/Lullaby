@@ -44,6 +44,7 @@ enum PatchComparison {
         var nvapiShim: URL
         var windowState: URL
         var glFixes: URL
+        var pacer: URL
         var settingsCLI: URL
         var signatures: URL
 
@@ -58,6 +59,7 @@ enum PatchComparison {
                 nvapiShim: SupportPaths.nvapiShim,
                 windowState: SupportPaths.windowState,
                 glFixes: SupportPaths.glFixes,
+                pacer: SupportPaths.pacer,
                 settingsCLI: SupportPaths.settingsCLI,
                 signatures: SupportPaths.signatures
             )
@@ -104,6 +106,7 @@ enum PatchComparison {
             (installed.nvapiShim, payload.nvapiShim),
             (installed.windowState, payload.windowState),
             (installed.glFixes, payload.glFixes),
+            (installed.pacer, payload.pacer),
             (installed.settingsCLI, payload.settingsCLI),
         ]
         // A database the feed revised (signatures-manifest.json) is current, not stale.

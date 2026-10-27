@@ -31,6 +31,7 @@ struct PatchComparisonTests {
         try write("nvapi", to: shipped.appending(path: SupportPaths.nvapiShimName))
         try write("windowstate", to: shipped.appending(path: SupportPaths.windowStateName))
         try write("glfixes", to: shipped.appending(path: SupportPaths.glFixesName))
+        try write("pacer", to: shipped.appending(path: SupportPaths.pacerName))
         try write("settings", to: shipped.appending(path: SupportPaths.settingsCLIName))
         try write("#!/bin/sh\n", to: shipped.appending(path: InstallPayload.runScriptName))
         try write("{}", to: shipped.appending(path: "signatures/macos.arm64/1788652215.json"))
@@ -49,6 +50,7 @@ struct PatchComparisonTests {
             nvapiShim: support.appending(path: SupportPaths.nvapiShimName),
             windowState: support.appending(path: SupportPaths.windowStateName),
             glFixes: support.appending(path: SupportPaths.glFixesName),
+            pacer: support.appending(path: SupportPaths.pacerName),
             settingsCLI: support.appending(path: SupportPaths.settingsCLIName),
             signatures: support.appending(path: "signatures/macos.arm64")
         )
@@ -60,6 +62,7 @@ struct PatchComparisonTests {
         try write("nvapi", to: installed.nvapiShim)
         try write("windowstate", to: installed.windowState)
         try write("glfixes", to: installed.glFixes)
+        try write("pacer", to: installed.pacer)
         try write("settings", to: installed.settingsCLI)
         try write("{}", to: installed.signatures.appending(path: "1788652215.json"))
         for entry in BridgePayload.entries {

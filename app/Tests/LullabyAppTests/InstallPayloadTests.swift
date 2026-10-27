@@ -12,7 +12,7 @@ struct InstallPayloadTests {
         return url
     }
 
-    private func stage(_ root: URL, dylib: Bool = true, shim: Bool = true, iconmaker: Bool = true, appinfo: Bool = true, nvapiShim: Bool = true, windowState: Bool = true, glFixes: Bool = true, settingsCLI: Bool = true, runScript: Bool = true, signatures: [String] = ["1788400362.json"]) throws {
+    private func stage(_ root: URL, dylib: Bool = true, shim: Bool = true, iconmaker: Bool = true, appinfo: Bool = true, nvapiShim: Bool = true, windowState: Bool = true, glFixes: Bool = true, pacer: Bool = true, settingsCLI: Bool = true, runScript: Bool = true, signatures: [String] = ["1788400362.json"]) throws {
         let files = FileManager.default
         let signatureDir = root.appending(path: "signatures/macos.arm64")
         try files.createDirectory(at: signatureDir, withIntermediateDirectories: true)
@@ -23,6 +23,7 @@ struct InstallPayloadTests {
         if nvapiShim { try Data("nvapi".utf8).write(to: root.appending(path: SupportPaths.nvapiShimName)) }
         if windowState { try Data("windowstate".utf8).write(to: root.appending(path: SupportPaths.windowStateName)) }
         if glFixes { try Data("glfixes".utf8).write(to: root.appending(path: SupportPaths.glFixesName)) }
+        if pacer { try Data("pacer".utf8).write(to: root.appending(path: SupportPaths.pacerName)) }
         if settingsCLI { try Data("settings".utf8).write(to: root.appending(path: SupportPaths.settingsCLIName)) }
         if runScript {
             try Data("#!/bin/sh\n".utf8).write(to: root.appending(path: InstallPayload.runScriptName))
@@ -100,7 +101,7 @@ struct InstallPayloadTests {
         let root = try scratch()
         defer { try? FileManager.default.removeItem(at: root) }
         try stage(
-            root, dylib: false, shim: false, iconmaker: false, appinfo: false, nvapiShim: false, windowState: false, glFixes: false, settingsCLI: false, runScript: false,
+            root, dylib: false, shim: false, iconmaker: false, appinfo: false, nvapiShim: false, windowState: false, glFixes: false, pacer: false, settingsCLI: false, runScript: false,
             signatures: []
         )
 
@@ -115,6 +116,7 @@ struct InstallPayloadTests {
             #expect(failure.detail.contains("lullaby-nvapi64.dll"))
             #expect(failure.detail.contains("lullaby-windowstate.dylib"))
             #expect(failure.detail.contains("lullaby-glfixes.dylib"))
+            #expect(failure.detail.contains("lullaby-pacer.dylib"))
             #expect(failure.detail.contains("lullaby-settings"))
             #expect(failure.detail.contains("compat_run.sh"))
             #expect(failure.detail.contains("signatures/macos.arm64"))
