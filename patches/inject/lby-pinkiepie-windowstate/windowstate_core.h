@@ -34,6 +34,16 @@ static inline bool lbws_parse(const char *name, lbws_state *out)
 }
 
 /* A frame covers a screen when it is within 2 % of its size in both directions and starts at it. */
+/* A game's big window with no title bar that does not cover the screen (a borderless "full screen" at a smaller resolution,
+ * Deadlock at 1920x1200): the game means it as its full screen, so it is treated like a covering one and goes to native full
+ * screen, where the engine scales it (ENG-15). Small borderless windows (a splash, a launcher) are left alone. */
+#define LBWS_BORDERLESS_MIN_W 800.0
+#define LBWS_BORDERLESS_MIN_H 500.0
+static inline bool lbws_borderless_fullscreen_like(bool has_title_bar, lbws_rect frame)
+{
+    return !has_title_bar && frame.w >= LBWS_BORDERLESS_MIN_W && frame.h >= LBWS_BORDERLESS_MIN_H;
+}
+
 static inline bool lbws_covers(lbws_rect frame, lbws_rect screen)
 {
     double tw = screen.w * 0.02, th = screen.h * 0.02;
