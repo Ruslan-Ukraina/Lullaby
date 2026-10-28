@@ -243,8 +243,148 @@
       "sha256": "b63705e77ca4b9f00255f3ad2eac5ac6fbeb73ae8d801749ba1f3ea2a33bf602",
       "sizeBytes": 3021596,
       "url": "https://github.com/Ruslan-Ukraina/Lullaby/releases/download/bridge-dormison-r7-2/bridge-dormison-r7-2.tar.xz"
+    },
+    {
+      "engine": "dormison-r7",
+      "engineCommit": "3e77a1125ef897378f3f869ff5b2eaf0c44a58aa",
+      "engineFiles": [
+        {
+          "clean": "f4089fe231a2e78db12d2d65dd0e81481fe783e8c43aa8fdcf42cd10f0404d61",
+          "file": "engine/ntdll.so",
+          "patched": "6b4da616f590d4094aecb3296febbd84ad17e41c98d9ece3b1c68c7efc5e2f80",
+          "patches": [
+            {
+              "name": "0001-ntdll-commit-charge-is-the-footprint.patch",
+              "sha256": "55fb661bcd79dc916e76278283c40286b3bff246520e2838695603ab784c487d"
+            },
+            {
+              "name": "0002-ntdll-d3dmetal-4b3-dispatch-layout.patch",
+              "sha256": "d495628b4aa5ef7be43e28ab44110f62001f568d5b617fde4fcaeac2d63caa79"
+            },
+            {
+              "name": "0003-ntdll-d3dmetal-4b3-find-best-window.patch",
+              "sha256": "25267142e390da26af555954f9b05fcf3369b889998ccfdbd0041446f95d666b"
+            }
+          ],
+          "path": "wine/lib/wine/x86_64-unix/ntdll.so"
+        },
+        {
+          "clean": "272592ecf6398096427df82f6b913b476b2e524d7fc9794adef02317d28d3c1e",
+          "file": "engine/win32u.so",
+          "patched": "ad3553bff348d642b354d2d2a117a7c5c961e51cc50bef48b3dd32b83190e690",
+          "patches": [
+            {
+              "name": "0001-win32u-d3dkmt-hardware-gpu-scheduling.patch",
+              "sha256": "9529819c80dc325f1dbac3f458e9cb78e7b51aeb5b54f847c0ed083b83ce0db4"
+            }
+          ],
+          "path": "wine/lib/wine/x86_64-unix/win32u.so"
+        },
+        {
+          "clean": "af5ce82f955828f18800488703e76f9fcf5bdd92c479ffbbadab76f517fa2b37",
+          "file": "engine/winecoreaudio.so",
+          "patched": "90f221d92d009897b47c18a8ad901cd0c7c0fcc57504da3c86faba356da819b9",
+          "patches": [
+            {
+              "name": "0001-winecoreaudio-follow-default-output.patch",
+              "sha256": "f26ff04a89992e9cb4916af0e2793f293f2aa319800f20c352678207bcf05a8a"
+            },
+            {
+              "name": "0002-winecoreaudio-follow-default-input.patch",
+              "sha256": "283da31f9344c9b3af7cf9047c5f88d858b8a5ebefc84e30a9bcb28ae2aa0881"
+            }
+          ],
+          "path": "wine/lib/wine/x86_64-unix/winecoreaudio.so"
+        },
+        {
+          "clean": "f2279e3a07b98170fad22f1bff241f214c9335ddd183ed1f14a5b29d9b2f4511",
+          "file": "engine/winemac.so",
+          "patched": "d2a1c56dc74a32ca7b87e44d57a2546094df554d94640afcd72a1c60643f609b",
+          "patches": [
+            {
+              "name": "0001-winemac-retina-horzres-not-doubled.patch",
+              "sha256": "bf27d1fecf3e98f5a66fb5bbc6bf8ecfae5b320096fd6540907548cb4e30a071"
+            },
+            {
+              "name": "0002-winemac-d3dmetal-find-best-window.patch",
+              "sha256": "14ead1f46b707365436de3751dd181daee7dfa159f78e6cd2111e24132c63bb9"
+            },
+            {
+              "name": "0003-winemac-lullaby-vsync-and-present-feed.patch",
+              "sha256": "2ccd53863d1889eb1dda3b6b365322fa544ea6cd9ce387e09cb626a0c3f8436a"
+            },
+            {
+              "name": "0004-winemac-lby-octavia-gcmouse.patch",
+              "sha256": "a719badf8df4caa4e32554dede00ca9ad95cfba0f56d2bdeb55e26b60a1c2f65"
+            },
+            {
+              "name": "0005-winemac-winemetalgl-client-view.patch",
+              "sha256": "3f1efb4db7d93aecd3c7756ed5ce8308e2b3f616c2fd4766b0d0067e3cc16253"
+            },
+            {
+              "name": "0006-winemac-native-fullscreen-reports-its-size.patch",
+              "sha256": "c6be77842f82c4214584d8bec01338e4b10f53af3fa12fc6c8dffb0c87a8ac53"
+            },
+            {
+              "name": "0007-winemac-native-fullscreen-scales-a-small-window.patch",
+              "sha256": "d036f5900d88e7b40f776b07c1f0f7d0d42c1546b081408996d594175e35fb4c"
+            }
+          ],
+          "path": "wine/lib/wine/x86_64-unix/winemac.so"
+        }
+      ],
+      "engineRelease": {
+        "sha256": "37d418b3fbd21936560241e92eee65a9ecc531bedd9f155574593a0fe786af41",
+        "sizeBytes": 234697884,
+        "url": "https://github.com/kageroumado/dormison/releases/download/r7/dormison-r7.tar.xz"
+      },
+      "files": [
+        {
+          "name": "steam.exe",
+          "path": "steam.exe",
+          "sha256": "bcd4fbb63efff927a9d076820c8a7cf28389e55beb7c3d79600c7641f6494dba"
+        },
+        {
+          "name": "x86_64-windows-lsteamclient.dll",
+          "path": "x86_64-windows-lsteamclient.dll",
+          "sha256": "e6adb8885fd754e3fe8beb4238acbc871ea88424cc322cd29d0f2b2f16255d71"
+        },
+        {
+          "name": "x86_64-unix-lsteamclient.so",
+          "path": "x86_64-unix-lsteamclient.so",
+          "sha256": "2f9909dcb0b633c1d01d6fb22b9ebaec166d69f22d9a202b4ac85ea944daa0e1"
+        },
+        {
+          "name": "i386-windows-lsteamclient.dll",
+          "path": "i386-windows-lsteamclient.dll",
+          "sha256": "927fba1b8963cc0d55594a66710a3dd748bbe493b0f522b052a625177497c454"
+        }
+      ],
+      "id": "bridge-dormison-r7-3",
+      "ntdll": [
+        {
+          "arch": "x86_64",
+          "b1": "175f2e635a6a18da5ca6114ca06a550ca9d038f789187e95ebbdf7e902e9e82c",
+          "clean": "7cbf950039cc6a48edd28ede1579c7f20a8efd29eb7927a92759d09a83bb1147",
+          "file": "ntdll/x86_64-ntdll.dll",
+          "path": "wine/lib/wine/x86_64-windows/ntdll.dll"
+        },
+        {
+          "arch": "i386",
+          "b1": "9f208cdeefdad0574a066bd5edaccd9f72675ca9903c95280dcc98885dcc9c8c",
+          "clean": "e452a55e7a184537adecc50e091f54e9ec337a8fbf4ee77c7c4104f93a0efabf",
+          "file": "ntdll/i386-ntdll.dll",
+          "path": "wine/lib/wine/i386-windows/ntdll.dll"
+        }
+      ],
+      "patch": "0001-ntdll-redirect-steamclient-to-lsteamclient.patch",
+      "patchSha256": "7759e52c9195b32a1777753f9dc0b8116b3c1106c44764c39f5f9684efddebfa",
+      "rev": 3,
+      "sha256": "ae2f53ee870ab39bc3b802d93af2dfae85b23269f6ead64123caac5856b746d2",
+      "sizeBytes": 3020812,
+      "url": "https://github.com/Ruslan-Ukraina/Lullaby/releases/download/bridge-dormison-r7-3/bridge-dormison-r7-3.tar.xz"
     }
   ],
   "schema": 1,
-  "serial": 14
+  "serial": 16
 }
