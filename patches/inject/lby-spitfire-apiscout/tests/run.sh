@@ -164,5 +164,10 @@ apiscout_detect "$game" "$user" -dx11 >/dev/null
 after=$(find "$t" | sort | tr '\n' ' ')
 check "writes nothing" "$before" "$after"
 
+# 9. the Unity flag of the renderer the player chose
+check "unity flag dxmt" -force-d3d11 "$(apiscout_unity_flag dxmt)"
+check "unity flag d3dmetal" -force-d3d12 "$(apiscout_unity_flag d3dmetal)"
+check "unity flag moltenvk" "" "$(apiscout_unity_flag wined3d)"
+
 [ "$fail" -eq 0 ] && echo "==> apiscout tests: $n checks pass"
 exit "$fail"

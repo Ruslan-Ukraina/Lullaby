@@ -1040,6 +1040,14 @@ apiscout_backend() {
   esac
 }
 
+# The Unity flag that takes a game to the Direct3D renderer the player chose; nothing for the other renderers.
+apiscout_unity_flag() {
+  case "$1" in
+    dxmt) echo -force-d3d11 ;;
+    d3dmetal) echo -force-d3d12 ;;
+  esac
+}
+
 # Flags of the engines seen so far (Unity, Source 2, Unreal, SCS). The first match wins.
 apiscout_from_args() {
   prev=""
@@ -1265,6 +1273,18 @@ if [ "$renderer" = moltenvk ]; then
   renderer_moltenvk=1
   renderer=wined3d
   echo "renderer: MoltenVK chosen, Vulkan games use the engine's MoltenVK" >> "$log" 2>&1 || true
+fi
+# Steam starts some Unity games with -force-vulkan (PEAK); with a Direct3D renderer chosen the game would draw through Vulkan
+# and never reach it. The player's renderer decides: the flag of this run becomes the matching Direct3D one.
+unity_flag=""
+[ "${scout_api:-}" = vk ] && [ "${scout_src:-}" = arg ] && unity_flag=$(apiscout_unity_flag "$renderer")
+if [ -n "$unity_flag" ]; then
+  for a in "$@"; do
+    shift
+    case "$a" in -force-vulkan|-vulkan) a=$unity_flag ;; esac
+    set -- "$@" "$a"
+  done
+  echo "renderer: $renderer chosen, the game's Vulkan flag becomes $unity_flag" >> "$log" 2>&1 || true
 fi
 # Direct (lby-ponthree-pacer): the Metal layer of a D3DMetal or DXMT game is made BGR-ordered so that macOS shows it straight to
 # the display, and keeps V-Sync in native full screen. It rides with the "Native full screen" setting (on for every game):
