@@ -123,16 +123,11 @@
   // value differs from it (a value equal to it is stored as inherit): "For all games" on a
   // game's page, Lullaby's default for all games and for a game's own rows (the
   // renderer, msync+). One button under the block resets them all.
-  // A value Lullaby's recipe supplies (DECISIONS A1010-3) is named as the recipe's, both
-  // when the game follows it and when its own choice differs from it.
   function describe(ctx, s, v, info) {
     var line = null;
     if (v.own !== null) {
       var shared = !ctx.global && s.levels.indexOf("global") >= 0;
-      line = v.inheritedFrom === "recipe" ? T(ctx, "recipeValue", L(ctx, v.inheritedLabel))
-        : T(ctx, shared ? "inherited" : "defaultValue", L(ctx, v.inheritedLabel));
-    } else if (!ctx.global && v.inheritedFrom === "recipe") {
-      line = T(ctx, "recipe");
+      line = T(ctx, shared ? "inherited" : "defaultValue", L(ctx, v.inheritedLabel));
     }
     return el("span", { className: "LBDesc" },
       s.caption ? el("span", { className: "LBCaption" }, L(ctx, s.caption)) : null,
@@ -141,7 +136,7 @@
   }
 
   function resetLabel(ctx) {
-    return ctx.global ? "resetGlobal" : (ctx.state && ctx.state.recipe ? "resetRecipe" : "resetGame");
+    return ctx.global ? "resetGlobal" : "resetGame";
   }
 
   function stop(e) {
@@ -195,7 +190,7 @@
           childrenContainerWidth: "min",
           onChange: function (o) { ctx.change(s.id, JSON.parse(o.data)); }
         });
-        // D3DMetal picked (by the player or a recipe) but no toolkit added: one line
+        // D3DMetal picked but no toolkit added: one line
         // pointing to Lullaby's settings, where the toolkit is added (Phase 8).
         var needsToolkit = !toolkit(ctx).active && ctl.choices.some(function (c) {
           return c.requires === "d3dmetal" && key(c.value) === key(eff);

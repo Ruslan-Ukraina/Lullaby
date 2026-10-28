@@ -40,7 +40,7 @@ struct SettingsCLITests {
         #expect(fixture.read(".sevo/apps/peak.exe.env", in: 3527290)?.hasPrefix(ConfigMaterializer.header) == true)
         #expect(state["name"] == .string("PEAK"))
         #expect(state["engine"] == .string("dormison-b1"))
-        #expect(state["values"]?.object?["renderer"]?.object?["inheritedLabel"]?.object?["en"] == .string("DXMT (DX11)"))
+        #expect(state["values"]?.object?["renderer"]?.object?["inheritedLabel"]?.object?["en"] == .string("Auto"))
 
         answer = try object(cli.panel(#"{"op":"set","app":3527290,"id":"filter","value":"metalfx"}"#).text)
         state = try #require(answer["state"]?.object)

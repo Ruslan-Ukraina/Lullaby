@@ -84,9 +84,6 @@ public enum PanelText {
         "advancedGlobalTitle": L10n("Advanced settings for all games", uk: "Додаткові налаштування для всіх ігор",
                                     ru: "Дополнительные настройки для всех игр"),
         "resetGame": L10n("Reset game settings", uk: "Скинути налаштування гри", ru: "Сбросить настройки игры"),
-        "resetRecipe": L10n("Restore recipe", uk: "Повернути рецепт", ru: "Вернуть рецепт"),
-        "recipe": L10n("Lullaby recipe", uk: "Рецепт Lullaby", ru: "Рецепт Lullaby"),
-        "recipeValue": L10n("Lullaby recipe: %@", uk: "Рецепт Lullaby: %@", ru: "Рецепт Lullaby: %@"),
         "resetGlobal": L10n("Reset to defaults", uk: "Скинути до типових",
                             ru: "Сбросить по умолчанию"),
         "done": L10n("Done", uk: "Готово", ru: "Готово"),
@@ -111,8 +108,8 @@ public enum PanelText {
         "objectSpin": L10n("Object spin", uk: "Об’єкти (spin)", ru: "Объекты (spin)"),
         "backOff": L10n("Back off", uk: "Відступати", ru: "Отступать"),
         "close": L10n("Close", uk: "Закрити", ru: "Закрыть"),
-        "toolkitInSettings": L10n("Add GPTK in Lullaby's settings", uk: "Додай GPTK у налаштуваннях Lullaby",
-                                  ru: "Добавь GPTK в настройках Lullaby"),
+        "toolkitInSettings": L10n("Add GPTK in the Lullaby app's settings", uk: "Додай GPTK у налаштуваннях додатку Lullaby",
+                                  ru: "Добавь GPTK в настройках приложения Lullaby"),
     ]
 }
 
@@ -122,38 +119,38 @@ extension SettingCopy {
     static let renderer = SettingCopy(
         L10n("Renderer", uk: "Рендерер", ru: "Рендерер"),
         help: SettingHelp(
-            L10n("How the game's graphics are shown on your Mac. Leave it on Auto; if a game looks wrong or won't start, try another option.",
-                 uk: "Як графіка гри показується на вашому Mac. Залиште «Авто»; якщо гра виглядає неправильно або не запускається, спробуйте інший варіант.",
-                 ru: "Как графика игры показывается на вашем Mac. Оставьте «Авто»; если игра выглядит неправильно или не запускается, попробуйте другой вариант."),
+            L10n("In most cases leave it on \"Auto\"; if a game looks wrong or won't start, try another option.",
+                 uk: "В більшості випадків залиште \"Авто\"; якщо гра виглядає неправильно або не запускається, спробуйте інший варіант.",
+                 ru: "В большинстве случаев оставьте «Авто»; если игра выглядит неправильно или не запускается, попробуйте другой вариант."),
             entries: [
                 HelpEntry(L10n("Auto", uk: "Авто", ru: "Авто"), L10n(
-                    "Lullaby finds out which graphics API the game uses (from its Steam launch option, its own settings and the last run) and picks the renderer for it. Only in Auto does this work: any other choice is used as it is.",
-                    uk: "Lullaby з'ясовує, яку графіку використовує гра (за пунктом запуску Steam, її власними налаштуваннями та минулим запуском) і сам вибирає рендерер. Лише в режимі «Авто» це працює: будь-який інший вибір застосовується як є.",
-                    ru: "Lullaby выясняет, какую графику использует игра (по пункту запуска Steam, её собственным настройкам и прошлому запуску), и сам выбирает рендерер. Только в режиме «Авто» это работает: любой другой выбор применяется как есть.")),
+                    "In \"Auto\" Lullaby finds out which graphics API the game uses and picks the renderer itself.",
+                    uk: "Lullaby в режимі \"Авто\" з'ясовує, яку графіку використовує гра і сам вибирає рендерер.",
+                    ru: "В режиме «Авто» Lullaby выясняет, какую графику использует игра, и сама выбирает рендерер.")),
                 HelpEntry(.same("D3DMetal (DX12)"), L10n(
-                    "Apple's Direct3D 11 and 12 from the Game Porting Toolkit you add. Needed for Direct3D 12 games.",
-                    uk: "Direct3D 11 і 12 від Apple з Game Porting Toolkit, який ви додаєте. Потрібен для ігор на Direct3D 12.",
-                    ru: "Direct3D 11 и 12 от Apple из Game Porting Toolkit, который вы добавляете. Нужен для игр на Direct3D 12.")),
+                    "Direct3D 11 and 12 from the Game Porting Toolkit you add. Needed for Direct3D 12 games.",
+                    uk: "Direct3D 11 і 12 з Game Porting Toolkit, який ви додаєте. Потрібен для ігор на Direct3D 12.",
+                    ru: "Direct3D 11 и 12 из Game Porting Toolkit, который вы добавляете. Нужен для игр на Direct3D 12.")),
                 HelpEntry(.same("DXMT (DX11)"), L10n(
-                    "Direct3D 10 and 11 straight through Metal. The fastest option for most games.",
-                    uk: "Direct3D 10 і 11 напряму через Metal. Найшвидший варіант для більшості ігор.",
-                    ru: "Direct3D 10 и 11 напрямую через Metal. Самый быстрый вариант для большинства игр.")),
+                    "Direct3D 10 and 11. The fastest option for most games.",
+                    uk: "Direct3D 10 і 11. Найшвидший варіант для більшості ігор.",
+                    ru: "Direct3D 10 и 11. Самый быстрый вариант для большинства игр.")),
                 HelpEntry(.same("mtld3d (DX9)"), L10n(
-                    "Direct3D 9 straight through Metal. Lullaby downloads it from its author the first time a game needs it. Young: try Wine's WineD3D if a game looks wrong.",
-                    uk: "Direct3D 9 напряму через Metal. Lullaby завантажує його в автора, коли він уперше знадобиться грі. Молодий проєкт: якщо гра виглядає неправильно, спробуйте WineD3D від Wine.",
-                    ru: "Direct3D 9 напрямую через Metal. Lullaby скачивает его у автора, когда он впервые понадобится игре. Молодой проект: если игра выглядит неправильно, попробуйте WineD3D от Wine.")),
+                    "Direct3D 9. A young project: a game may look wrong or not work at all. Lullaby downloads it from the author's repository the first time a game needs it.",
+                    uk: "Direct3D 9. Молодий проєкт: гра може виглядати неправильно або зовсім не працювати. Lullaby завантажує його з репозиторію автора, коли він уперше знадобиться грі.",
+                    ru: "Direct3D 9. Молодой проект: игра может выглядеть неправильно или вовсе не работать. Lullaby скачивает его из репозитория автора, когда он впервые понадобится игре.")),
                 HelpEntry(.same("WineMetalGL (OpenGL)"), L10n(
-                    "OpenGL (up to 4.6) straight through Metal, for games that draw with OpenGL. Lullaby downloads it from its author the first time a game needs it.",
-                    uk: "OpenGL (до 4.6) напряму через Metal, для ігор, що малюють через OpenGL. Lullaby завантажує його в автора, коли він уперше знадобиться грі.",
-                    ru: "OpenGL (до 4.6) напрямую через Metal для игр, которые рисуют через OpenGL. Lullaby скачивает его у автора, когда он впервые понадобится игре.")),
+                    "OpenGL (up to 4.6) straight through Metal, for games that draw with OpenGL. Lullaby downloads it from the author's repository the first time a game needs it.",
+                    uk: "OpenGL (до 4.6) напряму через Metal, для ігор, що малюють через OpenGL. Lullaby завантажує його з репозиторію автора, коли він уперше знадобиться грі.",
+                    ru: "OpenGL (до 4.6) напрямую через Metal для игр, которые рисуют через OpenGL. Lullaby скачивает его из репозитория автора, когда он впервые понадобится игре.")),
                 HelpEntry(.same("MoltenVK (Vulkan)"), L10n(
-                    "For games that draw with Vulkan: Vulkan through Metal (MoltenVK, part of the engine). The Vulkan driver Lullaby uses today.",
-                    uk: "Для ігор, що малюють через Vulkan: Vulkan через Metal (MoltenVK, частина рушія). Драйвер Vulkan, який Lullaby використовує сьогодні.",
-                    ru: "Для игр, которые рисуют через Vulkan: Vulkan через Metal (MoltenVK, часть движка). Драйвер Vulkan, который Lullaby использует сегодня.")),
+                    "Vulkan. The Vulkan driver straight through Metal; in some games it performs better.",
+                    uk: "Vulkan. Драйвер Vulkan напряму через Metal, в деяких іграх дає кращу продуктивність.",
+                    ru: "Vulkan. Драйвер Vulkan напрямую через Metal, в некоторых играх даёт лучшую производительность.")),
             ],
-            footnote: L10n("Direct3D 12 needs D3DMetal from Apple's Game Porting Toolkit. You add it yourself.",
-                           uk: "Для Direct3D 12 потрібен D3DMetal із Game Porting Toolkit від Apple. Ви додаєте його самі.",
-                           ru: "Для Direct3D 12 нужен D3DMetal из Game Porting Toolkit от Apple. Вы добавляете его сами.")))
+            footnote: L10n("Direct3D 12 needs D3DMetal from Apple's Game Porting Toolkit. You add it yourself in the Lullaby app's settings.",
+                           uk: "Для Direct3D 12 потрібен D3DMetal із Game Porting Toolkit від Apple. Ви додаєте його самі в налаштуваннях додатку Lullaby.",
+                           ru: "Для Direct3D 12 нужен D3DMetal из Game Porting Toolkit от Apple. Вы добавляете его сами в настройках приложения Lullaby.")))
 
     static let retina = SettingCopy(
         L10n("High resolution (Retina)", uk: "Висока роздільність (Retina)", ru: "Высокое разрешение (Retina)"),
@@ -165,13 +162,13 @@ extension SettingCopy {
                  ru: "У экрана Retina четыре пикселя на каждую точку, которыми считает macOS. По умолчанию игра получает размер в точках, и картинка растягивается."),
             entries: [
                 HelpEntry(Words.on, L10n(
-                    "Sharp picture at the screen's real resolution, but fewer frames. Old games may show tiny text and menus.",
-                    uk: "Чітка картинка в реальній роздільності екрана, але менше кадрів. У старих іграх текст і меню можуть бути дрібними.",
-                    ru: "Чёткая картинка в реальном разрешении экрана, но кадров меньше. В старых играх текст и меню могут быть мелкими.")),
+                    "Sharp picture at the screen's real resolution. Old games may show tiny text and menus.",
+                    uk: "Чітка картинка в реальній роздільності екрана. У старих іграх текст і меню можуть бути дрібними.",
+                    ru: "Чёткая картинка в реальном разрешении экрана. В старых играх текст и меню могут быть мелкими.")),
                 HelpEntry(Words.off, L10n(
-                    "Half the pixels in each direction: faster and a bit softer, and everything stays readable.",
-                    uk: "Удвічі менше пікселів по кожній осі: швидше й трохи м’якше, усе лишається читабельним.",
-                    ru: "Вдвое меньше пикселей по каждой оси: быстрее и чуть мягче, всё остаётся читаемым.")),
+                    "Half the pixels in each direction: faster at the cost of looks, and everything stays readable.",
+                    uk: "Удвічі менше пікселів по кожній осі: швидше за рахунок вигляду, усе лишається читабельним.",
+                    ru: "Вдвое меньше пикселей по каждой оси: быстрее за счёт внешнего вида, всё остаётся читаемым.")),
             ],
             footnote: L10n("Saved to the game's Wine registry at launch.",
                            uk: "Зберігається в реєстрі Wine гри під час запуску.",
@@ -182,43 +179,43 @@ extension SettingCopy {
         caption: L10n("Apple's Metal HUD shown over the game.", uk: "Metal HUD від Apple поверх гри.",
                       ru: "Metal HUD от Apple поверх игры."),
         help: SettingHelp(
-            L10n("Apple's own performance overlay: frames per second, frame time and GPU memory, taken from the graphics driver. Works in games that draw through Metal: DXMT, DXVK and D3DMetal.",
-                 uk: "Власна накладка Apple з показниками: кадри за секунду, час кадру й пам’ять GPU — дані беруться з графічного драйвера. Працює в іграх, що малюють через Metal: DXMT, DXVK і D3DMetal.",
-                 ru: "Собственная панель Apple с показателями: кадры в секунду, время кадра и память GPU — данные берутся из графического драйвера. Работает в играх, которые рисуют через Metal: DXMT, DXVK и D3DMetal.")))
+            L10n("Apple's own performance overlay: frames per second, frame time and GPU memory.",
+                 uk: "Власна накладка Apple з показниками: кадри за секунду, час кадру й пам’ять GPU.",
+                 ru: "Собственная панель Apple с показателями: кадры в секунду, время кадра и память GPU.")))
 
     static let nativeFullscreen = SettingCopy(
         L10n("Native full screen", uk: "Рідний повний екран", ru: "Нативный полный экран"),
-        caption: L10n("A game that covers the screen goes to macOS full screen by itself.",
-                      uk: "Гра, що закриває екран, сама переходить у повний екран macOS.",
-                      ru: "Игра, закрывающая экран, сама переходит в полный экран macOS."),
+        caption: L10n("Any \"Windowed fullscreen\" game goes to macOS native full screen by itself.",
+                      uk: "Будь-яка гра Windowed fullscreen сама переходить у нативний повний екран macOS.",
+                      ru: "Любая игра «Windowed fullscreen» сама переходит в нативный полный экран macOS."),
         help: SettingHelp(
-            L10n("A game's borderless window as big as the screen (\"Window (full screen)\") is taken to macOS's own full screen: its own desktop, the picture under the notch at the screen's full resolution, the game told the size it has. Direct games: D3DMetal and DXMT games are also shown straight to the display (no window compositor) with V-Sync on, so the refresh rate of a ProMotion screen follows the game. Switching it off leaves the game's window as the game made it and the picture through the compositor; the green button of the window still works.",
-                 uk: "Безрамкове вікно гри на весь екран («Вікно (повний екран)») переходить у власний повний екран macOS: окремий робочий стіл, картинка під вирізом у повній роздільності екрана, грі повідомляють справжній розмір. Ігри D3DMetal і DXMT показуються напряму на дисплей (без композитора вікон) з вертикальною синхронізацією, тож частота оновлення екрана ProMotion слідує за грою. Якщо вимкнути, вікно лишається таким, яким його зробила гра, а картинка йде через композитор; зелена кнопка вікна працює.",
-                 ru: "Безрамочное окно игры на весь экран («Окно (полный экран)») переходит в собственный полный экран macOS: отдельный рабочий стол, картинка под вырезом в полном разрешении экрана, игре сообщают настоящий размер. Игры D3DMetal и DXMT показываются напрямую на дисплей (без композитора окон) с вертикальной синхронизацией, поэтому частота обновления экрана ProMotion следует за игрой. Если выключить, окно остаётся таким, каким его сделала игра, а картинка идёт через композитор; зелёная кнопка окна работает."),
+            L10n("A game's borderless full-screen window (\"Windowed fullscreen\") is taken to macOS's own full screen: its own desktop, the picture under the notch, the game told its real size. Games are shown straight to the display (Direct) with VRR, so the refresh rate of a ProMotion screen follows the FPS. It usually helps the stability and performance of the game. Switched off, the window stays as the game made it and the picture goes through the compositor.",
+                 uk: "Безрамкове вікно гри на весь екран \"Windowed fullscreen\" переходить у власний повний екран macOS: окремий робочий стіл, картинка під вирізом, грі повідомляють справжній розмір. Ігри показуються напряму на дисплей (Direct) з роботою VRR, тож частота оновлення екрана ProMotion слідує за ФПС. Зазвичай позитивно впливає на стабільність та продуктивність гри. Якщо вимкнути, вікно лишається таким, яким його зробила гра, а картинка йде через композитор.",
+                 ru: "Безрамочное окно игры на весь экран «Windowed fullscreen» переходит в собственный полный экран macOS: отдельный рабочий стол, картинка под вырезом, игре сообщают настоящий размер. Игры показываются напрямую на дисплей (Direct) с работой VRR, поэтому частота обновления экрана ProMotion следует за FPS. Обычно это положительно влияет на стабильность и производительность игры. Если выключить, окно остаётся таким, каким его сделала игра, а картинка идёт через композитор."),
             entries: [
                 HelpEntry(L10n("Games that start in a window", uk: "Ігри, що стартують у вікні", ru: "Игры, которые стартуют в окне"), L10n(
-                    "A game that opens a launcher or a small window first is not touched until its screen-covering window comes. A game left in native full screen is put back there.",
-                    uk: "Гра, що спершу відкриває лаунчер або маленьке вікно, не чіпається, доки не з’явиться вікно на весь екран. Гру, залишену в рідному повному екрані, повертають туди.",
-                    ru: "Игра, которая сначала открывает лаунчер или маленькое окно, не трогается, пока не появится окно на весь экран. Игру, оставленную в нативном полном экране, возвращают туда.")),
+                    "A game that opens a launcher or a small window first is left alone until its full-screen window appears.",
+                    uk: "Гра, що спершу відкриває лаунчер або маленьке вікно, не чіпається, доки не з’явиться вікно на весь екран.",
+                    ru: "Игра, которая сначала открывает лаунчер или маленькое окно, не трогается, пока не появится окно на весь экран.")),
             ]))
 
     static let filter = SettingCopy(
-        L10n("Final filter", uk: "Фінальний фільтр", ru: "Финальный фильтр"),
-        caption: L10n("How a picture smaller than the window is fitted to it.",
-                      uk: "Як картинку, меншу за вікно, підганяють під нього.",
-                      ru: "Как картинку, меньшую окна, подгоняют под него."),
+        L10n("Scaling filter", uk: "Фільтр масштабування", ru: "Фильтр масштабирования"),
+        caption: L10n("How the picture is scaled.",
+                      uk: "Спосіб масштабування картинки.",
+                      ru: "Способ масштабирования картинки."),
         help: SettingHelp(
             L10n("The last step between the game and the window. Off leaves it to macOS and is right for almost every game. The others run Dormison's own presenter: HDR then shows pale and the Steam overlay may not appear.",
                  uk: "Останній крок між грою та вікном. «Вимк.» залишає це macOS і підходить майже всім іграм. Решта запускають власний презентер Dormison: HDR тоді виглядає блідо, а оверлей Steam може не з’явитися.",
                  ru: "Последний шаг между игрой и окном. «Выкл.» оставляет это macOS и подходит почти всем играм. Остальные запускают собственный презентер Dormison: HDR тогда выглядит бледно, а оверлей Steam может не появиться."),
             entries: [
                 HelpEntry(Words.off, L10n(
-                    "macOS stretches the picture softly. A smaller picture keeps black borders.",
-                    uk: "macOS м’яко розтягує картинку. Менша картинка лишається з чорними смугами.",
-                    ru: "macOS мягко растягивает картинку. Меньшая картинка остаётся с чёрными полосами.")),
+                    "macOS stretches the picture smoothly to the screen.",
+                    uk: "macOS м’яко розтягує картинку під екран.",
+                    ru: "macOS мягко растягивает картинку под экран.")),
                 HelpEntry(.same("Bilinear"), L10n(
-                    "Blends neighbouring pixels. The softest option.", uk: "Змішує сусідні пікселі. Найм’якший варіант.",
-                    ru: "Смешивает соседние пиксели. Самый мягкий вариант.")),
+                    "Blends neighbouring pixels. The \"soapy\" option.", uk: "Змішує сусідні пікселі. \"Мильний\" варіант.",
+                    ru: "Смешивает соседние пиксели. «Мыльный» вариант.")),
                 HelpEntry(.same("Lanczos"), L10n(
                     "Sharp resampling that works well at fractional scales.", uk: "Чітке перемасштабування, добре для дробових масштабів.",
                     ru: "Чёткое масштабирование, хорошо подходит для дробных масштабов.")),
@@ -226,10 +223,7 @@ extension SettingCopy {
                     "Apple's upscaler, for 3D games that render below the screen's resolution.",
                     uk: "Апскейлер Apple, для 3D-ігор, які рендеряться в роздільності нижчій за екранну.",
                     ru: "Апскейлер Apple, для 3D-игр, которые рендерятся в разрешении ниже экранного.")),
-            ],
-            footnote: L10n("View › Upscaler in the game's menu changes it while you play. Lullaby remembers your choice.",
-                           uk: "View › Upscaler у меню гри змінює його під час гри. Lullaby запам’ятовує ваш вибір.",
-                           ru: "View › Upscaler в меню игры меняет его во время игры. Lullaby запоминает ваш выбор.")))
+            ]))
 
     static let rawMouse = SettingCopy(
         L10n("Raw mouse (GameController)", uk: "Сира миша (GameController)", ru: "Сырая мышь (GameController)"),
@@ -237,9 +231,9 @@ extension SettingCopy {
                       uk: "Гра читає мишу, як у Windows, до 500 разів на секунду.",
                       ru: "Игра читает мышь, как в Windows, до 500 раз в секунду."),
         help: SettingHelp(
-            L10n("Reads the mouse through Apple's GameController and hands the game raw movement, without the pointer curve and without waiting for the screen: the engine's own path gives about 120 reports a second, this one about 500 (measured). The movement is in raw device counts, several times larger than the usual path's, so the sensitivity below scales it.",
-                 uk: "Читає мишу через Apple GameController і дає грі сирий рух, без кривої курсора й без очікування екрана: власний шлях рушія дає близько 120 звітів на секунду, цей — близько 500 (виміряно). Рух у сирих відліках пристрою, у кілька разів більших, ніж у звичайного шляху, тому чутливість нижче його масштабує.",
-                 ru: "Читает мышь через Apple GameController и отдаёт игре сырое движение, без кривой курсора и без ожидания экрана: собственный путь движка даёт около 120 отчётов в секунду, этот — около 500 (измерено). Движение в сырых отсчётах устройства, в несколько раз крупнее, чем у обычного пути, поэтому чувствительность ниже его масштабирует."),
+            L10n("Reads the mouse through GameController and hands the game raw movement, without the pointer curve and without waiting for the screen: the engine's own path gives about 120 reports a second, this one about 500. The mouse sensitivity may become too high.",
+                 uk: "Читає мишу через GameController і дає грі сирий рух, без кривої курсора й без очікування екрана: власний шлях рушія дає близько 120 звітів на секунду, цей - близько 500. Чутливість миші може стати завеликою.",
+                 ru: "Читает мышь через GameController и отдаёт игре сырое движение, без кривой курсора и без ожидания экрана: собственный путь движка даёт около 120 отчётов в секунду, этот — около 500. Чувствительность мыши может стать слишком большой."),
             entries: [
                 HelpEntry(L10n("Trackpad and speed", uk: "Тачпад і швидкість", ru: "Тачпад и скорость"), L10n(
                     "A trackpad is left as it is. A mouse's speed follows its own resolution (counts per inch) when it reports one.",
@@ -282,9 +276,9 @@ extension SettingCopy {
         caption: L10n("Tells games the GPU shares memory with the Mac.", uk: "Повідомляє іграм, що GPU ділить пам’ять із Mac.",
                       ru: "Сообщает играм, что GPU делит память с Mac."),
         help: SettingHelp(
-            L10n("A Mac has one memory pool for the processor and graphics. Windows games expect a separate graphics card and copy every texture twice. With this on, the game is told the truth (UMA) and writes each texture once.",
-                 uk: "У Mac одна пам’ять і для процесора, і для графіки. Ігри Windows чекають окрему відеокарту й копіюють кожну текстуру двічі. З цією опцією гра знає правду (UMA) і записує текстуру один раз.",
-                 ru: "У Mac одна память и для процессора, и для графики. Игры Windows ждут отдельную видеокарту и копируют каждую текстуру дважды. С этой опцией игра знает правду (UMA) и записывает текстуру один раз."),
+            L10n("A Mac has one memory pool for the processor and graphics. Windows games copy every texture twice. With this on, the game is told the truth (UMA) and writes each texture once.",
+                 uk: "У Mac одна пам’ять і для процесора, і для графіки. Ігри Windows копіюють кожну текстуру двічі. З цією опцією гра знає правду (UMA) і записує текстуру один раз.",
+                 ru: "У Mac одна память и для процессора, и для графики. Игры Windows копируют каждую текстуру дважды. С этой опцией игра знает правду (UMA) и записывает текстуру один раз."),
             entries: [
                 HelpEntry(L10n("If a game misbehaves", uk: "Якщо гра поводиться дивно", ru: "Если игра ведёт себя странно"), L10n(
                     "Wrong textures, or a game that stops at launch: turn it off for that game.",
@@ -294,19 +288,22 @@ extension SettingCopy {
 
     static let gameMode = SettingCopy(
         L10n("macOS Game Mode", uk: "Ігровий режим macOS", ru: "Игровой режим macOS"),
-        caption: L10n("Gives the game priority in full screen. Turn off while streaming.",
-                      uk: "Дає грі пріоритет на весь екран. Вимикайте під час стріму.",
-                      ru: "Даёт игре приоритет на весь экран. Выключайте во время стрима."),
+        caption: L10n("Gives a full-screen game priority for resources.",
+                      uk: "Дає грі на весь екран пріоритет ресурсів.",
+                      ru: "Даёт игре на весь экран приоритет ресурсов."),
         help: SettingHelp(
-            L10n("In full screen macOS gives a game Game Mode: the CPU and GPU go to it first and apps in the background are held back. While you stream or record, that slows OBS, a VTuber model and the like. Off, the game's bundle opts out of Game Mode. Takes effect at the next launch.",
-                 uk: "На весь екран macOS вмикає для гри ігровий режим: процесор і відеокарта дістаються їй першою, а програми у фоні притримуються. Під час стріму чи запису це гальмує OBS, VTuber-модель тощо. Вимкнено — пакет гри відмовляється від ігрового режиму. Діє з наступного запуску.",
-                 ru: "На весь экран macOS включает для игры игровой режим: процессор и видеокарта достаются ей первой, а программы в фоне придерживаются. Во время стрима или записи это тормозит OBS, VTuber-модель и т. п. Выключено — пакет игры отказывается от игрового режима. Действует со следующего запуска.")))
+            L10n("macOS gives the game Game Mode: the CPU and GPU go to it first and apps in the background are held back. While you stream or record, that slows OBS, a VTuber model and the like.",
+                 uk: "MacOS вмикає для гри ігровий режим: процесор і відеокарта дістаються їй першою, а програми у фоні притримуються. Під час стріму чи запису це гальмує OBS, VTuber-модель тощо.",
+                 ru: "macOS включает для игры игровой режим: процессор и видеокарта достаются ей первой, а программы в фоне придерживаются. Во время стрима или записи это тормозит OBS, VTuber-модель и т. п."),
+            footnote: L10n("Off — the game's bundle opts out of Game Mode.",
+                           uk: "Вимкнено — пакет гри відмовляється від ігрового режиму.",
+                           ru: "Выключено — пакет игры отказывается от игрового режима.")))
 
     static let forceVsync = SettingCopy(
         L10n("No frame tearing", uk: "Без розривів кадру", ru: "Без разрывов кадра"),
-        caption: L10n("Keeps D3DMetal's picture in step with the display, even with frame generation on.",
-                      uk: "Тримає картинку D3DMetal у такт з екраном, навіть з генерацією кадрів.",
-                      ru: "Держит картинку D3DMetal в такт с экраном, даже с генерацией кадров."),
+        caption: L10n("Keeps D3DMetal's picture in step with the display, even with frame generation on (usually not needed).",
+                      uk: "Тримає картинку D3DMetal у такт з екраном, навіть з генерацією кадрів (зазвичай непотрібно)",
+                      ru: "Держит картинку D3DMetal в такт с экраном, даже с генерацией кадров (обычно не нужно)."),
         help: SettingHelp(
             L10n("Games with frame generation turn V-Sync off, and the picture then tears. On, every frame waits for the display's refresh. D3DMetal only.",
                  uk: "Ігри з генерацією кадрів вимикають V-Sync, і картинка тоді рветься. Увімкнено — кожен кадр чекає оновлення екрана. Лише D3DMetal.",

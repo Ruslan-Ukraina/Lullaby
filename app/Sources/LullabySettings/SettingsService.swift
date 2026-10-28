@@ -139,11 +139,6 @@ public struct SettingsService: Sendable {
             object["prefix"] = .bool(hasPrefix)
             object["status"] = .string(running ? "restartGame" : (exes.isEmpty || !hasPrefix) ? "firstLaunch" : "nextLaunch")
             if let name = game.name ?? library.installed(appID)?.name { object["name"] = .string(name) }
-            if let fix = store.gameFix(appID: appID, exes: game.exes) {
-                object["recipe"] = .string(fix.id)
-            } else if let recipe = GameRecipes.recipe(appID: appID, exes: game.exes) {
-                object["recipe"] = .string(recipe.id)
-            }
         }
         return .object(object)
     }

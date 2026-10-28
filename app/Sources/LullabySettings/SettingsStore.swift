@@ -37,12 +37,10 @@ public struct SettingsStore: Sendable {
     public func stack(for appID: Int?) -> ConfigStack {
         let own = appID.map(game) ?? .empty
         guard appID != nil else { return ConfigStack(global: global(), game: own) }
-        // The signed catalog first, the built-in recipes when it has nothing for the game.
         if let fix = gameFix(appID: appID, exes: own.exes) {
             return ConfigStack(global: global(), recipe: fix.recipeValues, game: own, fixLines: fix.envLines())
         }
-        let recipe = GameRecipes.recipe(appID: appID, exes: own.exes)
-        return ConfigStack(global: global(), recipe: recipe?.values ?? .empty, game: own)
+        return ConfigStack(global: global(), game: own)
     }
 
     var catalogURL: URL { root.appending(path: "game-fixes.json") }

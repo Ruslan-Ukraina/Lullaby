@@ -143,9 +143,9 @@ struct GameFixWiringTests {
         #expect(store.stack(for: 777).recipe == .empty)
     }
 
-    @Test("No catalog, a broken catalog or an unfit verdict leaves the built-in recipes")
+    @Test("No catalog, a broken catalog or an unfit verdict leaves the game on the defaults")
     func fallsBack() throws {
-        #expect(try Self.store(catalog: nil).stack(for: 3527290).value(\.renderer) == (.dxmt, .recipe))
+        #expect(try Self.store(catalog: nil).stack(for: 3527290).value(\.renderer) == (.auto, .defaults))
         #expect(try Self.store(catalog: "{broken").stack(for: 3527290).fixLines.isEmpty)
         let unfit = GameFixCatalogTests.entry(id: "u", match: #""appIDs":[5]"#)
             .replacingOccurrences(of: "\"fits\"", with: "\"unfit\"")

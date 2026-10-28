@@ -294,7 +294,7 @@ public enum ConfigLevel: String, Codable, Sendable {
 /// The two levels a game resolves through, read once.
 public struct ConfigStack: Sendable, Equatable {
     public var global: ConfigValues
-    /// Lullaby's recipe for the game (GameRecipes), between its own values and global.
+    /// What the signed catalog's fix for the game sets (its renderer), between its own values and global.
     public var recipe: ConfigValues
     public var game: ConfigValues
     /// Extra lines of the catalog's fix (variables, DLL overrides) for the program's file.
