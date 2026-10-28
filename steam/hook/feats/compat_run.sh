@@ -1266,28 +1266,6 @@ if [ "$renderer" = moltenvk ]; then
   renderer=wined3d
   echo "renderer: MoltenVK chosen, Vulkan games use the engine's MoltenVK" >> "$log" 2>&1 || true
 fi
-# A Unity game that Steam starts with -force-vulkan, while the player chose a Direct3D renderer: the game would draw through
-# Vulkan and never reach DXMT or D3DMetal (PEAK did not start at all). The player's renderer decides, so the flag becomes the
-# matching Direct3D one. Only the command line of this run changes, no game file.
-if [ "$verb" = waitforexitandrun ] && [ "${scout_api:-}" = vk ] && [ "${scout_src:-}" = arg ]; then
-  case "$renderer" in
-    dxmt) unity_api=-force-d3d11 ;;
-    d3dmetal) unity_api=-force-d3d12 ;;
-    *) unity_api="" ;;
-  esac
-  if [ -n "$unity_api" ]; then
-    for a in "$@"; do
-      case "$a" in -force-vulkan|-vulkan) unity_swap=1 ;; esac
-    done
-    if [ "${unity_swap:-0}" = 1 ]; then
-      for a in "$@"; do
-        shift
-        case "$a" in -force-vulkan|-vulkan) set -- "$@" "$unity_api" ;; *) set -- "$@" "$a" ;; esac
-      done
-      echo "renderer: $renderer chosen, the game's Vulkan flag is replaced by $unity_api" >> "$log" 2>&1 || true
-    fi
-  fi
-fi
 # Direct (lby-ponthree-pacer): the Metal layer of a D3DMetal or DXMT game is made BGR-ordered so that macOS shows it straight to
 # the display, and keeps V-Sync in native full screen. It rides with the "Native full screen" setting (on for every game):
 # off, or another renderer (MoltenVK, mtld3d, WineMetalGL, WineD3D), the layer is left as it is made.

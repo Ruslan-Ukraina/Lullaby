@@ -2,7 +2,6 @@ Lullaby r5 (1.1.0)
 
 Changes since r4
 - Direct presentation and variable refresh for D3DMetal and DXMT games. A game that goes to native full screen (the "Native full screen" row in the game's properties, on for every game) is now shown straight to the display, as the Metal HUD says ("Direct" instead of "Composited"), with V-Sync on, so a ProMotion screen follows the game's frame rate. Resident Evil Requiem: 70-80 steady frames a second in its heaviest opening scene with no tearing and no ladder steps (20-30 more than before, and even), a faster menu and lighter input; Euro Truck Simulator 2 follows its frame rate between 60 and 120 smoothly. HDR is kept. Games on MoltenVK, mtld3d, WineMetalGL or WineD3D, and a game with the row switched off, are shown as in r4.
-- A Unity game that Steam starts with -force-vulkan now follows the renderer you chose: with DXMT or D3DMetal selected, the flag is replaced by -force-d3d11 or -force-d3d12 for that run (PEAK did not start on DXMT before).
 - The pacer (lby-ponthree-pacer) is part of the app and always on in Direct; there is no switch for it: switching "Native full screen" off turns it off with the rest.
 
 Known limits
