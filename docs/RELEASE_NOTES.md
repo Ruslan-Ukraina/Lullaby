@@ -3,7 +3,10 @@ Lullaby r5 (1.1.0)
 Changes since r4
 - Direct presentation and variable refresh for D3DMetal and DXMT games. A game that goes to native full screen (the "Native full screen" row in the game's properties, on for every game) is now shown straight to the display, as the Metal HUD says ("Direct" instead of "Composited"), with V-Sync on, so a ProMotion screen follows the game's frame rate. Resident Evil Requiem: 70-80 steady frames a second in its heaviest opening scene with no tearing and no ladder steps (20-30 more than before, and even), a faster menu and lighter input; Euro Truck Simulator 2 follows its frame rate between 60 and 120 smoothly. HDR is kept. Games on MoltenVK, mtld3d, WineMetalGL or WineD3D, and a game with the row switched off, are shown as in r4.
 - A Unity game that Steam starts with -force-vulkan follows the renderer you chose: with DXMT or D3DMetal selected it runs on Direct3D 11 or 12 (PEAK did not start on DXMT before).
-- A game in a borderless window smaller than the screen (Deadlock at 1920x1200) goes to native full screen by itself; DXMT games with MetalFX stay Direct.
+- A game in a borderless window smaller than the screen (Deadlock at 1920x1200) goes to native full screen by itself (lby-pinkiepie-windowstate); DXMT games with MetalFX stay Direct.
+- Steam bridge dormison-r7-3 (engine Dormison r7, unchanged): a game window smaller than the screen (1920x1200 on a bigger screen) that goes to native full screen keeps its size and is scaled to the whole screen without distortion, also when the game changes its resolution in its settings while in full screen; the resolution you chose stays saved (ENG-15, lby-trixie-fullscreen). LULLABY_FULLSCREEN_SCALE=0 gives the old behaviour for one run.
+- Sound follows the microphone too: when the default input device changes (a headset is plugged in or out), a game that records keeps listening to the right one (ENG-14). LULLABY_AUDIO_FOLLOW=0 turns it off for one run. Tested on the built-in microphone only.
+- The wording of the game properties is rewritten (Ukrainian by the author, Russian and English adapted); the built-in "Lullaby recipe" per game and its button are gone, Auto picks the renderer.
 - The pacer (lby-ponthree-pacer) is part of the app and always on in Direct; there is no switch for it: switching "Native full screen" off turns it off with the rest.
 
 Known limits
