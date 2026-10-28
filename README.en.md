@@ -1,6 +1,6 @@
 # Lullaby
 
-[Українська](README.md) · [Русский](README.ru.md) · **English**
+[Українська](README.md) · **English**
 
 Play the Windows games of your Steam library right on a Mac, in the ordinary Steam for macOS, the way Steam Play (Proton) works on Linux. You get the full Steam gaming experience with a bias towards being native on the Mac. All of it thanks to the [Dormison](https://github.com/kageroumado/dormison) engine (Wine for macOS).
 
