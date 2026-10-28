@@ -11,20 +11,26 @@ the window becomes scalable (presentationScalable, as for a window the program r
 program is not told the new size, the stage fits its picture into the full screen (the engine's own scaler, pointer included), and
 the resolution the game saved stays the one the player chose. A window that covered the screen (RE9, ETS 2 borderless) is not
 touched: ENG-12 still tells it the real size. Leaving full screen (or failing to enter it) puts the window back as it was.
+The same holds when the program changes its size while in native full screen (a resolution chosen in the game's settings):
+a size smaller than the screen becomes scaled (followFullscreenScaling, called from setFrameFromWine; the real frame stays the
+screen's), the screen's size again ends the scaling and ENG-12 reports as before.
 Requires: ENG-12 (0006), whose report it skips for such a window.
 Other bases: Dormison's cocoa_window.m only.
 Test: PEAK (Unity, Vulkan) saved at 1920x1200 in a window, native full screen on: HUD at 1920x1200 with the picture filling
 the screen, Player.log keeps "InitializeOrResetSwapChain 1920x1200", the registry keeps 1920x1200 after exit; RE9 still 3024x1898.
+PEAK switched in game from 3024x1964 to 1920x1200 in native full screen: the picture fills the screen (before: a small window in the middle).
 Verified on: see ledger (2026-10-28).
 Switch: LULLABY_FULLSCREEN_SCALE=0 (or LULLABY_FULLSCREEN_SIZE=0) as a launch option gives the old behaviour; on by default.
 
 diff --git a/dlls/winemac.drv/cocoa_window.m b/dlls/winemac.drv/cocoa_window.m
 --- a/dlls/winemac.drv/cocoa_window.m
 +++ b/dlls/winemac.drv/cocoa_window.m
-@@ -1579,6 +1579,43 @@
+@@ -1577,6 +1577,43 @@
+ {
+     const char *value = getenv("LULLABY_FULLSCREEN_SIZE");
      return !value || strcmp(value, "0") != 0;
- }
- 
++}
++
 +/* A window smaller than the screen that goes to native full screen keeps the size its program gave it, and the stage
 +   scales it up (a game at 1920x1200 on a bigger screen). A window that covered the screen is told the new size (ENG-12).
 +   The flag lives with the window until it leaves full screen. LULLABY_FULLSCREEN_SCALE=0 turns this off. */
@@ -60,11 +66,9 @@ diff --git a/dlls/winemac.drv/cocoa_window.m b/dlls/winemac.drv/cocoa_window.m
 +{
 +    NSRect screen_frame = [screen frame];
 +    return frame.size.width >= screen_frame.size.width - 2 && frame.size.height >= screen_frame.size.height - 40;
-+}
-+
- @implementation WineWindow
+ }
  
-     static WineWindow* causing_becomeKeyWindow;
+ @implementation WineWindow
 @@ -2062,7 +2099,7 @@
          if (!NSIsEmptyRect(wineContentRect))
              wineFrame = [self frameRectForContentRect:wineContentRect];
@@ -74,7 +78,55 @@ diff --git a/dlls/winemac.drv/cocoa_window.m b/dlls/winemac.drv/cocoa_window.m
          {
              presentationScalable = !presentationScalable;
              if (!presentationScalable)
-@@ -4007,7 +4044,14 @@
+@@ -2839,7 +2876,7 @@
+         }
+         else if (presentationScalable)
+         {
+-            if (self.presentationScaled)
++            if (self.presentationScaled || fullscreen_scaled(self))
+             {
+                 /* The size is the user's. Wine moving the window or changing
+                    what it draws at both land in the scaled view. */
+@@ -2892,6 +2929,30 @@
+ #endif
+         if (presentationScalable)
+             [self applyPresentationConstraints];
++    }
++
++    /* The program changes its size while the window is in native full screen (a game's resolution setting): a size
++       smaller than the screen is scaled up as if the window had entered full screen with it; the screen's size again is
++       the program's own, as ENG-12 reports it. */
++    - (void) followFullscreenScaling:(NSRect)contentRect
++    {
++        BOOL small;
++
++        if (!([self styleMask] & NSWindowStyleMaskFullScreen) || enteringFullScreen || exitingFullScreen ||
++            !fullscreen_scale_enabled())
++            return;
++        small = !frame_covers_screen(contentRect, [self screen]);
++        if (small && !presentationScalable)
++        {
++            set_fullscreen_scaled(self, YES, contentRect.size);
++            presentationScalable = YES;
++        }
++        else if (!small && fullscreen_scaled(self))
++        {
++            set_fullscreen_scaled(self, NO, NSZeroSize);
++            presentationScalable = NO;
++            [self restoreUnscaledPresentation];
++        }
+     }
+ 
+     - (void) setFrameFromWine:(NSRect)contentRect
+@@ -2910,6 +2971,7 @@
+         {
+             NSRect frame, oldFrame;
+ 
++            [self followFullscreenScaling:contentRect];
+             if ([self programPutBackItsSize:contentRect])
+             {
+                 /* From here the size is the user's and the program's frame is scaled into
+@@ -4007,7 +4069,14 @@
          enteringFullScreen = FALSE;
          enteredFullScreenTime = [[NSProcessInfo processInfo] systemUptime];
          /* The style says full screen only now; the program hears of the size it has. */
@@ -90,7 +142,7 @@ diff --git a/dlls/winemac.drv/cocoa_window.m b/dlls/winemac.drv/cocoa_window.m
              [self windowDidResize:nil skipSizeMove:TRUE];
          if (pendingOrderOut)
              [self doOrderOut];
-@@ -4016,6 +4060,12 @@
+@@ -4016,6 +4085,12 @@
      - (void) windowDidExitFullScreen:(NSNotification*)notification
      {
          exitingFullScreen = FALSE;
@@ -103,7 +155,7 @@ diff --git a/dlls/winemac.drv/cocoa_window.m b/dlls/winemac.drv/cocoa_window.m
          [self setFrameAndWineFrame:nonFullscreenFrame];
          [self windowDidResize:nil];
          if (pendingOrderOut)
-@@ -4026,6 +4076,12 @@
+@@ -4026,6 +4101,12 @@
      {
          enteringFullScreen = FALSE;
          enteredFullScreenTime = 0;
@@ -116,7 +168,7 @@ diff --git a/dlls/winemac.drv/cocoa_window.m b/dlls/winemac.drv/cocoa_window.m
          if (pendingOrderOut)
              [self doOrderOut];
      }
-@@ -4084,7 +4140,7 @@
+@@ -4084,7 +4165,7 @@
             size is the screen below the menu bar and notch), or the stage would keep scaling the
             size it drew at into it. The switch LULLABY_FULLSCREEN_SIZE=0 keeps the scaled picture. */
          if (self.stageScales && ([self styleMask] & NSWindowStyleMaskFullScreen) && !exitingFullScreen &&
@@ -125,7 +177,7 @@ diff --git a/dlls/winemac.drv/cocoa_window.m b/dlls/winemac.drv/cocoa_window.m
          {
              frame = self.frame;
              if (!NSEqualSizes(frame.size, wineFrame.size))
-@@ -4190,6 +4246,21 @@
+@@ -4190,6 +4271,21 @@
      {
          enteringFullScreen = TRUE;
          nonFullscreenFrame = self.wine_fractionalFrame;
