@@ -1,0 +1,221 @@
+ENG-14  A capture stream opened on the default input device moves with it: a headset microphone plugged in takes over.
+
+dlls/winecoreaudio.drv/coreaudio.c (winecoreaudio.so). Lullaby, 2026-10-28. LGPL-2.1-or-later like Wine.
+
+What: ENG-11 for the other direction. The driver binds a capture stream's audio unit to one microphone when the stream is opened,
+so a game with voice chat keeps listening to the built-in microphone after a headset is plugged in (Windows moves such streams
+itself). Now a capture stream whose device is the default input device when it is opened follows it: a listener on
+kAudioHardwarePropertyDefaultInputDevice counts the changes (one per direction, the render one is ENG-11's); the stream notices the
+count at its next call from the game (get_capture_buffer, get_next_packet_size, get_current_padding) or in its timer thread, makes a
+new audio unit and sample-rate converter for the new microphone the way the first ones were made, stops the old unit, puts the new
+ones in their place and starts it. The ring of captured frames starts empty (its frames were the old device's, at its rate), the
+frames already handed to the game and the volume are not touched. A stream on another device than the default and an exclusive
+choice of the game are left alone.
+Also: ca_capture_cb no longer waits for the stream's lock (that buffer of input is dropped if it is taken), for the same reason as
+ca_render_cb in ENG-11.
+Requires: ENG-11 (0001), whose helpers it generalises (default_device(flow), follow_check by direction).
+Other bases: the driver is Wine's own; applies to any Wine with winecoreaudio.drv and ENG-11.
+Test: not yet with a second real microphone: the built-in one is the only real input on the author's Mac, the rest are virtual
+(asking those can hang coreaudiod). Compiles clean with the Dormison r7 build flags. To try: a game or WASAPI capture program with
+WINEDEBUG=+coreaudio, plug in a headset, the driver says "input device A -> B".
+Verified on: compiled only (2026-10-28); see Test.
+Switch: LULLABY_AUDIO_FOLLOW=0 as a launch option turns both directions off for a run; on by default.
+
+diff --git a/dlls/winecoreaudio.drv/coreaudio.c b/dlls/winecoreaudio.drv/coreaudio.c
+--- a/dlls/winecoreaudio.drv/coreaudio.c
++++ b/dlls/winecoreaudio.drv/coreaudio.c
+@@ -97,7 +97,7 @@
+     AudioConverterRef converter;
+     AudioStreamBasicDescription dev_desc; /* audio unit format, not necessarily the same as fmt */
+     AudioDeviceID dev_id;
+-    BOOL follow_default; /* a render stream opened on the default output device: it moves with it (follow_check) */
++    BOOL follow_default; /* a stream opened on the default device of its direction: it moves with it (follow_check) */
+     int seen_changes, moving;
+ 
+     /* The stream's volume, as a gain per channel of fmt applied to its samples: for a render
+@@ -554,7 +554,8 @@
+     OSStatus sc;
+     UINT32 cap_wri_offs_frames;
+ 
+-    os_unfair_lock_lock(&stream->lock);
++    /* like the render callback: the thread that holds the lock may be moving the stream, and that waits for this callback */
++    if(!os_unfair_lock_trylock(&stream->lock)) return noErr;
+ 
+     cap_wri_offs_frames = (stream->cap_offs_frames + stream->cap_held_frames) % stream->cap_bufsize_frames;
+ 
+@@ -967,9 +968,9 @@
+  * of the default output device and does nothing else: a question to CoreAudio from the thread it runs on is never answered in
+  * some processes (a game that takes the device first on a change), so the stream itself notices the count at its next call from
+  * the game (or the timer thread) and moves on the game's own thread, as it was made. LULLABY_AUDIO_FOLLOW=0 turns it off. */
+-static int default_output_changes;
++static int default_changes[2]; /* [eRender], [eCapture] */
+ 
+-static AudioDeviceID default_output_device(void)
++static AudioDeviceID default_device(EDataFlow flow)
+ {
+     AudioDeviceID id = kAudioObjectUnknown;
+     UInt32 size = sizeof(id);
+@@ -977,7 +978,7 @@
+     {
+         .mScope = kAudioObjectPropertyScopeGlobal,
+         .mElement = kAudioObjectPropertyElementMain,
+-        .mSelector = kAudioHardwarePropertyDefaultOutputDevice,
++        .mSelector = flow == eCapture ? kAudioHardwarePropertyDefaultInputDevice : kAudioHardwarePropertyDefaultOutputDevice,
+     };
+ 
+     if(AudioObjectGetPropertyData(kAudioObjectSystemObject, &addr, 0, NULL, &size, &id) != noErr)
+@@ -1033,41 +1034,106 @@
+     AudioComponentInstanceDispose(old_unit);
+ }
+ 
+-/* On the game's thread, before the stream's own work: has the default output device changed since this stream looked? */
++/* The same for a capture stream: a new unit and converter for the new microphone, and the ring of captured frames starts empty
++ * (its frames are the old device's, at its rate). */
++static void follow_capture_device(struct coreaudio_stream *stream, AudioDeviceID new_id)
++{
++    AudioComponentInstance unit, old_unit;
++    AudioStreamBasicDescription desc;
++    AudioConverterRef converter = NULL, old_converter;
++    AURenderCallbackStruct input;
++    unsigned int min_frames, max_frames;
++    UINT32 cap_frames;
++    BYTE *cap_buffer, *old_cap_buffer;
++    OSStatus sc;
++
++    TRACE("stream %p: input device %u -> %u\n", stream, (unsigned int)stream->dev_id, (unsigned int)new_id);
++
++    if(SUCCEEDED(get_device_period_frame_range(new_id, eCapture, &min_frames, &max_frames)))
++        request_device_period_frame_size(new_id, eCapture,
++                                         max(min_frames, min(stream->period_frames, max_frames)));
++
++    if(!(unit = get_audiounit(eCapture, new_id))){
++        WARN("Couldn't make an audio unit for device %u, the stream stays where it is\n", (unsigned int)new_id);
++        return;
++    }
++    if(FAILED(ca_setup_audiounit(eCapture, unit, stream->fmt, &desc, &converter))){
++        WARN("Couldn't set the stream's format on device %u\n", (unsigned int)new_id);
++        AudioComponentInstanceDispose(unit);
++        return;
++    }
++    input.inputProc = ca_capture_cb;
++    input.inputProcRefCon = stream;
++    sc = AudioUnitSetProperty(unit, kAudioOutputUnitProperty_SetInputCallback, kAudioUnitScope_Output, 1, &input, sizeof(input));
++    if(sc == noErr) sc = AudioUnitInitialize(unit);
++    cap_frames = muldiv(stream->bufsize_frames, desc.mSampleRate, stream->fmt->nSamplesPerSec);
++    cap_buffer = cap_frames ? malloc(cap_frames * stream->fmt->nBlockAlign) : NULL;
++    if(sc != noErr || !cap_buffer){
++        WARN("Couldn't start capture on device %u: %x\n", (unsigned int)new_id, (int)sc);
++        free(cap_buffer);
++        AudioConverterDispose(converter);
++        AudioComponentInstanceDispose(unit);
++        return;
++    }
++
++    old_unit = stream->unit;
++    AudioOutputUnitStop(old_unit);
++    os_unfair_lock_lock(&stream->lock);
++    old_converter = stream->converter;
++    old_cap_buffer = stream->cap_buffer;
++    stream->unit = unit;
++    stream->converter = converter;
++    stream->cap_buffer = cap_buffer;
++    stream->cap_bufsize_frames = cap_frames;
++    stream->cap_offs_frames = stream->cap_held_frames = 0;
++    stream->dev_id = new_id;
++    stream->dev_desc = desc;
++    os_unfair_lock_unlock(&stream->lock);
++    sc = AudioOutputUnitStart(unit);
++    if(sc != noErr) WARN("Unit failed to start on device %u: %x\n", (unsigned int)new_id, (int)sc);
++    AudioComponentInstanceDispose(old_unit);
++    if(old_converter) AudioConverterDispose(old_converter);
++    free(old_cap_buffer);
++}
++
++/* On the game's thread, before the stream's own work: has the default device of the stream's direction changed since this stream looked? */
+ static void follow_check(struct coreaudio_stream *stream)
+ {
+     AudioDeviceID id;
+     int changes;
+ 
+     if(!stream->follow_default) return;
+-    changes = __atomic_load_n(&default_output_changes, __ATOMIC_SEQ_CST);
++    changes = __atomic_load_n(&default_changes[stream->flow], __ATOMIC_SEQ_CST);
+     if(changes == stream->seen_changes) return;
+     if(__atomic_exchange_n(&stream->moving, 1, __ATOMIC_SEQ_CST)) return;   /* another thread is on it */
+ 
+     stream->seen_changes = changes;
+-    id = default_output_device();
+-    if(id != kAudioObjectUnknown && id != stream->dev_id)
+-        follow_default_device(stream, id);
++    id = default_device(stream->flow);
++    if(id != kAudioObjectUnknown && id != stream->dev_id){
++        if(stream->flow == eCapture) follow_capture_device(stream, id);
++        else follow_default_device(stream, id);
++    }
+     __atomic_store_n(&stream->moving, 0, __ATOMIC_SEQ_CST);
+ }
+ 
+-static void install_default_listener(void)
++static void install_default_listener(EDataFlow flow)
+ {
+-    static dispatch_once_t once;
++    static dispatch_once_t once[2];
+ 
+-    dispatch_once(&once, ^{
+-        static const AudioObjectPropertyAddress addr =
++    dispatch_once(&once[flow], ^{
++        const AudioObjectPropertyAddress addr =
+         {
+             .mScope = kAudioObjectPropertyScopeGlobal,
+             .mElement = kAudioObjectPropertyElementMain,
+-            .mSelector = kAudioHardwarePropertyDefaultOutputDevice,
++            .mSelector = flow == eCapture ? kAudioHardwarePropertyDefaultInputDevice : kAudioHardwarePropertyDefaultOutputDevice,
+         };
+-        dispatch_queue_t queue = dispatch_queue_create("org.winehq.coreaudio.default-output", DISPATCH_QUEUE_SERIAL);
++        dispatch_queue_t queue = dispatch_queue_create(flow == eCapture ? "org.winehq.coreaudio.default-input" :
++                                                       "org.winehq.coreaudio.default-output", DISPATCH_QUEUE_SERIAL);
+         OSStatus sc = AudioObjectAddPropertyListenerBlock(kAudioObjectSystemObject, &addr, queue,
+                                                           ^(UInt32 count, const AudioObjectPropertyAddress *addrs){
+-                                                              __atomic_add_fetch(&default_output_changes, 1, __ATOMIC_SEQ_CST);
++                                                              __atomic_add_fetch(&default_changes[flow], 1, __ATOMIC_SEQ_CST);
+                                                           });
+-        if(sc != noErr) WARN("Couldn't listen for a change of the default output device: %x\n", (int)sc);
++        if(sc != noErr) WARN("Couldn't listen for a change of the default device (flow %d): %x\n", (int)flow, (int)sc);
+     });
+ }
+ 
+@@ -1075,14 +1141,13 @@
+ {
+     const char *off = getenv("LULLABY_AUDIO_FOLLOW");
+ 
+-    if((off && !strcmp(off, "0")) || stream->flow != eRender || stream->dev_id == kAudioObjectUnknown ||
+-       stream->dev_id != default_output_device())
++    if((off && !strcmp(off, "0")) || stream->dev_id == kAudioObjectUnknown || stream->dev_id != default_device(stream->flow))
+         return;
+ 
+-    install_default_listener();
+-    stream->seen_changes = __atomic_load_n(&default_output_changes, __ATOMIC_SEQ_CST);
++    install_default_listener(stream->flow);
++    stream->seen_changes = __atomic_load_n(&default_changes[stream->flow], __ATOMIC_SEQ_CST);
+     stream->follow_default = TRUE;
+-    TRACE("stream %p (device %u, %u ch, %u Hz) follows the default output\n", stream,
++    TRACE("stream %p (%s, device %u, %u ch, %u Hz) follows the default device\n", stream, stream->flow == eCapture ? "capture" : "render",
+           (unsigned int)stream->dev_id, stream->fmt->nChannels, (unsigned int)stream->fmt->nSamplesPerSec);
+ }
+ 
+@@ -1976,6 +2041,7 @@
+     LARGE_INTEGER stamp, freq;
+     SIZE_T size;
+ 
++    follow_check(stream);
+     os_unfair_lock_lock(&stream->lock);
+ 
+     if(stream->getbuf_last){
+@@ -2057,6 +2123,7 @@
+     struct get_next_packet_size_params *params = args;
+     struct coreaudio_stream *stream = handle_get_stream(params->stream);
+ 
++    follow_check(stream);
+     os_unfair_lock_lock(&stream->lock);
+ 
+     capture_resample(stream);
