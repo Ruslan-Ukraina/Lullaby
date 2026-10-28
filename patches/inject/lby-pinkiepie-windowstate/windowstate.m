@@ -99,6 +99,14 @@ static BOOL coversScreen(NSWindow *w)
     return covers;
 }
 
+/* The game's full-screen window: one that covers the screen, or a big borderless one at a smaller resolution (Deadlock at
+ * 1920x1200), which the engine scales to the screen in native full screen (ENG-15). */
+static BOOL meansFullScreen(NSWindow *w)
+{
+    if (coversScreen(w)) return YES;
+    return !isNative(w) && lbws_borderless_fullscreen_like(([w styleMask] & NSWindowStyleMaskTitled) != 0, rect([w frame]));
+}
+
 /* Read when it is needed: the engine applies the game's env file after this library is loaded. */
 static BOOL wantNative(void) { return lbws_want_native(getenv("LULLABY_NATIVE_FULLSCREEN")); }
 
@@ -233,18 +241,18 @@ static void autoFullscreen(NSWindow *w, int attempt)
      * the game is told one title bar (32 points). */
     NSNumber *last = [gLastChange objectForKey:w];
     double quiet = last ? nowSeconds() - [last doubleValue] : 99;
-    if (quiet < 2.0 && coversScreen(w) && wantNative()) {
+    if (quiet < 2.0 && meansFullScreen(w) && wantNative()) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)((2.0 - quiet + 0.1) * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             autoFullscreen(w, attempt);
         });
         return;
     }
-    if (coversScreen(w) && !windowedPresentation(w) &&
+    if (meansFullScreen(w) && !windowedPresentation(w) &&
         !([w collectionBehavior] & NSWindowCollectionBehaviorFullScreenPrimary))
         [w setCollectionBehavior:([w collectionBehavior] & ~NSWindowCollectionBehaviorFullScreenAuxiliary) |
                                  NSWindowCollectionBehaviorFullScreenPrimary];
     BOOL canNative = ([w collectionBehavior] & NSWindowCollectionBehaviorFullScreenPrimary) != 0;
-    switch (lbws_plan_fullscreen(coversScreen(w), wantNative(), isNative(w), canNative)) {
+    switch (lbws_plan_fullscreen(meansFullScreen(w), wantNative(), isNative(w), canNative)) {
     case LBWS_FS_ENTER:
         noteAsked(w);
         say("native fullscreen, as the game's setting says");
@@ -263,7 +271,7 @@ static void autoFullscreen(NSWindow *w, int attempt)
 
 static void scheduleAutoFullscreen(NSWindow *w)
 {
-    if (!w || [gPending containsObject:w] || !coversScreen(w) || !wantNative() || !mayAsk(w)) return;
+    if (!w || [gPending containsObject:w] || !meansFullScreen(w) || !wantNative() || !mayAsk(w)) return;
     [gPending addObject:w];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.8 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         [gPending removeObject:w];
@@ -274,7 +282,7 @@ static void scheduleAutoFullscreen(NSWindow *w)
 static void tryRestore(NSWindow *w, int attempt)
 {
     if (!w || gClosing || ![w isVisible]) return;
-    BOOL presentation = coversScreen(w);
+    BOOL presentation = meansFullScreen(w);
     if (!gHaveSaved && !presentation) return;
     BOOL now = isNative(w);
     BOOL canNative = ([w collectionBehavior] & NSWindowCollectionBehaviorFullScreenPrimary) != 0;
