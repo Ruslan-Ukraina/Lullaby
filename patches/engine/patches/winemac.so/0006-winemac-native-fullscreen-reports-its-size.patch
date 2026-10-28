@@ -1,4 +1,5 @@
 ENG-12  A program in native full screen is told the size it has, not the size it drew at.
+Component: lby-trixie-fullscreen (patches/lby-trixie-fullscreen/).
 
 dlls/winemac.drv/cocoa_window.m (winemac.so). Lullaby, 2026-10-27. LGPL-2.1-or-later like Wine.
 

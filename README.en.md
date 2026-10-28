@@ -15,18 +15,32 @@ Play the Windows games of your Steam library right on a Mac, in the ordinary Ste
 
 The app is not notarized by Apple, so the first time open it through "System Settings → Privacy & Security → Open Anyway".
 
-## Lullaby patches and components
+## Lullaby components and patches
 
 | Component | What it does |
 |---|---|
+| `lby-twilight-app` | The Lullaby app and its settings command line tool: installation, updates, game settings. |
+| `lby-twilight-settings` | The catalog and panel of game settings in Steam (Properties - Compatibility). |
+| `lby-celestia-engine` | The Dormison engine (Wine for macOS): the engine slot, our code does not change it. |
+| `lby-applejack-steambridge` | The Steam bridge: `lsteamclient` (x86_64 and i386); the overlay, achievements, friends and cloud saves work through it. |
+| `lby-bigmack-steamexe` | The `steam.exe` shim inside a game's prefix. |
+| `lby-luna-steamhook` | The library inside Steam: the Play button for Windows games, the launch through Lullaby. |
+| `lby-spike-overlay` | The Steam overlay for games on Wine. |
+| `lby-starswirl-signatures` | The Steam signature database: which Steam build can be patched. |
+| `lby-shiningarmor-updategate` | Holds Steam back from a build Lullaby does not support yet. |
+| `lby-discord-ntdllhook` | The `ntdll` loader hook through which `lsteamclient` gets into the game. |
+| `lby-spitfire-apiscout` | Automatic renderer choice: finds out in a few seconds which graphics API a game uses. |
 | `lby-pinkiepie-windowstate` | Remembers the size and full-screen state of a game's window; a borderless full-screen game goes to macOS native full screen by itself. |
+| `lby-trixie-fullscreen` | Native full screen in the engine (ENG-12, ENG-15): the game is told its real size, and a picture smaller than the screen (say 1920×1200) is stretched to the whole screen without distortion. |
 | `lby-ponthree-pacer` | Direct: the picture goes straight to the display (no window compositor) with V-Sync, so a ProMotion screen (VRR) follows the game. |
 | `lby-rainbowdash-reflex` | NVIDIA Reflex for D3DMetal games; DLSS goes through MetalFX. |
-| `lby-spitfire-apiscout` | Automatic renderer choice: finds out in a few seconds which graphics API a game uses. |
 | `lby-octavia-gcmouse` | Raw mouse through GameController: no pointer curve, the trackpad stays the system's. |
 | `lby-derpy-fixes` | Small fixes of Wine and WineMetalGL: memory, Retina, sound that follows the output device and the microphone. |
 | `lby-rarity-icons` | Game icons and names in the Dock in the macOS shape. |
-| `ENG-12, ENG-15 (winemac)` | Native full screen: a picture smaller than the screen (say 1920×1200) is stretched to the whole screen without distortion. |
+| `lby-fluttershy-gamefixes` | The catalog of fixes for single games (signed, updated on its own). |
+| `lby-zecora-release` | Release: signatures, update feeds, signature databases. |
+| `lby-scootaloo-perf` | Tests and the measuring bench (frames, latency). |
+| `lby-cadance-structure` | The check of the repository structure (`tools/check-structure`). |
 
 ## Credits and licences
 

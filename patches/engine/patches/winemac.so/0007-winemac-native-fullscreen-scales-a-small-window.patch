@@ -1,4 +1,5 @@
 ENG-15  A window smaller than the screen that goes to native full screen keeps its program's size and is scaled up.
+Component: lby-trixie-fullscreen (patches/lby-trixie-fullscreen/).
 
 dlls/winemac.drv/cocoa_window.m (winemac.so). Lullaby, 2026-10-28. LGPL-2.1-or-later like Wine.
 

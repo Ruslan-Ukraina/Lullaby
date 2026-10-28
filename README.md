@@ -2,7 +2,7 @@
 
 **Українська** · [English](README.en.md)
 
-Грайте у Windows ігри зі своєї бібліотеки Steam просто на Mac — у звичному Steam для macOS, так само як Steam Play (Proton) на Linux. Ви отримуєте повноцінний досвід ігор у Steam з ухилом на нативність для Mac. Усе це завдяки рушію [Dormison](https://github.com/kageroumado/dormison) (Wine для macOS).
+Грайте у Windows ігри зі своєї бібліотеки Steam просто на Mac - у звичному Steam для macOS, так само як Steam Play (Proton) на Linux. Ви отримуєте повноцінний досвід ігор у Steam з ухилом на нативність для Mac. Усе це завдяки рушію [Dormison](https://github.com/kageroumado/dormison) (Wine для macOS).
 
 [![Lullaby: відео](https://img.youtube.com/vi/i7PQ9IO-7fU/maxresdefault.jpg)](https://youtu.be/i7PQ9IO-7fU)
 
@@ -10,23 +10,37 @@
 
 1. Потрібен Mac на Apple silicon, macOS 26 або новіша, Rosetta і Steam у `/Applications`.
 2. Відкрийте Lullaby й натисніть **Встановити**. Вона акуратно закриє Steam, пропатчить його й завантажить рушій.
-3. Запускайте Steam з `/Applications/Steam.app`. У віндовс-гри відкрийте «Властивості → Сумісність», увімкніть інструмент сумісності — і тисніть «Грати».
+3. Запускайте Steam з `/Applications/Steam.app`. У віндовс-гри відкрийте "Властивості → Сумісність", увімкніть інструмент сумісності - і тисніть "Грати".
 
 
-Застосунок не завірений Apple (немає нотаризації), тому першого разу відкрийте його через «Системні параметри → Приватність і безпека → Усе одно відкрити».
+Застосунок не завірений Apple (немає нотаризації), тому першого разу відкрийте його через "Системні параметри → Приватність і безпека → Усе одно відкрити".
 
-## Патчі й компоненти Lullaby
+## Компоненти й патчі Lullaby
 
 | Компонент | Що робить |
 |---|---|
-| `lby-pinkiepie-windowstate` | Пам’ятає розмір і повноекранний стан вікна гри; безрамкова гра на весь екран сама йде в нативний повний екран macOS. |
+| `lby-twilight-app` | Застосунок Lullaby і консольна утиліта налаштувань: встановлення, оновлення, налаштування гри. |
+| `lby-twilight-settings` | Каталог і панель налаштувань гри у Steam (Властивості - Сумісність). |
+| `lby-celestia-engine` | Рушій Dormison (Wine для macOS): слот рушія, наш код його не змінює. |
+| `lby-applejack-steambridge` | Міст Steam: `lsteamclient` (x86_64 і i386), через нього працюють оверлей, досягнення, друзі й хмарні збереження. |
+| `lby-bigmack-steamexe` | `steam.exe`-шим усередині префікса гри. |
+| `lby-luna-steamhook` | Бібліотека всередині Steam: кнопка Грати для Windows-ігор, запуск через Lullaby. |
+| `lby-spike-overlay` | Оверлей Steam для ігор на Wine. |
+| `lby-starswirl-signatures` | База сигнатур Steam: на який білд Steam можна ставити патч. |
+| `lby-shiningarmor-updategate` | Блокує оновлення Steam до білда, який Lullaby ще не підтримує. |
+| `lby-discord-ntdllhook` | Хук завантажувача `ntdll`, через який `lsteamclient` потрапляє в гру. |
+| `lby-spitfire-apiscout` | Автовибір рендерера: за кілька секунд з'ясовує, яку графіку використовує гра. |
+| `lby-pinkiepie-windowstate` | Пам'ятає розмір і повноекранний стан вікна гри; безрамкова гра на весь екран сама йде в нативний повний екран macOS. |
+| `lby-trixie-fullscreen` | Нативний повний екран у рушії (ENG-12, ENG-15): грі повідомляють справжній розмір, а картинка менша за екран (наприклад 1920×1200) розтягується на весь екран без спотворень. |
 | `lby-ponthree-pacer` | Direct: картинка йде напряму на дисплей (без композитора вікон) з вертикальною синхронізацією, тож ProMotion (VRR) слідує за грою. |
 | `lby-rainbowdash-reflex` | NVIDIA Reflex для ігор на D3DMetal, а DLSS іде через MetalFX. |
-| `lby-spitfire-apiscout` | Автовибір рендерера: за кілька секунд з’ясовує, яку графіку використовує гра. |
 | `lby-octavia-gcmouse` | Сира миша через GameController: без кривої курсора, трекпад лишається системним. |
-| `lby-derpy-fixes` | Дрібні виправлення Wine і WineMetalGL: пам’ять, Retina, звук, що слідує за пристроєм виводу й мікрофоном. |
+| `lby-derpy-fixes` | Дрібні виправлення Wine і WineMetalGL: пам'ять, Retina, звук, що слідує за пристроєм виводу й мікрофоном. |
 | `lby-rarity-icons` | Значки й назви ігор у Dock у формі macOS. |
-| `ENG-12, ENG-15 (winemac)` | Нативний повний екран: картинка менша за екран (наприклад 1920×1200) розтягується на весь екран без спотворень. |
+| `lby-fluttershy-gamefixes` | Каталог виправлень окремих ігор (підписаний, оновлюється окремо). |
+| `lby-zecora-release` | Випуск: підписи, стрічки оновлень, сигнатури. |
+| `lby-scootaloo-perf` | Тести й стенд вимірювань (кадри, затримка). |
+| `lby-cadance-structure` | Перевірка структури репозиторію (`tools/check-structure`). |
 
 ## Подяки й ліцензії
 
@@ -47,8 +61,8 @@
 | OpenGL через Metal (завантажується в автора, коли знадобиться) | [WineMetalGL](https://github.com/metalsharp/WineMetalGL) від MetalSharp | LGPL-3.0-or-later |
 | D3DMetal (ваш) | Apple Game Porting Toolkit | ліцензія Apple, не поширюється |
 
-Подробиці й те, які файли до якої частини належать, — у [NOTICE](NOTICE).
+Подробиці й те, які файли до якої частини належать, - у [NOTICE](NOTICE).
 
 ## Для розробників
 
-Карта репозиторію — `docs/STRUCTURE.md`, назви компонентів — `docs/NAMING.md`, правила проєкту — `docs/PROJECT_RULES.md`. `make app` збирає застосунок, `make app-tests` запускає тести Swift, `make patchcheck` звіряє патчі з реєстром `patches/REGISTRY.md`.
+Карта репозиторію - `docs/STRUCTURE.md`, назви компонентів - `docs/NAMING.md`, правила проєкту - `docs/PROJECT_RULES.md`. `make app` збирає застосунок, `make app-tests` запускає тести Swift, `make patchcheck` звіряє патчі з реєстром `patches/REGISTRY.md`.
