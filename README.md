@@ -21,7 +21,7 @@
 |---|---|
 | `lby-twilight-app` | Застосунок Lullaby і консольна утиліта налаштувань: встановлення, оновлення, налаштування гри. |
 | `lby-twilight-settings` | Каталог і панель налаштувань гри у Steam (Властивості - Сумісність). |
-| `lby-celestia-engine` | Рушій Dormison (Wine для macOS): слот рушія, наш код його не змінює. |
+| `lby-celestia-engine` | Офіційний рушій Dormison (Wine для macOS): слот рушія, код його не змінює. |
 | `lby-applejack-steambridge` | Міст Steam: `lsteamclient` (x86_64 і i386), через нього працюють оверлей, досягнення, друзі й хмарні збереження. |
 | `lby-spike-overlay` | Оверлей Steam для ігор на Wine. |
 | `lby-spitfire-apiscout` | Автовибір рендерера: за кілька секунд з'ясовує, яку графіку використовує гра. |
