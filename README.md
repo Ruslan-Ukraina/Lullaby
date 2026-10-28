@@ -23,12 +23,7 @@
 | `lby-twilight-settings` | Каталог і панель налаштувань гри у Steam (Властивості - Сумісність). |
 | `lby-celestia-engine` | Рушій Dormison (Wine для macOS): слот рушія, наш код його не змінює. |
 | `lby-applejack-steambridge` | Міст Steam: `lsteamclient` (x86_64 і i386), через нього працюють оверлей, досягнення, друзі й хмарні збереження. |
-| `lby-bigmack-steamexe` | `steam.exe`-шим усередині префікса гри. |
-| `lby-luna-steamhook` | Бібліотека всередині Steam: кнопка Грати для Windows-ігор, запуск через Lullaby. |
 | `lby-spike-overlay` | Оверлей Steam для ігор на Wine. |
-| `lby-starswirl-signatures` | База сигнатур Steam: на який білд Steam можна ставити патч. |
-| `lby-shiningarmor-updategate` | Блокує оновлення Steam до білда, який Lullaby ще не підтримує. |
-| `lby-discord-ntdllhook` | Хук завантажувача `ntdll`, через який `lsteamclient` потрапляє в гру. |
 | `lby-spitfire-apiscout` | Автовибір рендерера: за кілька секунд з'ясовує, яку графіку використовує гра. |
 | `lby-pinkiepie-windowstate` | Пам'ятає розмір і повноекранний стан вікна гри; безрамкова гра на весь екран сама йде в нативний повний екран macOS. |
 | `lby-trixie-fullscreen` | Нативний повний екран у рушії (ENG-12, ENG-15): грі повідомляють справжній розмір, а картинка менша за екран (наприклад 1920×1200) розтягується на весь екран без спотворень. |
@@ -37,10 +32,6 @@
 | `lby-octavia-gcmouse` | Сира миша через GameController: без кривої курсора, трекпад лишається системним. |
 | `lby-derpy-fixes` | Дрібні виправлення Wine і WineMetalGL: пам'ять, Retina, звук, що слідує за пристроєм виводу й мікрофоном. |
 | `lby-rarity-icons` | Значки й назви ігор у Dock у формі macOS. |
-| `lby-fluttershy-gamefixes` | Каталог виправлень окремих ігор (підписаний, оновлюється окремо). |
-| `lby-zecora-release` | Випуск: підписи, стрічки оновлень, сигнатури. |
-| `lby-scootaloo-perf` | Тести й стенд вимірювань (кадри, затримка). |
-| `lby-cadance-structure` | Перевірка структури репозиторію (`tools/check-structure`). |
 
 ## Подяки й ліцензії
 
