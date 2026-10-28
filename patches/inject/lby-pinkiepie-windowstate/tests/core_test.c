@@ -22,12 +22,6 @@ int main(void)
     CHECK(lbws_classify(false, false, small, screen) == LBWS_WINDOW, "borderless but small is a Window");
     CHECK(lbws_classify(false, false, offset, screen) == LBWS_WINDOW, "covering size but not at the screen");
 
-    lbws_rect deadlock = { 0, 0, 960, 600 };
-    lbws_rect splash = { 0, 0, 480, 270 };
-    CHECK(lbws_borderless_fullscreen_like(false, deadlock), "a big borderless window is a full screen the game meant");
-    CHECK(!lbws_borderless_fullscreen_like(false, splash), "a small borderless window (splash) is left alone");
-    CHECK(!lbws_borderless_fullscreen_like(true, deadlock), "a titled window is the player's");
-
     lbws_state s;
     CHECK(lbws_parse("native", &s) && s == LBWS_NATIVE, "parse native");
     CHECK(lbws_parse("borderless", &s) && s == LBWS_BORDERLESS, "parse borderless");

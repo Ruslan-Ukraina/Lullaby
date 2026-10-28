@@ -94,7 +94,6 @@ static BOOL coversScreen(NSWindow *w)
     if (!covers && !isNative(w) && !([w styleMask] & NSWindowStyleMaskTitled)) {
         NSScreen *screen = [w screen] ?: [NSScreen mainScreen];
         covers = screen && lbws_covers(rect([w frame]), rect([screen frame]));
-        if (!covers) covers = lbws_borderless_fullscreen_like(NO, rect([w frame]));
     }
     if (covers) [gCovered addObject:w];
     return covers;
