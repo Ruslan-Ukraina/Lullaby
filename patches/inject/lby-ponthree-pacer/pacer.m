@@ -630,20 +630,12 @@ static void direct_setDisplaySync(id self, SEL _cmd, BOOL on)
     ((void (*)(id, SEL, BOOL))gSetSyncOrig)(self, _cmd, v);
 }
 
-/* LULLABY_DIRECT_VSYNC=0 leaves the layer's V-Sync to the game (a diagnostic switch, on by default). */
-static BOOL direct_vsync_on(void)
-{
-    const char *v = getenv("LULLABY_DIRECT_VSYNC");
-    return !(v && !strcmp(v, "0"));
-}
-
 static void direct_sync_layer(CALayer *l, BOOL fullscreen, int *changed)
 {
     Class metal = NSClassFromString(@"CAMetalLayer");
     if (metal && [l isKindOfClass:metal]) {
         CAMetalLayer *m = (CAMetalLayer *)l;
-        BOOL want = fullscreen && m.opaque && direct_capable((NSUInteger)m.pixelFormat) && direct_vsync_on() &&
-                    objc_getAssociatedObject(m, &kSeen) != nil;   /* only a layer whose format was made BGR here: one that came Direct-capable (DXMT with MetalFX) stays as it is, forced V-Sync turns it into Composited */
+        BOOL want = fullscreen && m.opaque && direct_capable((NSUInteger)m.pixelFormat);
         BOOL had = [objc_getAssociatedObject(m, &kForceSync) boolValue];
         if (want != had) {
             objc_setAssociatedObject(m, &kForceSync, @(want), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
