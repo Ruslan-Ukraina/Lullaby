@@ -8,7 +8,7 @@
  * Metal HUD) instead of through the window compositor ("Composited") when its pixel format is BGR-ordered; D3DMetal and DXMT
  * make an RGB-ordered one (RGB10A2, RGBA8), which macOS always composites. With LULLABY_DIRECT=1 (set by compat_run.sh for the
  * D3DMetal and DXMT renderers while "Native full screen" is on) the format is turned into its BGR twin when the layer is made
- * (HDR is kept: PQ and extended range work with BGR10A2), and a layer of a window that is in native full screen keeps V-Sync on,
+ * (HDR is kept: PQ and extended range work with BGR10A2), and such a layer of a window in native full screen keeps V-Sync on,
  * which on a ProMotion display is what makes the refresh follow the game (VRR). A layer that is not Direct-capable, or a window
  * that is not in native full screen, is left as the game made it: the plain V-Sync of the game's own settings, as before.
  *
@@ -630,12 +630,19 @@ static void direct_setDisplaySync(id self, SEL _cmd, BOOL on)
     ((void (*)(id, SEL, BOOL))gSetSyncOrig)(self, _cmd, v);
 }
 
+/* Whether the layer's format was made BGR here. Only such a layer gets V-Sync: one that came Direct-capable from the renderer
+ * (DXMT with MetalFX makes BGRA8) is Direct as it is, and forced V-Sync turns it into Composited (PEAK, 2026-10-28). */
+static BOOL direct_made_here(CALayer *l)
+{
+    return objc_getAssociatedObject(l, &kSeen) != nil;
+}
+
 static void direct_sync_layer(CALayer *l, BOOL fullscreen, int *changed)
 {
     Class metal = NSClassFromString(@"CAMetalLayer");
     if (metal && [l isKindOfClass:metal]) {
         CAMetalLayer *m = (CAMetalLayer *)l;
-        BOOL want = fullscreen && m.opaque && direct_capable((NSUInteger)m.pixelFormat);
+        BOOL want = fullscreen && m.opaque && direct_capable((NSUInteger)m.pixelFormat) && direct_made_here(m);
         BOOL had = [objc_getAssociatedObject(m, &kForceSync) boolValue];
         if (want != had) {
             objc_setAssociatedObject(m, &kForceSync, @(want), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
