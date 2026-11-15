@@ -170,7 +170,7 @@
       "group": "ship",
       "source": "https://github.com/athei/mtld3d",
       "license": "zlib",
-      "pinned": "v0.15.1",
+      "pinned": "v0.15.3",
       "check": {
         "type": "github-release",
         "repo": "athei/mtld3d"
@@ -178,11 +178,11 @@
       "policy": "fetched by the run script the first time a game needs it, sha256 pinned; chosen by the scout for DX9; tried 2026-10-27 with a probe program (device created, 432 frames in 4 s) and no real D3D9 game yet.",
       "verify": {
         "file": "steam/hook/feats/compat_run.sh",
-        "contains": "v0.15.1/mtld3d.tar.xz"
+        "contains": "v0.15.3/mtld3d.tar.xz"
       },
       "asset": {
-        "url": "https://github.com/athei/mtld3d/releases/download/v0.15.1/mtld3d.tar.xz",
-        "sha256": "115d9089323b20010738d2b4835e79e6652d41690c4b360141e8b0433faff972"
+        "url": "https://github.com/athei/mtld3d/releases/download/v0.15.3/mtld3d.tar.xz",
+        "sha256": "038f00c9d868a2fcb71034dac645df1fa1500a4b4056f845e400e777e7a4a294"
       }
     },
     {
@@ -191,7 +191,7 @@
       "group": "ship",
       "source": "https://github.com/metalsharp/WineMetalGL",
       "license": "LGPL-3.0-or-later",
-      "pinned": "3.7.0",
+      "pinned": "3.9.0",
       "check": {
         "type": "github-release",
         "repo": "metalsharp/WineMetalGL"
@@ -199,11 +199,11 @@
       "policy": "fetched by the run script the first time a game needs it, sha256 pinned; chosen by the scout for OpenGL; tried 2026-10-27 with a probe program (OpenGL 4.6, 470 frames in 4 s) and no real OpenGL game yet; young project (releases a day apart).",
       "verify": {
         "file": "steam/hook/feats/compat_run.sh",
-        "contains": "winemetalgl-3.7.0-x86_64.tar.gz"
+        "contains": "winemetalgl-3.9.0-x86_64.tar.gz"
       },
       "asset": {
-        "url": "https://github.com/metalsharp/WineMetalGL/releases/download/winemetalgl-3.7.0/winemetalgl-3.7.0-x86_64.tar.gz",
-        "sha256": "7eaaf6d5525494a855ff368d6ce15b753fd213b7d16254f0eddd45b166eac2af"
+        "url": "https://github.com/metalsharp/WineMetalGL/releases/download/winemetalgl-3.9.0/winemetalgl-3.9.0-x86_64.tar.gz",
+        "sha256": "1c17a7f412977250e22c2c36a003809350dee66be33679213a3cee1847d72513"
       }
     },
     {

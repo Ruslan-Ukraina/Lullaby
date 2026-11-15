@@ -805,10 +805,10 @@ place_nvidia_dlls() {
 # A component from its author's release, pinned by sha256 and fetched the first time a game needs it
 # into components/<name> (nothing else is trusted: a wrong hash installs nothing, no network leaves
 # the game on Wine's own renderer). Pins are the same as release/components.json.
-mtld3d_url="https://github.com/athei/mtld3d/releases/download/v0.15.1/mtld3d.tar.xz"
-mtld3d_sha256="115d9089323b20010738d2b4835e79e6652d41690c4b360141e8b0433faff972"
-winemetalgl_url="https://github.com/metalsharp/WineMetalGL/releases/download/winemetalgl-3.7.0/winemetalgl-3.7.0-x86_64.tar.gz"
-winemetalgl_sha256="7eaaf6d5525494a855ff368d6ce15b753fd213b7d16254f0eddd45b166eac2af"
+mtld3d_url="https://github.com/athei/mtld3d/releases/download/v0.15.3/mtld3d.tar.xz"
+mtld3d_sha256="038f00c9d868a2fcb71034dac645df1fa1500a4b4056f845e400e777e7a4a294"
+winemetalgl_url="https://github.com/metalsharp/WineMetalGL/releases/download/winemetalgl-3.9.0/winemetalgl-3.9.0-x86_64.tar.gz"
+winemetalgl_sha256="1c17a7f412977250e22c2c36a003809350dee66be33679213a3cee1847d72513"
 fetch_component() { # NAME URL SHA256 SUBDIR_OF_ARCHIVE_TO_KEEP ("" for the whole archive)
   fc_name=$1; fc_url=$2; fc_want=$3; fc_keep=$4
   fc_dest="$support/components/$fc_name"
