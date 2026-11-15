@@ -40,7 +40,7 @@
 
 | Что | Где берём | Р/С | Закреплено? | Если исчезнет |
 |---|---|---|---|---|
-| Sparkle 2.10.0 | Swift Package с GitHub | С | `exact` + ревизия в `Package.resolved` | `make app` не скачает пакет на новой машине (кеш SPM у вас есть) |
+| Sparkle 2.10.1 | Swift Package с GitHub | С | `exact` + ревизия в `Package.resolved` | `make app` не скачает пакет на новой машине (кеш SPM у вас есть) |
 | Dobby | CI: `git clone jmpews/Dobby`; у вас — `build/dobby` | С | коммит `5dfc854…` | CI не соберёт dylib (кеш Actions держит неделю) |
 | cJSON | **уже в репозитории** (`vendor/`) | С | да | Не зависит |
 | Xcode 27, SDK macOS 27 | у вас; CI — образ `xcode-27` (public preview, R51) | С | имя образа | Пропал образ → все macOS-задачи CI встают |

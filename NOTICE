@@ -20,7 +20,7 @@ It also compiles against a Wine header (heap.h), LGPL-2.1-or-later.
 
 The app bundle embeds Sparkle, which checks for and installs updates. Sparkle is
 MIT licensed, see
-https://github.com/sparkle-project/Sparkle/blob/2.10.0/LICENSE
+https://github.com/sparkle-project/Sparkle/blob/2.10.1/LICENSE
 
 These third party files carry their original notices from the project authors:
 

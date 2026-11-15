@@ -106,10 +106,10 @@
       "group": "ship",
       "source": "https://github.com/sparkle-project/Sparkle",
       "license": "MIT",
-      "pinned": "2.10.0",
+      "pinned": "2.10.1",
       "verify": {
         "file": "app/Package.resolved",
-        "contains": "2.10.0"
+        "contains": "2.10.1"
       },
       "check": {
         "type": "github-release",
