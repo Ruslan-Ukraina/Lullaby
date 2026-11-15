@@ -8,8 +8,9 @@ reads them there, in order of their numbers); the links here are named like the 
 - ENG-02 `0001-win32u-d3dkmt-hardware-gpu-scheduling.patch`: hardware GPU scheduling reported on (Streamline offers frame generation);
 - ENG-03 `0001-winemac-retina-horzres-not-doubled.patch`: `HORZRES`/`VERTRES` are not doubled on Retina;
 - ENG-10 `0005-winemac-winemetalgl-client-view.patch`: WineMetalGL gets the engine's own metal view (the window follows moves, the title bar is opaque);
-- ENG-11 `0001-winecoreaudio-follow-default-output.patch`: a render stream on the default output device moves with it (headphones in and out).
-Not here: the D3DMetal 4.0 beta 3 adaptations (ENG-04 to ENG-06), the V-Sync and present feed (ENG-07), GCMouse (`lby-octavia-gcmouse`).
+- ENG-11 and ENG-14 `0001-winecoreaudio-follow-default-devices.patch`: a render stream on the default output device and a capture stream on the default input device move with them (headphones or a headset in and out);
+- ENG-04 and ENG-05 `0002-ntdll-d3dmetal-4b3.patch` and ENG-06 `0002-winemac-d3dmetal-find-best-window.patch`: the adaptation to D3DMetal 4.0 beta 3 (the dispatch table layout and the window search; only for that toolkit).
+Not here: the V-Sync and present feed (ENG-07), GCMouse (`lby-octavia-gcmouse`), native full screen (`lby-trixie-fullscreen`).
 
 **Fixes in WineMetalGL (OpenGL on Metal, CMP-10), the injected library `glfixes.m` -> `lullaby-glfixes.dylib`.** Injected into the Wine
 loader's process (`DYLD_INSERT_LIBRARIES`, set by `compat_run.sh`); does nothing unless the process runs WineMetalGL (`WINEDLLOVERRIDES`

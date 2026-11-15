@@ -1,25 +1,30 @@
-ENG-04  ntdll reads D3DMetal 4.0 beta 3's Win32Dispatch layout.
+ENG-04, ENG-05  ntdll adapts to D3DMetal 4.0 beta 3: the Win32Dispatch layout and the FindBestWindowHWND slot.
+Merged 2026-11-15 from 0002-ntdll-d3dmetal-4b3-dispatch-layout.patch (ENG-04) and 0003-ntdll-d3dmetal-4b3-find-best-window.patch (ENG-05); the tree they give is the same.
 
-dlls/ntdll/unix/loader.c (ntdll.so). Lullaby, 2026-10-16 (commit ee9e3c7). LGPL-2.1-or-later like Wine.
+dlls/ntdll/unix/loader.c (ntdll.so). Lullaby, 2026-10-16 (commits ee9e3c7 and fe14e47). LGPL-2.1-or-later like Wine.
 Base: Dormison r6 (wine-staging 11.16): the D3DMetal glue it patches (init_win32_dispatch,
 __wine_d3dmetal_set_host_callbacks, libd3dshared_load_addr) is Dormison's.
 
-What: beta 2's table is 0x230 bytes with the host callbacks at 0x148. Beta 3 adds a wrapper
+What (ENG-04): beta 2's table is 0x230 bytes with the host callbacks at 0x148. Beta 3 adds a wrapper
 (pack_FindBestWindowHWND) at 0x148, so its callbacks start at 0x150 and Win32DispatchInit copies
 0x248 bytes. The table is now allocated at 0x400 and the layout is read off what
 PatchWin32DispatchFunctions filled in, so either toolkit works.
+What (ENG-05): beta 3's own pack_FindBestWindowHWND forwards to a host callback winemac.drv does not provide and
+returns an uninitialised HWND. This puts a function of ours in that slot (0x148 of the dispatch table); it
+is called with the ms_abi convention, possibly on the PE user stack, so the window search (win32u calls)
+runs on a syscall frame, as NtUserEnumDisplayMonitors does. The search itself is ENG-06 in winemac.so.
 Verified on: Dormison r7, built into bridge-dormison-r7-1 (2026-10-23), which the owner ran with RE9, PEAK and ETS2 (not each patch on its own).
 Switch: none; it acts only when the toolkit's libd3dshared loads.
-Requires: nothing. ENG-05 builds on it.
+Requires: ENG-06 (the exported __wine_d3dmetal_find_best_window, winemac.so 0002) for the window search.
 Other bases: does not apply to WineForge 0.6.0.0-0.6.0.7 (its loader.c lacks this glue; it loads D3DMetal
 with its own d3dmetal_loader.c). Whether WineForge needs the same fix is for the D3DMetal run on it to say.
 Test: patches/engine/tests/d3dmetal-composition-swapchain.c, a D3D12 game under GPTK 4.0 beta 3.
 
 diff --git a/dlls/ntdll/unix/loader.c b/dlls/ntdll/unix/loader.c
-index 9d0846838f7..1883bc8ffa7 100644
+index 6fb85ca5b9e..f2e9adf2b62 100644
 --- a/dlls/ntdll/unix/loader.c
 +++ b/dlls/ntdll/unix/loader.c
-@@ -1441,15 +1441,25 @@ void *libd3dshared_load_addr = NULL;
+@@ -1475,15 +1475,25 @@ void *libd3dshared_load_addr = NULL;
  void *libd3dshared_code_end = NULL;
  static bool (*p_supports_non_native_code_regions)( void );
  
@@ -54,7 +59,7 @@ index 9d0846838f7..1883bc8ffa7 100644
  static void *win32_dispatch_table;
  static void (*p_MonitorEnumCallbackHandler)( void * );
  
-@@ -1518,11 +1528,11 @@ NTSTATUS d3dmetal_user_callback_off_stack( ULONG id, const void *args, ULONG len
+@@ -1552,11 +1562,11 @@ NTSTATUS d3dmetal_user_callback_off_stack( ULONG id, const void *args, ULONG len
  
  DECLSPEC_EXPORT void __wine_d3dmetal_set_host_callbacks( const UINT64 *callbacks, unsigned int count )
  {
@@ -68,7 +73,7 @@ index 9d0846838f7..1883bc8ffa7 100644
      TRACE( "%u host callbacks installed\n", count );
  }
  
-@@ -1601,7 +1611,7 @@ static BOOL enum_display_monitors_for_d3dmetal( HDC hdc, RECT *rect, MONITORENUM
+@@ -1635,7 +1645,7 @@ static BOOL enum_display_monitors_for_d3dmetal( HDC hdc, RECT *rect, MONITORENUM
      if (p_win32u_GetDesktopWindow) p_win32u_GetDesktopWindow();
      if (!proc)
      {
@@ -77,7 +82,41 @@ index 9d0846838f7..1883bc8ffa7 100644
          unsigned char devmode[512] = { 0 };
  
          if (p_win32u_EnumDisplaySettings) p_win32u_EnumDisplaySettings( NULL, ~0u, devmode, 0 );
-@@ -1643,10 +1653,17 @@ static void init_win32_dispatch( void *handle )
+@@ -1660,6 +1670,33 @@ DECLSPEC_EXPORT BOOL WINAPI NtUserEnumDisplayMonitors( HDC hdc, RECT *rect, MONI
+     return (BOOL)result;
+ }
+ 
++/* D3DMetal 4.0 beta 3's FindBestWindowHWND slot (0x148). The toolkit's own
++ * pack_FindBestWindowHWND forwards to a host callback winemac.drv does not
++ * provide and then returns an uninitialized HWND; this takes its place. It is
++ * called with the ms_abi convention (width in rcx, height in rdx) from native
++ * code that may run on the PE user stack, so the window search, which calls
++ * win32u, runs on a syscall frame as NtUserEnumDisplayMonitors does. */
++static HWND (*p_find_best_window)( UINT width, UINT height );
++
++static UINT64 find_best_window_for_d3dmetal( UINT64 width, UINT64 height, UINT64 a2, UINT64 a3,
++                                             UINT64 a4, UINT64 a5 )
++{
++    if (!p_find_best_window) p_find_best_window = dlsym( RTLD_DEFAULT, "__wine_d3dmetal_find_best_window" );
++    if (!p_find_best_window) return 0;
++    return (UINT_PTR)p_find_best_window( width, height );
++}
++
++static void * __attribute__((ms_abi)) d3dmetal_find_best_window_hwnd( UINT width, UINT height )
++{
++    UINT64 result = 0;
++
++    if (on_kernel_stack()) result = find_best_window_for_d3dmetal( width, height, 0, 0, 0, 0 );
++    else if (!d3dmetal_reenter( (void *)find_best_window_for_d3dmetal, &result, width, height, 0, 0, 0, 0 ))
++        result = 0;
++    TRACE( "FindBestWindowHWND %ux%u -> %p\n", width, height, (void *)(UINT_PTR)result );
++    return (void *)(UINT_PTR)result;
++}
++
+ static void init_win32_dispatch( void *handle )
+ {
+     int (*p_Win32DispatchInit)( void * );
+@@ -1677,10 +1714,18 @@ static void init_win32_dispatch( void *handle )
  
      load_win32u_for_dispatch();
  
@@ -90,6 +129,7 @@ index 9d0846838f7..1883bc8ffa7 100644
 +    {
 +        win32_dispatch_table_size = WIN32_DISPATCH_TABLE_SIZE_4B3;
 +        win32_dispatch_callbacks_offset = WIN32_DISPATCH_CALLBACKS_4B3;
++        *(void **)((char *)table + WIN32_DISPATCH_CALLBACKS_4B2) = (void *)d3dmetal_find_best_window_hwnd;
 +    }
 +    TRACE( "dispatch table %#x bytes, host callbacks at %#x\n",
 +           win32_dispatch_table_size, win32_dispatch_callbacks_offset );
