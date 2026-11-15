@@ -15,23 +15,16 @@ Play the Windows games of your Steam library right on a Mac, in the ordinary Ste
 
 The app is not notarized by Apple, so the first time open it through "System Settings → Privacy & Security → Open Anyway".
 
-## Lullaby components and patches
+## Lullaby patches
 
-| Component | What it does |
+| Patch | What it does |
 |---|---|
-| `lby-twilight-app` | The Lullaby app and its settings command line tool: installation, updates, game settings. |
-| `lby-twilight-settings` | The catalog and panel of game settings in Steam (Properties - Compatibility). |
-| `lby-celestia-engine` | The Dormison engine (Wine for macOS): the engine slot, our code does not change it. |
-| `lby-applejack-steambridge` | The Steam bridge: `lsteamclient` (x86_64 and i386); the overlay, achievements, friends and cloud saves work through it. |
-| `lby-spike-overlay` | The Steam overlay for games on Wine. |
-| `lby-spitfire-apiscout` | Automatic renderer choice: finds out in a few seconds which graphics API a game uses. |
-| `lby-pinkiepie-windowstate` | Remembers the size and full-screen state of a game's window; a borderless full-screen game goes to macOS native full screen by itself. |
-| `lby-trixie-fullscreen` | Native full screen in the engine (ENG-12, ENG-15): the game is told its real size, and a picture smaller than the screen (say 1920×1200) is stretched to the whole screen without distortion. |
-| `lby-ponthree-pacer` | Direct: the picture goes straight to the display (no window compositor) with V-Sync, so a ProMotion screen (VRR) follows the game. |
-| `lby-rainbowdash-reflex` | NVIDIA Reflex for D3DMetal games; DLSS goes through MetalFX. |
-| `lby-octavia-gcmouse` | Raw mouse through GameController: no pointer curve, the trackpad stays the system's. |
-| `lby-derpy-fixes` | Small fixes of Wine and WineMetalGL: memory, Retina, sound that follows the output device and the microphone. |
-| `lby-rarity-icons` | Game icons and names in the Dock in the macOS shape. |
+| `lby-trixie-fullscreen` | Native full screen: a borderless full-screen game goes to macOS native full screen by itself, and a picture smaller than the screen (say 1920×1200) is stretched to the whole screen without distortion; the size and state of the game's window are remembered (engine patches ENG-12, ENG-15 and `lby-pinkiepie-windowstate`). |
+| `lby-ponthree-pacer` | Direct and Reflex: the picture goes straight to the display (no window compositor) with V-Sync, so a ProMotion screen (VRR) follows the game; NVIDIA Reflex for D3DMetal games, DLSS goes through MetalFX (`lby-rainbowdash-reflex`). |
+| `lby-octavia-gcmouse` | Input and sound: raw mouse through GameController (no pointer curve, the trackpad stays the system's); sound follows the output device and the microphone. |
+| `lby-derpy-fixes` | Small fixes of Wine: memory, Retina, hardware GPU scheduling, the window view for WineMetalGL; adaptation to D3DMetal 4.0 beta 3. |
+
+Besides the patches, Lullaby includes the app with game settings, automatic renderer choice, the Steam overlay and game icons.
 
 ## Credits and licences
 
