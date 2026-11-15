@@ -8,8 +8,9 @@ What: in native full screen a game in mouse look (the cursor hidden and clipped)
 or the menu bar come out, the game losing focus. Dormison hides the Dock and the menu bar for such a game, but not in native full screen (it returns
 early there, updatePresentationOptionsForActive), and macOS 27 ignores the Dock option in native full screen (S14). This patch removes the cause: after the
 first CGWarpMouseCursorPosition the mouse is detached from the cursor (CGAssociateMouseAndMouseCursorPosition(false), mouseLook) and every move goes
-to the game as a delta; the game's own SetCursorPos calls (it recentres 160 times a second) do nothing while the look lasts, which also spares the
-WindowServer a warp each time (1000 Hz mouse aiming felt heavy). Clicks and scroll carry no position (INT_MIN) while it lasts. The look ends, and
+to the game as a delta; the game's own SetCursorPos calls to the point it put the cursor at (its recentring, 160 times a second) do nothing while the look lasts, which also spares the
+WindowServer a warp each time (1000 Hz mouse aiming felt heavy); a SetCursorPos anywhere else (a menu drawing its own pointer, RE9) moves the cursor as before, the look
+ends and starts again there (first version ignored every call and the pointer in RE9's menu teleported, owner's test 2026-11-15). Clicks and scroll carry no position (INT_MIN) while it lasts. The look ends, and
 the mouse is attached again, when the cursor is shown, the app deactivates, a window is dragged or the game moves the cursor itself without hiding it.
 Requires: nothing. Interplay with ENG-08 (GCMouse, 0004: both change how moves reach the game) not checked yet.
 Other bases: Dormison's cocoa_app.m (the clip handler WineCursorRestrictionClipCursorHandler does not warp; the event-tap handler has its own setCursorPosition and is not changed).
@@ -19,19 +20,20 @@ Verified on: not built, not run (2026-11-15).
 Switch: LULLABY_MOUSELOOK=0 as a launch option turns it off for a run; on by default (a fix of a plain fault).
 
 diff --git a/dlls/winemac.drv/cocoa_app.h b/dlls/winemac.drv/cocoa_app.h
-index f9586b2c180..b02337a5101 100644
+index f9586b2c180..29209747341 100644
 --- a/dlls/winemac.drv/cocoa_app.h
 +++ b/dlls/winemac.drv/cocoa_app.h
-@@ -100,6 +100,7 @@ @interface WineApplicationController : NSObject <NSApplicationDelegate>
+@@ -100,6 +100,8 @@ @interface WineApplicationController : NSObject <NSApplicationDelegate>
      BOOL        clientWantsCursorHidden;
  
      NSTimeInterval lastSetCursorPositionTime;
 +    BOOL        mouseLook;      /* mouse detached from the hidden cursor; moves sent as deltas */
++    CGPoint     mouseLookAnchor; /* where the game put the cursor when the look began (its recentring point) */
  
      id<WineClipCursorHandler> clipCursorHandler;
  
 diff --git a/dlls/winemac.drv/cocoa_app.m b/dlls/winemac.drv/cocoa_app.m
-index 0e616f93f0c..8cd9f231a59 100644
+index 0e616f93f0c..f6c1ed2e17e 100644
 --- a/dlls/winemac.drv/cocoa_app.m
 +++ b/dlls/winemac.drv/cocoa_app.m
 @@ -18,6 +18,7 @@
@@ -50,7 +52,7 @@ index 0e616f93f0c..8cd9f231a59 100644
              clientWantsCursorHidden = FALSE;
              [self updateCursor:FALSE];
              if (self.clippingCursor && ([self keyWindowIsPresentedInWindow] || screenClip))
-@@ -2024,10 +2026,46 @@ - (void) handleCommandTab
+@@ -2024,10 +2026,51 @@ - (void) handleCommandTab
          }
      }
  
@@ -90,14 +92,19 @@ index 0e616f93f0c..8cd9f231a59 100644
      {
          BOOL ret;
  
-+        if (mouseLook && clientWantsCursorHidden && [NSApp isActive] && ![windowsBeingDragged count])
++        /* Only the game putting the cursor back where it already is (its
++           recentring) is ignored. A game that moves the hidden cursor
++           elsewhere (a menu drawing its own pointer, say) gets the move, as
++           before: the look ends and starts again there. */
++        if (mouseLook && clientWantsCursorHidden && [NSApp isActive] && ![windowsBeingDragged count] &&
++            fabs(pos.x - mouseLookAnchor.x) < 2 && fabs(pos.y - mouseLookAnchor.y) < 2)
 +            return TRUE;
 +        [self endMouseLook];
 +
          if ([windowsBeingDragged count])
              return FALSE;
  
-@@ -2062,6 +2100,11 @@ - (BOOL) setCursorPosition:(CGPoint)pos
+@@ -2062,6 +2105,12 @@ - (BOOL) setCursorPosition:(CGPoint)pos
                  lastSetCursorPositionTime = [[NSProcessInfo processInfo] systemUptime];
  
                  CGAssociateMouseAndMouseCursorPosition(true);
@@ -105,11 +112,12 @@ index 0e616f93f0c..8cd9f231a59 100644
 +                {
 +                    CGAssociateMouseAndMouseCursorPosition(false);
 +                    mouseLook = TRUE;
++                    mouseLookAnchor = pos;
 +                }
              }
          }
  
-@@ -2318,6 +2361,10 @@ - (void) handleMouseMove:(NSEvent*)anEvent
+@@ -2318,6 +2367,10 @@ - (void) handleMouseMove:(NSEvent*)anEvent
              targetWindow = nil;
          else if (mouseCaptureWindow)
              targetWindow = mouseCaptureWindow;
@@ -120,7 +128,7 @@ index 0e616f93f0c..8cd9f231a59 100644
          else if (drag)
              targetWindow = (WineWindow*)[anEvent window];
          else
-@@ -2355,7 +2402,9 @@ - (void) handleMouseMove:(NSEvent*)anEvent
+@@ -2355,7 +2408,9 @@ - (void) handleMouseMove:(NSEvent*)anEvent
                  forceNextMouseMoveAbsolute = TRUE;
              }
  
@@ -131,7 +139,7 @@ index 0e616f93f0c..8cd9f231a59 100644
              {
                  absolute = TRUE;
                  forceNextMouseMoveAbsolute = FALSE;
-@@ -2572,8 +2621,9 @@ - (void) handleMouseButton:(NSEvent*)theEvent
+@@ -2572,8 +2627,9 @@ - (void) handleMouseButton:(NSEvent*)theEvent
                  event = macdrv_create_event(MOUSE_BUTTON, window);
                  event->mouse_button.button = [theEvent buttonNumber];
                  event->mouse_button.pressed = pressed;
@@ -143,7 +151,7 @@ index 0e616f93f0c..8cd9f231a59 100644
                  event->mouse_button.time_ms = [self ticksForEventTime:[theEvent timestamp]];
  
                  [window.queue postEvent:event];
-@@ -2613,7 +2663,8 @@ - (void) handleMouseButton:(NSEvent*)theEvent
+@@ -2613,7 +2669,8 @@ - (void) handleMouseButton:(NSEvent*)theEvent
          // wouldn't exit until a mouse up.  In that case, we'd miss any mouse
          // dragged events and, after that, any notion of the cursor position
          // computed from accumulating deltas would be wrong.
@@ -153,7 +161,7 @@ index 0e616f93f0c..8cd9f231a59 100644
      }
  
      - (void) handleScrollWheel:(NSEvent*)theEvent
-@@ -2654,8 +2705,8 @@ - (void) handleScrollWheel:(NSEvent*)theEvent
+@@ -2654,8 +2711,8 @@ - (void) handleScrollWheel:(NSEvent*)theEvent
                  pt = cgpoint_win_from_mac(pt);
  
                  event = macdrv_create_event(MOUSE_SCROLL, window);
@@ -164,7 +172,7 @@ index 0e616f93f0c..8cd9f231a59 100644
                  event->mouse_scroll.time_ms = [self ticksForEventTime:[theEvent timestamp]];
  
                  if (CGEventGetIntegerValueField(cgevent, kCGScrollWheelEventIsContinuous))
-@@ -2766,7 +2817,8 @@ - (void) handleScrollWheel:(NSEvent*)theEvent
+@@ -2766,7 +2823,8 @@ - (void) handleScrollWheel:(NSEvent*)theEvent
                  // Since scroll wheel events deliver absolute cursor position, the
                  // accumulating delta from move events is invalidated.  Make sure next
                  // mouse move event starts over from an absolute baseline.
@@ -174,7 +182,7 @@ index 0e616f93f0c..8cd9f231a59 100644
              }
          }
      }
-@@ -3249,6 +3301,7 @@ - (void)applicationDidResignActive:(NSNotification *)notification
+@@ -3249,6 +3307,7 @@ - (void)applicationDidResignActive:(NSNotification *)notification
  
          macdrv_release_event(event);
  
