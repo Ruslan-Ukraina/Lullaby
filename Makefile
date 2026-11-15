@@ -523,8 +523,8 @@ $(PACER): $(PACER_DIR)/pacer.m
 	codesign -fs - $@
 	@lipo -info $@
 
-# lby-derpy-fixes (patches/inject/): two faults of WineMetalGL worked around until the author mends them
-# (32 colour bits in the pixel formats, a black first window texture). Loaded into the Wine loader's process
+# lby-derpy-fixes (patches/inject/): one fault of WineMetalGL worked around until the author mends it
+# (a black first window texture). Loaded into the Wine loader's process
 # like the window-state library; does nothing unless the process runs WineMetalGL.
 GLFIXES_DIR   := patches/lby-derpy-fixes
 GLFIXES       := $(OUT_DIR)/lullaby-glfixes.dylib
@@ -545,19 +545,15 @@ $(GLFIXES): $(GLFIXES_DIR)/glfixes.m
 # library lists, and a texture with the label WineMetalGL gives its window texture; each way, on and off, both architectures.
 glfixes-tests: $(GLFIXES)
 	@mkdir -p $(OUT_DIR)
-	$(CC) -arch arm64 -arch x86_64 -dynamiclib -o $(OUT_DIR)/libglfakecore.dylib $(GLFIXES_DIR)/tests/fakecore.c
 	@for a in arm64 x86_64; do \
 		$(CC) -arch $$a -mmacosx-version-min=$(MIN_VER) -fobjc-arc -framework Metal -framework Foundation \
 			-o $(OUT_DIR)/wine-glfixes-test.$$a $(GLFIXES_DIR)/tests/glfixes_test.m || exit 1; \
 		export WINEDLLOVERRIDES="opengl32=n;winemetalgl=b"; \
-		DYLD_INSERT_LIBRARIES=$(GLFIXES) $(OUT_DIR)/wine-glfixes-test.$$a formats $(OUT_DIR)/libglfakecore.dylib 32 || exit 1; \
-		LULLABY_GL_COLOR_BITS=0 DYLD_INSERT_LIBRARIES=$(GLFIXES) $(OUT_DIR)/wine-glfixes-test.$$a formats $(OUT_DIR)/libglfakecore.dylib 24 || exit 1; \
 		DYLD_INSERT_LIBRARIES=$(GLFIXES) $(OUT_DIR)/wine-glfixes-test.$$a texture clear || exit 1; \
 		LULLABY_GL_CLEAR=0 DYLD_INSERT_LIBRARIES=$(GLFIXES) $(OUT_DIR)/wine-glfixes-test.$$a texture off || exit 1; \
-		WINEDLLOVERRIDES="opengl32=n" DYLD_INSERT_LIBRARIES=$(GLFIXES) $(OUT_DIR)/wine-glfixes-test.$$a formats $(OUT_DIR)/libglfakecore.dylib 24 || exit 1; \
 		WINEDLLOVERRIDES="opengl32=n" DYLD_INSERT_LIBRARIES=$(GLFIXES) $(OUT_DIR)/wine-glfixes-test.$$a texture off || exit 1; \
 	done
-	@echo "==> glfixes tests: 32 colour bits and a black window texture only in a process that runs WineMetalGL, arm64 and x86_64"
+	@echo "==> glfixes tests: a black window texture only in a process that runs WineMetalGL, arm64 and x86_64"
 
 # The decisions in plain C, then the library in a process with a WineWindow, on both architectures, with
 # freed memory scribbled and zombies on: a static that outlives its autorelease pool fails the run.
