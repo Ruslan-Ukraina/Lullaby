@@ -97,6 +97,15 @@ changes to it: GameController is loaded at run time instead of linked (no Makefi
 trackpad is left to the system, and the speed follows the mouse's resolution or the
 LULLABY_GCMOUSE_SCALE launch option.
 
+The mouse look patch (ENG-16, patches/engine/patches/winemac.so/0007-winemac-mouse-look-pointer-lock.patch:
+the pointer detached from the mouse while a game hides the cursor, so it never reaches the Dock or the menu bar)
+is adapted from kit/patches/wine-winemac-mouselook.patch of Black Ops Mac (https://github.com/sirdankdabs/bo-mac,
+MIT licence, Copyright (c) 2026 Black Ops Mac contributors), ported by hand to Dormison r7 and Lullaby's series.
+The MIT permission notice of that project applies to the idea and the parts taken; the patch as built into
+winemac.so is LGPL-2.1-or-later like Wine. Lullaby's changes: only the game's own recentring SetCursorPos is
+ignored, GetCursorPos keeps Wine's own position during the look, the system cursor is hidden for the look,
+LULLABY_MOUSELOOK=0 turns it off.
+
 The run script's routing by verb (EA, Ubisoft and other launchers), the Steam Input
 controller handling, the batched prefix registry import, steam.exe's std handles and
 Ubisoft Connect's install path values come from upstream NotProton 1.1.x (GPL-3.0),
