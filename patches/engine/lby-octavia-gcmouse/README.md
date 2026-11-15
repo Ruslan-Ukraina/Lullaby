@@ -9,3 +9,5 @@ Raw mouse movement through Apple's GameController (up to ~500 reports a second i
 - Switch: `LULLABY_GCMOUSE` (Diagnostics > GCMouse); the app writes `LULLABY_GCMOUSE_SCALE=auto`.
 
 Checks by hand (no test rig can plug a mouse in): the mouse feels as before at its usual sensitivity; the trackpad moves at its normal speed with a mouse connected; unplugging and replugging the mouse keeps working.
+
+**Mouse look (ENG-16, `0007-winemac-mouse-look-pointer-lock.patch`, linked here).** While a game hides the cursor (mouse look), the real pointer is detached from the mouse (`CGAssociateMouseAndMouseCursorPosition(false)`) and stays where the game put it, so it never reaches the Dock, the menu bar or a hot corner in native full screen; moves go to the game as deltas. Idea and base: the mouse look patch of [bo-mac](https://github.com/sirdankdabs/bo-mac) (MIT), ported by hand. `LULLABY_MOUSELOOK=0` turns it off for a run. Not built or run yet.
