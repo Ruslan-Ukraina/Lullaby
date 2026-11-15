@@ -1,0 +1,61 @@
+ENG-17  A game's request for a display mode is answered without switching the Mac's display.
+Component: lby-trixie-fullscreen (native full screen and the screen's size), patches/lby-trixie-fullscreen/.
+
+dlls/winemac.drv/display.c (winemac.so). Written 2026-11-15, LGPL-2.1-or-later like Wine.
+
+What: Modern Warfare Remastered (D3D11, DXMT) asks Wine for 3024x1964 at 47 Hz ("Setting display mode" in the log). macdrv_ChangeDisplaySettings found the Mac's low-resolution
+3024x1964 mode (1x, 48 Hz, no Retina) and switched the whole screen to it: the desktop shrank into the upper left corner, windows came out in a mess, the Dock and menu bar were drawn
+for the old size, and the mode came back only when the game was closed (measured 2026-11-15: 1512x982 points, 3024x1964 pixels, 120 Hz -> 3024x1964 points, 48 Hz -> back). Native full screen was
+switched off by a launch option and it happened all the same, so it is the engine's own display-mode switch. Now the call answers "done" and the display keeps its mode; native full screen (ENG-12, ENG-15) scales a window that is smaller than the screen. One line `lullaby:displaymode kept ...` in the wine log, once a run.
+Requires: nothing. A game that really needs the Mac switched (an old game wanting 640x480 for itself) gets the answer but not the switch: its window is scaled by ENG-15 in native full screen.
+Other bases: Dormison's display.c is the unchanged Wine one in this place.
+Test: Modern Warfare Remastered (DXMT): the desktop stays at 1512x982 points while the game runs (read with a display watcher: CGDisplayCopyDisplayMode every second), the game's picture is not stretched; RE9, PEAK, Isaac, ETS 2 unchanged (none of them asks for a mode).
+Verified on: not yet.
+Switch: LULLABY_KEEP_DISPLAY_MODE=0 as a launch option gives the old behaviour for a run; on by default (the old behaviour changes the whole Mac's resolution).
+
+diff --git a/dlls/winemac.drv/display.c b/dlls/winemac.drv/display.c
+index 5ba33ce..5e8c5a0 100644
+--- a/dlls/winemac.drv/display.c
++++ b/dlls/winemac.drv/display.c
+@@ -25,6 +25,10 @@
+ 
+ #include "config.h"
+ 
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
+ #include "macdrv.h"
+ #include "winuser.h"
+ #include "winreg.h"
+@@ -767,6 +771,15 @@ static CGDisplayModeRef find_best_display_mode(DEVMODEW *devmode, CFArrayRef dis
+     return best_display_mode;
+ }
+ 
++/* Lullaby: a game that asks for a display mode (Modern Warfare Remastered: 3024x1964 at 47 Hz) made the Mac switch the whole
++ * screen to a low-resolution mode, the desktop shrinking into a corner. The answer is "done", the display stays as it is.
++ * LULLABY_KEEP_DISPLAY_MODE=0 gives the old behaviour. */
++static BOOL keep_display_mode(void)
++{
++    const char *v = getenv("LULLABY_KEEP_DISPLAY_MODE");
++    return !(v && !strcmp(v, "0"));
++}
++
+ /***********************************************************************
+  *              ChangeDisplaySettings  (MACDRV.@)
+  *
+@@ -821,6 +834,14 @@ LONG macdrv_ChangeDisplaySettings(LPDEVMODEW displays, LPCWSTR primary_name, HWN
+                 bpp, mode->dmDisplayFrequency);
+             ret = DISP_CHANGE_BADMODE;
+         }
++        else if (keep_display_mode())
++        {
++            /* the game gets its answer, the Mac keeps its own mode */
++            static int noted;
++            if (!noted++)
++                fprintf(stderr, "lullaby:displaymode kept, a request for %ux%u @%u Hz was answered without switching the display\n",
++                        (unsigned)mode->dmPelsWidth, (unsigned)mode->dmPelsHeight, (unsigned)mode->dmDisplayFrequency);
++        }
+         else if (!macdrv_set_display_mode(CGMainDisplayID(), best_display_mode))
+         {
+             WARN("Failed to set display mode\n");
