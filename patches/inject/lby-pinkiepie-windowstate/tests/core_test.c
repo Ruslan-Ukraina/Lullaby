@@ -54,6 +54,12 @@ int main(void)
     p = lbws_plan_restore(LBWS_WINDOW, 1600, 900, true, true, true, 1280, 720);
     CHECK(p.action == LBWS_NOTHING, "already in native fullscreen: the size is not touched");
 
+    /* A Wine message box (477x206, fixed) is not the game's window; a small resizable window and a fixed window of a real size are. */
+    CHECK(!lbws_is_game_size(false, 477, 206), "a fixed 477x206 message box is not a game window");
+    CHECK(lbws_is_game_size(true, 477, 206), "a resizable window of that size is");
+    CHECK(lbws_is_game_size(false, 640, 480), "a fixed 640x480 game window is");
+    CHECK(!lbws_is_game_size(true, 200, 100), "below the minimum is never one");
+
     p = lbws_plan_restore(LBWS_BORDERLESS, 1600, 900, false, true, true, 1280, 720);
     CHECK(p.action == LBWS_NOTHING, "borderless is the game's own to put back");
 

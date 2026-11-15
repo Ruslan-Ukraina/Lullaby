@@ -67,6 +67,15 @@ typedef struct { lbws_action action; double w, h; } lbws_plan;
 /* The smallest window worth putting back; anything below is a splash or a dialog's size. */
 #define LBWS_MIN_W 320.0
 #define LBWS_MIN_H 200.0
+/* A window that cannot be resized counts as the game's only from this size: a Wine message box (the "Fatal Error" of a game
+ * started in the wrong folder, 477x206) is small and fixed, and its size was once kept as the game's and put on the real window. */
+#define LBWS_FIXED_MIN_W 640.0
+#define LBWS_FIXED_MIN_H 360.0
+static inline bool lbws_is_game_size(bool resizable, double w, double h)
+{
+    if (w < LBWS_MIN_W || h < LBWS_MIN_H) return false;
+    return resizable || (w >= LBWS_FIXED_MIN_W && h >= LBWS_FIXED_MIN_H);
+}
 
 /* What to do when the game's window first appears.
  *  saved:      the state the game was left in, and the Window size it last had (0 when unknown);

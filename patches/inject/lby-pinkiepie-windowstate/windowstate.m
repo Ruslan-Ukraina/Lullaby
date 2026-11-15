@@ -64,7 +64,7 @@ static BOOL isGameWindow(NSWindow *w)
     if (!wine) wine = NSClassFromString(@"WineWindow");
     if (!wine || ![w isKindOfClass:wine]) return NO;
     NSSize s = [w contentRectForFrameRect:[w frame]].size;
-    return s.width >= LBWS_MIN_W && s.height >= LBWS_MIN_H;
+    return lbws_is_game_size(([w styleMask] & NSWindowStyleMaskResizable) != 0, s.width, s.height);
 }
 
 static double area(NSWindow *w) { NSSize s = [w frame].size; return s.width * s.height; }
