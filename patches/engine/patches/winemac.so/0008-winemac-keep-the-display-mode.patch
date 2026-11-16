@@ -11,10 +11,10 @@ Requires: nothing. A game that really needs the Mac switched (an old game wantin
 Other bases: Dormison's display.c is the unchanged Wine one in this place.
 Test: Modern Warfare Remastered (DXMT): the desktop stays at 1512x982 points while the game runs (read with a display watcher: CGDisplayCopyDisplayMode every second), the game's picture is not stretched; RE9, PEAK, Isaac, ETS 2 unchanged (none of them asks for a mode).
 Verified on: not yet.
-Switch: LULLABY_KEEP_DISPLAY_MODE=0 as a launch option gives the old behaviour for a run; on by default (the old behaviour changes the whole Mac's resolution).
+Switch: it follows the game's "Native full screen" row (off = the old behaviour, LULLABY_NATIVE_FULLSCREEN=0); LULLABY_KEEP_DISPLAY_MODE=0 as a launch option gives the old behaviour for a run; on by default (the old behaviour changes the whole Mac's resolution).
 
 diff --git a/dlls/winemac.drv/display.c b/dlls/winemac.drv/display.c
-index 5ba33ce..5e8c5a0 100644
+index 5ba33ce..b7f2d24 100644
 --- a/dlls/winemac.drv/display.c
 +++ b/dlls/winemac.drv/display.c
 @@ -25,6 +25,10 @@
@@ -28,23 +28,24 @@ index 5ba33ce..5e8c5a0 100644
  #include "macdrv.h"
  #include "winuser.h"
  #include "winreg.h"
-@@ -767,6 +771,15 @@ static CGDisplayModeRef find_best_display_mode(DEVMODEW *devmode, CFArrayRef dis
+@@ -767,6 +771,16 @@ static CGDisplayModeRef find_best_display_mode(DEVMODEW *devmode, CFArrayRef dis
      return best_display_mode;
  }
  
 +/* Lullaby: a game that asks for a display mode (Modern Warfare Remastered: 3024x1964 at 47 Hz) made the Mac switch the whole
 + * screen to a low-resolution mode, the desktop shrinking into a corner. The answer is "done", the display stays as it is.
-+ * LULLABY_KEEP_DISPLAY_MODE=0 gives the old behaviour. */
++ * LULLABY_KEEP_DISPLAY_MODE=0, or the game's "Native full screen" row switched off (LULLABY_NATIVE_FULLSCREEN=0), gives the old behaviour. */
 +static BOOL keep_display_mode(void)
 +{
 +    const char *v = getenv("LULLABY_KEEP_DISPLAY_MODE");
-+    return !(v && !strcmp(v, "0"));
++    const char *nfs = getenv("LULLABY_NATIVE_FULLSCREEN");   /* the game's "Native full screen" row: off = as before */
++    return !(v && !strcmp(v, "0")) && !(nfs && !strcmp(nfs, "0"));
 +}
 +
  /***********************************************************************
   *              ChangeDisplaySettings  (MACDRV.@)
   *
-@@ -821,6 +834,14 @@ LONG macdrv_ChangeDisplaySettings(LPDEVMODEW displays, LPCWSTR primary_name, HWN
+@@ -821,6 +835,14 @@ LONG macdrv_ChangeDisplaySettings(LPDEVMODEW displays, LPCWSTR primary_name, HWN
                  bpp, mode->dmDisplayFrequency);
              ret = DISP_CHANGE_BADMODE;
          }

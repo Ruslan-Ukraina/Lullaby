@@ -12,13 +12,13 @@ Requires: nothing. Works with ENG-12 and ENG-15 (the stage scaling they use).
 Other bases: Dormison's cocoa_window.m only.
 Test: Modern Warfare Remastered (DXMT) in "Fullscreen" at 3024x1964: no side strip; RE9 (D3DMetal, 3024x1898 1:1) and PEAK (1920x1200 scaled, a wider difference than 5%? 1.6 against 1.593: within, so it fills too; check no stretch is seen) unchanged to the eye.
 Verified on: not yet.
-Switch: LULLABY_FULLSCREEN_FILL=0 as a launch option keeps the strip for a run; on by default.
+Switch: only with the game's "Native full screen" row on (LULLABY_NATIVE_FULLSCREEN=0 = as before); LULLABY_FULLSCREEN_FILL=0 as a launch option keeps the strip for a run; on by default.
 
 diff --git a/dlls/winemac.drv/cocoa_window.m b/dlls/winemac.drv/cocoa_window.m
-index ceba44f..a790a73 100644
+index ceba44f..58bdee0 100644
 --- a/dlls/winemac.drv/cocoa_window.m
 +++ b/dlls/winemac.drv/cocoa_window.m
-@@ -1873,6 +1873,17 @@ - (void) layoutPresentation
+@@ -1873,6 +1873,18 @@ - (void) layoutPresentation
              box.size.height = MAX(pixel, floor(wine.height * scale / pixel) * pixel);
              box.origin.x = floor((area.width - box.size.width) / 2 / pixel) * pixel;
              box.origin.y = floor((area.height - box.size.height) / 2 / pixel) * pixel;
@@ -29,8 +29,9 @@ index ceba44f..a790a73 100644
 +            if ([self styleMask] & NSWindowStyleMaskFullScreen)
 +            {
 +                const char *fill = getenv("LULLABY_FULLSCREEN_FILL");
++                const char *nfs = getenv("LULLABY_NATIVE_FULLSCREEN");   /* the game's "Native full screen" row */
 +                CGFloat ax = area.width / wine.width, ay = area.height / wine.height;
-+                if (!(fill && !strcmp(fill, "0")) && fabs(ax / ay - 1.0) < 0.05)
++                if (!(fill && !strcmp(fill, "0")) && !(nfs && !strcmp(nfs, "0")) && fabs(ax / ay - 1.0) < 0.05)
 +                    box = [stage bounds];
 +            }
          }
