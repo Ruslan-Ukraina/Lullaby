@@ -1,0 +1,38 @@
+ENG-18  In native full screen a picture whose shape is within 5% of the screen's fills the screen instead of leaving a strip.
+Component: lby-trixie-fullscreen (native full screen and the screen's size), patches/lby-trixie-fullscreen/.
+
+dlls/winemac.drv/cocoa_window.m (winemac.so, layoutPresentation). Written 2026-11-16, LGPL-2.1-or-later like Wine.
+
+What: native full screen is the screen below the menu bar and notch (3024x1898 pixels on a 14" MacBook Pro). A game that keeps its own resolution and does not
+follow the size it is told (Modern Warfare Remastered picks 3024x1964, the screen's size, from the mode list and keeps it) was fitted into that area without distortion:
+a black strip of about 102 pixels (3.4%) at one side, and the picture shown by the window compositor ("Composited" in the Metal HUD). Now, in native full screen, when the
+shape of the picture (its width over its height) differs from the area's by less than 5%, the picture fills the whole area (a distortion under 3.4%, not seen); a wider
+difference is fitted as before. Windows outside native full screen (a window the player resizes) keep the fit. The rule is for every game, not for one.
+Requires: nothing. Works with ENG-12 and ENG-15 (the stage scaling they use).
+Other bases: Dormison's cocoa_window.m only.
+Test: Modern Warfare Remastered (DXMT) in "Fullscreen" at 3024x1964: no side strip; RE9 (D3DMetal, 3024x1898 1:1) and PEAK (1920x1200 scaled, a wider difference than 5%? 1.6 against 1.593: within, so it fills too; check no stretch is seen) unchanged to the eye.
+Verified on: not yet.
+Switch: LULLABY_FULLSCREEN_FILL=0 as a launch option keeps the strip for a run; on by default.
+
+diff --git a/dlls/winemac.drv/cocoa_window.m b/dlls/winemac.drv/cocoa_window.m
+index ceba44f..a790a73 100644
+--- a/dlls/winemac.drv/cocoa_window.m
++++ b/dlls/winemac.drv/cocoa_window.m
+@@ -1873,6 +1873,17 @@ - (void) layoutPresentation
+             box.size.height = MAX(pixel, floor(wine.height * scale / pixel) * pixel);
+             box.origin.x = floor((area.width - box.size.width) / 2 / pixel) * pixel;
+             box.origin.y = floor((area.height - box.size.height) / 2 / pixel) * pixel;
++
++            /* Lullaby (ENG-18): in native full screen a picture whose shape is within 5% of the screen's fills the screen:
++               a game that keeps its own resolution (3024x1964 into the 3024x1898 below the notch) would else show a
++               black strip at one side. A wider difference is still fitted without distortion. */
++            if ([self styleMask] & NSWindowStyleMaskFullScreen)
++            {
++                const char *fill = getenv("LULLABY_FULLSCREEN_FILL");
++                CGFloat ax = area.width / wine.width, ay = area.height / wine.height;
++                if (!(fill && !strcmp(fill, "0")) && fabs(ax / ay - 1.0) < 0.05)
++                    box = [stage bounds];
++            }
+         }
+         else
+             wine = box.size;
