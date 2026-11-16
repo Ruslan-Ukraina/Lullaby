@@ -553,7 +553,16 @@ glfixes-tests: $(GLFIXES)
 		LULLABY_GL_CLEAR=0 DYLD_INSERT_LIBRARIES=$(GLFIXES) $(OUT_DIR)/wine-glfixes-test.$$a texture off || exit 1; \
 		WINEDLLOVERRIDES="opengl32=n" DYLD_INSERT_LIBRARIES=$(GLFIXES) $(OUT_DIR)/wine-glfixes-test.$$a texture off || exit 1; \
 	done
-	@echo "==> glfixes tests: a black window texture only in a process that runs WineMetalGL, arm64 and x86_64"
+	@for a in arm64 x86_64; do \
+		$(CC) -arch $$a -mmacosx-version-min=$(MIN_VER) -fobjc-arc -framework Metal -framework Foundation \
+			-o $(OUT_DIR)/wine-glfixes-mesh-test.$$a $(GLFIXES_DIR)/tests/mesh_test.m || exit 1; \
+		for mode in plain raster-off color-raster-off color-emptyfs; do \
+			DYLD_INSERT_LIBRARIES=$(GLFIXES) $(OUT_DIR)/wine-glfixes-mesh-test.$$a $$mode || exit 1; done; \
+		DYLD_INSERT_LIBRARIES=$(GLFIXES) $(OUT_DIR)/wine-glfixes-mesh-test.$$a color || exit 1; \
+		if LULLABY_MESH_FS=0 DYLD_INSERT_LIBRARIES=$(GLFIXES) $(OUT_DIR)/wine-glfixes-mesh-test.$$a color >/dev/null 2>&1; then \
+			echo "FAIL: switched off, Metal should have aborted"; exit 1; else echo "ok: switched off, Metal aborts as before ($$a)"; fi; \
+	done
+	@echo "==> glfixes tests: a black window texture only in a process that runs WineMetalGL; a mesh pipeline without a fragment function no longer aborts (MTL-01); arm64 and x86_64"
 
 # The decisions in plain C, then the library in a process with a WineWindow, on both architectures, with
 # freed memory scribbled and zombies on: a static that outlives its autorelease pool fails the run.

@@ -14,13 +14,14 @@ Not here: the V-Sync and present feed (ENG-07), GCMouse (`lby-octavia-gcmouse`),
 
 **Fixes in WineMetalGL (OpenGL on Metal, CMP-10), the injected library `glfixes.m` -> `lullaby-glfixes.dylib`.** Injected into the Wine
 loader's process (`DYLD_INSERT_LIBRARIES`, set by `compat_run.sh`); does nothing unless the process runs WineMetalGL (`WINEDLLOVERRIDES`
-names `winemetalgl`). Names only (a symbol, a label), no offsets; arm64 and x86_64. Registry ID GLF-02. (GLF-01, 32 colour bits, is gone: WineMetalGL 3.9.0 lists 32 itself.)
+names `winemetalgl`). Names only (a symbol, a label), no offsets; arm64 and x86_64. Registry IDs GLF-02 and MTL-01. (GLF-01, 32 colour bits, is gone: WineMetalGL 3.9.0 lists 32 itself.)
 - **GLF-02, a black window texture.** The colour texture of a window (label `default framebuffer`, private storage) is never cleared,
   at the start and when the window changes size; a game that swaps before it has drawn (a loading screen) showed the GPU's old memory,
   a flat magenta rectangle at the switch to native full screen. `MTLTexture setLabel:` is taken, and a texture given that label is
   cleared to black at once (waited for, before WineMetalGL copies the old picture into it). Switch: `LULLABY_GL_CLEAR=0`. Report:
   `agent/reports/winemetalgl-issue-draft-resize-uninitialised.md` (private).
-- It goes when WineMetalGL mends it: `release/check-components.py` shows a newer WineMetalGL; read its notes, then remove what no
+- **MTL-01, a mesh pipeline without a fragment function.** Metal aborts the process ("Mesh Render Pipeline Descriptor Validation, fragmentFunction must not be nil") when a mesh render pipeline has a colour attachment and no fragment function. DXMT builds one for a Direct3D 11 pass with tessellation, a render target and no pixel shader (Modern Warfare Remastered after a mission loads). In Direct3D 11 that means no colour is written, so the library gives the pipeline an empty fragment function and a colour write mask of none, in the device's `newRenderPipelineStateWithMeshDescriptor:` and the binary archive's `addMeshRenderPipelineFunctionsWithDescriptor:`. For every Wine loader process, not tied to a game or to WineMetalGL. Switch: `LULLABY_MESH_FS=0`. Report draft to DXMT: `agent/reports/dxmt-issue-draft-mwr-mesh-pipeline.md` (private).
+- GLF-02 goes when WineMetalGL mends it; MTL-01 when DXMT does: `release/check-components.py` shows a newer WineMetalGL; read its notes, then remove what no
   longer applies.
 - Tests: `make glfixes-tests` (a Metal texture, in a program named like the Wine loader; on, off and "not
   WineMetalGL"; arm64 and x86_64).

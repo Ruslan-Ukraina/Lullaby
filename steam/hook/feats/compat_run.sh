@@ -1614,8 +1614,9 @@ if [ -f "\$window_state" ]; then
   export DYLD_INSERT_LIBRARIES="\$window_state\${DYLD_INSERT_LIBRARIES:+:\$DYLD_INSERT_LIBRARIES}"
   export LULLABY_WINDOW_STATE_FILE="$WINEPREFIX/.sevo/lullaby-window.json"
 fi
-# A fault of WineMetalGL worked around (lby-derpy-fixes): the library does nothing unless the process runs
-# WineMetalGL; LULLABY_GL_CLEAR=0 as a launch option turns it off for a run.
+# Faults worked around from outside (lby-derpy-fixes): a black first window texture of WineMetalGL (only in a process that
+# runs WineMetalGL; LULLABY_GL_CLEAR=0 turns it off) and a Metal abort on a mesh pipeline without a fragment function
+# (DXMT's tessellation; LULLABY_MESH_FS=0 turns it off), as launch options for a run.
 glfixes="$HOME/Library/Application Support/lullaby/lullaby-glfixes.dylib"
 if [ -f "\$glfixes" ]; then
   export DYLD_INSERT_LIBRARIES="\$glfixes\${DYLD_INSERT_LIBRARIES:+:\$DYLD_INSERT_LIBRARIES}"
