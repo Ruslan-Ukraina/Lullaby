@@ -16,7 +16,6 @@ Requires: nothing. Interplay with ENG-08 (GCMouse, 0004: both change how moves r
 Other bases: Dormison's cocoa_app.m (the clip handler WineCursorRestrictionClipCursorHandler does not warp; the event-tap handler has its own setCursorPosition and is not changed).
 Test: RE9 (D3DMetal) in native full screen, mouse look with the cursor hidden: push the mouse to every edge and corner for a minute, the Dock and the menu bar
 must not come out and the game must keep focus; open a menu (cursor shown) and come back; PEAK, Isaac and ETS 2 unchanged; the pointer shown again after Cmd-Tab.
-Log: one line `lullaby:mouselook begin|end|setpos-ends anchor x,y other x,y flag N` in the wine log at each start and end of the look (rare, at most 400 a run).
 Verified on: RE9 (2026-11-15): Dock and menu bar stay hidden when the mouse is pushed to the bottom edge; RE9's menu pointer jumped to the centre whenever the mouse stood still: win32u's GetCursorPos asks the driver after 100 ms without a move and got the detached pointer's place; GetCursorPos now keeps Wine's own position during the look (macdrv_get_cursor_position returns 2).
 Owner 2026-11-15 (v5): now and then a motionless system arrow stood at the anchor, in a scene and in a menu (Wine counted the cursor hidden, macOS drew it); CGDisplayHideCursor/ShowCursor now pair with the look.
 Switch: LULLABY_MOUSELOOK=0 as a launch option turns it off for a run; on by default (a fix of a plain fault).
@@ -55,7 +54,7 @@ index 0e616f9..0b21280 100644
              clientWantsCursorHidden = FALSE;
              [self updateCursor:FALSE];
              if (self.clippingCursor && ([self keyWindowIsPresentedInWindow] || screenClip))
-@@ -2024,10 +2026,74 @@ - (void) handleCommandTab
+@@ -2024,10 +2026,60 @@ - (void) handleCommandTab
          }
      }
  
@@ -84,22 +83,10 @@ index 0e616f9..0b21280 100644
 +        return enabled;
 +    }
 +
-+    /* One line per start and end of the look, and per cursor move that ends it, in the wine log (rare: a menu opening, not a frame). */
-+    static void mouselook_note(const char *what, CGPoint a, CGPoint b, int flag)
-+    {
-+        static int count;
-+        if (++count > 400) return;
-+        fprintf(stderr, "lullaby:mouselook %s anchor %g,%g other %g,%g flag %d\n", what, a.x, a.y, b.x, b.y, flag);
-+        fflush(stderr);
-+    }
-+
 +    - (void) endMouseLook
 +    {
 +        if (mouseLook)
 +        {
-+            mouselook_note("end", mouseLookAnchor,
-+                           NSPointToCGPoint([self flippedMouseLocation:[NSEvent mouseLocation]]),
-+                           clientWantsCursorHidden);
 +            mouseLook = FALSE;
 +            mouse_look_active = 0;
 +            CGAssociateMouseAndMouseCursorPosition(true);
@@ -123,14 +110,12 @@ index 0e616f9..0b21280 100644
 +        if (mouseLook && clientWantsCursorHidden && [NSApp isActive] && ![windowsBeingDragged count] &&
 +            fabs(pos.x - mouseLookAnchor.x) < 2 && fabs(pos.y - mouseLookAnchor.y) < 2)
 +            return TRUE;
-+        if (mouseLook)
-+            mouselook_note("setpos-ends", mouseLookAnchor, pos, clientWantsCursorHidden);
 +        [self endMouseLook];
 +
          if ([windowsBeingDragged count])
              return FALSE;
  
-@@ -2062,6 +2128,20 @@ - (BOOL) setCursorPosition:(CGPoint)pos
+@@ -2062,6 +2114,19 @@ - (BOOL) setCursorPosition:(CGPoint)pos
                  lastSetCursorPositionTime = [[NSProcessInfo processInfo] systemUptime];
  
                  CGAssociateMouseAndMouseCursorPosition(true);
@@ -146,12 +131,11 @@ index 0e616f9..0b21280 100644
 +                    mouseLook = TRUE;
 +                    mouse_look_active = 1;
 +                    mouseLookAnchor = pos;
-+                    mouselook_note("begin", pos, pos, clientWantsCursorHidden);
 +                }
              }
          }
  
-@@ -2318,6 +2398,10 @@ - (void) handleMouseMove:(NSEvent*)anEvent
+@@ -2318,6 +2383,10 @@ - (void) handleMouseMove:(NSEvent*)anEvent
              targetWindow = nil;
          else if (mouseCaptureWindow)
              targetWindow = mouseCaptureWindow;
@@ -162,7 +146,7 @@ index 0e616f9..0b21280 100644
          else if (drag)
              targetWindow = (WineWindow*)[anEvent window];
          else
-@@ -2355,7 +2439,9 @@ - (void) handleMouseMove:(NSEvent*)anEvent
+@@ -2355,7 +2424,9 @@ - (void) handleMouseMove:(NSEvent*)anEvent
                  forceNextMouseMoveAbsolute = TRUE;
              }
  
@@ -173,7 +157,7 @@ index 0e616f9..0b21280 100644
              {
                  absolute = TRUE;
                  forceNextMouseMoveAbsolute = FALSE;
-@@ -2572,8 +2658,9 @@ - (void) handleMouseButton:(NSEvent*)theEvent
+@@ -2572,8 +2643,9 @@ - (void) handleMouseButton:(NSEvent*)theEvent
                  event = macdrv_create_event(MOUSE_BUTTON, window);
                  event->mouse_button.button = [theEvent buttonNumber];
                  event->mouse_button.pressed = pressed;
@@ -185,7 +169,7 @@ index 0e616f9..0b21280 100644
                  event->mouse_button.time_ms = [self ticksForEventTime:[theEvent timestamp]];
  
                  [window.queue postEvent:event];
-@@ -2613,7 +2700,8 @@ - (void) handleMouseButton:(NSEvent*)theEvent
+@@ -2613,7 +2685,8 @@ - (void) handleMouseButton:(NSEvent*)theEvent
          // wouldn't exit until a mouse up.  In that case, we'd miss any mouse
          // dragged events and, after that, any notion of the cursor position
          // computed from accumulating deltas would be wrong.
@@ -195,7 +179,7 @@ index 0e616f9..0b21280 100644
      }
  
      - (void) handleScrollWheel:(NSEvent*)theEvent
-@@ -2654,8 +2742,8 @@ - (void) handleScrollWheel:(NSEvent*)theEvent
+@@ -2654,8 +2727,8 @@ - (void) handleScrollWheel:(NSEvent*)theEvent
                  pt = cgpoint_win_from_mac(pt);
  
                  event = macdrv_create_event(MOUSE_SCROLL, window);
@@ -206,7 +190,7 @@ index 0e616f9..0b21280 100644
                  event->mouse_scroll.time_ms = [self ticksForEventTime:[theEvent timestamp]];
  
                  if (CGEventGetIntegerValueField(cgevent, kCGScrollWheelEventIsContinuous))
-@@ -2766,7 +2854,8 @@ - (void) handleScrollWheel:(NSEvent*)theEvent
+@@ -2766,7 +2839,8 @@ - (void) handleScrollWheel:(NSEvent*)theEvent
                  // Since scroll wheel events deliver absolute cursor position, the
                  // accumulating delta from move events is invalidated.  Make sure next
                  // mouse move event starts over from an absolute baseline.
@@ -216,7 +200,7 @@ index 0e616f9..0b21280 100644
              }
          }
      }
-@@ -3249,6 +3338,7 @@ - (void)applicationDidResignActive:(NSNotification *)notification
+@@ -3249,6 +3323,7 @@ - (void)applicationDidResignActive:(NSNotification *)notification
  
          macdrv_release_event(event);
  
@@ -224,7 +208,7 @@ index 0e616f9..0b21280 100644
          [self releaseMouseCapture];
      }
  
-@@ -3598,6 +3688,12 @@ void macdrv_set_cursor(CFStringRef name, CFArrayRef frames)
+@@ -3598,6 +3673,12 @@ void macdrv_set_cursor(CFStringRef name, CFArrayRef frames)
   */
  int macdrv_get_cursor_position(CGPoint *pos)
  {
