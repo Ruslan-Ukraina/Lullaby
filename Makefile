@@ -562,7 +562,19 @@ glfixes-tests: $(GLFIXES)
 		if LULLABY_MESH_FS=0 DYLD_INSERT_LIBRARIES=$(GLFIXES) $(OUT_DIR)/wine-glfixes-mesh-test.$$a color >/dev/null 2>&1; then \
 			echo "FAIL: switched off, Metal should have aborted"; exit 1; else echo "ok: switched off, Metal aborts as before ($$a)"; fi; \
 	done
-	@echo "==> glfixes tests: a black window texture only in a process that runs WineMetalGL; a mesh pipeline without a fragment function no longer aborts (MTL-01); arm64 and x86_64"
+	@for a in arm64 x86_64; do \
+		$(CC) -arch $$a -mmacosx-version-min=$(MIN_VER) -Wall -Wextra -fobjc-arc -framework Metal -framework Foundation \
+			-o $(OUT_DIR)/wine-glfixes-marshal-test.$$a $(GLFIXES_DIR)/tests/marshal_test.m || exit 1; \
+		$(OUT_DIR)/wine-glfixes-marshal-test.$$a bug || exit 1; \
+		DYLD_INSERT_LIBRARIES=$(GLFIXES) $(OUT_DIR)/wine-glfixes-marshal-test.$$a fixed || exit 1; \
+		LULLABY_INDIRECT_ARGS=0 DYLD_INSERT_LIBRARIES=$(GLFIXES) $(OUT_DIR)/wine-glfixes-marshal-test.$$a bug || exit 1; \
+		DYLD_INSERT_LIBRARIES=$(GLFIXES) $(OUT_DIR)/wine-glfixes-marshal-test.$$a other || exit 1; \
+	done
+	@$(CC) -arch x86_64 -mmacosx-version-min=$(MIN_VER) -dynamiclib -DSTANDIN -o $(OUT_DIR)/winemetal.so $(GLFIXES_DIR)/tests/tess_test.c || exit 1
+	@$(CC) -arch x86_64 -mmacosx-version-min=$(MIN_VER) -o $(OUT_DIR)/wine-glfixes-tess-test $(GLFIXES_DIR)/tests/tess_test.c || exit 1
+	@DYLD_INSERT_LIBRARIES=$(GLFIXES) $(OUT_DIR)/wine-glfixes-tess-test fitted $(OUT_DIR) || exit 1
+	@LULLABY_TESS_FIT=0 DYLD_INSERT_LIBRARIES=$(GLFIXES) $(OUT_DIR)/wine-glfixes-tess-test dxmt $(OUT_DIR) || exit 1
+	@echo "==> glfixes tests: a black window texture only in a process that runs WineMetalGL; a mesh pipeline without a fragment function no longer aborts (MTL-01); tessellation meshes fit Metal's 32768 bytes (MTL-02, x86_64); every indirect tessellation / geometry-shader draw of a pass gets its own mesh groups (MTL-03); arm64 and x86_64"
 
 # The decisions in plain C, then the library in a process with a WineWindow, on both architectures, with
 # freed memory scribbled and zombies on: a static that outlives its autorelease pool fails the run.
