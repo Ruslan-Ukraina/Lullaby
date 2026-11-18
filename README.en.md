@@ -9,6 +9,7 @@ Play the Windows games of your Steam library right on a Mac, in the ordinary Ste
 ## Installation
 
 1. You need an Apple silicon Mac, macOS 26 or newer, Rosetta and Steam in `/Applications`.
+   Download `Lullaby-….zip` from the [latest release](https://github.com/Ruslan-Ukraina/Lullaby/releases/latest), unzip it and move Lullaby to `/Applications`.
 2. Open Lullaby and press **Install**. It closes Steam carefully, patches it and downloads the engine.
 3. Start Steam from `/Applications/Steam.app`. On a Windows game open "Properties → Compatibility", turn the compatibility tool on, and press Play.
 

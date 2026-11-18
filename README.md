@@ -9,6 +9,7 @@
 ## Встановлення
 
 1. Потрібен Mac на Apple silicon, macOS 26 або новіша, Rosetta і Steam у `/Applications`.
+   Завантажте `Lullaby-….zip` з [останнього випуску](https://github.com/Ruslan-Ukraina/Lullaby/releases/latest), розпакуйте й перенесіть Lullaby у `/Applications`.
 2. Відкрийте Lullaby й натисніть **Встановити**. Вона акуратно закриє Steam, пропатчить його й завантажить рушій.
 3. Запускайте Steam з `/Applications/Steam.app`. У віндовс-гри відкрийте "Властивості → Сумісність", увімкніть інструмент сумісності - і тисніть "Грати".
 
