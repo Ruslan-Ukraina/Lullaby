@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "repository": "Ruslan-Ukraina/Lullaby",
-  "access": "private",
+  "access": "public",
   "manifestTag": "manifest",
   "signaturesTag": "signatures",
   "appcast": "appcast.xml",

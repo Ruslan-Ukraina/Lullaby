@@ -194,7 +194,7 @@ struct ReleaseAccessTests {
         #expect(plist[ReleaseAccess.manifestTagKey] as? String == config["manifestTag"] as? String)
         #expect(plist[EngineManifest.infoKey] as? String == config["engineManifest"] as? String)
         #expect(plist[ReleaseFeed.urlKey] as? String == "https://github.com/\(repository)/releases/download/")
-        // Phase 6: the repository is private, so are its releases (RELEASING.md, public/private).
-        #expect(config["access"] as? String == "private")
+        // r6: the repository is public, so are its releases; no token is needed (RELEASING.md, public/private).
+        #expect(config["access"] as? String == "public")
     }
 }
