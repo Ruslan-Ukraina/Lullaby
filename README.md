@@ -1,6 +1,6 @@
-# Lullaby
+<h1 align="center"><img src="docs/banner.jpg" alt="Lullaby: Windows-ігри у звичному Steam для macOS" width="100%"></h1>
 
-**Українська** · [English](README.en.md)
+<p align="center"><b>Українська</b> · <a href="README.en.md">English</a></p>
 
 Грайте у Windows ігри зі своєї бібліотеки Steam просто на Mac - у звичному Steam для macOS, так само як Steam Play (Proton) на Linux. Ви отримуєте повноцінний досвід ігор у Steam з ухилом на нативність для Mac. Усе це завдяки рушію [Dormison](https://github.com/kageroumado/dormison) (Wine для macOS).
 
