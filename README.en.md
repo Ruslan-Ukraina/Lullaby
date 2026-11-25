@@ -18,6 +18,8 @@ The app is not notarized by Apple, so the first time open it through "System Set
 
 ## What Lullaby does
 
+Lullaby works through injections and patches: other projects' code stays original, and Lullaby adds its own features and fixes on top of it.
+
 | Component | Feature |
 |---|---|
 | **Windows and screen** | |
