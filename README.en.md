@@ -16,16 +16,40 @@ Play the Windows games of your Steam library right on a Mac, in the ordinary Ste
 
 The app is not notarized by Apple, so the first time open it through "System Settings → Privacy & Security → Open Anyway".
 
-## Lullaby patches
+## What Lullaby does
 
-| Patch | What it does |
+### Windows and screen
+
+| Component | Feature |
 |---|---|
-| `lby-trixie-fullscreen` | Native full screen: a borderless full-screen game goes to macOS native full screen by itself, and a picture smaller than the screen (say 1920×1200) is stretched to the whole screen without distortion; the size and state of the game's window are remembered (engine patches ENG-12, ENG-15 and `lby-pinkiepie-windowstate`). |
-| `lby-ponthree-pacer` | Direct and Reflex: the picture goes straight to the display (no window compositor) with V-Sync, so a ProMotion screen (VRR) follows the game; NVIDIA Reflex for D3DMetal games, DLSS goes through MetalFX (`lby-rainbowdash-reflex`). |
-| `lby-octavia-gcmouse` | Input and sound: raw mouse through GameController (no pointer curve, the trackpad stays the system's); sound follows the output device and the microphone. |
-| `lby-derpy-fixes` | Small fixes of Wine: memory, Retina, hardware GPU scheduling, the window view for WineMetalGL; adaptation to D3DMetal 4.0 beta 3. |
+| `lby-pinkiepie-windowstate` | Game windows remember their last state and return to it. |
+| `lby-trixie-fullscreen` | Native macOS full screen, the picture stretches without distortion or bars. |
 
-Besides the patches, Lullaby includes the app with game settings, automatic renderer choice, the Steam overlay and game icons.
+### Graphics
+
+| Component | Feature |
+|---|---|
+| `lby-spitfire-apiscout` | Automatic renderer choice by the game's API: D3DMetal, DXMT, mtld3d, WineMetalGL or MoltenVK. |
+| `lby-ponthree-pacer` | Direct output to the display, ProMotion (VRR). |
+| `lby-rainbowdash-reflex` | NVIDIA Reflex for D3DMetal games, DLSS through MetalFX. |
+| `lby-derpy-fixes` | DXMT tessellation, WineMetalGL and Retina fixes, DLSS frame generation, D3DMetal 4.0 beta 3 support and more. |
+
+### Input and sound
+
+| Component | Feature |
+|---|---|
+| `lby-octavia-gcmouse` | Raw mouse without acceleration, the cursor does not conflict with the game or the Mac interface. |
+| `lby-derpy-fixes` | Sound and the microphone switch to headphones and headsets automatically. |
+
+### Steam
+
+| Component | Feature |
+|---|---|
+| `lby-luna-steamhook` | Lullaby in Steam for macOS: compatibility tool and game settings. |
+| `lby-applejack-steambridge`, `lby-bigmack-steamexe` | Bridge to Steam: achievements, stats, friends. |
+| `lby-spike-overlay` | Steam overlay in games. |
+| `lby-shiningarmor-updategate` | Steam updates do not break games. |
+| `lby-rarity-icons` | macOS-style game icons. |
 
 ## Credits and licences
 
