@@ -18,33 +18,20 @@ The app is not notarized by Apple, so the first time open it through "System Set
 
 ## What Lullaby does
 
-### Windows and screen
-
 | Component | Feature |
 |---|---|
+| **Windows and screen** | |
 | `lby-pinkiepie-windowstate` | Game windows remember their last state and return to it. |
 | `lby-trixie-fullscreen` | Native macOS full screen, the picture stretches without distortion or bars. |
-
-### Graphics
-
-| Component | Feature |
-|---|---|
+| **Graphics** | |
 | `lby-spitfire-apiscout` | Automatic renderer choice by the game's API: D3DMetal, DXMT, mtld3d, WineMetalGL or MoltenVK. |
 | `lby-ponthree-pacer` | Direct output to the display, ProMotion (VRR). |
 | `lby-rainbowdash-reflex` | NVIDIA Reflex for D3DMetal games, DLSS through MetalFX. |
 | `lby-derpy-fixes` | DXMT tessellation, WineMetalGL and Retina fixes, DLSS frame generation, D3DMetal 4.0 beta 3 support and more. |
-
-### Input and sound
-
-| Component | Feature |
-|---|---|
+| **Input and sound** | |
 | `lby-octavia-gcmouse` | Raw mouse without acceleration, the cursor does not conflict with the game or the Mac interface. |
 | `lby-derpy-fixes` | Sound and the microphone switch to headphones and headsets automatically. |
-
-### Steam
-
-| Component | Feature |
-|---|---|
+| **Steam** | |
 | `lby-luna-steamhook` | Lullaby in Steam for macOS: compatibility tool and game settings. |
 | `lby-applejack-steambridge`, `lby-bigmack-steamexe` | Bridge to Steam: achievements, stats, friends. |
 | `lby-spike-overlay` | Steam overlay in games. |

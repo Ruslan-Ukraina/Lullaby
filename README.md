@@ -18,33 +18,20 @@
 
 ## Що вміє Lullaby
 
-### Вікна й екран
-
 | Компонент | Функція |
 |---|---|
+| **Вікна й екран** | |
 | `lby-pinkiepie-windowstate` | Вікна гри запам'ятовують свій останній стан і повертаються до нього. |
 | `lby-trixie-fullscreen` | Нативний повний екран macOS, картинка розтягується без спотворень і без смуг. |
-
-### Графіка
-
-| Компонент | Функція |
-|---|---|
+| **Графіка** | |
 | `lby-spitfire-apiscout` | Автовибір рендерера за API гри: D3DMetal, DXMT, mtld3d, WineMetalGL або MoltenVK. |
 | `lby-ponthree-pacer` | Пряме виведення на дисплей, ProMotion (VRR). |
 | `lby-rainbowdash-reflex` | NVIDIA Reflex для ігор на D3DMetal, DLSS через MetalFX. |
 | `lby-derpy-fixes` | Виправлення тесселяції DXMT, WineMetalGL і Retina, генерація кадрів DLSS, підтримка D3DMetal 4.0 beta 3 та інше. |
-
-### Ввід і звук
-
-| Компонент | Функція |
-|---|---|
+| **Ввід і звук** | |
 | `lby-octavia-gcmouse` | Сира миша без прискорення, курсор не конфліктує з грою та інтерфейсом Mac. |
 | `lby-derpy-fixes` | Звук і мікрофон автоматично перемикаються за навушниками й гарнітурою. |
-
-### Steam
-
-| Компонент | Функція |
-|---|---|
+| **Steam** | |
 | `lby-luna-steamhook` | Lullaby у Steam для macOS: інструмент сумісності й налаштування гри. |
 | `lby-applejack-steambridge`, `lby-bigmack-steamexe` | Міст до Steam: досягнення, статистика, друзі. |
 | `lby-spike-overlay` | Оверлей Steam у грі. |
