@@ -64,11 +64,12 @@ def validate(components):
         if a:
             if not str(a.get("url", "")).startswith("https://") or not re.fullmatch(r"[0-9a-f]{64}", a.get("sha256", "")):
                 problems.append(f"{cid}: asset needs an https url and a sha256")
-            run_script = os.path.join(REPO, "steam", "hook", "feats", "compat_run.sh")
-            with open(run_script, encoding="utf-8") as f:
+            # the file that pins the download: the run script, or the app for what a setting downloads
+            pinned_in = a.get("pinned_in", "steam/hook/feats/compat_run.sh")
+            with open(os.path.join(REPO, pinned_in), encoding="utf-8") as f:
                 text = f.read()
             if a["url"] not in text or a["sha256"] not in text:
-                problems.append(f"{cid}: the asset url or sha256 differs from the pin in steam/hook/feats/compat_run.sh")
+                problems.append(f"{cid}: the asset url or sha256 differs from the pin in {pinned_in}")
         v = c.get("verify")
         if v:
             path = os.path.join(REPO, v["file"])

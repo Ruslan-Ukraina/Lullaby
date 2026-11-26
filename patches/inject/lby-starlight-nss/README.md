@@ -173,7 +173,9 @@ more shimmer in an orbit; new-look a little better, still below Lite), RCAS cost
 
 `patches/inject/lby-starlight-nss/build.sh <nss-metal checkout> out/nss` builds `lullaby-nss.dylib` (arm64 + x86_64), the
 kernels and the replay bench `nss_replay`. FSR 4: its own `make tools/bin/fsr4mac dist/crossover/libfsr4hook.dylib` on a
-copy with `fsr4/*.patch` applied.
+copy with `fsr4/*.patch` applied, then `fsr4/prepare-set.sh` makes the component players get. It and the prepared ANR
+runtime are published in Lullaby's `components-1` release (`release/components.json`); the app downloads them when the
+player turns FSR 4 or ANR on (`app/Sources/LullabySettings/ComponentStore.swift`, a progress line under the row).
 
 ANR stands (built against the patched port tree, arm64): `tests/anr_offset_test.mm` (pixels at an output offset, 2x and 3x,
 scaled or not; `ANR_TEST_BENCH=N` times it), `tests/anr_eval.mm` (ANR on recorded game frames, for a metric).

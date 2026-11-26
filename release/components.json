@@ -304,6 +304,42 @@
         "repo": "kageroumado/sevoflurane"
       },
       "policy": "catalog shape, env file format and help texts follow it (NOTICE)."
+    },
+    {
+      "id": "fsr4",
+      "name": "FSR 4 over MetalFX (fsr4-native-macos, prepared by Lullaby)",
+      "group": "ship",
+      "source": "https://github.com/UzenUPoZiTiV4ik/fsr4-native-macos",
+      "license": "MIT (FSR 4.1.2 initializers from AMD FidelityFX SDK, MIT)",
+      "pinned": "v4.1",
+      "check": {
+        "type": "github-release",
+        "repo": "UzenUPoZiTiV4ik/fsr4-native-macos"
+      },
+      "policy": "v4.1 with Lullaby's patch series (patches/inject/lby-starlight-nss/fsr4), prepared once by fsr4/prepare-set.sh (no python or Xcode for players) and published in Lullaby's components-1 release; downloaded when the player turns FSR 4 on, sha256 pinned.",
+      "asset": {
+        "url": "https://github.com/Ruslan-Ukraina/Lullaby/releases/download/components-1/lullaby-fsr4-1.tar.xz",
+        "sha256": "45b3c32d088c06a23d9b30c8ffc74e9133f98c75a53b3ed0e0508b3655f3f8c9",
+        "pinned_in": "app/Sources/LullabySettings/ComponentStore.swift"
+      }
+    },
+    {
+      "id": "anr-fg",
+      "name": "ANR frame generation runtime (Apex FG-V.B20, prepared for Metal)",
+      "group": "ship",
+      "source": "https://github.com/apex-compute/ANR",
+      "license": "no licence given by the author (owner's decision to distribute, 2026-11-26)",
+      "pinned": "FG-V.B20",
+      "check": {
+        "type": "github-release",
+        "repo": "apex-compute/ANR"
+      },
+      "policy": "the FG-V.B20 addon prepared for Metal by fsr4-native-macos's tools/anr/prepare.py, published in Lullaby's components-1 release as its own file (removable on the author's request without touching the rest); downloaded when the player turns ANR on, sha256 pinned.",
+      "asset": {
+        "url": "https://github.com/Ruslan-Ukraina/Lullaby/releases/download/components-1/lullaby-anr-fg-v20-1.tar.xz",
+        "sha256": "b5c963e81c138b4630c540252c37b50c4717ef4ecdf95913bc994f8b4ed4fc86",
+        "pinned_in": "app/Sources/LullabySettings/ComponentStore.swift"
+      }
     }
   ]
 }
