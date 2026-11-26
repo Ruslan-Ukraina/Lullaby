@@ -1,14 +1,11 @@
-Lullaby r6 (1.1.0)
+Lullaby r7 (1.1.0)
 
-Changes since r5
-- Lullaby is open: the repository and its releases are public, and updates of the app, the engine, the Steam bridge and the signature database are read without a GitHub token. A friend installs Lullaby and it updates itself like yours.
-- Mouse look stays in the game: while a game hides the cursor (aiming, a camera), the real pointer is held where the game put it, so it no longer runs into the Dock, the menu bar or a hot corner, and a motionless arrow no longer shows; a game's own menu pointer (Resident Evil Requiem) still moves (ENG-16). LULLABY_MOUSELOOK=0 turns it off for one run.
-- A game that asks for a display mode no longer switches the whole Mac's screen (Modern Warfare Remastered set it to 48 Hz); the game gets its answer and the picture is scaled (ENG-17). LULLABY_KEEP_DISPLAY_MODE=0 turns it off for one run.
-- In native full screen a picture whose shape is within 5% of the screen's fills it instead of leaving a thin strip (ENG-18). LULLABY_FULLSCREEN_FILL=0 turns it off for one run. Both follow the game's "Native full screen" row.
-- Call of Duty: Modern Warfare Remastered on DXMT plays its campaign: no abort after a mission loads, no tessellation pipeline errors and no GPU hang that froze the display (MTL-01, MTL-02, MTL-03, worked around from outside DXMT v0.80; not tied to one game). LULLABY_MESH_FS=0, LULLABY_TESS_FIT=0 and LULLABY_INDIRECT_ARGS=0 turn each off for one run.
-- A small Wine message box is no longer taken for the game's window (its size squeezed the real window).
-- Steam bridge dormison-r7-4 (engine Dormison r7, unchanged) carries ENG-16, ENG-17 and ENG-18; close engine patches are joined into one each (14 become 11, the Wine they build is byte for byte the same).
-- Components: Sparkle 2.10.1, mtld3d 0.15.3, WineMetalGL 3.9.0 (it lists 32 colour bits itself, so Lullaby's own fix for that is gone).
+Changes since r6
+- FSR 4 for DLSS (experimental): in a game's Advanced settings, Diagnostics, "FSR 4 instead of MetalFX" upscales the game's DLSS with AMD's FSR 4 (fsr4-native-macos, prepared by Lullaby, no Xcode or Python needed). The component downloads when you turn it on, with a small progress line under the row. MetalFX's own frame generation then runs at the game's size: in Resident Evil Requiem about 8 % more frames.
+- ANR frame generation (experimental): "ANR frame generation" makes the in-between frames with Apex's ANR instead of MetalFX, at the same cost and with fewer artefacts at the screen's edge when the camera turns. It downloads when you turn it on.
+- Reflex by Lullaby keeps a tighter margin only while frame generation runs: lower latency with frame generation and V-Sync, nothing changes without it. LULLABY_REFLEX_AGGRESSIVE=0 turns it off for one run.
+- The Metal HUD row of a game takes effect again: Lullaby's fixes no longer make a Metal device before the engine applies the game's settings.
+- Components: mtld3d 0.15.5, WineMetalGL 4.1.0.
 
 Known limits
 - The app is not signed by an Apple Developer ID: the first time, macOS has to be told to open it (README, "First start").
@@ -16,8 +13,9 @@ Known limits
 - Dormison r8 is not supported yet (its archive carries Apple's files).
 - On OpenGL (WineMetalGL) the picture can stay at the old size after a window changes size; the Metal HUD frame counter does not show there.
 - Resident Evil Requiem with HDR on shows a pale picture; not rechecked in native full screen yet.
+- FSR 4 and ANR are experiments: they may load the GPU more than MetalFX and may not work with every game. ANR 3x is not offered (it needs a fourth drawable that D3DMetal does not leave).
 - Native Vulkan games run on MoltenVK; KosmicKrisp is opt-in only (LULLABY_VULKAN=kosmickrisp) and not recommended yet.
-- Launch options that change one run: LULLABY_AVX=0, LULLABY_DLSS=0, WINEMSYNC=0, LULLABY_GCMOUSE_SCALE=<number>, LULLABY_LOW_LATENCY=0, LULLABY_NATIVE_FULLSCREEN=0 (also turns Direct off), LULLABY_FULLSCREEN_SIZE=0, LULLABY_AUDIO_FOLLOW=0, LULLABY_MOUSELOOK=0, LULLABY_KEEP_DISPLAY_MODE=0, LULLABY_FULLSCREEN_FILL=0, LULLABY_MESH_FS=0, LULLABY_TESS_FIT=0, LULLABY_INDIRECT_ARGS=0.
+- Launch options that change one run: LULLABY_UPSCALER=fsr4, LULLABY_FG=anr, LULLABY_REFLEX_AGGRESSIVE=0, LULLABY_AVX=0, LULLABY_DLSS=0, WINEMSYNC=0, LULLABY_GCMOUSE_SCALE=<number>, LULLABY_LOW_LATENCY=0, LULLABY_NATIVE_FULLSCREEN=0 (also turns Direct off), LULLABY_FULLSCREEN_SIZE=0, LULLABY_AUDIO_FOLLOW=0, LULLABY_MOUSELOOK=0, LULLABY_KEEP_DISPLAY_MODE=0, LULLABY_FULLSCREEN_FILL=0, LULLABY_MESH_FS=0, LULLABY_TESS_FIT=0, LULLABY_INDIRECT_ARGS=0.
 
 Windows games from your Steam library on a Mac, in the ordinary Steam for macOS, on the Dormison r7 engine.
 - Engine: Dormison r7 (Wine with wine-staging), msync+ always on, signed downloads with an update that can be rolled back.

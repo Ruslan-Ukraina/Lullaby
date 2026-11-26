@@ -46,7 +46,7 @@ change nothing.
 | `LULLABY_RAIN=1` | | keeps FSR 4 from turning drops that fall on the same spot into glowing lines (may ripple wet surfaces) |
 | `LULLABY_CAS=` | `0.3` | CAS sharpening after MetalFX's upscaler |
 | `LULLABY_REFLEX_AGGRESSIVE=0` | | the tighter Reflex margin Lullaby uses with frame generation, off |
-| `LULLABY_STREAM=1` | | every frame the game shows goes to a Syphon server for OBS ("Syphon Client"), without screen capture |
+| `LULLABY_STREAM=1` | | every frame the game shows goes to a Syphon server for OBS ("Syphon Client"), without screen capture; needs `components/stream`, not distributed yet |
 
 ## Presentation (test build, lby-ponthree-pacer)
 | Variable | Meaning |
