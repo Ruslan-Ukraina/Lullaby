@@ -98,10 +98,8 @@ static void labelHook(id self, SEL _cmd, NSString *label)
         clearToBlack((id<MTLTexture>)self);
 }
 
-static void hookTextureLabel(void)
+static void hookTextureLabel(id<MTLDevice> device)
 {
-    id<MTLDevice> device = MTLCreateSystemDefaultDevice();
-    if (!device) return;
     MTLTextureDescriptor *d = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm width:4 height:4 mipmapped:NO];
     d.storageMode = MTLStorageModePrivate;
     d.usage = MTLTextureUsageRenderTarget;
@@ -162,10 +160,8 @@ static BOOL meshArchiveHook(id self, SEL _cmd, MTLMeshRenderPipelineDescriptor *
     return ((BOOL (*)(id, SEL, id, NSError **))gOrigMeshArchive)(self, _cmd, d, error);
 }
 
-static void hookMeshPipelines(void)
+static void hookMeshPipelines(id<MTLDevice> device)
 {
-    id<MTLDevice> device = MTLCreateSystemDefaultDevice();
-    if (!device) return;
     SEL sel = @selector(newRenderPipelineStateWithMeshDescriptor:options:reflection:error:);
     Method m = class_getInstanceMethod(object_getClass(device), sel);
     if (m) {
@@ -382,12 +378,52 @@ static void hookMarshalFunctions(void)
     say("MTL-03 armed: DXMT's indirect draw marshal functions are checked when asked for");
 }
 
+/* ---- arming on the renderer's first Metal device ------------------------------------------------------------------- */
+
+/* GLF-02 and MTL-01 hook methods of the device's own classes, so they need a device. Making one in the constructor
+ * (as before) ran before the engine applies .sevo/apps/<exe>.env, and Metal decides Apple's Metal HUD from
+ * MTL_HUD_ENABLED when the process's first device is made: a game whose HUD was on in its own settings only (off for
+ * the bottle) never showed it. So the library waits for the renderer (DXMT, WineMetalGL, D3DMetal) to make the first
+ * device, through these two calls, and arms on that one. */
+static BOOL gIsWineProcess;
+
+static void armOnDevice(id<MTLDevice> device)
+{
+    static dispatch_once_t once;
+    if (!device || !gIsWineProcess) return;
+    dispatch_once(&once, ^{
+        if (runsWineMetalGL() && !switchedOff("LULLABY_GL_CLEAR")) hookTextureLabel(device);
+        if (!switchedOff("LULLABY_MESH_FS")) hookMeshPipelines(device);
+    });
+}
+
+static id<MTLDevice> glfCreateSystemDefaultDevice(void) NS_RETURNS_RETAINED;   /* like the originals: the caller owns the result */
+static NSArray<id<MTLDevice>> *glfCopyAllDevices(void) NS_RETURNS_RETAINED;
+
+static id<MTLDevice> glfCreateSystemDefaultDevice(void)
+{
+    id<MTLDevice> device = MTLCreateSystemDefaultDevice();   /* the real one: an image's own calls are not interposed */
+    armOnDevice(device);
+    return device;
+}
+
+static NSArray<id<MTLDevice>> *glfCopyAllDevices(void)
+{
+    NSArray<id<MTLDevice>> *devices = MTLCopyAllDevices();
+    armOnDevice(devices.firstObject);
+    return devices;
+}
+
+__attribute__((used, section("__DATA,__interpose"))) static const struct { const void *replacement, *original; } glfInterpose[] = {
+    { (const void *)glfCreateSystemDefaultDevice, (const void *)MTLCreateSystemDefaultDevice },
+    { (const void *)glfCopyAllDevices, (const void *)MTLCopyAllDevices },
+};
+
 __attribute__((constructor)) static void glf_init(void)
 {
     const char *name = getprogname();
     if (!name || strncmp(name, "wine", 4) || !strcmp(name, "wineserver")) return;   /* the Wine loader's processes only */
-    if (runsWineMetalGL() && !switchedOff("LULLABY_GL_CLEAR")) hookTextureLabel();
-    if (!switchedOff("LULLABY_MESH_FS")) hookMeshPipelines();
+    gIsWineProcess = YES;
     if (!switchedOff("LULLABY_INDIRECT_ARGS")) hookMarshalFunctions();
 #if defined(__x86_64__)
     if (!switchedOff("LULLABY_TESS_FIT")) {
