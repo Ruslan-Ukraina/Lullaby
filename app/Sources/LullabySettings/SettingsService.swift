@@ -9,6 +9,8 @@ public struct SettingsService: Sendable {
     public var library: GameLibrary
     /// Apple's D3DMetal, added by the player (D3DMetalStore).
     public var d3dmetal: D3DMetalStore = .standard
+    /// Components a setting downloads when turned on (FSR 4, ANR).
+    public var components: ComponentStore = .standard
     /// What SEVO_CLI names in bottle.env.
     public var cli: String?
     /// Whether the game runs now (its bundle's wine is a process).
@@ -74,6 +76,7 @@ public struct SettingsService: Sendable {
             if let quick = setting.quick { object["quick"] = .number(quick) }
             if !setting.renderers.isEmpty { object["renderers"] = .array(setting.renderers.map { .string($0.rawValue) }) }
             if let caption = setting.copy.caption { object["caption"] = caption.json }
+            if let component = Components.needed(by: setting.id) { object["component"] = .string(component) }
             return .object(object)
         }
         return .object([
@@ -127,6 +130,7 @@ public struct SettingsService: Sendable {
             "level": .string(appID == nil ? "global" : "game"),
             "values": .object(values),
             "d3dmetal": d3dmetal.stateJSON(),
+            "components": components.statusJSON(),
         ]
         if let engine = engineVersion() { object["engine"] = .string(engine) }
         if let appID {

@@ -93,9 +93,36 @@
   }
   function T(ctx, key, value) {
     var s = L(ctx, ctx.catalog.text[key]);
+    if (Array.isArray(value)) { value.forEach(function (v) { s = s.replace("%@", v); }); return s; }
     return value === undefined ? s : s.replace("%@", value);
   }
   function key(v) { return JSON.stringify(v); }
+
+  // ---- a setting's component (FSR 4, ANR): downloaded when the setting is turned on ----
+
+  function mb(ctx, bytes) {
+    var t = (Math.max(bytes || 0, 0) / 1048576).toFixed(1);
+    return ctx.lang === "en" ? t : t.replace(".", ",");
+  }
+  function busy(c) { return !!c && (c.state === "downloading" || c.state === "installing"); }
+  // One quiet line under the row: a thin bar and "4.2 of 13 MB, 3.1 MB/s, 3 s left" (in the player's language) while it downloads,
+  // the reason and a retry when it failed, an offer when the setting is on and the component is not there.
+  function componentLine(ctx, id, c) {
+    if (!c || c.state === "installed") return null;
+    var get = function (e) { stop(e); ctx.component(id, "install"); };
+    if (c.state === "failed")
+      return el("div", { className: "LBComp" }, el("div", { className: "LBCompText LBWarn" },
+        T(ctx, "componentFailed"), " \u00b7 ", el("span", { className: "LBLink", onClick: get }, T(ctx, "componentRetry"))));
+    if (!busy(c))
+      return el("div", { className: "LBComp" }, el("div", { className: "LBCompText" },
+        el("span", { className: "LBLink", onClick: get }, T(ctx, "componentGet", mb(ctx, c.total)))));
+    var total = c.total || 0, got = Math.min(c.received || 0, total), share = total ? got / total : 0;
+    var text = c.state === "installing" ? T(ctx, "componentInstalling")
+      : T(ctx, "componentProgress", [mb(ctx, got), mb(ctx, total), mb(ctx, c.speed), String(c.left === undefined ? "\u2026" : c.left)]);
+    return el("div", { className: "LBComp" },
+      el("div", { className: "LBBar" }, el("div", { style: { width: Math.round((c.state === "installing" ? 1 : share) * 100) + "%" } })),
+      el("div", { className: "LBCompText" }, text));
+  }
 
   // ---- one row --------------------------------------------------------------------
 
@@ -182,8 +209,15 @@
     var lbl = label(ctx, s, info, setInfo), desc = describe(ctx, s, v, info);
     var ctl = s.control, eff = v.effective;
     switch (ctl.kind) {
-      case "toggle":
-        return el(B.y4, { label: lbl, description: desc, checked: eff === true, onChange: function (on) { ctx.change(s.id, !!on); } });
+      case "toggle": {
+        var comp = s.component && ctx.state.components ? ctx.state.components[s.component] : null;
+        var toggle = el(B.y4, { label: lbl, description: desc, checked: eff === true, onChange: function (on) {
+          var done = ctx.change(s.id, !!on);
+          if (on && comp && comp.state !== "installed" && !busy(comp) && done && done.then)
+            done.then(function () { ctx.component(s.component, "install"); });
+        } });
+        return comp && eff === true ? el("div", null, toggle, componentLine(ctx, s.component, comp)) : toggle;
+      }
       case "choice": {
         var list = el(B.Vb, {
           label: lbl, description: desc, rgOptions: choiceOptions(ctx, ctl.choices), selectedOption: key(eff),
@@ -363,6 +397,10 @@
     ".LBActions{margin-top:12px;display:flex;flex-direction:column;gap:8px}" +
     ".LBStatus{color:#8b929a;font-size:12px;margin-top:8px}.LBStatus.LBWarn{color:#e4c046}" +
     ".LBError{color:#ff7b7b;font-size:12px;margin-top:8px}" +
+    ".LBComp{margin:2px 0 8px;max-width:360px}" +
+    ".LBBar{height:3px;background:rgba(255,255,255,.12);border-radius:2px;overflow:hidden}" +
+    ".LBBar>div{height:100%;background:#1a9fff;transition:width .25s linear}" +
+    ".LBCompText{font-size:11px;color:#8b929a;margin-top:3px}.LBCompText.LBWarn{color:#e4c046}" +
     ".LBOverlay{position:fixed;left:0;top:0;right:0;bottom:0;z-index:1500;background:rgba(0,0,0,.65);" +
     "display:flex;align-items:center;justify-content:center;outline:none}" +
     ".LBDialog{background:#23262e;width:min(660px,92vw);max-height:86vh;display:flex;flex-direction:column;" +
@@ -399,6 +437,17 @@
     function answered(r) {
       if (r.ok) { s[1](r.state); e[1](null); } else { e[1](r.error); }
     }
+    function merged(r) {
+      if (r && r.ok && r.components) s[1](function (prev) { return prev ? Object.assign({}, prev, { components: r.components }) : prev; });
+    }
+    // While a component downloads, its state is asked again every half second for the progress line.
+    var st = s[0];
+    var downloading = !!(st && st.components && Object.keys(st.components).some(function (k) { return busy(st.components[k]); }));
+    R.useEffect(function () {
+      if (!enabled || !downloading || typeof setTimeout !== "function") return undefined;
+      var t = setTimeout(function () { ask({ op: "component" }).then(merged); }, 500);
+      return function () { clearTimeout(t); };
+    }, [enabled, downloading, st]);
     return {
       lang: l[0], catalog: c[0], state: s[0], error: e[0], advanced: a[0], setAdvanced: a[1],
       host: h[0],
@@ -414,6 +463,9 @@
       reset: function () {
         holdScroll();
         return ask({ op: "reset", app: appID }).then(function (r) { answered(r); restoreSoon(); });
+      },
+      component: function (id, action) {
+        return ask({ op: "component", id: id, action: action }).then(merged);
       }
     };
   }

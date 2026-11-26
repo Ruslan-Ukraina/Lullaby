@@ -17,13 +17,16 @@ struct SettingsFixture {
         steam = root.appending(path: "Steam")
         try FileManager.default.createDirectory(
             at: steam.appending(path: "steamapps/compatdata"), withIntermediateDirectories: true)
-        service = SettingsService(
+        var service = SettingsService(
             store: SettingsStore(root: root.appending(path: "support/settings")),
             library: GameLibrary(roots: [steam]),
             cli: "/support/lullaby-sevo",
             gameIsRunning: { _ in running },
             engineVersion: { "dormison-b1" },
             log: { _ in })
+        // the components of this fixture, never the Mac's own
+        service.components = ComponentStore(root: root.appending(path: "support/components"))
+        self.service = service
     }
 
     func cleanUp() { try? FileManager.default.removeItem(at: root) }

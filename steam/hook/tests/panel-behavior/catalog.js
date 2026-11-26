@@ -273,5 +273,39 @@ t.ok(catalog.settings.every(x => !x.renderers || x.renderers.length === 0), 'no 
   t.ok(fresh.scrollTop === 340, 'a list with nothing to scroll does not make it forget the position');
 }
 
+// ---- a setting's component downloading under its row (FSR 4, ANR) --------------------
+
+{
+  const withFsr4 = comp => {
+    const st = clone(gameState);
+    st.values.fsr4.effective = st.values.fsr4.own = true;
+    st.components = { fsr4: comp, anr: { state: 'idle', total: 319556 } };
+    return st;
+  };
+  const lineOf = (ctx) => {
+    const tree = walk(api.view(ctx));
+    return { bar: tree.find(n => n.props && n.props.className === 'LBBar'),
+             line: tree.find(n => n.props && n.props.className === 'LBComp') };
+  };
+  const ru = { state: 'downloading', received: 440401, total: 758952, speed: 209715, left: 2 };
+  let ctx = ctxFor(withFsr4(ru), 'ru', { advanced: true });
+  let r = lineOf(ctx);
+  t.ok(!!r.bar && r.bar.props.children.props.style.width === '58%', `a thin bar under FSR 4 while it downloads (${r.bar && r.bar.props.children.props.style.width})`);
+  t.ok(text(r.line).includes('0,4 \u0438\u0437 0,7 \u041c\u0411 \u00b7 0,2 \u041c\u0411/\u0441 \u00b7 \u0435\u0449\u0451 2 \u0441'),
+       `its line in the player's language (${text(r.line)})`);
+  ctx = ctxFor(withFsr4({ state: 'downloading', received: 440401, total: 758952, speed: 209715, left: 2 }), 'en', { advanced: true });
+  t.ok(text(lineOf(ctx).line).includes('0.4 of 0.7 MB'), 'English keeps the point');
+  const calls = [];
+  ctx = ctxFor(withFsr4({ state: 'failed', error: 'HTTP 404' }), 'uk', { advanced: true, component: (id, a) => calls.push([id, a]) });
+  r = lineOf(ctx);
+  t.ok(text(r.line).includes(catalog.text.componentFailed.uk), 'a failed download says so');
+  walk(r.line).find(n => n.props && n.props.className === 'LBLink').props.onClick({ stopPropagation() {}, preventDefault() {} });
+  t.ok(JSON.stringify(calls) === '[["fsr4","install"]]', `Retry starts it again (${JSON.stringify(calls)})`);
+  ctx = ctxFor(withFsr4({ state: 'installed' }), 'ru', { advanced: true });
+  t.ok(!lineOf(ctx).line, 'nothing under the row once it is installed');
+  const off = clone(gameState); off.components = { fsr4: { state: 'idle', total: 758952 } };
+  t.ok(!lineOf(ctxFor(off, 'ru', { advanced: true })).line, 'nothing under the row while the setting is off');
+}
+
 if (t.failed) { console.log(`catalog panel: ${t.failed} failed`); process.exit(1); }
 console.log('==> catalog panel: the catalog drawn in Steam, three languages, no words of its own');

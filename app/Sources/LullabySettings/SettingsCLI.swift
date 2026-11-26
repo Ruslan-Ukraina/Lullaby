@@ -12,6 +12,7 @@
 //   panel JSON                           one request of the Steam panel, answered as JSON
 //   toolkit add PATH                     install D3DMetal from a Game Porting Toolkit image
 //   toolkit list                         installed D3DMetal versions as JSON
+//   component status | install ID        components a setting downloads (ComponentStore.swift)
 //   app config APPID KEY VALUE           what Dormison's View menu runs through SEVO_CLI
 //                                        (the `sevo app config` call; docs/ROADMAP.md §5.3)
 
@@ -51,6 +52,9 @@ public struct SettingsCLI {
         }
         if let steam = try? probe.option("--steam", &rest) {
             service.library = .standard(steam: URL(filePath: steam))
+        }
+        if let components = try? probe.option("--components", &rest) {
+            service.components = ComponentStore(root: URL(filePath: components))
         }
         return (SettingsCLI(service: service), rest)
     }
@@ -114,6 +118,8 @@ public struct SettingsCLI {
             return try sevoAppConfig(rest)
         case "toolkit":
             return try toolkit(rest)
+        case "component":
+            return try component(rest)
         default:
             throw SettingsError.usage(Self.usage)
         }
@@ -147,12 +153,40 @@ public struct SettingsCLI {
                 try service.set(id, value, appID: app)
             case "reset":
                 try service.reset(appID: app)
+            case "component":
+                // {"op": "component", "id": "fsr4", "action": "install" | "status"}: answers the components' state
+                if object["action"]?.string == "install", let id = object["id"]?.string {
+                    try service.components.start(id, executable: Self.executable)
+                }
+                return .object(["ok": .bool(true), "components": service.components.statusJSON()])
             default:
                 throw SettingsError.usage("unknown op \(op)")
             }
             return .object(["ok": .bool(true), "state": service.stateJSON(appID: app)])
         } catch {
             return .object(["ok": .bool(false), "error": .string("\(error)")])
+        }
+    }
+
+    // MARK: - Components
+
+    /// This program's own path, for the background download it starts.
+    static var executable: String {
+        Bundle.main.executablePath ?? SettingsPaths.cli.path(percentEncoded: false)
+    }
+
+    func component(_ arguments: [String]) throws -> Result {
+        switch (arguments.first, arguments.count) {
+        case ("status", 1):
+            return .ok(service.components.statusJSON().text)
+        case ("install", 2):
+            try service.components.start(arguments[1], executable: Self.executable)
+            return .ok(service.components.statusJSON().text)
+        case ("download", 2):
+            try service.components.download(arguments[1])
+            return .ok()
+        default:
+            throw SettingsError.usage("component status | install ID | download ID")
         }
     }
 

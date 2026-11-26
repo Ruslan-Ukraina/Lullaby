@@ -110,6 +110,13 @@ public enum PanelText {
         "close": L10n("Close", uk: "Закрити", ru: "Закрыть"),
         "toolkitInSettings": L10n("Add GPTK in the Lullaby app's settings", uk: "Додай GPTK у налаштуваннях додатку Lullaby",
                                   ru: "Добавь GPTK в настройках приложения Lullaby"),
+        // the line under a setting whose component downloads (ComponentStore)
+        "componentProgress": L10n("%@ of %@ MB · %@ MB/s · %@ s left", uk: "%@ з %@ МБ · %@ МБ/с · ще %@ с",
+                                  ru: "%@ из %@ МБ · %@ МБ/с · ещё %@ с"),
+        "componentInstalling": L10n("Installing…", uk: "Встановлення…", ru: "Установка…"),
+        "componentFailed": L10n("Download failed", uk: "Не вдалося завантажити", ru: "Не удалось скачать"),
+        "componentRetry": L10n("Retry", uk: "Повторити", ru: "Повторить"),
+        "componentGet": L10n("Download (%@ MB)", uk: "Завантажити (%@ МБ)", ru: "Скачать (%@ МБ)"),
     ]
 }
 
