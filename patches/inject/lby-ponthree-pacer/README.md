@@ -20,4 +20,8 @@ Frame pacing of a game's presentation on Metal, without touching Dormison or D3D
 - The modes that time a frame's presentation (`adaptive`, `fixed`) are added only after the probe has said which path to take, and
   only if they hold on the measurements in `tools/perf/` (docs/DECISIONS.md, S8). Priority: stability and wide compatibility; a
   game the pacer cannot handle is left alone.
+- `LULLABY_DRAWABLES=2` (an experiment, off unless asked): a game layer keeps two drawables instead of three, one frame
+  less waiting to be shown; to be measured with frame generation (2026-11-26).
+- `LULLABY_THREAD_QOS=1` (an experiment, off unless asked): every thread of the game's process starts at the
+  user-interactive QoS class (pthread_create interposed; checked: 0x21 instead of 0x15, arm64 and x86_64).
 - Build: `make pacer` (arm64 + x86_64). Measure: `tools/perf/presentfeed.py` (on-screen intervals) with `LULLABY_PRESENT_FEED=1`.

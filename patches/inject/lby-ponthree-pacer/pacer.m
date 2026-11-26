@@ -606,6 +606,7 @@ static BOOL direct_capable(NSUInteger f)
            f == PF_BGRA10_XR_SRGB || f == PF_BGR10_XR;
 }
 
+static char kDrawables;
 static void direct_setPixelFormat(id self, SEL _cmd, NSUInteger f)
 {
     NSUInteger g = f;
@@ -619,6 +620,19 @@ static void direct_setPixelFormat(id self, SEL _cmd, NSUInteger f)
         g = f;
     }
     ((void (*)(id, SEL, NSUInteger))gSetFormatOrig)(self, _cmd, g);
+    /* LULLABY_DRAWABLES=2: a game layer keeps two drawables instead of three, one frame less waiting to be shown (lower
+       latency, a bubble when the GPU is late). An experiment, off unless asked; set when the layer gets its format. */
+    static int want = -1;
+    if (want < 0) { const char *e = getenv("LULLABY_DRAWABLES"); want = e && e[0] == '2' ? 2 : 0; }
+    if (want == 2 && [self respondsToSelector:@selector(setMaximumDrawableCount:)]) {
+        @try {
+            ((void (*)(id, SEL, NSUInteger))objc_msgSend)(self, @selector(setMaximumDrawableCount:), 2);
+            if (!objc_getAssociatedObject(self, &kDrawables)) {
+                objc_setAssociatedObject(self, &kDrawables, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+                say("drawables: layer %p keeps 2", self);
+            }
+        } @catch (NSException *e) {}
+    }
 }
 
 /* The game's own asks are kept; while the layer is Direct in native full screen, V-Sync stays on whatever the game asks. */
@@ -759,4 +773,41 @@ __attribute__((constructor)) static void pacer_init(void)
             (void)keep;
         }
     });
+}
+
+/* LULLABY_THREAD_QOS=1 (an experiment, off unless asked): every thread the game's process makes starts at the
+   user-interactive QoS class, the highest a program may ask for, so macOS keeps the game's render and worker threads on
+   the performance cores and runs them first. Game Mode raises the process as a whole; this reaches the threads Wine
+   makes itself (pthread_create from ntdll.so). The main thread is raised in the constructor below. */
+#include <pthread/qos.h>
+struct lby_qos_start { void *(*fn)(void *); void *arg; };
+static int lby_qos_on = -1;
+static int lby_qos_wanted(void)
+{
+    if (lby_qos_on < 0) { const char *e = getenv("LULLABY_THREAD_QOS"); lby_qos_on = e && e[0] == '1'; }
+    return lby_qos_on;
+}
+static void *lby_qos_trampoline(void *p)
+{
+    struct lby_qos_start s = *(struct lby_qos_start *)p;
+    free(p);
+    pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
+    return s.fn(s.arg);
+}
+static int lby_pthread_create(pthread_t *t, const pthread_attr_t *a, void *(*fn)(void *), void *arg)
+{
+    if (!lby_qos_wanted()) return pthread_create(t, a, fn, arg);
+    struct lby_qos_start *s = malloc(sizeof *s);
+    if (!s) return pthread_create(t, a, fn, arg);
+    s->fn = fn; s->arg = arg;
+    int r = pthread_create(t, a, lby_qos_trampoline, s);
+    if (r) free(s);
+    return r;
+}
+__attribute__((used, section("__DATA,__interpose"))) static struct { const void *replacement, *original; } lby_qos_interpose[] = {
+    { (const void *)lby_pthread_create, (const void *)pthread_create },
+};
+__attribute__((constructor)) static void lby_qos_main(void)
+{
+    if (lby_qos_wanted()) pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
 }
