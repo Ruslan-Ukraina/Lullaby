@@ -21,8 +21,10 @@ here=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$here/.." && pwd)
 
 # Pinned in Sevoflurane's Core/Setup/EngineSignature.swift; the private half
-# signs every Dormison release (build-macos/publish-engine.sh).
-DORMISON_PUBKEY=${DORMISON_PUBKEY:-7uDuIZdCZyobjZcPL12zL+UNOCpHSvLXvVRFHA7bzzA=}
+# signs every Dormison release (build-macos/publish-engine.sh). Dormison moved to this
+# key with r16 (Sevoflurane 1.15.1 pinned it beside 7uDuIZdC...zzA=, 1.16.0 pins it alone);
+# the owner confirmed the move 2026-11-25.
+DORMISON_PUBKEY=${DORMISON_PUBKEY:-5sQ6cDQSthaMVF3fZEVs9hTvnn0j2WZ2OuKOeNvBmPM=}
 MANIFEST_URL=${MANIFEST_URL:-https://github.com/kageroumado/dormison/releases/download/manifest/engine.json}
 # Release assets are accepted only from here, over https.
 ASSET_PREFIX=https://github.com/kageroumado/dormison/releases/download/
