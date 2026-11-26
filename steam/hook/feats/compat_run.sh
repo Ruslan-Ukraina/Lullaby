@@ -805,10 +805,10 @@ place_nvidia_dlls() {
 # A component from its author's release, pinned by sha256 and fetched the first time a game needs it
 # into components/<name> (nothing else is trusted: a wrong hash installs nothing, no network leaves
 # the game on Wine's own renderer). Pins are the same as release/components.json.
-mtld3d_url="https://github.com/athei/mtld3d/releases/download/v0.15.3/mtld3d.tar.xz"
-mtld3d_sha256="038f00c9d868a2fcb71034dac645df1fa1500a4b4056f845e400e777e7a4a294"
-winemetalgl_url="https://github.com/metalsharp/WineMetalGL/releases/download/winemetalgl-3.9.0/winemetalgl-3.9.0-x86_64.tar.gz"
-winemetalgl_sha256="1c17a7f412977250e22c2c36a003809350dee66be33679213a3cee1847d72513"
+mtld3d_url="https://github.com/athei/mtld3d/releases/download/v0.15.5/mtld3d.tar.xz"
+mtld3d_sha256="7891b4aa01db634315308bc922bb300d1706528adb9f4e828067001542540bef"
+winemetalgl_url="https://github.com/metalsharp/WineMetalGL/releases/download/winemetalgl-4.1.0/winemetalgl-4.1.0-x86_64.tar.gz"
+winemetalgl_sha256="754d44e1e5bb5fb911c8b034675543578adf150c51dfe75e48064f4ad16c4570"
 fetch_component() { # NAME URL SHA256 SUBDIR_OF_ARCHIVE_TO_KEEP ("" for the whole archive)
   fc_name=$1; fc_url=$2; fc_want=$3; fc_keep=$4
   fc_dest="$support/components/$fc_name"
@@ -1581,6 +1581,12 @@ else
   echo "loader staging failed, game mode unavailable" >> "$log" 2>&1 || true
 fi
 
+# Upscaling and frame generation (lby-starlight-nss): the game's own settings (Lullaby's window, .sevo/apps/<exe>.env) choose
+# them; a launch option of the same name wins. Baked into the launcher below, which LaunchServices starts afresh.
+st_upscaler=$(env_value LULLABY_UPSCALER); st_fg=$(env_value LULLABY_FG); st_cas=$(env_value LULLABY_CAS)
+st_nss_quality=$(env_value LULLABY_NSS_QUALITY); st_fsr4_profile=$(env_value LULLABY_FSR4_PROFILE)
+st_fsr4_sharpness=$(env_value LULLABY_FSR4_SHARPNESS)
+st_stream=$(env_value LULLABY_STREAM)
 cat > "$loader_macos/launcher" <<LAUNCHER
 #!/bin/sh
 # Opened from the Dock or Finder there is nothing to run, and the loader
@@ -1625,6 +1631,71 @@ fi
 pacer="$HOME/Library/Application Support/lullaby/lullaby-pacer.dylib"
 if [ -f "\$pacer" ]; then
   export DYLD_INSERT_LIBRARIES="\$pacer\${DYLD_INSERT_LIBRARIES:+:\$DYLD_INSERT_LIBRARIES}"
+fi
+[ -n "\${LULLABY_UPSCALER:-}" ] || LULLABY_UPSCALER="$st_upscaler"
+[ -n "\${LULLABY_FG:-}" ] || LULLABY_FG="$st_fg"
+[ -n "\${LULLABY_CAS:-}" ] || LULLABY_CAS="$st_cas"
+[ -n "\${LULLABY_NSS_QUALITY:-}" ] || LULLABY_NSS_QUALITY="$st_nss_quality"
+[ -n "\${LULLABY_FSR4_PROFILE:-}" ] || LULLABY_FSR4_PROFILE="$st_fsr4_profile"
+[ -n "\${LULLABY_FSR4_SHARPNESS:-}" ] || LULLABY_FSR4_SHARPNESS="$st_fsr4_sharpness"
+export LULLABY_UPSCALER LULLABY_FG LULLABY_CAS LULLABY_NSS_QUALITY LULLABY_FSR4_PROFILE LULLABY_FSR4_SHARPNESS
+# Upscaling and frame generation over MetalFX (lby-starlight-nss; components the player installs, nothing without them;
+# every option in patches/inject/lby-starlight-nss/README.md):
+#   LULLABY_UPSCALER=fsr4    AMD FSR 4 Lite in place of MetalFX's upscaler (LULLABY_FSR4_PROFILE, LULLABY_FSR4_SHARPNESS)
+#   LULLABY_FG=anr           ANR 2x in place of MetalFX's frame generation (DLSS Frame Generation on in the game)
+#   LULLABY_CAS=0.3          CAS sharpening after MetalFX's upscaler
+# lullaby-nss stays outermost: it writes the upscaled frame through a texture of its own (D3DMetal's output texture
+# took no shader writes in some runs) and can run a second upscaler as a shadow for comparisons; FSR 4's hook sits
+# inside it. LULLABY_UPSCALER=nss (Arm's NSS) is kept for measuring only: not offered to players, its weights not shipped.
+nss="$HOME/Library/Application Support/lullaby/components/nss/lullaby-nss.dylib"
+if [ -f "\$nss" ] && [ -n "\$LULLABY_UPSCALER\$LULLABY_CAS" ]; then
+  export DYLD_INSERT_LIBRARIES="\$nss\${DYLD_INSERT_LIBRARIES:+:\$DYLD_INSERT_LIBRARIES}"
+  # Textures a little sharper under upscaling: -0.3 of RE9's -0.58 (log2 1530/2294) keeps most of the texture for a
+  # quarter of a millisecond less (owner, 2026-11-26); only with our upscaler. LULLABY_LOD_BIAS=0 turns it off.
+  export LULLABY_LOD_BIAS="\${LULLABY_LOD_BIAS:--0.3}"
+  export LULLABY_NSS_LOG="$loader_root/lullaby-nss.log"
+fi
+# Reflex by Lullaby, the aggressive margin (lby-rainbowdash-reflex): acts only with frame generation; on by the owner's
+# choice 2026-11-26. LULLABY_REFLEX_AGGRESSIVE=0 turns it off for a run.
+export LULLABY_REFLEX_AGGRESSIVE="\${LULLABY_REFLEX_AGGRESSIVE:-1}"
+# Streaming without screen capture (lby-photofinish-stream): LULLABY_STREAM=1 hands every frame the game shows to a
+# Syphon server named after the game; OBS's "Syphon Client" source reads it, the game stays direct-to-display.
+[ -n "\${LULLABY_STREAM:-}" ] || LULLABY_STREAM="$st_stream"
+stream="$HOME/Library/Application Support/lullaby/components/stream/lullaby-stream.dylib"
+if [ -f "\$stream" ] && [ "\$LULLABY_STREAM" = 1 ]; then
+  export LULLABY_STREAM DYLD_INSERT_LIBRARIES="\$stream\${DYLD_INSERT_LIBRARIES:+:\$DYLD_INSERT_LIBRARIES}"
+  export LULLABY_STREAM_NAME="Lullaby: ${exe_name%.*}" LULLABY_STREAM_LOG="$loader_root/lullaby-stream.log"
+fi
+fsr4="$HOME/Library/Application Support/lullaby/components/fsr4"
+if [ -f "\$fsr4/dist/crossover/libfsr4hook.dylib" ] && { [ "\$LULLABY_UPSCALER" = fsr4 ] || [ -n "\$LULLABY_FG" ]; }; then
+  export DYLD_INSERT_LIBRARIES="\${DYLD_INSERT_LIBRARIES:+\$DYLD_INSERT_LIBRARIES:}\$fsr4/dist/crossover/libfsr4hook.dylib"
+  export FSR4_ROOT="\$fsr4" FSR4_VERSION=4.1.2 FSR4_PROFILE="\${LULLABY_FSR4_PROFILE:-int8-lite}" FSR4_FG_SETTINGS=none
+  export FSR4_HOOK_LOG="$loader_root/fsr4-hook.log"
+  # A component prepared by Lullaby (fsr4/prepare-set.sh) has no toolchain scripts: nothing is compiled at play time.
+  [ -d "\$fsr4/tools/fsr412" ] || export FSR4_PREPARED=1
+  # RCAS 0.3: sharper than NSS and calmer in motion on RE9's frames
+  export FSR4_SHARPNESS="\${LULLABY_FSR4_SHARPNESS:-0.3}"
+  if [ "\$LULLABY_UPSCALER" = fsr4 ]; then export FSR4_REPLACE=1; else export FSR4_REPLACE=0; fi
+  case "\$LULLABY_FG" in anr2|anr2x) LULLABY_FG=anr ;; esac   # the 2x spelled out is ANR 2x too
+  case "\$LULLABY_FG" in
+    anr|anr3x)
+      # ANR at 0.68 of the picture costs what MetalFX at the game's size does (stand: 3.2 vs 3.3 ms) and on 40 recorded
+      # RE9 frames is closer to the real frames: whole -7 %, screen-edge band -26 %, worst pixels -14 %, depth edges equal.
+      # 3x is parked: it needs a fourth drawable while D3DMetal holds two of three.
+      export FSR4_FG="\$LULLABY_FG" FSR4_ANR_RUNTIME="\$fsr4/build/anr_runtime_v20" FSR4_ANR_IGNORE_DISTORTION=1
+      export FSR4_ANR_SCALE="\${LULLABY_ANR_SCALE:-0.68}" FSR4_ANR_DETAIL="\${LULLABY_ANR_DETAIL:-0.5}"
+      export FSR4_ANR_DILATE="\${LULLABY_ANR_DILATE:-1}" FSR4_ANR_DEPTH="\${LULLABY_ANR_DEPTH:-auto}"
+      export FSR4_ANR_3X_LAG="\${LULLABY_ANR_3X_LAG:-1}" FSR4_ANR_3X_ORDER="\${LULLABY_ANR_3X_ORDER:-time}" ;;
+    *)
+      # MetalFX frame generation at the game's size (RE9: 46 -> 50.5 game fps). The pass after it (edge fill, tears,
+      # reveals) is an option, LULLABY_MFX_EDGE=1: better on recorded frames, no visible gain in the game.
+      export FSR4_FG=metalfx FSR4_MFX_SIZE="\${LULLABY_MFX_SIZE:-game}" FSR4_MFX_EDGE="\${LULLABY_MFX_EDGE:-0}"
+      [ -n "\$LULLABY_MFX_DILATE" ] && export FSR4_MFX_DILATE="\$LULLABY_MFX_DILATE"
+      case "\$LULLABY_FG" in ""|metalfx) ;; *) echo "lullaby: LULLABY_FG=\$LULLABY_FG is not anr or anr3x; MetalFX frame generation" ;; esac ;;
+  esac
+  # The rain pass after FSR 4 (drops falling on the same spot leave no glowing line): off, as wet still wood flashes like
+  # a drop and rippled in RE9 at every setting tried; LULLABY_RAIN=1 turns it on, fsr4-live.conf tunes it live.
+  export FSR4_RAIN="\${LULLABY_RAIN:-0}"
 fi
 [ -n "\$LULLABY_GAME_CWD" ] && cd "\$LULLABY_GAME_CWD"
 "$WINELOADER" "\$@"
