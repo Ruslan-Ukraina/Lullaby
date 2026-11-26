@@ -74,6 +74,15 @@ static void open_feed(void)
 static void spin(double ms) { double end = now_ms() + ms; while (now_ms() < end) ; }
 
 static double shown_at[FRAMES], last_shown;
+/* SIM_FG=N: frame generation, each game frame puts N drawables on the screen (the generated ones first), as D3DMetal
+   with DLSS-G or ANR does; the present feed counts all of them. */
+static int FG = 1;
+static volatile UINT64 shown_count;
+static void feed_present(void)
+{
+    if (!feed) return;
+    feed->ring[shown_count % 256].present_ns = now_ns(); MemoryBarrier(); feed->presented = ++shown_count;
+}
 static HANDLE to_display;
 
 /* With V-Sync: shows each frame the GPU finished on its refresh. */
@@ -82,10 +91,14 @@ static DWORD WINAPI display(void *arg)
     for (int i = 0; i < FRAMES; i++)
     {
         WaitForSingleObject(to_display, INFINITE);
-        while (now_ms() < shown_at[i] + LAG_MS) Sleep(0);
-        gpu_done[i] = shown_at[i] + LAG_MS;
+        double period = 1000.0 / VSYNC_HZ;
+        for (int k = 0; k < FG; k++)
+        {
+            while (now_ms() < shown_at[i] + LAG_MS + k * period) Sleep(0);
+            feed_present();
+        }
+        gpu_done[i] = shown_at[i] + LAG_MS + (FG - 1) * period;   /* the real frame is the last of them */
         ReleaseSemaphore(slots, 1, NULL);
-        if (feed) { feed->ring[i % 256].present_ns = now_ns(); MemoryBarrier(); feed->presented++; }
     }
     return 0;
 }
@@ -102,12 +115,13 @@ static DWORD WINAPI gpu(void *arg)
             /* The display shows it on its next refresh, while the GPU goes on. */
             double period = 1000.0 / VSYNC_HZ, at = ceil(gpu_done[i] / period) * period;
             if (at < last_shown + period) at = last_shown + period;
-            last_shown = at;
+            last_shown = at + (FG - 1) * period;
             shown_at[i] = at;
             ReleaseSemaphore(to_display, 1, NULL);
             continue;
         }
-        else if (feed) { feed->ring[i % 256].present_ns = now_ns(); MemoryBarrier(); feed->presented++; }
+        else
+            for (int k = 0; k < FG; k++) { if (k) Sleep(GPU_MS / FG > 0 ? GPU_MS / FG : 1); feed_present(); }
         ReleaseSemaphore(slots, 1, NULL);
     }
     return 0;
@@ -120,6 +134,7 @@ int main(int argc, char **argv)
     if (getenv("SIM_CPU_MS")) CPU_MS = atoi(getenv("SIM_CPU_MS"));
     if (getenv("SIM_VSYNC_HZ")) VSYNC_HZ = atoi(getenv("SIM_VSYNC_HZ"));
     if (getenv("SIM_LAG_MS")) LAG_MS = atoi(getenv("SIM_LAG_MS"));
+    if (getenv("SIM_FG")) FG = atoi(getenv("SIM_FG")) > 0 ? atoi(getenv("SIM_FG")) : 1;
     HMODULE nv = LoadLibraryA("nvapi64.dll");
     query_fn q = nv ? (query_fn)GetProcAddress(nv, "nvapi_QueryInterface") : NULL;
     set_sleep_mode_fn set_mode = q ? (set_sleep_mode_fn)q(0xac1ca9e0) : NULL;
@@ -160,7 +175,7 @@ int main(int argc, char **argv)
         spin(CPU_MS);
         mk.type = 4; set_marker(dev, &mk);          /* PRESENT_START */
         WaitForSingleObject(slots, INFINITE);        /* Present: blocks on a full queue */
-        if (feed) { feed->ring[i % 256].acquire_ns = now_ns(); MemoryBarrier(); feed->acquired++; }
+        if (feed) for (int k = 0; k < FG; k++) { feed->ring[(feed->acquired) % 256].acquire_ns = now_ns(); MemoryBarrier(); feed->acquired++; }
         ReleaseSemaphore(work, 1, NULL);
         mk.type = 5; set_marker(dev, &mk);          /* PRESENT_END */
     }

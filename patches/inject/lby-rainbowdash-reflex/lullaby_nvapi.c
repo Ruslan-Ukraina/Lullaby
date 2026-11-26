@@ -143,6 +143,16 @@ static double norm_sum, probe_sum;
 static unsigned norm_n, probe_n, adapt_quiet, lower_wait = 4, lower_wait_left;
 static unsigned extra_depth = 1;         /* LULLABY_REFLEX_DEPTH=<n>: frames more in flight than the pacing allows (an experiment) */
 static BOOL trace_frames;           /* LULLABY_REFLEX_TRACE=1: one log line per frame (a diagnosis) */
+/* Frame generation that puts frames on the screen past D3DMetal (ANR 3x inserts its second generated frame with its own
+   presentation hook, which the present feed may not see): LULLABY_FG=anr3x, or LULLABY_REFLEX_FG=<n>, makes a game frame
+   count at least n drawables. Untested in a game (2026-11-25). */
+static unsigned fg_expect;
+/* LULLABY_REFLEX_AGGRESSIVE=1: a frame is released later (a margin of one deviation and 0.5 ms instead of two and 1 ms)
+   and V-Sync gets no extra frame in flight: less latency, a GPU bubble more often. Only while frame generation runs
+   (more than one drawable a game frame, per_frame); without it the pacing is the ordinary one. */
+static BOOL aggressive;
+static double per_frame;
+static BOOL aggressive_now(void) { return aggressive && per_frame >= 1.5; }
 static double trace_interval;
 static unsigned probe_every = 300, probe_len = 60, probe_left, frames_since_probe;
 
@@ -215,6 +225,14 @@ static BOOL CALLBACK init(INIT_ONCE *once, void *param, void **ctx)
         extra_depth = (unsigned)atoi(value);
     if (GetEnvironmentVariableA("LULLABY_REFLEX_PROBE", value, sizeof(value)) && value[0] >= '0' && value[0] <= '9')
         probe_every = (unsigned)atoi(value);
+    if (GetEnvironmentVariableA("LULLABY_FG", value, sizeof(value)) && !strcmp(value, "anr3x"))
+        fg_expect = 3;
+    if (GetEnvironmentVariableA("LULLABY_REFLEX_FG", value, sizeof(value)) && value[0] >= '1' && value[0] <= '4')
+        fg_expect = (unsigned)(value[0] - '0');
+    if (GetEnvironmentVariableA("LULLABY_REFLEX_AGGRESSIVE", value, sizeof(value)) && !strcmp(value, "1"))
+        aggressive = TRUE;
+    if (fg_expect || aggressive)
+        log_line("reflex: %u drawables a game frame at least, aggressive %d", fg_expect, aggressive);
     log_line("=== lullaby nvapi64 (pid %lu): Reflex %s, display refresh %.2f ms", GetCurrentProcessId(),
              reflex_here ? "paced by Lullaby" : "left to D3DMetal", refresh_ns / 1e6);
     if (!(real = LoadLibraryW(L"nvapimt.dll")))
@@ -363,7 +381,6 @@ static uint64_t stat_since, stat_frames, stat_wait_ns, stat_timeouts;
 static struct { uint64_t game_id, sim_start, last_drawable; } pending[PENDING];
 static unsigned int pending_head, pending_tail;
 static uint64_t prev_present_acquired;
-static double per_frame;
 static uint64_t stat_latency_ns, stat_latency_samples;
 
 static NV_FRAME_REPORT *report_for(uint64_t game_id)
@@ -478,7 +495,7 @@ static NvAPI_Status __cdecl lb_Sleep(void *dev)
                frames (RE9's menu then drifted to 84..92 frames a second and 52 ms instead of holding 95 and 48) */
             if (synced > 0.7) vsync_latched = TRUE;
             else if (synced < 0.3) vsync_latched = FALSE;
-            unsigned depth = vsync_latched ? (adapt_fixed ? extra_depth : adapt_depth + (probe_left ? 1 : 0)) : 0;
+            unsigned depth = vsync_latched && !aggressive_now() ? (adapt_fixed ? extra_depth : adapt_depth + (probe_left ? 1 : 0)) : 0;
             if (depth > 3) depth = 3;
             if (depth && frame_no > depth + 1) back += depth;
         }
@@ -523,7 +540,7 @@ static NvAPI_Status __cdecl lb_Sleep(void *dev)
                     /* A margin of two average deviations: a frame the GPU is quick with
                        then rarely finds it idle. A margin bigger than the room there is
                        holds nothing (a negative double must not become a time). */
-                    double hold = gpu_ns - cpu_ns - slack - 1000000 - 2 * gpu_dev_ns;
+                    double hold = gpu_ns - cpu_ns - slack - (aggressive_now() ? 500000 : 1000000) - (aggressive_now() ? 1 : 2) * gpu_dev_ns;
                     if (hold > 0 && !probe_left) target = shown + (uint64_t)hold;
                 }
             }
@@ -634,6 +651,7 @@ static NvAPI_Status __cdecl lb_SetLatencyMarker(void *dev, NV_LATENCY_MARKER_PAR
             if (r->simStartTime && pending_head - pending_tail < PENDING)
             {
                 unsigned int n = per_frame < 1.5 ? 1 : per_frame < 2.5 ? 2 : per_frame < 3.5 ? 3 : 4;
+                if (fg_expect && n < fg_expect) n = fg_expect;
                 unsigned int i = pending_head++ % PENDING;
                 pending[i].game_id = p->frameID;
                 pending[i].sim_start = r->simStartTime * 1000;

@@ -3,6 +3,9 @@
 # low latency mode off and on, and checks what Reflex by Lullaby is meant to do:
 #   GPU-bound, with or without V-Sync: shorter latency, at most a little frame rate lost;
 #   CPU-bound: nothing held, nothing changed.
+#   Frame generation (SIM_FG=N drawables a game frame, as with DLSS-G or ANR): Reflex keeps its gain; with
+#   LULLABY_REFLEX_AGGRESSIVE=1 (it acts only with frame generation) V-Sync latency falls by about a quarter
+#   (2026-11-26: 2x 78 -> 58 ms, 3x 114 -> 83 ms, no frame lost).
 #
 #   patches/inject/lby-rainbowdash-reflex/tests/run-sim.sh [NVAPI_DLL]      (default out/lullaby-nvapi64.dll)
 #
@@ -44,7 +47,7 @@ export WINEDLLOVERRIDES="nvapi64=b;winemenubuilder.exe=d;mscoree,mshtml="
 
 # sim GPU_MS CPU_MS VSYNC_HZ LAG_MS MODE -> "fps latency"
 sim() {
-  out=$(SIM_GPU_MS=$1 SIM_CPU_MS=$2 SIM_VSYNC_HZ=$3 SIM_LAG_MS=$4 "$wine" "$tmp/reflex-sim.exe" "$5" 2>&1) || {
+  out=$(SIM_FG=${SIM_FG:-1} SIM_GPU_MS=$1 SIM_CPU_MS=$2 SIM_VSYNC_HZ=$3 SIM_LAG_MS=$4 "$wine" "$tmp/reflex-sim.exe" "$5" 2>&1) || {
     echo "run-sim: the simulator failed:" >&2; echo "$out" >&2; exit 1; }
   echo "$out" | sed -n 's/.* fps \([0-9.]*\) latency \([0-9.]*\) ms.*/\1 \2/p' | tail -1
 }
@@ -78,6 +81,10 @@ check "GPU-bound, CPU close to GPU"       16  14   0   0  0.75  0.95
 check "V-Sync 120 Hz, GPU 9 ms"            9   2 120   0  1.10  0.95
 check "V-Sync 120 Hz, GPU 10, lag 8 ms"   10   2 120   8  1.10  0.95
 check "CPU-bound: nothing to hold"         8  14   0   0  1.10  0.95
+# Frame generation (2x / 3x drawables a game frame), GPU-bound as RE9 with ANR is
+SIM_FG=2 check "FG 2x, GPU-bound, no V-Sync"   24  10   0   0  0.75  0.95
+SIM_FG=2 check "FG 2x, V-Sync 120 Hz, GPU 16"  16   8 120   0  1.10  0.95
+SIM_FG=3 check "FG 3x, V-Sync 120 Hz, GPU 24"  24  10 120   0  1.10  0.95
 if [ "$fail" -ne 0 ]; then
   echo "==> reflex-sim: FAILED" >&2
   exit 1
