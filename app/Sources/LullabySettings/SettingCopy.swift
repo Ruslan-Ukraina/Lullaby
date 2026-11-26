@@ -299,6 +299,26 @@ extension SettingCopy {
                            uk: "Вимкнено — пакет гри відмовляється від ігрового режиму.",
                            ru: "Выключено — пакет игры отказывается от игрового режима.")))
 
+    static let fsr4 = SettingCopy(
+        L10n("FSR 4 instead of MetalFX", uk: "FSR 4 замість MetalFX", ru: "FSR 4 вместо MetalFX"),
+        caption: L10n("Sharper upscaling for the game's DLSS.",
+                      uk: "Чіткіше масштабування для DLSS гри.",
+                      ru: "Более чёткое масштабирование для DLSS игры."),
+        help: SettingHelp(
+            L10n("A better picture than MetalFX, but it may load the GPU more and may not work with every game. D3DMetal only; experimental.",
+                 uk: "Картинка краща, ніж з MetalFX, але може більше навантажувати GPU і працювати не з кожною грою. Лише D3DMetal; експеримент.",
+                 ru: "Картинка лучше, чем с MetalFX, но может сильнее нагружать GPU и работать не с каждой игрой. Только D3DMetal; эксперимент.")))
+
+    static let anr = SettingCopy(
+        L10n("ANR frame generation", uk: "Генерація кадрів ANR", ru: "Генерация кадров ANR"),
+        caption: L10n("Cleaner extra frames for the game's frame generation.",
+                      uk: "Чистіші додаткові кадри для генерації кадрів гри.",
+                      ru: "Более чистые дополнительные кадры для генерации кадров игры."),
+        help: SettingHelp(
+            L10n("Fewer artefacts than MetalFX, but it may load the GPU more and may not work with every game. D3DMetal only; experimental.",
+                 uk: "Менше артефактів, ніж з MetalFX, але може більше навантажувати GPU і працювати не з кожною грою. Лише D3DMetal; експеримент.",
+                 ru: "Меньше артефактов, чем с MetalFX, но может сильнее нагружать GPU и работать не с каждой игрой. Только D3DMetal; эксперимент.")))
+
     static let forceVsync = SettingCopy(
         L10n("No frame tearing", uk: "Без розривів кадру", ru: "Без разрывов кадра"),
         caption: L10n("Keeps D3DMetal's picture in step with the display, even with frame generation on (usually not needed).",

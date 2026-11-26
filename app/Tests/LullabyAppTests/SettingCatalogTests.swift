@@ -29,7 +29,7 @@ struct SettingCatalogTests {
         }
         #expect(advanced(.picture) == [.filter])
         #expect(advanced(.performance) == [.tuning, .gameMode])
-        #expect(advanced(.diagnostics) == [.unifiedMemory, .rawMouse, .forceVsync])
+        #expect(advanced(.diagnostics) == [.unifiedMemory, .rawMouse, .forceVsync, .fsr4, .anr])
         #expect(SettingGroup.allCases == [.picture, .performance, .diagnostics])
     }
 
@@ -46,6 +46,8 @@ struct SettingCatalogTests {
         (.unifiedMemory, .bool(false), "SEVO_FORCE_UMA=0"),
         (.gameMode, .bool(false), "LULLABY_GAME_MODE=0"),
         (.forceVsync, .bool(true), "LULLABY_FORCE_VSYNC=1"),
+        (.fsr4, .bool(true), "LULLABY_UPSCALER=fsr4"),
+        (.anr, .bool(true), "LULLABY_FG=anr"),
     ]
 
     @Test("every game setting reaches its key, and inherit writes none")
@@ -63,6 +65,14 @@ struct SettingCatalogTests {
             let inherited = ConfigMaterializer.gameLines(appID: 1, stack: ConfigStack(global: .empty, game: game))
             #expect(inherited == ["# app 1"], "\(id): \(inherited)")
         }
+    }
+
+    @Test("FSR 4 and ANR off remove the variables: no upscaling library is loaded")
+    func dlssDefaultsLoadNothing() {
+        let lines = ConfigMaterializer.bottleLines(global: .empty, msync: true, cli: nil)
+        #expect(lines.contains("LULLABY_UPSCALER="))
+        #expect(lines.contains("LULLABY_FSR4_PROFILE="))
+        #expect(lines.contains("LULLABY_FG="))
     }
 
     @Test("every global setting reaches bottle.env")

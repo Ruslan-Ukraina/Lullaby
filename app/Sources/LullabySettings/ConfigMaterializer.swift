@@ -58,6 +58,7 @@ public enum ConfigMaterializer {
             lines.append("LULLABY_D3DMETAL=\(path)")
         }
         lines += markers.map { "\($0.key)=\(stack[$0.path] ? "1" : "0")" }
+        lines += upscalingLines(fsr4: stack[\.fsr4], anr: stack[\.anr])
         lines.append("LULLABY_MSYNC=\(msync ? "1" : "0")")
         if let cli { lines.append("SEVO_CLI=\(cli)") }
         return lines
@@ -73,7 +74,17 @@ public enum ConfigMaterializer {
         lines += switches.compactMap { key, path in game[keyPath: path].map { "\(key)=\($0 ? "1" : "0")" } }
         if game.tuning != nil { lines += tuningLines(stack) }
         lines += markers.compactMap { key, path in game[keyPath: path].map { "\(key)=\($0 ? "1" : "0")" } }
+        if let fsr4 = game.fsr4 { lines += upscalingLines(fsr4: fsr4, anr: nil) }
+        if let anr = game.anr { lines += upscalingLines(fsr4: nil, anr: anr) }
         lines += stack.fixLines
+        return lines
+    }
+
+    /// FSR 4 and ANR (lby-starlight-nss): an empty value removes the variable, and then no library is loaded.
+    static func upscalingLines(fsr4: Bool?, anr: Bool?) -> [String] {
+        var lines: [String] = []
+        if let fsr4 { lines += fsr4 ? ["LULLABY_UPSCALER=fsr4", "LULLABY_FSR4_PROFILE=int8-lite"] : ["LULLABY_UPSCALER=", "LULLABY_FSR4_PROFILE="] }
+        if let anr { lines.append(anr ? "LULLABY_FG=anr" : "LULLABY_FG=") }
         return lines
     }
 

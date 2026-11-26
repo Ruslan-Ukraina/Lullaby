@@ -5,6 +5,17 @@
  },
  "level": "global",
  "values": {
+  "anr": {
+   "effective": false,
+   "inherited": false,
+   "inheritedFrom": "defaults",
+   "inheritedLabel": {
+    "en": "Off",
+    "ru": "Выкл.",
+    "uk": "Вимк."
+   },
+   "own": null
+  },
   "filter": {
    "effective": "off",
    "inherited": "off",
@@ -28,6 +39,17 @@
    "own": null
   },
   "fps": {
+   "effective": false,
+   "inherited": false,
+   "inheritedFrom": "defaults",
+   "inheritedLabel": {
+    "en": "Off",
+    "ru": "Выкл.",
+    "uk": "Вимк."
+   },
+   "own": null
+  },
+  "fsr4": {
    "effective": false,
    "inherited": false,
    "inheritedFrom": "defaults",

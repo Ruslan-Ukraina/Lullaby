@@ -237,6 +237,10 @@ public struct ConfigValues: Codable, Equatable, Sendable {
     public var forceVsync: Bool?
     /// NVIDIA Reflex by Lullaby's nvapi64.dll, fed by the D3DMetal layer (winemac.so fix 0003).
     public var lowLatency: Bool?
+    /// AMD FSR 4 in place of the MetalFX D3DMetal makes of DLSS, and ANR in place of MetalFX frame generation
+    /// (lby-starlight-nss; the run script loads them only when installed).
+    public var fsr4: Bool?
+    public var anr: Bool?
 
     /// Game level only: the lowercase executables the game is known to run.
     public var exes: [String]?
@@ -282,6 +286,8 @@ public enum ConfigDefaults {
         v.msync = true
         v.forceVsync = false
         v.lowLatency = false
+        v.fsr4 = false
+        v.anr = false
         return v
     }()
 }

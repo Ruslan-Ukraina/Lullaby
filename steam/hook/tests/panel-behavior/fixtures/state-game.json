@@ -13,6 +13,17 @@
  "running": false,
  "status": "nextLaunch",
  "values": {
+  "anr": {
+   "effective": false,
+   "inherited": false,
+   "inheritedFrom": "defaults",
+   "inheritedLabel": {
+    "en": "Off",
+    "ru": "Выкл.",
+    "uk": "Вимк."
+   },
+   "own": null
+  },
   "filter": {
    "effective": "off",
    "inherited": "off",
@@ -45,6 +56,17 @@
     "uk": "Вимк."
    },
    "own": true
+  },
+  "fsr4": {
+   "effective": false,
+   "inherited": false,
+   "inheritedFrom": "defaults",
+   "inheritedLabel": {
+    "en": "Off",
+    "ru": "Выкл.",
+    "uk": "Вимк."
+   },
+   "own": null
   },
   "gameMode": {
    "effective": true,

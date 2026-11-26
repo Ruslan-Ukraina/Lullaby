@@ -12,6 +12,7 @@ public enum SettingID: String, CaseIterable, Sendable, Codable {
     case filter
     case tuning, gameMode
     case unifiedMemory, rawMouse, forceVsync
+    case fsr4, anr
 }
 
 /// The groups the Advanced dialog shows, in order. What a game's bitness or age decides
@@ -138,10 +139,10 @@ extension Setting {
     static func choice<C: RawRepresentable & CaseIterable & Sendable>(
         _ id: SettingID, in group: SettingGroup, levels: Set<SettingLevel> = [.global, .game],
         quick: Int? = nil, key: WritableKeyPath<ConfigValues, C?> & Sendable,
-        labels: [(C, L10n)], copy: SettingCopy, carrier: SettingCarrier
+        labels: [(C, L10n)], copy: SettingCopy, carrier: SettingCarrier, experimental: Bool = false
     ) -> Setting where C.RawValue == String {
         Setting(
-            id: id, group: group, levels: levels, quick: quick, experimental: false, copy: copy,
+            id: id, group: group, levels: levels, quick: quick, experimental: experimental, copy: copy,
             control: .choice(labels.map {
                 SettingChoice(.string($0.0.rawValue), $0.1,
                               requires: $0.0.rawValue == "d3dmetal" ? "d3dmetal" : nil)
@@ -190,6 +191,11 @@ public enum SettingCatalog {
         // present feed Lullaby's nvapi64.dll paces NVIDIA Reflex with (patches/inject/lby-rainbowdash-reflex/).
         .flag(.forceVsync, in: .diagnostics, experimental: true, key: \.forceVsync, copy: .forceVsync,
               carrier: .environment(["LULLABY_FORCE_VSYNC"])),
+        // lby-starlight-nss (test build): AMD FSR 4 for the game's DLSS, and ANR for its frame generation. Each needs its
+        // component installed (components/fsr4); without it MetalFX stays.
+        .flag(.fsr4, in: .diagnostics, experimental: true, key: \.fsr4, copy: .fsr4,
+              carrier: .environment(["LULLABY_UPSCALER", "LULLABY_FSR4_PROFILE"])),
+        .flag(.anr, in: .diagnostics, experimental: true, key: \.anr, copy: .anr, carrier: .environment(["LULLABY_FG"])),
     ]
 
     public static func setting(_ id: SettingID) -> Setting {
