@@ -1,0 +1,84 @@
+diff -ruN a/src/anr/anr_helpers.metal b/src/anr/anr_helpers.metal
+--- a/src/anr/anr_helpers.metal	2026-11-25 23:35:13
++++ b/src/anr/anr_helpers.metal	2026-11-25 23:35:13
+@@ -19,6 +19,29 @@
+ inline float3 srgb_encode(float3 v){return select(1.055f*pow(max(v,0.f),float3(1.f/2.4f))-.055f,12.92f*v,v<=.0031308f);}
+ // encoding bits 0..1: 0=linear HDR, 1=SDR code, 2=PQ10 code.
+ // encoding bit 3 (8): V.B20 native passthrough (skip color transfer conversion).
++// Lullaby (patch 0007): depth and motion for a generated-frame pixel. Bit 0 of `flags` is the depth direction (1:
++// reversed, near = 1); with bit 1 the motion comes from the nearest-to-camera of the 3x3 render pixels around it (and so
++// does the depth), as FSR's own preparation dilates them: at a character's outline the background no longer gets the
++// character's motion or the other way round, which showed as a halo around the character in motion.
++inline void lby_depth_motion(texture2d<float,access::read> depth,texture2d<float,access::read> motion,uint2 low,uint2 size,
++                             uint flags,thread float &z,thread float2 &mv) {
++    const bool rev=(flags&1u)!=0u;
++    uint2 pick=low;
++    z=depth.read(low).x;
++    if((flags&2u)!=0u){
++        float best=isfinite(z)?z:(rev?-1e30f:1e30f);
++        for(int dy=-1;dy<=1;++dy)for(int dx=-1;dx<=1;++dx){
++            if(!dx&&!dy)continue;
++            const uint2 q=uint2(clamp(int2(low)+int2(dx,dy),int2(0),int2(size)-1));
++            const float d=depth.read(q).x;
++            if(isfinite(d)&&(rev?d>best:d<best)){best=d;pick=q;}
++        }
++        z=depth.read(pick).x;
++    }
++    if(!isfinite(z))z=rev?0:1;
++    mv=motion.read(pick).xy;mv=select(mv,float2(0),!isfinite(mv));
++}
++
+ kernel void anr_import(texture2d<float,access::read> color [[texture(0)]],
+                        texture2d<float,access::read> depth [[texture(1)]],
+                        texture2d<float,access::read> motion [[texture(2)]],
+@@ -37,9 +60,9 @@
+     rgb=select(rgb,float3(0),!isfinite(rgb));pq.write(float4(rgb,1),gid);
+     uint2 low=min(uint2((float2(gid)+.5f)*float2(p.renderWidth,p.renderHeight)/float2(p.width,p.height)),
+                   uint2(p.renderWidth-1,p.renderHeight-1));
+-    float z=depth.read(low).x;if(!isfinite(z))z=p.depthReversed?0:1;
+-    depthCopy.write(float4(z,0,0,0),gid);
+-    float2 mv=motion.read(low).xy;mv=select(mv,float2(0),!isfinite(mv));motionCopy.write(float4(mv,0,0),gid);
++    float z;float2 mv;
++    lby_depth_motion(depth,motion,low,uint2(p.renderWidth,p.renderHeight),p.depthReversed,z,mv);
++    depthCopy.write(float4(z,0,0,0),gid);motionCopy.write(float4(mv,0,0),gid);
+ }
+ 
+ // Fast depth/motion-only import when color is passed directly to V.B20 without conversion.
+@@ -51,9 +74,9 @@
+     if(gid.x>=p.width||gid.y>=p.height)return;
+     uint2 low=min(uint2((float2(gid)+.5f)*float2(p.renderWidth,p.renderHeight)/float2(p.width,p.height)),
+                   uint2(p.renderWidth-1,p.renderHeight-1));
+-    float z=depth.read(low).x;if(!isfinite(z))z=p.depthReversed?0:1;
+-    depthCopy.write(float4(z,0,0,0),gid);
+-    float2 mv=motion.read(low).xy;mv=select(mv,float2(0),!isfinite(mv));motionCopy.write(float4(mv,0,0),gid);
++    float z;float2 mv;
++    lby_depth_motion(depth,motion,low,uint2(p.renderWidth,p.renderHeight),p.depthReversed,z,mv);
++    depthCopy.write(float4(z,0,0,0),gid);motionCopy.write(float4(mv,0,0),gid);
+ }
+ 
+ kernel void anr_export(texture2d<float,access::read> pq [[texture(0)]],
+diff -ruN a/src/anr/anr_live.mm b/src/anr/anr_live.mm
+--- a/src/anr/anr_live.mm	2026-11-25 23:35:13
++++ b/src/anr/anr_live.mm	2026-11-25 23:35:13
+@@ -524,6 +524,12 @@
+ 
+ } // namespace
+ 
++// Lullaby (patch 0007): FSR4_ANR_DILATE=1 takes each pixel's motion from the nearest of its 3x3 render pixels.
++static bool lby_dilate_motion() {
++    static const bool on = [] { const char *e = getenv("FSR4_ANR_DILATE"); return e && e[0] == '1'; }();
++    return on;
++}
++
+ int fsr4_anr_encode_frame(const Fsr4AnrFrame *frame) {
+     @autoreleasepool {
+         auto &state = live_state();
+@@ -704,7 +710,7 @@
+ 
+         const uint32_t helperEncoding = (uint32_t)f.colorEncoding | (isV2 ? kNativeEncodingBit : 0u);
+         Convert constants = {
+-            f.uw, f.uh, f.rw, f.rh, helperEncoding, (uint32_t)f.depthReversed, 203.f,
++            f.uw, f.uh, f.rw, f.rh, helperEncoding, (uint32_t)f.depthReversed | (lby_dilate_motion() ? 2u : 0u), 203.f,
+             (uint32_t)status.uiMode | (uiStats ? 256u : 0u), ui_noise_floor(color.pixelFormat)
+         };
+         const char *white = getenv("FSR4_ANR_WHITE_NITS");

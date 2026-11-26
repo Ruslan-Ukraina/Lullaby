@@ -1,0 +1,26 @@
+diff -ruN a/hook/anr_metalfx.mm b/hook/anr_metalfx.mm
+--- a/hook/anr_metalfx.mm	2026-11-26 12:58:58
++++ b/hook/anr_metalfx.mm	2026-11-26 12:58:58
+@@ -1434,7 +1434,9 @@
+             "    // MetalFX far from both frames carried to the middle while those two agree: a tear, not a reveal\n"
+             "    const float4 b = prev.sample(lin, uv + 0.5f * m), o = gen.read(g);\n"
+             "    const float la = lum(a.rgb), lb = lum(b.rgb), lo = lum(o.rgb);\n"
+-            "    if (fabs(la - lb) < e.agree && min(fabs(lo - la), fabs(lo - lb)) > e.apart) gen.write(float4(0.5f * (a.rgb + b.rgb), o.a), g);\n"
++            "    if (fabs(la - lb) < e.agree) { if (min(fabs(lo - la), fabs(lo - lb)) > e.apart) gen.write(float4(0.5f * (a.rgb + b.rgb), o.a), g); return; }\n"
++            "    // a reveal: the two frames disagree; where MetalFX is far from both (its blocks), the nearer of the two\n"
++            "    if (e.pad > 0.0f && min(fabs(lo - la), fabs(lo - lb)) > e.pad) gen.write(fabs(lo - la) < fabs(lo - lb) ? float4(a.rgb, o.a) : float4(b.rgb, o.a), g);\n"
+             "}\n";
+         NSError *e = nil;
+         id<MTLLibrary> lib = [dev newLibraryWithSource:src options:nil error:&e];
+@@ -1682,7 +1684,10 @@
+             static const float fixOn = getenv("FSR4_MFX_FIX") && getenv("FSR4_MFX_FIX")[0] == '0' ? 0.f : 1.f;
+             static const float agree = getenv("FSR4_MFX_AGREE") ? (float)atof(getenv("FSR4_MFX_AGREE")) : 0.03f;
+             static const float apart = getenv("FSR4_MFX_APART") ? (float)atof(getenv("FSR4_MFX_APART")) : 0.08f;
+-            c[4] = fixOn; c[5] = agree; c[6] = apart; c[7] = 0;
++            // reveals: where MetalFX is far from both frames carried to the middle (its blocks beside a moving
++            // character), the nearer of them (RE9 frames: depth edges 14.45 -> 14.29, worst 1 % 201 -> 198); 0 turns it off
++            static const float snap = getenv("FSR4_MFX_SNAP") ? (float)atof(getenv("FSR4_MFX_SNAP")) : 0.25f;
++            c[4] = fixOn; c[5] = agree; c[6] = apart; c[7] = snap;
+             id<MTL4ComputeCommandEncoder> enc = [(id<MTL4CommandBuffer>)command computeCommandEncoder];
+             if (enc) {
+                 [enc barrierAfterQueueStages:MTLStageAll beforeStages:MTLStageDispatch visibilityOptions:MTL4VisibilityOptionDevice];

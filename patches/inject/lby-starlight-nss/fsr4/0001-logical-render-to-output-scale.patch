@@ -1,0 +1,16 @@
+diff -ruN a/src/fsr41x/fsr411_runtime.h l/src/fsr41x/fsr411_runtime.h
+--- a/src/fsr41x/fsr411_runtime.h	2026-11-25 18:14:49
++++ l/src/fsr41x/fsr411_runtime.h	2026-11-25 18:14:49
+@@ -1252,8 +1252,10 @@
+     void fill_constants(FrameSlot &slot, const Session &s, const Fsr4InputPrepared &p, const TensorSizes &sizes, bool rcas, float sharpness, float pixelFixFloor = 0.f) {
+         FrameConstants c={};
+         c.inv_size[0]=1.f/p.alignedUW; c.inv_size[1]=1.f/p.alignedUH;
+-        c.scale[0]=float(p.alignedUW)/p.rw; c.scale[1]=float(p.alignedUH)/p.rh;
+-        c.inv_scale[0]=float(p.rw)/p.alignedUW; c.inv_scale[1]=float(p.rh)/p.alignedUH;
++        // Lullaby: the render -> output mapping uses the logical sizes; textures and their UVs stay aligned to 8.
++        // With the aligned ratio an output that is not a multiple of 8 (RE9: 2294x1290) came out stretched (0.46%).
++        c.scale[0]=float(p.uw)/p.rw; c.scale[1]=float(p.uh)/p.rh;
++        c.inv_scale[0]=float(p.rw)/p.uw; c.inv_scale[1]=float(p.rh)/p.uh;
+         c.tex_size[0]=p.alignedUW; c.tex_size[1]=p.alignedUH;
+         c.max_renderSize[0]=p.maxInputWidth; c.max_renderSize[1]=p.maxInputHeight;
+         memcpy(c.jitter,p.jitter,sizeof c.jitter); memcpy(c.mv_scale,p.mvScale,sizeof c.mv_scale);

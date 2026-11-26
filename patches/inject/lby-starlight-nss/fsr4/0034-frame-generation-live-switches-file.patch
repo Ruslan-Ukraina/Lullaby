@@ -1,0 +1,67 @@
+diff -ruN a/hook/anr_metalfx.mm b/hook/anr_metalfx.mm
+--- a/hook/anr_metalfx.mm	2026-11-26 16:02:31
++++ b/hook/anr_metalfx.mm	2026-11-26 16:02:31
+@@ -683,7 +683,7 @@
+ 
+     // Patch 0021: in 2x the game's own presents carry D3DMetal's minimum durations (half its frame time). That time
+     // includes the waits the durations make, so they held RE9 at 50 x 2 = 100 with V-Sync 100 %. Kept below one vsync
+-    // of a 120 Hz screen (cap=off in anr3x.conf turns it off, live); the freeze and screen counters run here too.
++    // of a 120 Hz screen (cap=off in fg-live.conf turns it off, live); the freeze and screen counters run here too.
+     const int presentMode = selectedMode.load(std::memory_order_relaxed);
+     static thread_local int presentDepth = 0;   // patch 0023: a present inside a present (presentAfterMinimumDuration:) counts once
+     if (presentDepth) { callOriginal(hasDuration, duration); return; }
+@@ -1260,7 +1260,7 @@
+ // Patch 0030: detail from the real frame. ANR made at a smaller size (cheaper) is stretched back; the stretch adds the
+ // game's current frame's fine detail (its picture minus that picture taken down to ANR's size) from where the point is
+ // in the current frame (half a frame of motion away), weighted by how well ANR's frame and the current one agree there,
+-// and never on the interface. FSR4_ANR_DETAIL=<0..1> or anrdetail=<0..1> in anr3x.conf (live).
++// and never on the interface. FSR4_ANR_DETAIL=<0..1> or anrdetail=<0..1> in fg-live.conf (live).
+ static float lbyAnrDetail() {
+     const float live = fsr4_anr_live_detail();
+     if (live >= 0) return live;
+diff -ruN a/src/anr/anr_live.h b/src/anr/anr_live.h
+--- a/src/anr/anr_live.h	2026-11-26 16:02:31
++++ b/src/anr/anr_live.h	2026-11-26 16:02:31
+@@ -83,11 +83,11 @@
+ #ifdef __cplusplus
+ extern "C" {
+ #endif
+-int fsr4_mfx_live_size(void);     // patch 0024: anr3x.conf mfxsize=game|window, -1 when not given
+-int fsr4_mfx_live_dilate(void);   // patch 0024: anr3x.conf mfxdilate=on|off, -1 when not given
+-int fsr4_mfx_live_edge(void);     // patch 0025: anr3x.conf mfxedge=on|off, -1 when not given
+-int fsr4_mfx_live_distortion(void);   // patch 0026: anr3x.conf mfxdistortion=on|off, -1 when not given
+-float fsr4_anr_live_detail(void);      // patch 0030: anr3x.conf anrdetail=<0..1>, -1 when not given
++int fsr4_mfx_live_size(void);     // patch 0024: fg-live.conf mfxsize=game|window, -1 when not given
++int fsr4_mfx_live_dilate(void);   // patch 0024: fg-live.conf mfxdilate=on|off, -1 when not given
++int fsr4_mfx_live_edge(void);     // patch 0025: fg-live.conf mfxedge=on|off, -1 when not given
++int fsr4_mfx_live_distortion(void);   // patch 0026: fg-live.conf mfxdistortion=on|off, -1 when not given
++float fsr4_anr_live_detail(void);      // patch 0030: fg-live.conf anrdetail=<0..1>, -1 when not given
+ #ifdef __cplusplus
+ }
+ #endif
+diff -ruN a/src/anr/anr_live.mm b/src/anr/anr_live.mm
+--- a/src/anr/anr_live.mm	2026-11-26 16:02:31
++++ b/src/anr/anr_live.mm	2026-11-26 16:02:31
+@@ -959,10 +959,10 @@
+ // Lullaby (patch 0010): the game may encode frame generation for its next frame before it presents the pair of this
+ // one (D3DMetal does), so the newest t=2/3 frame belongs to a later pair. With lag N the extra frame of an entry is
+ // handed out only when N newer entries wait behind it. FSR4_ANR_3X_LAG sets it at start; the file
+-// $FSR4_ROOT/dist/crossover/anr3x.conf ("lag=N") is read again about once a second, to compare in a running game.
++// $FSR4_ROOT/dist/crossover/fg-live.conf ("lag=N") is read again about once a second, to compare in a running game.
+ static int g_3xOrderTime = -1;   // patch 0015: 1 = pairs told apart by time (see fsr4_anr_take_extra)
+ static int g_mfxSize = -1, g_mfxDilate = -1, g_mfxEdge = -1, g_mfxDistortion = -1;
+-static float g_anrDetail = -1;   // patch 0030: anrdetail=<0..1> in anr3x.conf, -1 when not given   // patch 0024: live switches (-1: the environment decides)
++static float g_anrDetail = -1;   // patch 0030: anrdetail=<0..1> in fg-live.conf, -1 when not given   // patch 0024: live switches (-1: the environment decides)
+ static int g_mfxCap = -1;   // patch 0022: the same for MetalFX frame generation (off unless asked)
+ static int g_capDuration = -1;   // patch 0021: 1 = game present durations kept below one 120 Hz vsync
+ static int g_3xPaceTime = -1;    // patch 0019: 1 = the three frames go to the screen at exact times
+@@ -978,7 +978,8 @@
+         lastCheck = now;
+         const char *root = getenv("FSR4_ROOT");
+         if (root && *root) {
+-            const std::string path = std::string(root) + "/dist/crossover/anr3x.conf";
++            // Lullaby (patch 0034): the file of live frame-generation switches; it began with ANR 3x's lag and order
++            const std::string path = std::string(root) + "/dist/crossover/fg-live.conf";
+             struct stat st;
+             if (!stat(path.c_str(), &st) && st.st_mtime != seen) {
+                 seen = st.st_mtime;

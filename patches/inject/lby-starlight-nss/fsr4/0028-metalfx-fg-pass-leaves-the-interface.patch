@@ -1,0 +1,61 @@
+diff -ruN a/hook/anr_metalfx.mm b/hook/anr_metalfx.mm
+--- a/hook/anr_metalfx.mm	2026-11-26 13:25:44
++++ b/hook/anr_metalfx.mm	2026-11-26 13:25:44
+@@ -1415,15 +1415,24 @@
+     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+         NSString *src = @"#include <metal_stdlib>\n"
+             "using namespace metal;\n"
+-            "struct E { float2 mvScale; float2 margin; float fix, agree, apart, pad; };\n"
++            "struct E { float2 mvScale; float2 margin; float fix, agree, apart, pad; float pad2, r0, r1, r2; };\n"
+             "static float lum(float3 c) { c = max(c, 0.0f); return dot(c / (1.0f + c), float3(0.2126f, 0.7152f, 0.0722f)); }\n"
+             "kernel void lby_edge(texture2d<float, access::read_write> gen [[texture(0)]], texture2d<float, access::sample> cur [[texture(1)]],\n"
+             "                     texture2d<float, access::sample> mv [[texture(2)]], texture2d<float, access::sample> prev [[texture(3)]],\n"
++            "                     texture2d<float, access::sample> ui [[texture(4)]],\n"
+             "                     constant E &e [[buffer(0)]],\n"
+             "                     uint2 g [[thread_position_in_grid]]) {\n"
+             "    const float2 size = float2(gen.get_width(), gen.get_height()); if (g.x >= size.x || g.y >= size.y) return;\n"
+             "    constexpr sampler s(coord::normalized, address::clamp_to_edge, filter::nearest);\n"
+             "    const float2 uv = (float2(g) + 0.5f) / size;\n"
++            "    // the game's interface does not move with the scene: its pixels (and a pixel around them) stay as MetalFX made them\n"
++            "    if (e.pad2 > 0.0f) {\n"
++            "        constexpr sampler pt(coord::normalized, address::clamp_to_edge, filter::nearest);\n"
++            "        const float2 px = 1.0f / size; float u = ui.sample(pt, uv).a;\n"
++            "        u = max(u, max(ui.sample(pt, uv + float2(px.x, 0)).a, ui.sample(pt, uv - float2(px.x, 0)).a));\n"
++            "        u = max(u, max(ui.sample(pt, uv + float2(0, px.y)).a, ui.sample(pt, uv - float2(0, px.y)).a));\n"
++            "        if (u > 0.004f) return;\n"
++            "    }\n"
+             "    const float2 m = mv.sample(s, uv).xy * e.mvScale / float2(mv.get_width(), mv.get_height());\n"
+             "    const float2 back = uv + 0.5f * m;\n"
+             "    constexpr sampler lin(coord::normalized, address::clamp_to_edge, filter::linear);\n"
+@@ -1670,9 +1679,9 @@
+     if (lbyMfxEdgeWanted() && m->havePrev && !s.shouldResetHistory) {   // patch 0025
+         id<MTLComputePipelineState> pso = edgePSO(device);
+         if (pso && !m->edgeTable) {
+-            m->edgeConst = [device newBufferWithLength:32 options:MTLResourceStorageModeShared];
++            m->edgeConst = [device newBufferWithLength:48 options:MTLResourceStorageModeShared];
+             MTL4ArgumentTableDescriptor *td = [MTL4ArgumentTableDescriptor new];
+-            td.maxBufferBindCount = 1; td.maxTextureBindCount = 4;
++            td.maxBufferBindCount = 1; td.maxTextureBindCount = 5;
+             m->edgeTable = [device newArgumentTableWithDescriptor:td error:nil];
+             if (m->edgeConst) { [sr->residency addAllocation:m->edgeConst]; [sr->residency commit]; }
+         }
+@@ -1688,6 +1697,11 @@
+             // character), the nearer of them (RE9 frames: depth edges 14.45 -> 14.29, worst 1 % 201 -> 198); 0 turns it off
+             static const float snap = getenv("FSR4_MFX_SNAP") ? (float)atof(getenv("FSR4_MFX_SNAP")) : 0.25f;
+             c[4] = fixOn; c[5] = agree; c[6] = apart; c[7] = snap;
++            // patch 0028: the interface (its texture, at the game's size here) is left alone
++            c[8] = sr->ui ? 1.f : 0.f; c[9] = c[10] = c[11] = 0;
++            {   static std::atomic<bool> told{false};
++                if (!told.exchange(true)) logHook(sr->ui ? "MetalFX FG pass: the interface texture is kept out of it"
++                                                         : "MetalFX FG pass: the game gives no interface texture; the pass covers all", Nil); }
+             id<MTL4ComputeCommandEncoder> enc = [(id<MTL4CommandBuffer>)command computeCommandEncoder];
+             if (enc) {
+                 [enc barrierAfterQueueStages:MTLStageAll beforeStages:MTLStageDispatch visibilityOptions:MTL4VisibilityOptionDevice];
+@@ -1697,6 +1711,7 @@
+                 [m->edgeTable setTexture:cur.gpuResourceID atIndex:1];
+                 [m->edgeTable setTexture:fg.motionTexture.gpuResourceID atIndex:2];
+                 [m->edgeTable setTexture:prev.gpuResourceID atIndex:3];
++                [m->edgeTable setTexture:(sr->ui ?: cur).gpuResourceID atIndex:4];
+                 [m->edgeTable setAddress:m->edgeConst.gpuAddress atIndex:0];
+                 [enc setArgumentTable:m->edgeTable];
+                 [enc dispatchThreads:MTLSizeMake(gw, gh, 1) threadsPerThreadgroup:MTLSizeMake(16, 16, 1)];

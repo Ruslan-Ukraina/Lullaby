@@ -1,0 +1,41 @@
+--- a/hook/anr_metalfx.mm	2026-11-26 01:12:57
++++ b/hook/anr_metalfx.mm	2026-11-26 01:12:57
+@@ -282,6 +282,10 @@
+ // log, and the extra frame's middle row is read back and its mean logged, to tell an empty frame from one lost on the
+ // way to the screen.
+ static std::atomic<unsigned> g_extraDiag{0};
++// Lullaby (patch 0009): the size of the texture frame generation writes (the game's drawable); presents of anything
++// else (the Steam overlay's layer, small windows) do not move ANR's 3x sequence on. 0 until the first frame.
++static std::atomic<uint32_t> g_fgOutW{0}, g_fgOutH{0};
++static std::atomic<unsigned> g_presentLog{0};
+ static std::atomic<unsigned long> g_presentEvents[3];
+ static void diagExtra(id<MTLTexture> extraTex, id<MTLTexture> dst, bool fbOnly, bool exactCopy, bool offset, MTLOrigin at,
+                       MTLSize pic, double stepSec) {
+@@ -566,6 +570,19 @@
+     if (!dev || tex.width < 64 || tex.height < 64) {
+         callOriginal(hasDuration, duration);
+         return;
++    }
++    {
++        const uint32_t ow = g_fgOutW.load(), oh = g_fgOutH.load();
++        const bool game = !ow || (tex.width == ow && tex.height == oh);
++        const unsigned k = g_presentLog.fetch_add(1);
++        if (k < 40) {
++            char line[200];
++            snprintf(line, sizeof line, "3x present #%u: drawable %lux%lu%s, duration %d %.2f ms, t %.3f", k,
++                     (unsigned long)tex.width, (unsigned long)tex.height, game ? "" : " (not the game's: passed on)",
++                     hasDuration, duration * 1000, CFAbsoluteTimeGetCurrent());
++            logHook(line, Nil);
++        }
++        if (!game) { callOriginal(hasDuration, duration); return; }
+     }
+ 
+     id<MTL4CommandQueue> q4 = nil;
+@@ -1089,6 +1106,7 @@
+             return 0;
+         }
+     }
++    if (fg.outputTexture) { g_fgOutW.store((uint32_t)fg.outputTexture.width); g_fgOutH.store((uint32_t)fg.outputTexture.height); }
+     if (selectedMode.load(std::memory_order_acquire) == 2 && fg.colorTexture.device) {
+         ensurePresentHooks(fg.colorTexture.device, command);
+         retireCompletedM4SlotsForDevice(fg.colorTexture.device);

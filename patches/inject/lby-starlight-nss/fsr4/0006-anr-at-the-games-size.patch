@@ -1,0 +1,354 @@
+diff -ruN a/hook/anr_metalfx.mm b/hook/anr_metalfx.mm
+--- a/hook/anr_metalfx.mm	2026-11-25 23:30:46
++++ b/hook/anr_metalfx.mm	2026-11-25 23:30:46
+@@ -265,12 +265,16 @@
+ 
+ // Lullaby (patch 0005): where the game's picture sits inside the drawable (patch 0004's output offset). The 3x frame
+ // ANR makes is the picture's size; it goes to the drawable at this offset, the bars around it kept as they are.
+-static std::atomic<uint32_t> g_extraOx{0}, g_extraOy{0}, g_extraW{0}, g_extraH{0};
+-static bool extraOffset(id<MTLTexture> extraTex, id<MTLTexture> dst, MTLOrigin *origin) {
++// With patch 0006 the extra frame may also be smaller than the picture (generated at the game's size): it is then drawn
++// stretched over the picture's rectangle.
++static std::atomic<uint32_t> g_extraOx{0}, g_extraOy{0}, g_extraW{0}, g_extraH{0}, g_picW{0}, g_picH{0};
++static bool extraOffset(id<MTLTexture> extraTex, id<MTLTexture> dst, MTLOrigin *origin, MTLSize *picture = nullptr) {
+     const uint32_t w = g_extraW.load(), h = g_extraH.load(), ox = g_extraOx.load(), oy = g_extraOy.load();
++    const uint32_t pw = g_picW.load() ?: w, ph = g_picH.load() ?: h;
+     if (!w || extraTex.width != w || extraTex.height != h || (dst.width == w && dst.height == h)) return false;
+-    if (ox + w > dst.width || oy + h > dst.height) return false;
++    if (ox + pw > dst.width || oy + ph > dst.height) return false;
+     *origin = MTLOriginMake(ox, oy, 0);
++    if (picture) *picture = MTLSizeMake(pw, ph, 1);
+     return true;
+ }
+ 
+@@ -312,9 +316,11 @@
+             if (slot) {
+                 const bool fbOnly = layerFramebufferOnly(d2);
+                 MTLOrigin at = MTLOriginMake(0, 0, 0);
+-                const bool offset = extraOffset(extraTex, dst, &at);
++                MTLSize pic = MTLSizeMake(extraTex.width, extraTex.height, 1);
++                const bool offset = extraOffset(extraTex, dst, &at, &pic);
+                 const bool exactCopy = !fbOnly && extraTex.pixelFormat == dst.pixelFormat
+-                    && ((extraTex.width == dst.width && extraTex.height == dst.height) || offset);
++                    && ((extraTex.width == dst.width && extraTex.height == dst.height)
++                        || (offset && pic.width == extraTex.width && pic.height == extraTex.height));
+ 
+                 id<MTLRenderPipelineState> pso = exactCopy ? nil : getPresentPSO(device, dst.pixelFormat, res);
+                 if (exactCopy || pso) {
+@@ -350,7 +356,7 @@
+                         if (renc) {
+                             [renc barrierAfterQueueStages:MTLStageAll beforeStages:MTLStageFragment visibilityOptions:MTL4VisibilityOptionDevice];
+                             [renc setRenderPipelineState:pso];
+-                            if (offset) [renc setViewport:(MTLViewport){(double)at.x, (double)at.y, (double)extraTex.width, (double)extraTex.height, 0.0, 1.0}];
++                            if (offset) [renc setViewport:(MTLViewport){(double)at.x, (double)at.y, (double)pic.width, (double)pic.height, 0.0, 1.0}];
+                             [slot->argTable setTexture:extraTex.gpuResourceID atIndex:0];
+                             [renc setArgumentTable:slot->argTable atStages:MTLRenderStageFragment];
+                             [renc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+@@ -410,9 +416,11 @@
+     id<MTLTexture> dst = ((id<MTLTexture>(*)(id, SEL))objc_msgSend)(d2, @selector(texture));
+     const bool fbOnly = layerFramebufferOnly(d2);
+     MTLOrigin at = MTLOriginMake(0, 0, 0);
+-    const bool offset = extraOffset(extraTex, dst, &at);
++    MTLSize pic = MTLSizeMake(extraTex.width, extraTex.height, 1);
++    const bool offset = extraOffset(extraTex, dst, &at, &pic);
+     const bool exactCopy = !fbOnly && extraTex.pixelFormat == dst.pixelFormat
+-        && ((extraTex.width == dst.width && extraTex.height == dst.height) || offset);
++        && ((extraTex.width == dst.width && extraTex.height == dst.height)
++            || (offset && pic.width == extraTex.width && pic.height == extraTex.height));
+ 
+     id<MTLRenderPipelineState> pso = nil;
+     if (!exactCopy) {
+@@ -451,7 +459,7 @@
+         id<MTLRenderCommandEncoder> renc = [cb2 renderCommandEncoderWithDescriptor:rp];
+         if (renc) {
+             [renc setRenderPipelineState:pso];
+-            if (offset) [renc setViewport:(MTLViewport){(double)at.x, (double)at.y, (double)extraTex.width, (double)extraTex.height, 0.0, 1.0}];
++            if (offset) [renc setViewport:(MTLViewport){(double)at.x, (double)at.y, (double)pic.width, (double)pic.height, 0.0, 1.0}];
+             [renc setFragmentTexture:extraTex atIndex:0];
+             [renc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+             [renc endEncoding];
+@@ -790,8 +798,11 @@
+     id<MTLTexture> color, ui, out;
+     id<MTLFence> fence;
+     id<MTLResidencySet> residency;
+-    NSUInteger w, h;
++    NSUInteger w, h, gw, gh;                 // the picture, and the size ANR runs at (patch 0006; equal when not scaled)
+     MTLPixelFormat colorFormat, uiFormat, outFormat;
++    id<MTLBuffer> constants;                 // resample rectangles, 4 frames x 3 passes x 32 bytes
++    id<MTL4ArgumentTable> tables[12];
++    unsigned frame;
+ }
+ @end
+ @implementation LbyAnrSubrect
+@@ -805,36 +816,116 @@
+     return [d newTextureWithDescriptor:desc];
+ }
+ 
+-// One copy step on the game's command buffer: wait for `waitOn`, copy `from` (region at fromOrigin) into `to` at
+-// toOrigin, then update `signal`.
+-static bool lbyCopy(id command, bool metal4, id<MTLFence> waitOn, id<MTLTexture> from, MTLOrigin fromOrigin,
+-                    id<MTLTexture> to, MTLOrigin toOrigin, MTLSize size, id<MTLTexture> from2, id<MTLTexture> to2,
+-                    id<MTLFence> signal) {
++// Patch 0006: frames generated at the size the game draws. D3DMetal stretches the game's picture (RE9: 2294x1290) to the
++// window (3024x1701) before frame generation, so ANR worked on pixels that carry no more detail than the game's; at the
++// game's size it costs about 40 % less (stand, M4 Pro: 3.3 ms against 5.4 ms). FSR4_ANR_SCALE=auto takes that size from
++// the game's MetalFX temporal scaler when its shape matches; a number (0.5 .. 1) scales the picture by it.
++extern "C" volatile uint32_t lby_upscale_out_w, lby_upscale_out_h;
++static void anrScaledSize(NSUInteger w, NSUInteger h, NSUInteger *gw, NSUInteger *gh) {
++    *gw = w; *gh = h;
++    const char *e = getenv("FSR4_ANR_SCALE");
++    if (!e || !*e || !strcmp(e, "1") || !strcmp(e, "off")) return;
++    if (!strcmp(e, "auto")) {
++        const NSUInteger uw = lby_upscale_out_w, uh = lby_upscale_out_h;
++        if (uw >= 256 && uh >= 144 && uw < w && uh < h && fabs(double(uw) / uh - double(w) / h) < 0.01 * double(w) / h) {
++            *gw = uw; *gh = uh;
++        }
++        return;
++    }
++    const double f = atof(e);
++    if (f >= 0.5 && f < 1.0) { *gw = NSUInteger(w * f + 0.5) & ~NSUInteger(1); *gh = NSUInteger(h * f + 0.5) & ~NSUInteger(1); }
++}
++
++static id<MTLComputePipelineState> resamplePSO(id<MTLDevice> device) {
++    static std::mutex lock;
++    static std::map<uintptr_t, id<MTLComputePipelineState>> psos;
++    std::lock_guard<std::mutex> guard(lock);
++    auto it = psos.find((uintptr_t)(__bridge void *)device);
++    if (it != psos.end()) return it->second;
++    NSString *src = @"#include <metal_stdlib>\n"
++        "using namespace metal;\n"
++        "struct R { float4 src; uint4 dst; };\n"
++        "kernel void lby_resample(texture2d<float, access::sample> s [[texture(0)]], texture2d<float, access::write> d [[texture(1)]],\n"
++        "                         constant R &r [[buffer(0)]], uint2 g [[thread_position_in_grid]]) {\n"
++        "    if (g.x >= r.dst.z || g.y >= r.dst.w) return;\n"
++        "    constexpr sampler smp(coord::pixel, address::clamp_to_edge, filter::linear);\n"
++        "    float2 p = r.src.xy + (float2(g) + 0.5f) * r.src.zw / float2(r.dst.zw);\n"
++        "    d.write(s.sample(smp, p), g + r.dst.xy);\n"
++        "}\n";
++    NSError *e = nil;
++    id<MTLLibrary> lib = [device newLibraryWithSource:src options:nil error:&e];
++    id<MTLFunction> fn = [lib newFunctionWithName:@"lby_resample"];
++    id<MTLComputePipelineState> pso = fn ? [device newComputePipelineStateWithFunction:fn error:&e] : nil;
++    if (pso) psos[(uintptr_t)(__bridge void *)device] = pso;
++    return pso;
++}
++
++struct LbyPass { id<MTLTexture> src, dst; float sx, sy, sw, sh; uint32_t dx, dy, dw, dh; };
++
++// One encoder on the game's command buffer: wait `waitOn`, the passes (a copy where sizes match, else a resample),
++// then update `signal`.
++static bool lbyPasses(LbyAnrSubrect *sr, id command, bool metal4, id<MTLFence> waitOn, const LbyPass *passes, unsigned n,
++                      id<MTLFence> signal, unsigned first) {   // first: the pass's own constants slot of this frame (0..2)
++    bool resample = false;
++    for (unsigned i = 0; i < n; ++i) if (passes[i].sw != passes[i].dw || passes[i].sh != passes[i].dh) resample = true;
++    id<MTLComputePipelineState> pso = resample ? resamplePSO(passes[0].src.device) : nil;
++    if (resample && !pso) return false;
+     if (metal4) {
+         id<MTL4ComputeCommandEncoder> enc = [(id<MTL4CommandBuffer>)command computeCommandEncoder];
+         if (!enc) return false;
+-        [enc barrierAfterQueueStages:MTLStageAll beforeStages:MTLStageBlit visibilityOptions:MTL4VisibilityOptionDevice];
+-        if (waitOn) [enc waitForFence:waitOn beforeEncoderStages:MTLStageBlit];
+-        [enc copyFromTexture:from sourceSlice:0 sourceLevel:0 sourceOrigin:fromOrigin sourceSize:size
+-                   toTexture:to destinationSlice:0 destinationLevel:0 destinationOrigin:toOrigin];
+-        if (from2 && to2)
+-            [enc copyFromTexture:from2 sourceSlice:0 sourceLevel:0 sourceOrigin:fromOrigin sourceSize:size
+-                       toTexture:to2 destinationSlice:0 destinationLevel:0 destinationOrigin:toOrigin];
+-        [enc barrierAfterEncoderStages:MTLStageBlit beforeEncoderStages:MTLStageBlit visibilityOptions:MTL4VisibilityOptionDevice];
+-        if (signal) [enc updateFence:signal afterEncoderStages:MTLStageBlit];
++        [enc barrierAfterQueueStages:MTLStageAll beforeStages:MTLStageDispatch | MTLStageBlit visibilityOptions:MTL4VisibilityOptionDevice];
++        if (waitOn) [enc waitForFence:waitOn beforeEncoderStages:MTLStageDispatch | MTLStageBlit];
++        if (pso) [enc setComputePipelineState:pso];
++        for (unsigned i = 0; i < n; ++i) {
++            const LbyPass &p = passes[i];
++            if (p.sw == p.dw && p.sh == p.dh) {
++                [enc copyFromTexture:p.src sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake((NSUInteger)p.sx, (NSUInteger)p.sy, 0)
++                          sourceSize:MTLSizeMake(p.dw, p.dh, 1) toTexture:p.dst destinationSlice:0 destinationLevel:0
++                   destinationOrigin:MTLOriginMake(p.dx, p.dy, 0)];
++                continue;
++            }
++            const unsigned slot = (sr->frame % 4) * 3 + first + i;
++            float *c = (float *)((uint8_t *)sr->constants.contents + slot * 32);
++            c[0] = p.sx; c[1] = p.sy; c[2] = p.sw; c[3] = p.sh;
++            uint32_t *u = (uint32_t *)(c + 4); u[0] = p.dx; u[1] = p.dy; u[2] = p.dw; u[3] = p.dh;
++            id<MTL4ArgumentTable> t = sr->tables[slot];
++            [t setTexture:p.src.gpuResourceID atIndex:0];
++            [t setTexture:p.dst.gpuResourceID atIndex:1];
++            [t setAddress:sr->constants.gpuAddress + slot * 32 atIndex:0];
++            [enc setArgumentTable:t];
++            [enc dispatchThreads:MTLSizeMake(p.dw, p.dh, 1) threadsPerThreadgroup:MTLSizeMake(16, 16, 1)];
++        }
++        [enc barrierAfterEncoderStages:MTLStageDispatch | MTLStageBlit beforeEncoderStages:MTLStageDispatch | MTLStageBlit
++                     visibilityOptions:MTL4VisibilityOptionDevice];
++        if (signal) [enc updateFence:signal afterEncoderStages:MTLStageDispatch | MTLStageBlit];
+         [enc endEncoding];
+-    } else {
+-        id<MTLBlitCommandEncoder> enc = [(id<MTLCommandBuffer>)command blitCommandEncoder];
+-        if (!enc) return false;
+-        if (waitOn) [enc waitForFence:waitOn];
+-        [enc copyFromTexture:from sourceSlice:0 sourceLevel:0 sourceOrigin:fromOrigin sourceSize:size
+-                   toTexture:to destinationSlice:0 destinationLevel:0 destinationOrigin:toOrigin];
+-        if (from2 && to2)
+-            [enc copyFromTexture:from2 sourceSlice:0 sourceLevel:0 sourceOrigin:fromOrigin sourceSize:size
+-                       toTexture:to2 destinationSlice:0 destinationLevel:0 destinationOrigin:toOrigin];
+-        if (signal) [enc updateFence:signal];
+-        [enc endEncoding];
++        return true;
+     }
++    for (unsigned i = 0; i < n; ++i) {
++        const LbyPass &p = passes[i];
++        const bool copy = p.sw == p.dw && p.sh == p.dh;
++        if (copy) {
++            id<MTLBlitCommandEncoder> b = [(id<MTLCommandBuffer>)command blitCommandEncoder];
++            if (!b) return false;
++            if (waitOn && i == 0) [b waitForFence:waitOn];
++            [b copyFromTexture:p.src sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake((NSUInteger)p.sx, (NSUInteger)p.sy, 0)
++                    sourceSize:MTLSizeMake(p.dw, p.dh, 1) toTexture:p.dst destinationSlice:0 destinationLevel:0
++             destinationOrigin:MTLOriginMake(p.dx, p.dy, 0)];
++            if (signal && i == n - 1) [b updateFence:signal];
++            [b endEncoding];
++        } else {
++            id<MTLComputeCommandEncoder> e = [(id<MTLCommandBuffer>)command computeCommandEncoder];
++            if (!e) return false;
++            if (waitOn && i == 0) [e waitForFence:waitOn];
++            struct { float s[4]; uint32_t d[4]; } r = {{p.sx, p.sy, p.sw, p.sh}, {p.dx, p.dy, p.dw, p.dh}};
++            [e setComputePipelineState:pso];
++            [e setTexture:p.src atIndex:0]; [e setTexture:p.dst atIndex:1];
++            [e setBytes:&r length:sizeof r atIndex:0];
++            [e dispatchThreads:MTLSizeMake(p.dw, p.dh, 1) threadsPerThreadgroup:MTLSizeMake(16, 16, 1)];
++            if (signal && i == n - 1) [e updateFence:signal];
++            [e endEncoding];
++        }
++    }
+     return true;
+ }
+ 
+@@ -843,6 +934,9 @@
+     id<MTLTexture> color = fg.colorTexture, output = fg.outputTexture, ui = fg.uiTexture;
+     id<MTLDevice> device = color.device;
+     const NSUInteger w = f.uw, h = f.uh;
++    NSUInteger gw, gh;
++    anrScaledSize(w, h, &gw, &gh);
++    if (gw < f.rw || gh < f.rh) { gw = w; gh = h; }
+     if (!device || ox + w > output.width || oy + h > output.height || ox + w > color.width || oy + h > color.height
+         || (ui && (ox + w > ui.width || oy + h > ui.height) && (ui.width != w || ui.height != h))) {
+         fsr4_anr_set_inactive("ANR: output offset outside the textures; keeping MetalFX");
+@@ -850,17 +944,24 @@
+     }
+     const bool metal4 = [command respondsToSelector:@selector(useResidencySet:)]
+         && ![command respondsToSelector:@selector(addCompletedHandler:)];
+-    const bool uiNeedsCopy = ui && !(ui.width == w && ui.height == h);
++    const bool uiNeedsCopy = ui && !(ui.width == gw && ui.height == gh && !ox && !oy);
+     LbyAnrSubrect *sr = objc_getAssociatedObject(object, &subrectKey);
+-    if (!sr || sr->w != w || sr->h != h || sr->colorFormat != color.pixelFormat || sr->outFormat != output.pixelFormat
+-        || (uiNeedsCopy && (!sr->ui || sr->uiFormat != ui.pixelFormat))) {
++    if (!sr || sr->w != w || sr->h != h || sr->gw != gw || sr->gh != gh || sr->colorFormat != color.pixelFormat
++        || sr->outFormat != output.pixelFormat || (uiNeedsCopy && (!sr->ui || sr->uiFormat != ui.pixelFormat))) {
+         sr = [LbyAnrSubrect new];
+-        sr->w = w; sr->h = h; sr->colorFormat = color.pixelFormat; sr->outFormat = output.pixelFormat;
+-        sr->color = lbyTexture(device, color.pixelFormat, w, h);
+-        sr->out = lbyTexture(device, output.pixelFormat, w, h);
+-        if (uiNeedsCopy) { sr->uiFormat = ui.pixelFormat; sr->ui = lbyTexture(device, ui.pixelFormat, w, h); }
++        sr->w = w; sr->h = h; sr->gw = gw; sr->gh = gh; sr->colorFormat = color.pixelFormat; sr->outFormat = output.pixelFormat;
++        sr->color = lbyTexture(device, color.pixelFormat, gw, gh);
++        sr->out = lbyTexture(device, output.pixelFormat, gw, gh);
++        if (uiNeedsCopy) { sr->uiFormat = ui.pixelFormat; sr->ui = lbyTexture(device, ui.pixelFormat, gw, gh); }
+         sr->fence = [device newFence];
+-        if (!sr->color || !sr->out || !sr->fence || (uiNeedsCopy && !sr->ui)) {
++        sr->constants = [device newBufferWithLength:12 * 32 options:MTLResourceStorageModeShared];
++        bool tablesOk = true;
++        if (metal4) {
++            MTL4ArgumentTableDescriptor *td = [MTL4ArgumentTableDescriptor new];
++            td.maxBufferBindCount = 1; td.maxTextureBindCount = 2;
++            for (unsigned i = 0; i < 12; ++i) { sr->tables[i] = [device newArgumentTableWithDescriptor:td error:nil]; tablesOk &= sr->tables[i] != nil; }
++        }
++        if (!sr->color || !sr->out || !sr->fence || !sr->constants || !tablesOk || (uiNeedsCopy && !sr->ui)) {
+             fsr4_anr_set_inactive("ANR: offset textures unavailable; keeping MetalFX");
+             return 0;
+         }
+@@ -871,35 +972,40 @@
+             sr->residency = [device newResidencySetWithDescriptor:rd error:&e];
+             [sr->residency addAllocation:sr->color];
+             [sr->residency addAllocation:sr->out];
++            [sr->residency addAllocation:sr->constants];
+             if (sr->ui) [sr->residency addAllocation:sr->ui];
+             [sr->residency commit];
+         }
+         objc_setAssociatedObject(object, &subrectKey, sr, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+-        char line[200];
+-        snprintf(line, sizeof line, "ANR: output offset %lu,%lu handled through %lux%lu textures", (unsigned long)ox,
+-                 (unsigned long)oy, (unsigned long)w, (unsigned long)h);
++        char line[220];
++        snprintf(line, sizeof line, "ANR: picture %lux%lu at %lu,%lu generated at %lux%lu", (unsigned long)w, (unsigned long)h,
++                 (unsigned long)ox, (unsigned long)oy, (unsigned long)gw, (unsigned long)gh);
+         logHook(line, Nil);
+     }
+     if (metal4 && sr->residency) [(id<MTL4CommandBuffer>)command useResidencySet:sr->residency];
+-    g_extraW.store((uint32_t)w); g_extraH.store((uint32_t)h); g_extraOx.store((uint32_t)ox); g_extraOy.store((uint32_t)oy);
++    ++sr->frame;
++    g_extraW.store((uint32_t)gw); g_extraH.store((uint32_t)gh); g_picW.store((uint32_t)w); g_picH.store((uint32_t)h);
++    g_extraOx.store((uint32_t)ox); g_extraOy.store((uint32_t)oy);
+     id<MTLFence> gameFence = fg.fence;
+-    const MTLSize size = MTLSizeMake(w, h, 1);
+-    // 1. the picture out of the game's colour (and UI)
+-    if (!lbyCopy(command, metal4, gameFence, color, MTLOriginMake(ox, oy, 0), sr->color, MTLOriginMake(0, 0, 0), size,
+-                 uiNeedsCopy ? ui : nil, sr->ui, sr->fence)) {
++    // 1. the picture out of the game's colour (and UI), at ANR's size
++    LbyPass in[2] = {{color, sr->color, (float)ox, (float)oy, (float)w, (float)h, 0, 0, (uint32_t)gw, (uint32_t)gh}};
++    unsigned nin = 1;
++    if (uiNeedsCopy) in[nin++] = {ui, sr->ui, (float)ox, (float)oy, (float)w, (float)h, 0, 0, (uint32_t)gw, (uint32_t)gh};
++    if (!lbyPasses(sr, command, metal4, gameFence, in, nin, sr->fence, 0)) {
+         fsr4_anr_set_inactive("ANR: offset copy encoder unavailable; keeping MetalFX");
+         return 0;
+     }
+-    // 2. ANR on textures of the picture's size, ordered by our fence
++    // 2. ANR at that size, ordered by our fence; motion vectors are scaled by ANR from rw/rh to uw/uh
+     f.color = (__bridge void *)sr->color;
+     f.output = (__bridge void *)sr->out;
+     if (uiNeedsCopy) f.ui = (__bridge void *)sr->ui;
++    f.uw = (uint32_t)gw; f.uh = (uint32_t)gh;
+     f.fence = (__bridge void *)sr->fence;
+     const int result = fsr4_anr_encode_frame(&f);
+     if (result != 1) return result;
+-    // 3. ANR's frame back into the game's output at the offset; the game's fence last
+-    if (!lbyCopy(command, metal4, sr->fence, sr->out, MTLOriginMake(0, 0, 0), output, MTLOriginMake(ox, oy, 0), size,
+-                 nil, nil, gameFence)) {
++    // 3. ANR's frame back into the game's output, at the picture's size and offset; the game's fence last
++    LbyPass back = {sr->out, output, 0, 0, (float)gw, (float)gh, (uint32_t)ox, (uint32_t)oy, (uint32_t)w, (uint32_t)h};
++    if (!lbyPasses(sr, command, metal4, sr->fence, &back, 1, gameFence, 2)) {
+         fsr4_anr_set_inactive("ANR: offset copy-back encoder unavailable");
+         return 0;
+     }
+@@ -1001,7 +1107,10 @@
+             }
+         }
+     }
+-    if (outX || outY) return encodeOffset(object, command, f, outX, outY);
++    NSUInteger gw = f.uw, gh = f.uh;
++    anrScaledSize(f.uw, f.uh, &gw, &gh);
++    if (gw < f.rw || gh < f.rh) { gw = f.uw; gh = f.uh; }   // never below the game's render size
++    if (outX || outY || gw != f.uw || gh != f.uh) return encodeOffset(object, command, f, outX, outY);
+     return fsr4_anr_encode_frame(&f);
+ }
+ 
+diff -ruN a/hook/fsr4_metalfx.m b/hook/fsr4_metalfx.m
+--- a/hook/fsr4_metalfx.m	2026-11-25 23:30:46
++++ b/hook/fsr4_metalfx.m	2026-11-25 23:30:46
+@@ -17,6 +17,10 @@
+ #import <string.h>
+ #import <unistd.h>
+ #import "../src/live/fsr4_live.h"
++// Lullaby (patch 0006): the output size of the game's last MetalFX temporal scaler, read by ANR to generate frames
++// at the size the game draws (FSR4_ANR_SCALE=auto) instead of the window's.
++#include <stdint.h>
++volatile uint32_t lby_upscale_out_w, lby_upscale_out_h;
+ 
+ // A newer hook may be loaded beside an older encoder. Never read a V2-sized
+ // frame through the V1 entry point or silently discard an active subrect.
+@@ -96,6 +100,7 @@
+     for(unsigned i=0;i<8;++i){SEL sel=sel_registerName(names[i]);lifetime->offsets[i]=[scaler respondsToSelector:sel]?sel:NULL;}
+     lifetime->hasFence=[scaler respondsToSelector:@selector(fence)];
+     MTLFXTemporalScalerDescriptor *d = desc;
++    lby_upscale_out_w = (uint32_t)d.outputWidth; lby_upscale_out_h = (uint32_t)d.outputHeight;   // Lullaby 0006: ANR at the game's size
+     hook_log("scaler %p created: desc in %lux%lu out %lux%lu color %lu depth %lu motion %lu out %lu "
+              "jitteredMV=%d outputResMV=%d autoExposure=%d inputContentProps=%d minScale %.3f maxScale %.3f",
+              scaler, (unsigned long)d.inputWidth, (unsigned long)d.inputHeight,

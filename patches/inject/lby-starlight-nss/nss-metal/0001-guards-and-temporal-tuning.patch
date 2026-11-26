@@ -1,0 +1,182 @@
+diff -ruN a/Sources/NSSMetal/NSSUpscaler.m b/Sources/NSSMetal/NSSUpscaler.m
+--- a/Sources/NSSMetal/NSSUpscaler.m	2026-11-25 16:53:48
++++ b/Sources/NSSMetal/NSSUpscaler.m	2026-11-25 16:53:48
+@@ -622,6 +622,17 @@
+              specialize ? "specialized" : "generic", compileMs, (CACurrentMediaTime() - t0) * 1e3);
+ }
+ 
++// Lullaby: the temporal step's tuning, read at each frame's encode (alpha add, alpha multiplier, clamp width, clamp bypass)
++static float gTune[11] = {0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0};
++void NSSSetTemporalTuning(float alphaAdd, float alphaMul, float gammaMul, float thetaMul) {
++    gTune[0] = alphaAdd, gTune[1] = alphaMul, gTune[2] = gammaMul, gTune[3] = thetaMul;
++}
++void NSSSetHistoryTrust(float thetaMotionPx, float thetaDev) { gTune[4] = thetaMotionPx, gTune[5] = thetaDev; }
++void NSSSetHistoryTrustStill(float thetaDevStill) { gTune[6] = thetaDevStill; }
++void NSSSetOutlierDamping(float k, float strength) { gTune[7] = k, gTune[8] = strength; }
++void NSSSetSparkHistory(float dev) { gTune[9] = dev; }
++void NSSSetStillFlatness(float flat) { gTune[10] = flat; }
++
+ static void nssEncode(NssEngine *e, id cbObj, BOOL metal4, id<MTLFence> fence, const NssFrame *fr) {
+     const int Hr = e->Hr, Wr = e->Wr, Ho = e->Ho, Wo = e->Wo, Hp = e->Hp, Wp = e->Wp, Hq = e->Hq, Wq = e->Wq, Hd = e->Hd, Wd = e->Wd;
+     const int p = e->p;
+@@ -848,9 +859,16 @@
+         int halfRes, sparse, catmullHist;
+         int writeGame;
+         int ablate;
++        float tAlphaAdd, tAlphaMul, tGammaMul, tThetaMul;
++        float tThetaMotion, tThetaDev;
++        float tThetaDevStill;
++        float tOutlierK, tOutlierMul;
++        float tSparkDev;
++        float tFlat;
+     } qa = {{Hr, Wr}, {Ho, Wo}, {Hp / 4, Wp / 4}, {Hp, Wp}, {e->idxModH, e->idxModW}, e->taps, e->kpnCh, 1.0f, 1.0f - resetF,
+             e->KPN.wpad, e->KPN.C, e->TEMP[0].wpad, 0, {Hq, Wq}, {e->half_ ? Hp : Hr, e->half_ ? Wp : Wr},
+-            e->half_, e->half_, e->quality >= 1, 1, nssEnv("POST_ABLATE") ? atoi(nssEnv("POST_ABLATE")) : 0};
++            e->half_, e->half_, e->quality >= 1, 1, nssEnv("POST_ABLATE") ? atoi(nssEnv("POST_ABLATE")) : 0,
++            gTune[0], gTune[1], gTune[2], gTune[3], gTune[4], gTune[5], gTune[6], gTune[7], gTune[8], gTune[9], gTune[10]};
+     [c setBytes:&qa length:sizeof(qa) atIndex:0];
+     [c setBuffer:e->KPN.b offset:0 atIndex:3], [c setTexture:e->tempView[1 - p] atIndex:4];
+     [c setBuffer:e->motion offset:0 atIndex:5], [c setBuffer:e->nearest offset:0 atIndex:6], [c setBuffer:lutB offset:lutOff atIndex:7];
+diff -ruN a/Sources/NSSMetal/Shaders/nss.metal b/Sources/NSSMetal/Shaders/nss.metal
+--- a/Sources/NSSMetal/Shaders/nss.metal	2026-11-25 16:53:48
++++ b/Sources/NSSMetal/Shaders/nss.metal	2026-11-25 16:53:48
+@@ -169,7 +169,9 @@
+ }
+ static inline float exposureK(constant GamePrepArgs& A, texture2d<float> e)
+ {
+-    return (A.hasExposure ? max(e.read(uint2(0, 0)).r, 1e-6f) : 1.0f) * A.preExposureInv;
++    // Lullaby: a game's exposure can be 0, huge or not a number for a frame (RE9); a NaN or Inf here poisons the history for good
++    const float k = (A.hasExposure ? e.read(uint2(0, 0)).r : 1.0f) * A.preExposureInv;
++    return isfinite(k) ? clamp(k, 1e-6f, 1e6f) : 1.0f;
+ }
+ 
+ kernel void nss_game_prep(constant GamePrepArgs& A [[buffer(0)]],
+@@ -375,7 +377,7 @@
+ static inline float3 derivColor(texture2d<float> color, int2 dims, int2 p, float exposure)
+ {
+     const int2 s = int2(reflectIdx(p.x, dims.x), reflectIdx(p.y, dims.y));
+-    const float3 c = max(colorAt(color, s) * exposure, 0.0f);
++    const float3 c = min(max(colorAt(color, s) * exposure, 0.0f), MAX_HALF);   // Lullaby: HDR colour x exposure past half
+     return sqrt(c);
+ }
+ static inline float dDelta(float3 a, float3 b, float cw) { return length(float3(a.x - b.x, (a.y - b.y) * cw, (a.z - b.z) * cw)); }
+@@ -901,6 +903,15 @@
+     int halfRes, sparse, catmullHist;
+     int writeGame;       // also write the game's output (divided by k) from here, instead of a separate pass
+     int ablate;          // diagnostics only: 1 no filter taps, 2 no history sample, 4 no temporal sample, 8 no game write, 16 no history write
++    // Lullaby: the temporal step's tuning (NSSSetTemporalTuning), neutral at 0, 1, 1, 1
++    float tAlphaAdd, tAlphaMul, tGammaMul, tThetaMul;
++    // Lullaby: where history may bypass the clamp: motion in output px above which it needs to agree with this frame
++    // (0 = no limit, as shipped), and how far (in clamp widths) it may then lie outside the current neighbourhood
++    float tThetaMotion, tThetaDev;
++    float tThetaDevStill;   // Lullaby: the same agreement check where nothing moves (rain, sparks, a blinking light), 0 = none
++    float tOutlierK, tOutlierMul;   // Lullaby: a lone pixel this many spreads off its neighbours' mean takes less of the new frame
++    float tSparkDev;   // Lullaby: history that is a lone spot (no line through it) this many clamp widths off loses the bypass, 0 = off
++    float tFlat;       // Lullaby: the still-area check applies only where this frame is flat around the pixel (spread / mean below this)
+ };
+ 
+ constant int kSparseMap[36] = {-1, -1, -1, -1, -1, -1, -1, 0, 1, 2, 3, -1, -1, 4, 5, 6, 7, -1,
+@@ -1043,9 +1054,9 @@
+     // temporal params (padded tensor, sampled in preprocess space)
+     const float2 uvT = uv * (float2(P_procDims) / float2(P_tempDims));
+     const float3 tp = (P_ablate & 4) ? float3(0.5f) : sampleView(temporal, P_tempDims, uvT, true).xyz;
+-    const float gamma = tp.z * 2.f;
+-    const float theta = sharpenTheta(tp.x, 2.f);
+-    const float alpha = tp.y * 0.35f + 0.05f;
++    const float gamma = tp.z * 2.f * A.tGammaMul;                       // width of the history clamp around the neighbourhood
++    const float theta = saturate(sharpenTheta(tp.x, 2.f) * A.tThetaMul);  // how much history may bypass the clamp
++    const float alpha = saturate((tp.y * 0.35f + 0.05f) * A.tAlphaMul + A.tAlphaAdd);   // weight of the new frame
+ 
+     // warp history with the dilated motion
+     const int2 ic = int2(float2(px) * invScale);
+@@ -1071,14 +1082,60 @@
+ 
+     // clamp history to neighbourhood stats
+     const float3 sigma = sqrt(max(abs(m2 - m1 * m1), EPS)) * gamma;
+-    const float3 hc = mix(m1, clamp(warped, m1 - sigma, m1 + sigma), A.reset);
+-    const float3 rect = mix(hc, warped, theta * onscreen * A.reset);
++    const float3 clamped = clamp(warped, m1 - sigma, m1 + sigma);
++    const float3 hc = mix(m1, clamped, A.reset);
++    // Lullaby: the bypass only where history can be trusted, for any game: little motion, and history close to what this
++    // frame shows around the pixel (not a strand of hair where the wall now is, not the last room's colour)
++    const float moveFade = A.tThetaMotion > 0.f ? saturate(1.f - length(v) / A.tThetaMotion) : 1.f;
++    const float dev = length((warped - clamped) / max(sigma, float3(EPS)));
++    // in motion the bypass stays where history agrees with this frame (edges and hair keep their smoothing), and goes where
++    // it does not (a trail): tThetaDev is how many clamp widths away still counts as agreeing (0: no bypass in motion)
++    const float devFade = A.tThetaDev > 0.f ? saturate(1.f - dev / A.tThetaDev) : 0.f;
++    // where nothing moves, history still has to roughly agree with this frame: what appeared for a frame without motion
++    // (a raindrop, a spark) is not kept as a dotted trace
++    float stillFade = A.tThetaDevStill > 0.f ? saturate(1.f - dev / A.tThetaDevStill) : 1.f;
++    if (A.tFlat > 0.f)   // only on flat ground: an old drop on an even wall goes, fine detail (hair, texture) keeps its history
++    {
++        const float spread = length(sqrt(max(abs(m2 - m1 * m1), EPS))) / max(length(m1), 1e-3f);
++        stillFade = mix(stillFade, 1.f, saturate(spread / A.tFlat));
++    }
++    float rect_t = theta * (moveFade * stillFade + (1.f - moveFade) * devFade);
++    // Lullaby: a lone spot in history (an old raindrop, a spark) that this frame does not show: no bypass. A line (a strand
++    // of hair, a wire, an edge) has a pair of neighbours along it at least half as bright, and keeps it (idea after cyboman's
++    // line-preserving spark rule for FSR 4, fsr4-native-macos issue #20).
++    if (A.tSparkDev > 0.f && dev > A.tSparkDev && rect_t > 0.f)
++    {
++        const float2 o = 1.0f / float2(P_outDims);   // (row, col) like reproj
++        const float lc = dot(warped, float3(0.25f, 0.5f, 0.25f));
++        float nb[8];
++        const float2 d8[8] = {float2(-1,0), float2(1,0), float2(0,-1), float2(0,1), float2(-1,-1), float2(1,1), float2(-1,1), float2(1,-1)};
++        for (int i = 0; i < 8; i++) nb[i] = dot(history.sample(kLinZero, (reproj + d8[i].yx * o).yx).rgb * kx, float3(0.25f, 0.5f, 0.25f));
++        bool line = false;
++        for (int i = 0; i < 8; i += 2) line = line || (min(nb[i], nb[i + 1]) >= 0.5f * lc);
++        if (!line) rect_t = 0.f;
++    }
++    const float3 rect = mix(hc, warped, rect_t * onscreen * A.reset);
+ 
+     // accumulate in tonemapped space
+     const float3 rectTm = karis(rect);
+-    const float a = alpha * center.a * A.reset;
++    // Lullaby: dithered transparency (hair) puts lone dark or bright pixels into the new frame, in a new place every
++    // frame; such a pixel, far from its neighbours' mean while the history agrees with them, takes less of the new frame,
++    // so the dither averages out. New content moves the whole neighbourhood (mean and history), and is not slowed.
++    float outlierCut = 0.f;
++    if (A.tOutlierK > 0.f)
++    {
++        const float3 sd = max(sqrt(max(abs(m2 - m1 * m1), EPS)), float3(1e-3f));
++        const float off = length((center.rgb - m1) / sd);
++        const float histOff = length((clamped - m1) / sd);
++        outlierCut = saturate((off - A.tOutlierK) / A.tOutlierK) * saturate(1.f - histOff / A.tOutlierK) * A.tOutlierMul;
++    }
++    const float a = alpha * center.a * A.reset * (1.f - outlierCut);
+     const float3 acc = mix(rectTm, karis(center.rgb), a);
+-    const float3 outL = karisInverse(clamp(acc, 0.f, 1.f - EPS)) * (1.0f / kx);
++    float3 outL = karisInverse(clamp(acc, 0.f, 1.f - EPS)) * (1.0f / kx);
++    // Lullaby: a pixel that came out not finite (a NaN from the network or the history) takes the game's own colour, so
++    // the history it is also written to heals on the next frame instead of keeping the frame black for good
++    if (any(isnan(outL) || isinf(outL)))
++        outL = clamp(colorAt(color, clamp(ic, int2(0), P_inDims - 1)), 0.0f, MAX_HALF);
+     if (!(P_ablate & 16)) outTex.write(float4(outL, 1.0f), uint2(gid));
+     if (P_writeGame && !(P_ablate & 8)) gameOut.write(float4(outL, 1.0f), uint2(gid));
+     // a 4-byte copy of the history for the next frame's pre-process (which only reads it as a network input)
+diff -ruN a/Sources/NSSMetal/include/NSSMetal/NSSMetal.h b/Sources/NSSMetal/include/NSSMetal/NSSMetal.h
+--- a/Sources/NSSMetal/include/NSSMetal/NSSMetal.h	2026-11-25 16:53:48
++++ b/Sources/NSSMetal/include/NSSMetal/NSSMetal.h	2026-11-25 16:53:48
+@@ -92,3 +92,22 @@
+ @end
+ 
+ NS_ASSUME_NONNULL_END
++
++/// Lullaby: the temporal step's tuning for every upscaler (neutral 0, 1, 1, 1): added to and multiplying the new frame's weight,
++/// multiplying the history clamp's width and how much history may bypass the clamp.
++FOUNDATION_EXPORT void NSSSetTemporalTuning(float alphaAdd, float alphaMul, float gammaMul, float thetaMul);
++/// Lullaby: history bypasses the clamp only where it can be trusted (0 = everywhere, as shipped): it is gone at this much
++/// motion (output px) and when history lies this many clamp widths outside the current neighbourhood.
++FOUNDATION_EXPORT void NSSSetHistoryTrust(float thetaMotionPx, float thetaDev);
++/// Lullaby: where nothing moves, history bypasses the clamp only while it lies within this many clamp widths of the
++/// current neighbourhood (0 = always, as shipped): a raindrop or spark that was there one frame is not kept.
++FOUNDATION_EXPORT void NSSSetHistoryTrustStill(float thetaDevStill);
++/// Lullaby: a lone pixel more than k spreads off its neighbours' mean, while the history agrees with them, takes up to
++/// `strength` less of the new frame (dithered hair and other per-frame noise average out). 0, 0 = off.
++FOUNDATION_EXPORT void NSSSetOutlierDamping(float k, float strength);
++/// Lullaby: history that is a lone spot (no line through it) more than `dev` clamp widths off this frame's neighbourhood
++/// does not bypass the clamp (old raindrops, sparks); lines keep it. 0 = off.
++FOUNDATION_EXPORT void NSSSetSparkHistory(float dev);
++/// Lullaby: the still-area agreement check (NSSSetHistoryTrustStill) applies only where this frame is flat around the
++/// pixel (local spread / mean below `flat`); 0 = everywhere.
++FOUNDATION_EXPORT void NSSSetStillFlatness(float flat);

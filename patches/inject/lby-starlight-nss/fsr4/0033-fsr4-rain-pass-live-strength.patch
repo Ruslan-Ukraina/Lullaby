@@ -1,0 +1,54 @@
+diff -ruN a/hook/fsr4_metalfx.m b/hook/fsr4_metalfx.m
+--- a/hook/fsr4_metalfx.m	2026-11-26 15:47:20
++++ b/hook/fsr4_metalfx.m	2026-11-26 15:47:20
+@@ -221,8 +221,12 @@
+     id<MTL4ArgumentTable> t1, t2, t3; id<MTLBuffer> k; NSUInteger rw, rh; __weak id<MTLTexture> output; } @end
+ @implementation LbyRainState @end
+ static const void *kRainAssoc = &kRainAssoc;
++// patch 0033: the pass's strength and its flash threshold, live (raingain=, rainratio= in fsr4-live.conf)
++static float g_rainGain = -1.f, g_rainRatio = -1.f;
+ static int lby_rain_on(void) {
+     static int env = -1, live = -1; static double last = 0; static time_t seen = 0;
++    if (g_rainGain < 0) { const char *e = getenv("FSR4_RAIN_GAIN"); g_rainGain = e && *e ? (float)atof(e) : 8.f; }
++    if (g_rainRatio < 0) { const char *e = getenv("FSR4_RAIN_RATIO"); g_rainRatio = e && *e ? (float)atof(e) : 8.f; }
+     if (env < 0) { const char *e = getenv("FSR4_RAIN"); env = e && e[0] == '1'; }
+     const double now = CFAbsoluteTimeGetCurrent();
+     if (now - last > 1.0) {
+@@ -235,11 +239,15 @@
+                 seen = st.st_mtime; live = -1;
+                 FILE *f = fopen(p, "r"); char line[128];
+                 while (f && fgets(line, sizeof line, f)) {
++                    float v;
+                     if (!strncmp(line, "rain=on", 7)) live = 1;
+                     if (!strncmp(line, "rain=off", 8)) live = 0;
++                    if (sscanf(line, "raingain=%f", &v) == 1 && v >= 0 && v <= 64) g_rainGain = v;
++                    if (sscanf(line, "rainratio=%f", &v) == 1 && v >= 1 && v <= 64) g_rainRatio = v;
+                 }
+                 if (f) fclose(f);
+-                hook_log("fsr4-live.conf: rain %s", live < 0 ? "as launched" : live ? "on" : "off");
++                hook_log("fsr4-live.conf: rain %s, gain %.1f, ratio %.1f", live < 0 ? "as launched" : live ? "on" : "off",
++                         g_rainGain, g_rainRatio);
+             } else if (stat(p, &st)) live = -1;
+         }
+     }
+@@ -277,7 +285,7 @@
+             "  for (int dy = -1; dy <= 1; ++dy) for (int dx = -1; dx <= 1; ++dx) {\n"
+             "    const uint2 q = uint2(clamp(int2(g) + int2(dx, dy), int2(0), int2(p.k.x - 1, p.k.y - 1)));\n"
+             "    const float4 f = freq.read(q);\n"
+-            "    const float wq = f.x < 0.2f ? clamp(f.x * 8.0f, 0.0f, 1.0f) * clamp(1.0f - f.y * 25.0f, 0.0f, 1.0f) : 0.0f;\n"
++            "    const float wq = f.x < 0.2f ? clamp(f.x * p.pad.y, 0.0f, 1.0f) * clamp(1.0f - f.y * 25.0f, 0.0f, 1.0f) : 0.0f;\n"
+             "    w = max(w, wq); c += col.read(q).rgb; }\n"
+             "  fix.write(float4(c / 9.0f, w), g);\n"
+             "}\n"
+@@ -342,9 +350,8 @@
+         if (!st->view) return;
+     }
+     uint32_t *k = (uint32_t *)st->k.contents; k[0] = (uint32_t)rw; k[1] = (uint32_t)rh; k[2] = (first || s.reset) ? 1 : 0; k[3] = 0;
+-    static float ratio = -1.f;   // C: read once
+-    if (ratio < 0) { const char *e = getenv("FSR4_RAIN_RATIO"); ratio = e && *e ? (float)atof(e) : 8.f; }
+-    float *kf = (float *)(k + 4); kf[0] = s.motionVectorScaleX; kf[1] = s.motionVectorScaleY; kf[2] = ratio; kf[3] = 0;   // render pixels
++    float *kf = (float *)(k + 4); kf[0] = s.motionVectorScaleX; kf[1] = s.motionVectorScaleY;   // render pixels
++    kf[2] = g_rainRatio; kf[3] = g_rainGain;
+     id<MTL4CommandBuffer> cb = commandBuffer;
+     [cb useResidencySet:st->res];
+     id<MTLFence> fence = lifetime->hasFence ? s.fence : nil;

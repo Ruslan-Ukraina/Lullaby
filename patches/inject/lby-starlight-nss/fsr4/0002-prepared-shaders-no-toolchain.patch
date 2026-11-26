@@ -1,0 +1,16 @@
+diff -ruN l/src/fsr41x/fsr411_runtime.h b/src/fsr41x/fsr411_runtime.h
+--- a/src/fsr41x/fsr411_runtime.h	2026-11-25 18:14:49
++++ b/src/fsr41x/fsr411_runtime.h	2026-11-25 18:14:49
+@@ -915,6 +915,12 @@
+         return true;
+     }
+     bool run(NSArray<NSString *> *args, std::string &error) {
++        // Lullaby: a player's Mac has no Xcode or python3. With FSR4_PREPARED=1 the shaders and model data come prepared
++        // with Lullaby (compiled .metallib files, loaded by macOS like any game's), so every preparation step is skipped.
++        if (const char *prepared=getenv("FSR4_PREPARED"); prepared && !strcmp(prepared,"1")) {
++            fsr4_logf("4.1.1 prepare skipped (FSR4_PREPARED=1): %s",utf8([args componentsJoinedByString:@" "]).c_str());
++            return true;
++        }
+         // Keep stderr in a file: waiting with unread pipes can deadlock a cold
+         // shader build. The executable and every argument are passed directly.
+         NSString *log=[NSTemporaryDirectory() stringByAppendingPathComponent:[[NSUUID UUID].UUIDString stringByAppendingString:@"-fsr411.log"]];

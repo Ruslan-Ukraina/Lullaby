@@ -1,0 +1,70 @@
+diff -ruN a/hook/anr_metalfx.mm b/hook/anr_metalfx.mm
+--- a/hook/anr_metalfx.mm	2026-11-26 12:14:40
++++ b/hook/anr_metalfx.mm	2026-11-26 12:14:40
+@@ -1469,6 +1469,7 @@
+ static bool lbyMfxSmallEncode(id object, id command, IMP original) {
+     LbyMfxSmall *m = objc_getAssociatedObject(object, &mfxSmallKey);
+     if (!m || m->state.load() == 3) return false;
++    if (fsr4_mfx_live_size() == 0) { m->havePrev = false; return false; }   // patch 0024: switched to the window's size, live
+     const bool metal4 = [command respondsToSelector:@selector(useResidencySet:)] && ![command respondsToSelector:@selector(addCompletedHandler:)];
+     if (!metal4) { lbyMfxFail("not a Metal 4 command buffer"); m->state = 3; return false; }
+     id<MTLFXFrameInterpolatorBase> fg = object;
+@@ -1526,7 +1527,8 @@
+     if (uiCopy) in[nin++] = {ui, sr->ui, (float)ox, (float)oy, (float)w, (float)h, 0, 0, (uint32_t)gw, (uint32_t)gh};
+     if (!lbyPasses(sr, command, true, gameFence, in, nin, sr->fence, 0)) { lbyMfxFail("resample encoder unavailable"); return false; }
+     id<MTLTexture> motionIn = fg.motionTexture;
+-    if (lbyMfxDilateWanted()) {
++    const int liveDilate = fsr4_mfx_live_dilate();   // patch 0024
++    if (liveDilate > 0 || (liveDilate < 0 && lbyMfxDilateWanted())) {
+         id<MTLTexture> zt = fg.depthTexture, mt = fg.motionTexture;
+         id<MTLComputePipelineState> pso = dilatePSO(device);
+         if (pso && (!m->motion || m->motion.width != mt.width || m->motion.height != mt.height || m->motion.pixelFormat != mt.pixelFormat)) {
+diff -ruN a/src/anr/anr_live.h b/src/anr/anr_live.h
+--- a/src/anr/anr_live.h	2026-11-26 12:14:40
++++ b/src/anr/anr_live.h	2026-11-26 12:14:40
+@@ -80,6 +80,14 @@
+ extern "C"
+ #endif
+ int fsr4_mfx_cap_duration(void);   // patch 0022
++#ifdef __cplusplus
++extern "C" {
++#endif
++int fsr4_mfx_live_size(void);     // patch 0024: anr3x.conf mfxsize=game|window, -1 when not given
++int fsr4_mfx_live_dilate(void);   // patch 0024: anr3x.conf mfxdilate=on|off, -1 when not given
++#ifdef __cplusplus
++}
++#endif
+ 
+ static inline const char *fsr4_anr_frame_reason(const Fsr4AnrFrame *f) {
+     if(!f || f->abiVersion!=FSR4_ANR_FG_ABI || f->structSize<sizeof(*f))return "ANR: incompatible FG ABI";
+diff -ruN a/src/anr/anr_live.mm b/src/anr/anr_live.mm
+--- a/src/anr/anr_live.mm	2026-11-26 12:14:40
++++ b/src/anr/anr_live.mm	2026-11-26 12:14:40
+@@ -925,6 +925,7 @@
+ // handed out only when N newer entries wait behind it. FSR4_ANR_3X_LAG sets it at start; the file
+ // $FSR4_ROOT/dist/crossover/anr3x.conf ("lag=N") is read again about once a second, to compare in a running game.
+ static int g_3xOrderTime = -1;   // patch 0015: 1 = pairs told apart by time (see fsr4_anr_take_extra)
++static int g_mfxSize = -1, g_mfxDilate = -1;   // patch 0024: live switches (-1: the environment decides)
+ static int g_mfxCap = -1;   // patch 0022: the same for MetalFX frame generation (off unless asked)
+ static int g_capDuration = -1;   // patch 0021: 1 = game present durations kept below one 120 Hz vsync
+ static int g_3xPaceTime = -1;    // patch 0019: 1 = the three frames go to the screen at exact times
+@@ -955,6 +956,10 @@
+                         if (!strncmp(line, "cap=on", 6)) g_capDuration = 1;
+                         if (!strncmp(line, "cap=off", 7)) g_capDuration = 0;
+                         if (!strncmp(line, "mfxcap=on", 9)) g_mfxCap = 1;
++                        if (!strncmp(line, "mfxsize=game", 12)) g_mfxSize = 1;
++                        if (!strncmp(line, "mfxsize=window", 14)) g_mfxSize = 0;
++                        if (!strncmp(line, "mfxdilate=on", 12)) g_mfxDilate = 1;
++                        if (!strncmp(line, "mfxdilate=off", 13)) g_mfxDilate = 0;
+                         if (!strncmp(line, "mfxcap=off", 10)) g_mfxCap = 0;
+                         if (!strncmp(line, "pace=duration", 13)) g_3xPaceTime = 0;
+                     }
+@@ -972,6 +977,8 @@
+ extern "C" int fsr4_anr_3x_pace_time() { lby_3x_lag(); return g_3xPaceTime > 0; }
+ extern "C" int fsr4_anr_cap_duration() { lby_3x_lag(); return g_capDuration > 0; }
+ extern "C" int fsr4_mfx_cap_duration() { lby_3x_lag(); return g_mfxCap > 0; }
++extern "C" int fsr4_mfx_live_size() { lby_3x_lag(); return g_mfxSize; }
++extern "C" int fsr4_mfx_live_dilate() { lby_3x_lag(); return g_mfxDilate; }
+ 
+ // Patch 0015: the extra frame for a pair the caller has recognised as an interpolated present. The oldest waiting entry
+ // is this pair's; more than two waiting means presents were missed, and the surplus oldest ones are dropped so the

@@ -1,0 +1,53 @@
+--- a/hook/anr_metalfx.mm	2026-11-26 02:28:15
++++ b/hook/anr_metalfx.mm	2026-11-26 02:28:15
+@@ -13,6 +13,7 @@
+ #include "../src/common/fsr4_fg_settings.h"
+ #include <atomic>
+ #include <map>
++#include <algorithm>
+ #include <mutex>
+ #include <sys/stat.h>
+ #include <stdio.h>
+@@ -287,6 +288,26 @@
+ // else (the Steam overlay's layer, small windows) do not move ANR's 3x sequence on. 0 until the first frame.
+ static std::atomic<uint32_t> g_fgOutW{0}, g_fgOutH{0};
+ static std::atomic<unsigned> g_presentLog{0};
++// Lullaby (patch 0014): how evenly the game's frames reach present() in frame generation. Every 600 presents the hook
++// log gets the mean interval, the 95th percentile, the share of presents closer than 2 ms to the one before (bunched:
++// the eye sees one frame) and of gaps over twice the mean (a hitch). Time is taken when present() is called.
++static void lbyPresentStats() {
++    static std::mutex m; static std::vector<double> iv; static double last = 0;
++    std::lock_guard<std::mutex> g(m);
++    const double now = CFAbsoluteTimeGetCurrent();
++    if (last > 0) iv.push_back((now - last) * 1000);
++    last = now;
++    if (iv.size() < 600) return;
++    std::vector<double> s = iv; std::sort(s.begin(), s.end());
++    double sum = 0; for (double v : iv) sum += v;
++    const double mean = sum / iv.size();
++    size_t bunched = 0, hitch = 0; for (double v : iv) { if (v < 2.0) ++bunched; if (v > 2 * mean) ++hitch; }
++    char line[220];
++    snprintf(line, sizeof line, "present pacing: %zu intervals, mean %.2f ms (%.0f/s), p95 %.2f ms, max %.1f ms, bunched <2 ms %.0f %%, gaps >2x mean %.1f %%",
++             iv.size(), mean, 1000 / mean, s[s.size() * 95 / 100], s.back(), 100.0 * bunched / iv.size(), 100.0 * hitch / iv.size());
++    logHook(line, Nil);
++    iv.clear();
++}
+ static std::atomic<unsigned long> g_presentEvents[3];
+ static void diagExtra(id<MTLTexture> extraTex, id<MTLTexture> dst, bool fbOnly, bool exactCopy, bool offset, MTLOrigin at,
+                       MTLSize pic, double stepSec) {
+@@ -435,6 +456,7 @@
+         return;
+     }
+ 
++    lbyPresentStats();   // the extra frame is a present too
+     [queue4 waitForDrawable:d2];
+     id<MTL4CommandBuffer> cbs[] = {cmd};
+     [queue4 commit:cbs count:1];
+@@ -584,6 +606,7 @@
+             logHook(line, Nil);
+         }
+         if (!game) { callOriginal(hasDuration, duration); return; }
++        lbyPresentStats();
+     }
+ 
+     id<MTL4CommandQueue> q4 = nil;

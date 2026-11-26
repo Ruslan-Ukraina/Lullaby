@@ -1,0 +1,14 @@
+--- a/hook/anr_metalfx.mm	2026-11-25 22:18:51
++++ b/hook/anr_metalfx.mm	2026-11-25 22:18:51
+@@ -755,7 +755,10 @@
+ 
+ static int replace(id object, id command) {
+     id<MTLFXFrameInterpolatorBase> fg = object;
+-    if ([objc_getAssociatedObject(object, distortionKey) boolValue]) {
++    // Lullaby: FSR4_ANR_IGNORE_DISTORTION=1 generates frames without the game's distortion field (DLSS-G's
++    // BidirectionalDistortionField, lens effects) instead of leaving them to MetalFX. RE9 always sends one.
++    static const bool ignoreDistortion = [] { const char *e = getenv("FSR4_ANR_IGNORE_DISTORTION"); return e && e[0] == '1'; }();
++    if (!ignoreDistortion && [objc_getAssociatedObject(object, distortionKey) boolValue]) {
+         fsr4_anr_set_inactive("ANR: distortion texture unsupported");
+         return 0;
+     }

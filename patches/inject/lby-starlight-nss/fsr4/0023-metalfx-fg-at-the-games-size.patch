@@ -1,0 +1,284 @@
+diff -ruN a/hook/anr_metalfx.mm b/hook/anr_metalfx.mm
+--- a/hook/anr_metalfx.mm	2026-11-26 11:29:12
++++ b/hook/anr_metalfx.mm	2026-11-26 11:29:12
+@@ -685,6 +685,9 @@
+     // includes the waits the durations make, so they held RE9 at 50 x 2 = 100 with V-Sync 100 %. Kept below one vsync
+     // of a 120 Hz screen (cap=off in anr3x.conf turns it off, live); the freeze and screen counters run here too.
+     const int presentMode = selectedMode.load(std::memory_order_relaxed);
++    static thread_local int presentDepth = 0;   // patch 0023: a present inside a present (presentAfterMinimumDuration:) counts once
++    if (presentDepth) { callOriginal(hasDuration, duration); return; }
++    struct DepthGuard { DepthGuard() { ++presentDepth; } ~DepthGuard() { --presentDepth; } } depthGuard;
+     if (!g_inExtraPresent && presentMode <= 1) {   // patch 0022: MetalFX frame generation (0) as 2x
+         id<MTLTexture> t2 = [self respondsToSelector:@selector(texture)]
+             ? ((id<MTLTexture>(*)(id, SEL))objc_msgSend)(self, @selector(texture)) : nil;
+@@ -1361,6 +1364,234 @@
+     return 1;
+ }
+ 
++// Patch 0023: MetalFX frame generation at the game's size (FSR4_MFX_SIZE=game). D3DMetal stretches the game's picture
++// (RE9: 2294x1290) to the window (3024x1701) and makes the in-between frame there, on pixels that carry no more detail
++// than the game's. Here the picture (and the UI) is taken down to the game's size, a second MetalFX interpolator of that
++// size, made from a copy of the game's descriptor, makes the frame, and it is stretched back into the game's output at
++// its offset: about 43 % fewer pixels for the interpolator. The real frames are untouched. Metal 4 only; until the
++// small interpolator is ready (made off the game's thread) the game's own one runs.
++@interface LbyMfxSmall : NSObject {
++@public
++    id small;                                   // the interpolator at the game's size
++    LbyAnrSubrect *sr;                          // textures, fence, constants of the resample passes
++    id<MTLTexture> color2;                      // second colour texture: this frame and the previous one alternate
++    id descriptor; id<MTLDevice> device;
++    std::atomic<int> state;                     // 0 not made, 1 making, 2 ready, 3 failed
++    id<MTLTexture> motion;                      // FSR4_MFX_DILATE: the dilated motion
++    id<MTLBuffer> rev; id<MTL4ArgumentTable> dilateTable;
++    bool havePrev;
++}
++@end
++@implementation LbyMfxSmall
++@end
++static char mfxSmallKey;
++// FSR4_MFX_DILATE=1: the motion each pixel gives MetalFX is the motion of the nearest-to-camera pixel of its 3x3 (what
++// Lullaby's ANR got as FSR4_ANR_DILATE=1): an outline moves with the character in front, not with the wall behind.
++static bool lbyMfxDilateWanted() {
++    static const bool on = [] { const char *e = getenv("FSR4_MFX_DILATE"); return e && e[0] == '1'; }();
++    return on;
++}
++static id<MTLComputePipelineState> dilatePSO(id<MTLDevice> device) {
++    static std::mutex lock; static id<MTLComputePipelineState> pso; static bool pending = false, failed = false;
++    std::lock_guard<std::mutex> guard(lock);
++    if (pso || pending || failed) return pso;
++    pending = true;
++    id<MTLDevice> dev = device;
++    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
++        NSString *src = @"#include <metal_stdlib>\n"
++            "using namespace metal;\n"
++            "kernel void lby_dilate(texture2d<float, access::read> z [[texture(0)]], texture2d<float, access::read> mv [[texture(1)]],\n"
++            "                       texture2d<float, access::write> o [[texture(2)]], constant uint &rev [[buffer(0)]],\n"
++            "                       uint2 g [[thread_position_in_grid]]) {\n"
++            "    const uint w = o.get_width(), h = o.get_height(); if (g.x >= w || g.y >= h) return;\n"
++            "    uint2 best = g; float bz = z.read(g).x;\n"
++            "    for (int dy = -1; dy <= 1; ++dy) for (int dx = -1; dx <= 1; ++dx) {\n"
++            "        const uint2 p = uint2(clamp(int2(g) + int2(dx, dy), int2(0), int2(w - 1, h - 1)));\n"
++            "        const float d = z.read(p).x;\n"
++            "        if (rev ? d > bz : d < bz) { bz = d; best = p; }\n"
++            "    }\n"
++            "    o.write(mv.read(best), g);\n"
++            "}\n";
++        NSError *e = nil;
++        id<MTLLibrary> lib = [dev newLibraryWithSource:src options:nil error:&e];
++        id<MTLFunction> fn = [lib newFunctionWithName:@"lby_dilate"];
++        id<MTLComputePipelineState> p = fn ? [dev newComputePipelineStateWithFunction:fn error:&e] : nil;
++        std::lock_guard<std::mutex> g2(lock);
++        pso = p; pending = false; failed = p == nil;
++        if (!p) logHook("MetalFX FG motion dilation: kernel unavailable; the game's motion as it is", Nil);
++    });
++    return nil;
++}
++static bool lbyMfxSmallWanted() {
++    static const bool on = [] { const char *e = getenv("FSR4_MFX_SIZE"); return e && !strcmp(e, "game"); }();
++    return on;
++}
++static void lbyMfxSmallRemember(id object, id descriptor, id<MTLDevice> device) {
++    if (!lbyMfxSmallWanted() || !object || !descriptor || !device) return;
++    LbyMfxSmall *m = [LbyMfxSmall new];
++    m->descriptor = [descriptor copy];
++    m->device = device;
++    m->state = 0;
++    objc_setAssociatedObject(object, &mfxSmallKey, m, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
++}
++static void lbyMfxSmallMake(LbyMfxSmall *m, NSUInteger gw, NSUInteger gh) {
++    int expected = 0;
++    if (!m->state.compare_exchange_strong(expected, 1)) return;
++    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
++        @autoreleasepool {
++            MTLFXFrameInterpolatorDescriptor *d = [m->descriptor copy];
++            d.outputWidth = gw; d.outputHeight = gh;
++            d.scaler = nil;
++            NSError *e = nil;
++            id<MTL4Compiler> compiler = [m->device newCompilerWithDescriptor:[MTL4CompilerDescriptor new] error:&e];
++            id small = compiler && originalNew4
++                ? ((id(*)(id, SEL, id, id))originalNew4)(d, @selector(newFrameInterpolatorWithDevice:compiler:), m->device, compiler) : nil;
++            char line[200];
++            if (small) {
++                m->small = small;
++                m->state = 2;
++                snprintf(line, sizeof line, "MetalFX FG at the game's size: interpolator %lux%lu -> %lux%lu ready",
++                         (unsigned long)d.inputWidth, (unsigned long)d.inputHeight, (unsigned long)gw, (unsigned long)gh);
++            } else {
++                m->state = 3;
++                snprintf(line, sizeof line, "MetalFX FG at the game's size: interpolator %lux%lu unavailable (%s); the game's own runs",
++                         (unsigned long)gw, (unsigned long)gh, e ? e.localizedDescription.UTF8String : "no compiler");
++            }
++            logHook(line, Nil);
++        }
++    });
++}
++static void lbyMfxFail(const char *why) {
++    static std::atomic<unsigned> n{0};
++    if (n.fetch_add(1) < 4) { char line[200]; snprintf(line, sizeof line, "MetalFX FG at the game's size: %s; the game's own runs", why); logHook(line, Nil); }
++}
++// true when the frame was made here; false: the caller runs the game's interpolator as it is
++static bool lbyMfxSmallEncode(id object, id command, IMP original) {
++    LbyMfxSmall *m = objc_getAssociatedObject(object, &mfxSmallKey);
++    if (!m || m->state.load() == 3) return false;
++    const bool metal4 = [command respondsToSelector:@selector(useResidencySet:)] && ![command respondsToSelector:@selector(addCompletedHandler:)];
++    if (!metal4) { lbyMfxFail("not a Metal 4 command buffer"); m->state = 3; return false; }
++    id<MTLFXFrameInterpolatorBase> fg = object;
++    id<MTLTexture> color = fg.colorTexture, output = fg.outputTexture, ui = fg.uiTexture;
++    if (!color || !output || !fg.depthTexture || !fg.motionTexture) return false;
++    id<MTLDevice> device = color.device;
++    const NSUInteger w = fg.outputWidth, h = fg.outputHeight;
++    const NSUInteger ox = optionalExtent(object, "outputOffsetX"), oy = optionalExtent(object, "outputOffsetY");
++    const NSUInteger uw = lby_upscale_out_w, uh = lby_upscale_out_h;
++    if (!(uw >= 256 && uh >= 144 && uw < w && uh < h && fabs(double(uw) / uh - double(w) / h) < 0.01 * double(w) / h)) return false;
++    const NSUInteger gw = uw, gh = uh;
++    if (ox + w > output.width || oy + h > output.height || ox + w > color.width || oy + h > color.height) {
++        lbyMfxFail("picture outside the textures"); m->state = 3; return false;
++    }
++    if (m->state.load() == 0) lbyMfxSmallMake(m, gw, gh);
++    if (m->state.load() != 2 || !resamplePSO(device)) return false;
++    id<MTLFXFrameInterpolatorBase> s = m->small;
++    if (s.outputWidth != gw || s.outputHeight != gh) return false;   // the game's size changed: keep the game's own
++    LbyAnrSubrect *sr = m->sr;
++    const bool uiCopy = ui != nil;
++    if (!sr || sr->w != w || sr->h != h || sr->colorFormat != color.pixelFormat || sr->outFormat != output.pixelFormat
++        || (uiCopy && (!sr->ui || sr->uiFormat != ui.pixelFormat))) {
++        sr = [LbyAnrSubrect new];
++        sr->w = w; sr->h = h; sr->gw = gw; sr->gh = gh; sr->colorFormat = color.pixelFormat; sr->outFormat = output.pixelFormat;
++        sr->color = lbyTexture(device, color.pixelFormat, gw, gh);
++        m->color2 = lbyTexture(device, color.pixelFormat, gw, gh);
++        sr->out = lbyTexture(device, output.pixelFormat, gw, gh);
++        if (uiCopy) { sr->uiFormat = ui.pixelFormat; sr->ui = lbyTexture(device, ui.pixelFormat, gw, gh); }
++        sr->fence = [device newFence];
++        sr->constants = [device newBufferWithLength:12 * 32 options:MTLResourceStorageModeShared];
++        MTL4ArgumentTableDescriptor *td = [MTL4ArgumentTableDescriptor new];
++        td.maxBufferBindCount = 1; td.maxTextureBindCount = 2;
++        bool ok = sr->color && m->color2 && sr->out && sr->fence && sr->constants && (!uiCopy || sr->ui);
++        for (unsigned i = 0; i < 12 && ok; ++i) { sr->tables[i] = [device newArgumentTableWithDescriptor:td error:nil]; ok = sr->tables[i] != nil; }
++        MTLResidencySetDescriptor *rd = [MTLResidencySetDescriptor new];
++        rd.label = @"lullaby metalfx fg at game size";
++        sr->residency = ok ? [device newResidencySetWithDescriptor:rd error:nil] : nil;
++        if (!sr->residency) { lbyMfxFail("textures unavailable"); m->state = 3; return false; }
++        for (id<MTLAllocation> a : @[sr->color, m->color2, sr->out, sr->constants]) [sr->residency addAllocation:a];
++        if (sr->ui) [sr->residency addAllocation:sr->ui];
++        [sr->residency commit];
++        m->sr = sr; m->havePrev = false;
++        char line[200];
++        snprintf(line, sizeof line, "MetalFX FG at the game's size: picture %lux%lu at %lu,%lu generated at %lux%lu",
++                 (unsigned long)w, (unsigned long)h, (unsigned long)ox, (unsigned long)oy, (unsigned long)gw, (unsigned long)gh);
++        logHook(line, Nil);
++    }
++    [(id<MTL4CommandBuffer>)command useResidencySet:sr->residency];
++    ++sr->frame;
++    // this frame's colour goes into the texture that is not the previous frame's
++    id<MTLTexture> cur = (sr->frame & 1) ? sr->color : m->color2, prev = (sr->frame & 1) ? m->color2 : sr->color;
++    id<MTLFence> gameFence = fg.fence;
++    LbyPass in[2] = {{color, cur, (float)ox, (float)oy, (float)w, (float)h, 0, 0, (uint32_t)gw, (uint32_t)gh}};
++    unsigned nin = 1;
++    if (uiCopy) in[nin++] = {ui, sr->ui, (float)ox, (float)oy, (float)w, (float)h, 0, 0, (uint32_t)gw, (uint32_t)gh};
++    if (!lbyPasses(sr, command, true, gameFence, in, nin, sr->fence, 0)) { lbyMfxFail("resample encoder unavailable"); return false; }
++    id<MTLTexture> motionIn = fg.motionTexture;
++    if (lbyMfxDilateWanted()) {
++        id<MTLTexture> zt = fg.depthTexture, mt = fg.motionTexture;
++        id<MTLComputePipelineState> pso = dilatePSO(device);
++        if (pso && (!m->motion || m->motion.width != mt.width || m->motion.height != mt.height || m->motion.pixelFormat != mt.pixelFormat)) {
++            m->motion = lbyTexture(device, mt.pixelFormat, mt.width, mt.height);
++            m->rev = [device newBufferWithLength:16 options:MTLResourceStorageModeShared];
++            MTL4ArgumentTableDescriptor *td = [MTL4ArgumentTableDescriptor new];
++            td.maxBufferBindCount = 1; td.maxTextureBindCount = 3;
++            m->dilateTable = [device newArgumentTableWithDescriptor:td error:nil];
++            if (m->motion && m->rev) { [sr->residency addAllocation:m->motion]; [sr->residency addAllocation:m->rev]; [sr->residency commit]; }
++            logHook("MetalFX FG motion dilation on (3x3 nearest to the camera)", Nil);
++        }
++        if (pso && m->motion && m->rev && m->dilateTable) {
++            const int up = lby_upscale_depth_reversed;
++            *(uint32_t *)m->rev.contents = up >= 0 ? (uint32_t)up : (fg.isDepthReversed ? 1u : 0u);
++            id<MTL4ComputeCommandEncoder> enc = [(id<MTL4CommandBuffer>)command computeCommandEncoder];
++            if (enc) {
++                [enc barrierAfterQueueStages:MTLStageAll beforeStages:MTLStageDispatch visibilityOptions:MTL4VisibilityOptionDevice];
++                [enc waitForFence:sr->fence beforeEncoderStages:MTLStageDispatch];
++                [enc setComputePipelineState:pso];
++                [m->dilateTable setTexture:zt.gpuResourceID atIndex:0];
++                [m->dilateTable setTexture:mt.gpuResourceID atIndex:1];
++                [m->dilateTable setTexture:m->motion.gpuResourceID atIndex:2];
++                [m->dilateTable setAddress:m->rev.gpuAddress atIndex:0];
++                [enc setArgumentTable:m->dilateTable];
++                [enc dispatchThreads:MTLSizeMake(mt.width, mt.height, 1) threadsPerThreadgroup:MTLSizeMake(16, 16, 1)];
++                [enc barrierAfterEncoderStages:MTLStageDispatch beforeEncoderStages:MTLStageDispatch visibilityOptions:MTL4VisibilityOptionDevice];
++                [enc updateFence:sr->fence afterEncoderStages:MTLStageDispatch];
++                [enc endEncoding];
++                motionIn = m->motion;
++            }
++        }
++    }
++    // the game's settings for this frame, onto the small interpolator
++    s.colorTexture = cur;
++    s.prevColorTexture = m->havePrev ? prev : cur;
++    s.depthTexture = fg.depthTexture; s.motionTexture = motionIn;
++    s.uiTexture = uiCopy ? sr->ui : nil;
++    s.outputTexture = sr->out;
++    s.fence = sr->fence;
++    s.motionVectorScaleX = fg.motionVectorScaleX; s.motionVectorScaleY = fg.motionVectorScaleY;
++    s.deltaTime = fg.deltaTime; s.nearPlane = fg.nearPlane; s.farPlane = fg.farPlane;
++    s.fieldOfView = fg.fieldOfView; s.aspectRatio = fg.aspectRatio;
++    s.jitterOffsetX = fg.jitterOffsetX; s.jitterOffsetY = fg.jitterOffsetY;
++    s.uiTextureComposited = fg.isUITextureComposited;
++    s.shouldResetHistory = fg.shouldResetHistory || !m->havePrev;
++    s.depthReversed = fg.isDepthReversed;
++    if ([object respondsToSelector:@selector(depthReversed)] && [(id)s respondsToSelector:@selector(setDepthReversed:)])
++        ((void(*)(id, SEL, BOOL))objc_msgSend)(s, @selector(setDepthReversed:), ((BOOL(*)(id, SEL))objc_msgSend)(object, @selector(depthReversed)));
++    if (@available(macOS 27.0, *)) {
++        s.worldToViewMatrix = fg.worldToViewMatrix; s.viewToClipMatrix = fg.viewToClipMatrix;
++        s.contentWidth = fg.contentWidth; s.contentHeight = fg.contentHeight;
++        s.depthContentOffsetX = fg.depthContentOffsetX; s.depthContentOffsetY = fg.depthContentOffsetY;
++        s.motionContentOffsetX = fg.motionContentOffsetX; s.motionContentOffsetY = fg.motionContentOffsetY;
++        s.outputOffsetX = 0; s.outputOffsetY = 0;
++        s.distortionTexture = fg.distortionTexture;
++        s.distortionOffsetX = fg.distortionOffsetX; s.distortionOffsetY = fg.distortionOffsetY;
++        s.distortionWidth = fg.distortionWidth; s.distortionHeight = fg.distortionHeight;
++    }
++    ((void(*)(id, SEL, id))original)(s, @selector(encodeToCommandBuffer:), command);
++    m->havePrev = true;
++    LbyPass back = {sr->out, output, 0, 0, (float)gw, (float)gh, (uint32_t)ox, (uint32_t)oy, (uint32_t)w, (uint32_t)h};
++    if (!lbyPasses(sr, command, true, sr->fence, &back, 1, gameFence, 2)) { lbyMfxFail("resample-back encoder unavailable"); m->state = 3; }
++    return true;
++}
++
+ static int replace(id object, id command) {
+     id<MTLFXFrameInterpolatorBase> fg = object;
+     // Lullaby: FSR4_ANR_IGNORE_DISTORTION=1 generates frames without the game's distortion field (DLSS-G's
+@@ -1531,6 +1762,15 @@
+             return;
+         }
+         if (selectedMode.load(std::memory_order_acquire) == 0) {
++            if (lbyMfxSmallWanted()) {   // patch 0023: the hook stays on for MetalFX frame generation at the game's size
++                {   // the counters' present hooks, as resetNativeOnce would put them
++                    id<MTLFXFrameInterpolatorBase> f0 = self;
++                    if (f0.outputTexture) { g_fgOutW.store((uint32_t)f0.outputTexture.width); g_fgOutH.store((uint32_t)f0.outputTexture.height); }
++                    if (f0.colorTexture.device) ensurePresentHooks(f0.colorTexture.device, nil);
++                }
++                if (!lbyMfxSmallEncode(self, command, original)) ((void(*)(id, SEL, id))original)(self, selector, command);
++                return;
++            }
+             resetNativeOnce(self, selector, command);
+             return;
+         }
+@@ -1611,8 +1851,9 @@
+             life->original = current;
+             slot.original.store(current);
+             slot.cls.store(cls, std::memory_order_release);
+-            if (selectedMode.load() != 0) setEncode(cls, current, (IMP)encode);
+-            logHook(selectedMode.load() != 0 ? "hooked encode" : "native FG encode retained", cls);
++            const bool hook = selectedMode.load() != 0 || lbyMfxSmallWanted();   // patch 0023
++            if (hook) setEncode(cls, current, (IMP)encode);
++            logHook(hook ? "hooked encode" : "native FG encode retained", cls);
+             return;
+         }
+     }
+@@ -1630,6 +1871,7 @@
+     id object = ((id(*)(id, SEL, id, id))originalNew4)(self, selector, device, compiler);
+     fsr4_anr_refresh_settings();
+     remember(object, self, device);
++    lbyMfxSmallRemember(object, self, device);   // patch 0023
+     return object;
+ }
+ 

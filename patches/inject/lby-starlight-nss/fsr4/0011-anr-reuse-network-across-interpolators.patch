@@ -1,0 +1,56 @@
+--- a/src/anr/anr_live.mm	2026-11-26 01:57:19
++++ b/src/anr/anr_live.mm	2026-11-26 01:57:19
+@@ -524,6 +524,11 @@
+ }
+ 
+ } // namespace
++
++// Lullaby (patch 0011): a game makes a new frame interpolator at scene changes (RE9 does at room transitions), and ANR
++// built its network again each time: about 45 ms, a hitch of 2-3 frames. A released owner's view now waits here, idle
++// and finished, for the next owner of the same geometry and format, which takes it with a fresh history.
++static std::vector<std::shared_ptr<View>> &lby_spare_views() { static std::vector<std::shared_ptr<View>> v; return v; }
+ 
+ // Lullaby (patch 0007): FSR4_ANR_DILATE=1 takes each pixel's motion from the nearest of its 3x3 render pixels.
+ static bool lby_dilate_motion() {
+@@ -644,6 +649,29 @@
+         }
+ 
+         std::string error;
++        if (!view) {   // patch 0011: a parked view of the same shape first, else one an idle owner holds
++            auto same = [&](const View &c) {
++                return (__bridge void *)c.device == f.device && c.directory == directory && c.width == f.uw && c.height == f.uh
++                    && c.encoding == f.colorEncoding && c.rw == f.rw && c.rh == f.rh && c.outputFormat == output.pixelFormat
++                    && c.finished() && !c.failed;
++            };
++            auto &spare = lby_spare_views();
++            for (auto s = spare.begin(); s != spare.end() && !view; ++s)
++                if (same(**s)) { view = *s; spare.erase(s); break; }
++            if (!view)
++                for (auto &kv : views) {
++                    if (kv.first == ownerKey || !kv.second || !same(*kv.second)) continue;
++                    if (!kv.second->lastFrame.time_since_epoch().count()
++                        || std::chrono::steady_clock::now() - kv.second->lastFrame < std::chrono::milliseconds(100)) continue;
++                    view = kv.second; kv.second.reset();
++                    break;
++                }
++            if (view) {
++                view->history = false; view->swapPending = false;
++                static std::atomic<unsigned> told{0};
++                if (told.fetch_add(1) < 4) fprintf(stderr, "[anr-fg] ANR network reused for a new interpolator (no rebuild)\n");
++            }
++        }
+         if (!view) {
+             try {
+                 @try { view = create(f, output.pixelFormat, directory, error); }
+@@ -974,6 +1002,11 @@
+     auto it = state.views.find(key(device, owner));
+     if (it != state.views.end()) {
+         if (it->second && !it->second->finished()) state.retired.push_back(it->second);
++        else if (it->second && !it->second->failed && !it->second->gpu_failed()) {
++            auto &spare = lby_spare_views();
++            if (spare.size() >= 2) spare.erase(spare.begin());
++            spare.push_back(it->second);
++        }
+         state.views.erase(it);
+     }
+     state.failures.erase(key(device, owner));

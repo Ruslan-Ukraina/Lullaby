@@ -1,0 +1,29 @@
+--- a/hook/anr_metalfx.mm	2026-11-26 02:49:25
++++ b/hook/anr_metalfx.mm	2026-11-26 02:49:25
+@@ -937,10 +937,18 @@
+ // the game's MetalFX temporal scaler when its shape matches; a number (0.5 .. 1) scales the picture by it.
+ // written by fsr4_metalfx.m (the game's temporal scaler), read here; defined here so ANR builds on its own too
+ extern "C" { volatile uint32_t lby_upscale_out_w, lby_upscale_out_h; volatile int lby_upscale_depth_reversed = -1; }
++// Patch 0017: "render" generates at the game's render size (RE9 1530x860): 2.35 / 2.86 ms instead of 3.85 / 5.32 for
++// 2x / 3x on M4 Pro, generated frames softer (RE9 frames: edge error +9 % orbit, +19 % room transition). An option.
++static NSUInteger g_renderW, g_renderH;
+ static void anrScaledSize(NSUInteger w, NSUInteger h, NSUInteger *gw, NSUInteger *gh) {
+     *gw = w; *gh = h;
+     const char *e = getenv("FSR4_ANR_SCALE");
+     if (!e || !*e || !strcmp(e, "1") || !strcmp(e, "off")) return;
++    if (!strcmp(e, "render")) {
++        if (g_renderW && g_renderH && g_renderW < w && g_renderH < h
++            && fabs(double(g_renderW) / g_renderH - double(w) / h) < 0.02 * double(w) / h) { *gw = g_renderW; *gh = g_renderH; }
++        return;
++    }
+     if (!strcmp(e, "auto")) {
+         const NSUInteger uw = lby_upscale_out_w, uh = lby_upscale_out_h;
+         if (uw >= 256 && uh >= 144 && uw < w && uh < h && fabs(double(uw) / uh - double(w) / h) < 0.01 * double(w) / h) {
+@@ -1311,6 +1319,7 @@
+         }
+     }
+     NSUInteger gw = f.uw, gh = f.uh;
++    g_renderW = f.rw; g_renderH = f.rh;
+     anrScaledSize(f.uw, f.uh, &gw, &gh);
+     if (gw < f.rw || gh < f.rh) { gw = f.uw; gh = f.uh; }   // never below the game's render size
+     if (outX || outY || gw != f.uw || gh != f.uh) return encodeOffset(object, command, f, outX, outY);

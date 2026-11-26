@@ -1,0 +1,178 @@
+diff -ruN a/hook/anr_metalfx.mm b/hook/anr_metalfx.mm
+--- a/hook/anr_metalfx.mm	2026-11-26 03:15:05
++++ b/hook/anr_metalfx.mm	2026-11-26 03:15:05
+@@ -284,6 +284,13 @@
+ // log, and the extra frame's middle row is read back and its mean logged, to tell an empty frame from one lost on the
+ // way to the screen.
+ static std::atomic<unsigned> g_extraDiag{0};
++// Lullaby (patch 0019, pace=time): when set, the extra frame goes to the screen at this CACurrentMediaTime.
++static thread_local double g_extraPresentAt = 0;
++#include <mach/mach_time.h>
++static double lbyMediaTime() {   // CACurrentMediaTime() without linking QuartzCore: the clock presentAtTime: uses
++    static mach_timebase_info_data_t tb; if (!tb.denom) mach_timebase_info(&tb);
++    return double(mach_absolute_time()) * tb.numer / tb.denom / 1e9;
++}
+ // Lullaby (patch 0009): the size of the texture frame generation writes (the game's drawable); presents of anything
+ // else (the Steam overlay's layer, small windows) do not move ANR's 3x sequence on. 0 until the first frame.
+ static std::atomic<uint32_t> g_fgOutW{0}, g_fgOutH{0};
+@@ -462,7 +469,9 @@
+     [queue4 commit:cbs count:1];
+     [queue4 signalEvent:ev value:sigVal];
+     [queue4 signalDrawable:d2];
+-    if (stepSec > 0.0 && [d2 respondsToSelector:@selector(presentAfterMinimumDuration:)]) {
++    if (g_extraPresentAt > 0 && [d2 respondsToSelector:@selector(presentAtTime:)]) {   // patch 0019
++        ((void(*)(id, SEL, CFTimeInterval))objc_msgSend)(d2, @selector(presentAtTime:), g_extraPresentAt);
++    } else if (stepSec > 0.0 && [d2 respondsToSelector:@selector(presentAfterMinimumDuration:)]) {
+         ((void(*)(id, SEL, CFTimeInterval))objc_msgSend)(d2, @selector(presentAfterMinimumDuration:), stepSec);
+     } else {
+         ((void(*)(id, SEL))objc_msgSend)(d2, @selector(present));
+@@ -641,16 +650,27 @@
+         const bool realOfPair = lastGame > 0 && now - lastGame < 0.002;
+         lastGame = now;
+         inner = true;
++        // pace=time (patch 0019): interpolated now, the extra frame one step later, the real frame two steps later, each
++        // given to the display as a time; otherwise each waits a minimum duration after the one before.
++        static double pairStart = 0;
++        const bool exact = fsr4_anr_3x_pace_time() && [self respondsToSelector:@selector(presentAtTime:)];
+         if (realOfPair) {
+             g_presentEvents[2].fetch_add(1);
+-            callOriginal(lastStep > 0.0, lastStep);
++            if (exact && pairStart > 0 && lastStep > 0)
++                ((void(*)(id, SEL, CFTimeInterval))objc_msgSend)(self, @selector(presentAtTime:), pairStart + 2 * lastStep);
++            else callOriginal(lastStep > 0.0, lastStep);
+         } else if (fsr4_anr_take_extra((__bridge void *)dev, &extraRaw, &stepSec, &ticket) && extraRaw) {
+             g_presentEvents[1].fetch_add(1);
+             id<MTLTexture> extraTex = (__bridge_transfer id<MTLTexture>)extraRaw;
+             lastStep = stepSec;
+-            callOriginal(stepSec > 0.0, stepSec);
++            if (exact && stepSec > 0) {
++                pairStart = lbyMediaTime();
++                ((void(*)(id, SEL, CFTimeInterval))objc_msgSend)(self, @selector(presentAtTime:), pairStart);
++                g_extraPresentAt = pairStart + stepSec;
++            } else callOriginal(stepSec > 0.0, stepSec);
+             inner = false;
+             submitExtraMetal4(dev, q4, self, extraTex, stepSec, ticket);
++            g_extraPresentAt = 0;
+             return;
+         } else {
+             g_presentEvents[0].fetch_add(1);
+@@ -960,28 +980,39 @@
+     if (f >= 0.5 && f < 1.0) { *gw = NSUInteger(w * f + 0.5) & ~NSUInteger(1); *gh = NSUInteger(h * f + 0.5) & ~NSUInteger(1); }
+ }
+ 
++// Patch 0019: the resample kernel is compiled from source once per device, off the game's thread, so turning frame
++// generation on does not stop a frame for the compile; until it is ready ANR leaves the frames to MetalFX.
+ static id<MTLComputePipelineState> resamplePSO(id<MTLDevice> device) {
+     static std::mutex lock;
+     static std::map<uintptr_t, id<MTLComputePipelineState>> psos;
++    static std::map<uintptr_t, bool> pending;
+     std::lock_guard<std::mutex> guard(lock);
+-    auto it = psos.find((uintptr_t)(__bridge void *)device);
++    const uintptr_t key = (uintptr_t)(__bridge void *)device;
++    auto it = psos.find(key);
+     if (it != psos.end()) return it->second;
+-    NSString *src = @"#include <metal_stdlib>\n"
+-        "using namespace metal;\n"
+-        "struct R { float4 src; uint4 dst; };\n"
+-        "kernel void lby_resample(texture2d<float, access::sample> s [[texture(0)]], texture2d<float, access::write> d [[texture(1)]],\n"
+-        "                         constant R &r [[buffer(0)]], uint2 g [[thread_position_in_grid]]) {\n"
+-        "    if (g.x >= r.dst.z || g.y >= r.dst.w) return;\n"
+-        "    constexpr sampler smp(coord::pixel, address::clamp_to_edge, filter::linear);\n"
+-        "    float2 p = r.src.xy + (float2(g) + 0.5f) * r.src.zw / float2(r.dst.zw);\n"
+-        "    d.write(s.sample(smp, p), g + r.dst.xy);\n"
+-        "}\n";
+-    NSError *e = nil;
+-    id<MTLLibrary> lib = [device newLibraryWithSource:src options:nil error:&e];
+-    id<MTLFunction> fn = [lib newFunctionWithName:@"lby_resample"];
+-    id<MTLComputePipelineState> pso = fn ? [device newComputePipelineStateWithFunction:fn error:&e] : nil;
+-    if (pso) psos[(uintptr_t)(__bridge void *)device] = pso;
+-    return pso;
++    if (pending[key]) return nil;
++    pending[key] = true;
++    id<MTLDevice> dev = device;
++    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
++        NSString *src = @"#include <metal_stdlib>\n"
++            "using namespace metal;\n"
++            "struct R { float4 src; uint4 dst; };\n"
++            "kernel void lby_resample(texture2d<float, access::sample> s [[texture(0)]], texture2d<float, access::write> d [[texture(1)]],\n"
++            "                         constant R &r [[buffer(0)]], uint2 g [[thread_position_in_grid]]) {\n"
++            "    if (g.x >= r.dst.z || g.y >= r.dst.w) return;\n"
++            "    constexpr sampler smp(coord::pixel, address::clamp_to_edge, filter::linear);\n"
++            "    float2 p = r.src.xy + (float2(g) + 0.5f) * r.src.zw / float2(r.dst.zw);\n"
++            "    d.write(s.sample(smp, p), g + r.dst.xy);\n"
++            "}\n";
++        NSError *e = nil;
++        id<MTLLibrary> lib = [dev newLibraryWithSource:src options:nil error:&e];
++        id<MTLFunction> fn = [lib newFunctionWithName:@"lby_resample"];
++        id<MTLComputePipelineState> pso = fn ? [dev newComputePipelineStateWithFunction:fn error:&e] : nil;
++        std::lock_guard<std::mutex> g2(lock);
++        if (pso) psos[key] = pso;
++        pending[key] = false;
++    });
++    return nil;
+ }
+ 
+ struct LbyPass { id<MTLTexture> src, dst; float sx, sy, sw, sh; uint32_t dx, dy, dw, dh; };
+@@ -1148,6 +1179,10 @@
+     ++sr->frame;
+     g_extraW.store((uint32_t)gw); g_extraH.store((uint32_t)gh); g_picW.store((uint32_t)w); g_picH.store((uint32_t)h);
+     g_extraOx.store((uint32_t)ox); g_extraOy.store((uint32_t)oy);
++    if ((gw != w || gh != h) && !resamplePSO(device)) {
++        fsr4_anr_set_inactive("ANR: preparing its resample kernel; MetalFX meanwhile");
++        return 0;
++    }
+     id<MTLFence> gameFence = fg.fence;
+     // 1. the picture out of the game's colour (and UI), at ANR's size
+     LbyPass in[2] = {{color, sr->color, (float)ox, (float)oy, (float)w, (float)h, 0, 0, (uint32_t)gw, (uint32_t)gh}};
+diff -ruN a/src/anr/anr_live.h b/src/anr/anr_live.h
+--- a/src/anr/anr_live.h	2026-11-26 03:15:05
++++ b/src/anr/anr_live.h	2026-11-26 03:15:05
+@@ -68,6 +68,10 @@
+ extern "C"
+ #endif
+ int fsr4_anr_3x_order_time(void);
++#ifdef __cplusplus
++extern "C"
++#endif
++int fsr4_anr_3x_pace_time(void);   // patch 0019
+ 
+ static inline const char *fsr4_anr_frame_reason(const Fsr4AnrFrame *f) {
+     if(!f || f->abiVersion!=FSR4_ANR_FG_ABI || f->structSize<sizeof(*f))return "ANR: incompatible FG ABI";
+diff -ruN a/src/anr/anr_live.mm b/src/anr/anr_live.mm
+--- a/src/anr/anr_live.mm	2026-11-26 03:15:05
++++ b/src/anr/anr_live.mm	2026-11-26 03:15:05
+@@ -919,9 +919,11 @@
+ // handed out only when N newer entries wait behind it. FSR4_ANR_3X_LAG sets it at start; the file
+ // $FSR4_ROOT/dist/crossover/anr3x.conf ("lag=N") is read again about once a second, to compare in a running game.
+ static int g_3xOrderTime = -1;   // patch 0015: 1 = pairs told apart by time (see fsr4_anr_take_extra)
++static int g_3xPaceTime = -1;    // patch 0019: 1 = the three frames go to the screen at exact times
+ static int lby_3x_lag() {
+     static int lag = [] { const char *e = getenv("FSR4_ANR_3X_LAG"); return e && *e ? atoi(e) : 0; }();
+     if (g_3xOrderTime < 0) { const char *e = getenv("FSR4_ANR_3X_ORDER"); g_3xOrderTime = e && !strcmp(e, "time") ? 1 : 0; }
++    if (g_3xPaceTime < 0) { const char *e = getenv("FSR4_ANR_3X_PACE"); g_3xPaceTime = e && !strcmp(e, "time") ? 1 : 0; }
+     static double lastCheck = 0; static time_t seen = 0;
+     const double now = CFAbsoluteTimeGetCurrent();
+     if (now - lastCheck > 1.0) {
+@@ -939,10 +941,13 @@
+                         if (sscanf(line, "lag=%d", &v) == 1 && v >= 0 && v <= 3) lag = v;
+                         if (!strncmp(line, "order=time", 10)) g_3xOrderTime = 1;
+                         if (!strncmp(line, "order=count", 11)) g_3xOrderTime = 0;
++                        if (!strncmp(line, "pace=time", 9)) g_3xPaceTime = 1;
++                        if (!strncmp(line, "pace=duration", 13)) g_3xPaceTime = 0;
+                     }
+                     fclose(f);
+                 }
+-                fprintf(stderr, "[anr-fg] 3x lag %d, order %s\n", lag, g_3xOrderTime > 0 ? "time" : "count");
++                fprintf(stderr, "[anr-fg] 3x lag %d, order %s, pace %s\n", lag, g_3xOrderTime > 0 ? "time" : "count",
++                        g_3xPaceTime > 0 ? "time" : "duration");
+             }
+         }
+     }
+@@ -950,6 +955,7 @@
+ }
+ 
+ extern "C" int fsr4_anr_3x_order_time() { lby_3x_lag(); return g_3xOrderTime > 0; }
++extern "C" int fsr4_anr_3x_pace_time() { lby_3x_lag(); return g_3xPaceTime > 0; }
+ 
+ // Patch 0015: the extra frame for a pair the caller has recognised as an interpolated present. The oldest waiting entry
+ // is this pair's; more than two waiting means presents were missed, and the surplus oldest ones are dropped so the

@@ -1,0 +1,227 @@
+diff -ruN a/hook/anr_metalfx.mm b/hook/anr_metalfx.mm
+--- a/hook/anr_metalfx.mm	2026-11-26 10:16:49
++++ b/hook/anr_metalfx.mm	2026-11-26 10:16:49
+@@ -229,7 +229,20 @@
+     for (unsigned i = 0; i < retiredCount; ++i) fsr4_anr_release_extra_ticket(retired[i], 1);
+ }
+ 
+-static id acquireExtraDrawable(id drawable1, id<MTLDevice> device) {
++// patch 0020: the freeze counter's parts (see lbyFreezeCheck)
++extern std::atomic<unsigned> lby_anr_builds, lby_anr_inactive;
++static std::atomic<double> g_hzEncodeMs{0}, g_hzWaitMs{0}, g_hzExtraMs{0};
++static std::atomic<unsigned> g_hzSkipped{0}, g_hzEncodes{0};
++static void lbyAdd(std::atomic<double> &a, double v) { double o = a.load(); while (!a.compare_exchange_weak(o, o + v)) {} }
++static id acquireExtraDrawableInner(id drawable1, id<MTLDevice> device);
++static id acquireExtraDrawable(id drawable1, id<MTLDevice> device) {   // patch 0020: timed for the freeze counter
++    const double t0 = CFAbsoluteTimeGetCurrent();
++    id d = acquireExtraDrawableInner(drawable1, device);
++    lbyAdd(g_hzWaitMs, (CFAbsoluteTimeGetCurrent() - t0) * 1000);
++    if (!d) g_hzSkipped.fetch_add(1);
++    return d;
++}
++static id acquireExtraDrawableInner(id drawable1, id<MTLDevice> device) {
+     SEL layerSel = @selector(layer);
+     if (!drawable1 || ![drawable1 respondsToSelector:layerSel]) return nil;
+     id layer = ((id(*)(id, SEL))objc_msgSend)(drawable1, layerSel);
+@@ -246,6 +259,25 @@
+     }
+     SEL nextSel = @selector(nextDrawable);
+     if (![layer respondsToSelector:nextSel]) return nil;
++    // patch 0020: the layer has three drawables; with the interpolated frame queued and the real one held by the game,
++    // a fourth comes only once the interpolated frame is on screen. nextDrawable waits for it up to a second (the
++    // freezes of exactly 1003 ms in RE9), so wait for the screen at most 25 ms here and skip this extra frame otherwise.
++    // A layer outside any window (tests, off-screen capture) never reaches the screen: no wait there.
++    const bool onScreen = [layer respondsToSelector:@selector(superlayer)]
++        && ((id(*)(id, SEL))objc_msgSend)(layer, @selector(superlayer)) != nil;
++    if (onScreen && [drawable1 respondsToSelector:@selector(presentedTime)]) {
++        static std::atomic<unsigned> skipped{0};
++        const double until = CFAbsoluteTimeGetCurrent() + 0.025;
++        while (((CFTimeInterval(*)(id, SEL))objc_msgSend)(drawable1, @selector(presentedTime)) <= 0.0) {
++            if (CFAbsoluteTimeGetCurrent() > until) {
++                const unsigned n = skipped.fetch_add(1) + 1;
++                if (n <= 3 || n % 100 == 0)
++                    fprintf(stderr, "[anr-fg] 3x extra skipped: no free drawable within 25 ms (%u so far)\n", n);
++                return nil;
++            }
++            usleep(250);
++        }
++    }
+     id d2 = ((id(*)(id, SEL))objc_msgSend)(layer, nextSel);
+     if (!d2) return nil;
+     SEL texSel = @selector(texture);
+@@ -298,6 +330,63 @@
+ // Lullaby (patch 0014): how evenly the game's frames reach present() in frame generation. Every 600 presents the hook
+ // log gets the mean interval, the 95th percentile, the share of presents closer than 2 ms to the one before (bunched:
+ // the eye sees one frame) and of gaps over twice the mean (a hitch). Time is taken when present() is called.
++// Patch 0020: what reaches the screen. Each presented drawable reports its presentedTime (0 = replaced before it was
++// shown); every 600 the log gets how many were really seen per second and how evenly.
++static void lbyScreenStats(id drawable) {
++    if (!drawable || ![drawable respondsToSelector:@selector(addPresentedHandler:)]) return;
++    [(id<MTLDrawable>)drawable addPresentedHandler:^(id<MTLDrawable> d) {
++        static std::mutex m; static double last = 0; static unsigned total = 0, dropped = 0;
++        static std::vector<double> iv; static double first = 0;
++        std::lock_guard<std::mutex> g(m);
++        const double t = d.presentedTime;
++        ++total;
++        if (t <= 0) ++dropped;
++        else { if (last > 0) iv.push_back((t - last) * 1000); else first = t; last = t; }
++        if (total < 600) return;
++        double span = 0; for (double v : iv) span += v;
++        std::vector<double> s = iv; std::sort(s.begin(), s.end());
++        size_t uneven = 0; const double mean = iv.empty() ? 0 : span / iv.size();
++        for (double v : iv) if (v > 1.5 * mean) ++uneven;
++        char line[240];
++        snprintf(line, sizeof line, "on screen: %u presented, %u never shown, %.0f shown/s, interval mean %.2f p95 %.2f max %.1f ms, longer than 1.5x mean %.1f %%",
++                 total, dropped, span > 0 ? 1000.0 * iv.size() / span : 0.0, mean, s.empty() ? 0 : s[s.size() * 95 / 100],
++                 s.empty() ? 0 : s.back(), iv.empty() ? 0 : 100.0 * uneven / iv.size());
++        logHook(line, Nil);
++        total = dropped = 0; iv.clear(); last = 0; (void)first;
++    }];
++}
++// Patch 0020: freeze counter. Between two of the game's presents the hook adds up where ANR itself spent time; a gap
++// longer than 2.5x the usual frame (and over 40 ms) gets a line with those parts and the likely cause.
++static void lbyFreezeCheck() {
++    static std::mutex m; static double last = 0, ema = 0; static unsigned builds = 0, inactive = 0, count = 0;
++    static unsigned byCause[5];
++    std::lock_guard<std::mutex> g(m);
++    const double now = CFAbsoluteTimeGetCurrent();
++    const double enc = g_hzEncodeMs.exchange(0), wait = g_hzWaitMs.exchange(0), extra = g_hzExtraMs.exchange(0);
++    const unsigned skipped = g_hzSkipped.exchange(0), encodes = g_hzEncodes.exchange(0);
++    const unsigned b = lby_anr_builds.load(), in = lby_anr_inactive.load();
++    const bool rebuilt = b != builds, fellBack = in != inactive; builds = b; inactive = in;
++    if (last <= 0) { last = now; return; }
++    const double gap = (now - last) * 1000;
++    if (gap < 3) return;   // the second of D3DMetal's back-to-back pair: one frame of the game
++    last = now;
++    if (ema <= 0) ema = gap;
++    if (gap > 40 && gap > 2.5 * ema) {
++        const char *causes[5] = {"ANR waiting for a free drawable", "ANR encode on the CPU", "ANR building its network",
++                                 "the game sent no frame (game, CPU, loading: not ANR)", "outside ANR (GPU or the screen queue)"};
++        int c = wait > 0.4 * gap ? 0 : enc > 0.4 * gap ? 1 : rebuilt ? 2 : encodes == 0 ? 3 : 4;
++        ++byCause[c]; ++count;
++        if (count <= 50 || count % 20 == 0) {
++            char line[400];
++            snprintf(line, sizeof line, "freeze #%u: %.0f ms between the game's presents (usual %.1f); ANR encode %.1f ms, "
++                     "wait for drawable %.1f ms, extra frame %.1f ms, FG frames %u, extra skipped %u%s%s -> %s | so far: "
++                     "drawable %u, encode %u, build %u, game %u, other %u", count, gap, ema, enc, wait, extra, encodes,
++                     skipped, rebuilt ? ", network built" : "", fellBack ? ", ANR fell back to MetalFX" : "", causes[c],
++                     byCause[0], byCause[1], byCause[2], byCause[3], byCause[4]);
++            logHook(line, Nil);
++        }
++    } else ema = 0.95 * ema + 0.05 * gap;
++}
+ static void lbyPresentStats() {
+     static std::mutex m; static std::vector<double> iv; static double last = 0;
+     std::lock_guard<std::mutex> g(m);
+@@ -464,6 +553,7 @@
+     }
+ 
+     lbyPresentStats();   // the extra frame is a present too
++    lbyScreenStats(d2);
+     [queue4 waitForDrawable:d2];
+     id<MTL4CommandBuffer> cbs[] = {cmd};
+     [queue4 commit:cbs count:1];
+@@ -616,6 +706,8 @@
+         }
+         if (!game) { callOriginal(hasDuration, duration); return; }
+         lbyPresentStats();
++        lbyFreezeCheck();
++        lbyScreenStats(self);
+     }
+ 
+     id<MTL4CommandQueue> q4 = nil;
+@@ -653,23 +745,30 @@
+         // pace=time (patch 0019): interpolated now, the extra frame one step later, the real frame two steps later, each
+         // given to the display as a time; otherwise each waits a minimum duration after the one before.
+         static double pairStart = 0;
++        // patch 0020: the real frame waits a step only when its pair had an extra frame; a stale step on a pair
++        // without one held every frame back and locked the game near 13 fps.
++        static bool pairHadExtra = false;
+         const bool exact = fsr4_anr_3x_pace_time() && [self respondsToSelector:@selector(presentAtTime:)];
+         if (realOfPair) {
+             g_presentEvents[2].fetch_add(1);
+-            if (exact && pairStart > 0 && lastStep > 0)
++            if (!pairHadExtra) callOriginal(hasDuration, duration);
++            else if (exact && pairStart > 0 && lastStep > 0)
+                 ((void(*)(id, SEL, CFTimeInterval))objc_msgSend)(self, @selector(presentAtTime:), pairStart + 2 * lastStep);
+             else callOriginal(lastStep > 0.0, lastStep);
++            pairHadExtra = false;
+         } else if (fsr4_anr_take_extra((__bridge void *)dev, &extraRaw, &stepSec, &ticket) && extraRaw) {
+             g_presentEvents[1].fetch_add(1);
+             id<MTLTexture> extraTex = (__bridge_transfer id<MTLTexture>)extraRaw;
+-            lastStep = stepSec;
++            lastStep = stepSec; pairHadExtra = true;
+             if (exact && stepSec > 0) {
+                 pairStart = lbyMediaTime();
+                 ((void(*)(id, SEL, CFTimeInterval))objc_msgSend)(self, @selector(presentAtTime:), pairStart);
+                 g_extraPresentAt = pairStart + stepSec;
+             } else callOriginal(stepSec > 0.0, stepSec);
+             inner = false;
+-            submitExtraMetal4(dev, q4, self, extraTex, stepSec, ticket);
++            { const double x0 = CFAbsoluteTimeGetCurrent();   // patch 0020
++              submitExtraMetal4(dev, q4, self, extraTex, stepSec, ticket);
++              lbyAdd(g_hzExtraMs, (CFAbsoluteTimeGetCurrent() - x0) * 1000); }
+             g_extraPresentAt = 0;
+             return;
+         } else {
+@@ -686,7 +785,9 @@
+         // Present I_{1/3} with 1/3 pacing, then immediately submit & present I_{2/3}.
+         const double pace = stepSec > 0.0 ? stepSec : duration;
+         callOriginal(pace > 0.0, pace);
+-        submitExtraMetal4(dev, q4, self, extraTex, stepSec, ticket);
++        { const double x0 = CFAbsoluteTimeGetCurrent();   // patch 0020
++          submitExtraMetal4(dev, q4, self, extraTex, stepSec, ticket);
++          lbyAdd(g_hzExtraMs, (CFAbsoluteTimeGetCurrent() - x0) * 1000); }
+         return;
+     }
+     if (event == 2 && stepSec > 0.0) {
+@@ -1403,6 +1504,7 @@
+         // Lullaby (patch 0016): CPU time of ANR's part of a frame, in the hook log every 600 frames.
+         const double cpu0 = CFAbsoluteTimeGetCurrent();
+         int result = replace(self, command);
++        lbyAdd(g_hzEncodeMs, (CFAbsoluteTimeGetCurrent() - cpu0) * 1000); g_hzEncodes.fetch_add(1);   // patch 0020
+         {
+             static std::atomic<unsigned> n{0}; static std::atomic<double> sum{0}, mx{0};
+             const double ms = (CFAbsoluteTimeGetCurrent() - cpu0) * 1000;
+diff -ruN a/src/anr/anr_live.mm b/src/anr/anr_live.mm
+--- a/src/anr/anr_live.mm	2026-11-26 10:16:49
++++ b/src/anr/anr_live.mm	2026-11-26 10:16:49
+@@ -528,6 +528,7 @@
+ // Lullaby (patch 0011): a game makes a new frame interpolator at scene changes (RE9 does at room transitions), and ANR
+ // built its network again each time: about 45 ms, a hitch of 2-3 frames. A released owner's view now waits here, idle
+ // and finished, for the next owner of the same geometry and format, which takes it with a fresh history.
++std::atomic<unsigned> lby_anr_builds{0};   // patch 0020
+ static std::vector<std::shared_ptr<View>> &lby_spare_views() { static std::vector<std::shared_ptr<View>> v; return v; }
+ 
+ // Lullaby (patch 0007): FSR4_ANR_DILATE=1 takes each pixel's motion from the nearest of its 3x3 render pixels.
+@@ -673,6 +674,7 @@
+             }
+         }
+         if (!view) {
++            lby_anr_builds.fetch_add(1);   // patch 0020: the freeze counter names a network build as a cause
+             try {
+                 @try { view = create(f, output.pixelFormat, directory, error); }
+                 @catch (NSException *exception) {
+@@ -880,7 +882,11 @@
+             slot.extraInUse = true;
+             slot.extraTicket = ticket;
+             state.inFlightExtraTickets[ticket] = {view, v.activeSlot};
+-            const double stepSec = std::clamp(v.emaDeltaSec / 3.0, 1.0 / 360.0, 1.0 / 30.0);
++            // patch 0020: the step is taken from the game's frame time, and that time includes the waits the step makes, so
++            // a step of a vsync or more fed itself: the game was held at whatever rate it had (13 fps after a hitch,
++            // 31 x 3 = 94 at best). Below one vsync of a 120 Hz screen every frame still gets its own vsync, and the waits
++            // can no longer set the game's pace.
++            const double stepSec = std::clamp(v.emaDeltaSec / 3.0, 1.0 / 360.0, 1.0 / 132.0);
+             while (state.pendingExtras.size() >= 3) {
+                 const uint64_t dropped = state.pendingExtras.front().ticket;
+                 state.pendingExtras.pop_front();
+@@ -1101,7 +1107,9 @@
+     publish();
+ }
+ 
++std::atomic<unsigned> lby_anr_inactive{0};   // patch 0020
+ void fsr4_anr_set_inactive(const char *why) {
++    lby_anr_inactive.fetch_add(1);
+     auto &state = live_state();
+     std::lock_guard<std::mutex> lock(state.mutex);
+     state.selectedMode = fsr4_anr_selected_mode();

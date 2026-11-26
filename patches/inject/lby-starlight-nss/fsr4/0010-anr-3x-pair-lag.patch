@@ -1,0 +1,56 @@
+--- a/src/anr/anr_live.mm	2026-11-26 01:20:46
++++ b/src/anr/anr_live.mm	2026-11-26 01:20:46
+@@ -18,6 +18,7 @@
+ #include <map>
+ #include <memory>
+ #include <mutex>
++#include <sys/stat.h>
+ #include <string>
+ #include <unistd.h>
+ #include <vector>
+@@ -882,7 +883,31 @@
+         else if (status.uiMode == FSR4_ANR_UI_OVERLAY) ++status.uiOverlay;
+         publish();
+         return 1;
++    }
++}
++
++// Lullaby (patch 0010): the game may encode frame generation for its next frame before it presents the pair of this
++// one (D3DMetal does), so the newest t=2/3 frame belongs to a later pair. With lag N the extra frame of an entry is
++// handed out only when N newer entries wait behind it. FSR4_ANR_3X_LAG sets it at start; the file
++// $FSR4_ROOT/dist/crossover/anr3x.conf ("lag=N") is read again about once a second, to compare in a running game.
++static int lby_3x_lag() {
++    static int lag = [] { const char *e = getenv("FSR4_ANR_3X_LAG"); return e && *e ? atoi(e) : 0; }();
++    static double lastCheck = 0; static time_t seen = 0;
++    const double now = CFAbsoluteTimeGetCurrent();
++    if (now - lastCheck > 1.0) {
++        lastCheck = now;
++        const char *root = getenv("FSR4_ROOT");
++        if (root && *root) {
++            const std::string path = std::string(root) + "/dist/crossover/anr3x.conf";
++            struct stat st;
++            if (!stat(path.c_str(), &st) && st.st_mtime != seen) {
++                seen = st.st_mtime;
++                if (FILE *f = fopen(path.c_str(), "r")) { int v; if (fscanf(f, "lag=%d", &v) == 1 && v >= 0 && v <= 3) lag = v; fclose(f); }
++                fprintf(stderr, "[anr-fg] 3x lag %d\n", lag);
++            }
++        }
+     }
++    return lag;
+ }
+ 
+ int fsr4_anr_on_present_event(void *device, void **outExtraTexture, double *outStepSeconds, uint64_t *outTicket) {
+@@ -900,6 +925,13 @@
+     for (auto it = state.pendingExtras.begin(); it != state.pendingExtras.end(); ++it) {
+         if (devKey && it->device != devKey) continue;
+         if (it->phase == PresentPhase::WaitingInterp) {
++            const int lag = lby_3x_lag();
++            if (lag > 0) {
++                int behind = 0;
++                for (auto jt = std::next(it); jt != state.pendingExtras.end(); ++jt)
++                    if ((!devKey || jt->device == devKey) && jt->phase == PresentPhase::WaitingInterp) ++behind;
++                if (behind < lag) return 0;   // its pair is not being presented yet
++            }
+             // First present after encode_frame: OutputInterpolated (t = 1/3).
+             // Hand over t = 2/3 texture to insert immediately after, then wait for OutputReal.
+             if (outExtraTexture) *outExtraTexture = (__bridge_retained void *)it->texture;

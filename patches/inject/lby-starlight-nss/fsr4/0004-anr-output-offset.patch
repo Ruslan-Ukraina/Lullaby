@@ -1,0 +1,175 @@
+--- a/hook/anr_metalfx.mm	2026-11-25 22:30:16
++++ b/hook/anr_metalfx.mm	2026-11-25 22:30:16
+@@ -751,6 +751,135 @@
+     SEL sel = sel_registerName(name);
+     if (![object respondsToSelector:sel]) return 0;
+     return ((NSUInteger(*)(id, SEL))objc_msgSend)(object, sel);
++}
++
++// Lullaby (patch 0004): a game whose frame sits inside a larger texture (letterbox: D3DMetal hands RE9's 3024x1701
++// picture at y 98 of a 3024x1898 drawable as outputOffset) gets ANR all the same. The picture is copied out of the
++// game's colour (and UI) into textures of its size, ANR runs on those, and its frame is copied back at the offset.
++// A fence of our own orders the three steps; the game's fence is waited first and updated last. 2x only: the third
++// frame of 3x is presented by its own path at the texture's origin, so 3x with an offset stays with MetalFX.
++@interface LbyAnrSubrect : NSObject {
++@public
++    id<MTLTexture> color, ui, out;
++    id<MTLFence> fence;
++    id<MTLResidencySet> residency;
++    NSUInteger w, h;
++    MTLPixelFormat colorFormat, uiFormat, outFormat;
++}
++@end
++@implementation LbyAnrSubrect
++@end
++static char subrectKey;
++
++static id<MTLTexture> lbyTexture(id<MTLDevice> d, MTLPixelFormat format, NSUInteger w, NSUInteger h) {
++    MTLTextureDescriptor *desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:format width:w height:h mipmapped:NO];
++    desc.usage = MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
++    desc.storageMode = MTLStorageModePrivate;
++    return [d newTextureWithDescriptor:desc];
++}
++
++// One copy step on the game's command buffer: wait for `waitOn`, copy `from` (region at fromOrigin) into `to` at
++// toOrigin, then update `signal`.
++static bool lbyCopy(id command, bool metal4, id<MTLFence> waitOn, id<MTLTexture> from, MTLOrigin fromOrigin,
++                    id<MTLTexture> to, MTLOrigin toOrigin, MTLSize size, id<MTLTexture> from2, id<MTLTexture> to2,
++                    id<MTLFence> signal) {
++    if (metal4) {
++        id<MTL4ComputeCommandEncoder> enc = [(id<MTL4CommandBuffer>)command computeCommandEncoder];
++        if (!enc) return false;
++        [enc barrierAfterQueueStages:MTLStageAll beforeStages:MTLStageBlit visibilityOptions:MTL4VisibilityOptionDevice];
++        if (waitOn) [enc waitForFence:waitOn beforeEncoderStages:MTLStageBlit];
++        [enc copyFromTexture:from sourceSlice:0 sourceLevel:0 sourceOrigin:fromOrigin sourceSize:size
++                   toTexture:to destinationSlice:0 destinationLevel:0 destinationOrigin:toOrigin];
++        if (from2 && to2)
++            [enc copyFromTexture:from2 sourceSlice:0 sourceLevel:0 sourceOrigin:fromOrigin sourceSize:size
++                       toTexture:to2 destinationSlice:0 destinationLevel:0 destinationOrigin:toOrigin];
++        [enc barrierAfterEncoderStages:MTLStageBlit beforeEncoderStages:MTLStageBlit visibilityOptions:MTL4VisibilityOptionDevice];
++        if (signal) [enc updateFence:signal afterEncoderStages:MTLStageBlit];
++        [enc endEncoding];
++    } else {
++        id<MTLBlitCommandEncoder> enc = [(id<MTLCommandBuffer>)command blitCommandEncoder];
++        if (!enc) return false;
++        if (waitOn) [enc waitForFence:waitOn];
++        [enc copyFromTexture:from sourceSlice:0 sourceLevel:0 sourceOrigin:fromOrigin sourceSize:size
++                   toTexture:to destinationSlice:0 destinationLevel:0 destinationOrigin:toOrigin];
++        if (from2 && to2)
++            [enc copyFromTexture:from2 sourceSlice:0 sourceLevel:0 sourceOrigin:fromOrigin sourceSize:size
++                       toTexture:to2 destinationSlice:0 destinationLevel:0 destinationOrigin:toOrigin];
++        if (signal) [enc updateFence:signal];
++        [enc endEncoding];
++    }
++    return true;
++}
++
++static int encodeOffset(id object, id command, Fsr4AnrFrame f, NSUInteger ox, NSUInteger oy) {
++    id<MTLFXFrameInterpolatorBase> fg = object;
++    if (selectedMode.load(std::memory_order_acquire) == 2) {
++        fsr4_anr_set_inactive("ANR: 3x with an output offset is not supported; keeping MetalFX");
++        return 0;
++    }
++    id<MTLTexture> color = fg.colorTexture, output = fg.outputTexture, ui = fg.uiTexture;
++    id<MTLDevice> device = color.device;
++    const NSUInteger w = f.uw, h = f.uh;
++    if (!device || ox + w > output.width || oy + h > output.height || ox + w > color.width || oy + h > color.height
++        || (ui && (ox + w > ui.width || oy + h > ui.height) && (ui.width != w || ui.height != h))) {
++        fsr4_anr_set_inactive("ANR: output offset outside the textures; keeping MetalFX");
++        return 0;
++    }
++    const bool metal4 = [command respondsToSelector:@selector(useResidencySet:)]
++        && ![command respondsToSelector:@selector(addCompletedHandler:)];
++    const bool uiNeedsCopy = ui && !(ui.width == w && ui.height == h);
++    LbyAnrSubrect *sr = objc_getAssociatedObject(object, &subrectKey);
++    if (!sr || sr->w != w || sr->h != h || sr->colorFormat != color.pixelFormat || sr->outFormat != output.pixelFormat
++        || (uiNeedsCopy && (!sr->ui || sr->uiFormat != ui.pixelFormat))) {
++        sr = [LbyAnrSubrect new];
++        sr->w = w; sr->h = h; sr->colorFormat = color.pixelFormat; sr->outFormat = output.pixelFormat;
++        sr->color = lbyTexture(device, color.pixelFormat, w, h);
++        sr->out = lbyTexture(device, output.pixelFormat, w, h);
++        if (uiNeedsCopy) { sr->uiFormat = ui.pixelFormat; sr->ui = lbyTexture(device, ui.pixelFormat, w, h); }
++        sr->fence = [device newFence];
++        if (!sr->color || !sr->out || !sr->fence || (uiNeedsCopy && !sr->ui)) {
++            fsr4_anr_set_inactive("ANR: offset textures unavailable; keeping MetalFX");
++            return 0;
++        }
++        if (@available(macOS 15.0, *)) {
++            MTLResidencySetDescriptor *rd = [MTLResidencySetDescriptor new];
++            rd.label = @"lullaby anr subrect";
++            NSError *e = nil;
++            sr->residency = [device newResidencySetWithDescriptor:rd error:&e];
++            [sr->residency addAllocation:sr->color];
++            [sr->residency addAllocation:sr->out];
++            if (sr->ui) [sr->residency addAllocation:sr->ui];
++            [sr->residency commit];
++        }
++        objc_setAssociatedObject(object, &subrectKey, sr, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
++        char line[200];
++        snprintf(line, sizeof line, "ANR: output offset %lu,%lu handled through %lux%lu textures", (unsigned long)ox,
++                 (unsigned long)oy, (unsigned long)w, (unsigned long)h);
++        logHook(line, Nil);
++    }
++    if (metal4 && sr->residency) [(id<MTL4CommandBuffer>)command useResidencySet:sr->residency];
++    id<MTLFence> gameFence = fg.fence;
++    const MTLSize size = MTLSizeMake(w, h, 1);
++    // 1. the picture out of the game's colour (and UI)
++    if (!lbyCopy(command, metal4, gameFence, color, MTLOriginMake(ox, oy, 0), sr->color, MTLOriginMake(0, 0, 0), size,
++                 uiNeedsCopy ? ui : nil, sr->ui, sr->fence)) {
++        fsr4_anr_set_inactive("ANR: offset copy encoder unavailable; keeping MetalFX");
++        return 0;
++    }
++    // 2. ANR on textures of the picture's size, ordered by our fence
++    f.color = (__bridge void *)sr->color;
++    f.output = (__bridge void *)sr->out;
++    if (uiNeedsCopy) f.ui = (__bridge void *)sr->ui;
++    f.fence = (__bridge void *)sr->fence;
++    const int result = fsr4_anr_encode_frame(&f);
++    if (result != 1) return result;
++    // 3. ANR's frame back into the game's output at the offset; the game's fence last
++    if (!lbyCopy(command, metal4, sr->fence, sr->out, MTLOriginMake(0, 0, 0), output, MTLOriginMake(ox, oy, 0), size,
++                 nil, nil, gameFence)) {
++        fsr4_anr_set_inactive("ANR: offset copy-back encoder unavailable");
++        return 0;
++    }
++    return 1;
+ }
+ 
+ static int replace(id object, id command) {
+@@ -762,9 +891,27 @@
+         fsr4_anr_set_inactive("ANR: distortion texture unsupported");
+         return 0;
+     }
++    const NSUInteger outX = optionalExtent(object, "outputOffsetX"), outY = optionalExtent(object, "outputOffsetY");
+     for (const char *name : {"depthContentOffsetX", "depthContentOffsetY", "motionContentOffsetX",
+-                             "motionContentOffsetY", "outputOffsetX", "outputOffsetY"}) {
++                             "motionContentOffsetY"}) {
+         if (optionalExtent(object, name)) {
++            static std::atomic<bool> told{false};
++            if (!told.exchange(true)) {
++                id<MTLFXFrameInterpolatorBase> g = object;
++                char line[512];
++                snprintf(line, sizeof line, "ANR offsets: depth %lu,%lu motion %lu,%lu output %lu,%lu; input %lux%lu content %lux%lu output %lux%lu; textures color %lux%lu depth %lux%lu motion %lux%lu out %lux%lu",
++                    (unsigned long)optionalExtent(object, "depthContentOffsetX"), (unsigned long)optionalExtent(object, "depthContentOffsetY"),
++                    (unsigned long)optionalExtent(object, "motionContentOffsetX"), (unsigned long)optionalExtent(object, "motionContentOffsetY"),
++                    (unsigned long)optionalExtent(object, "outputOffsetX"), (unsigned long)optionalExtent(object, "outputOffsetY"),
++                    (unsigned long)g.inputWidth, (unsigned long)g.inputHeight,
++                    (unsigned long)optionalExtent(object, "contentWidth"), (unsigned long)optionalExtent(object, "contentHeight"),
++                    (unsigned long)g.outputWidth, (unsigned long)g.outputHeight,
++                    (unsigned long)g.colorTexture.width, (unsigned long)g.colorTexture.height,
++                    (unsigned long)g.depthTexture.width, (unsigned long)g.depthTexture.height,
++                    (unsigned long)g.motionTexture.width, (unsigned long)g.motionTexture.height,
++                    (unsigned long)g.outputTexture.width, (unsigned long)g.outputTexture.height);
++                fsr4_anr_set_inactive(line);
++            }
+             fsr4_anr_set_inactive("ANR: FG subrect offsets unsupported");
+             return 0;
+         }
+@@ -830,6 +977,7 @@
+             }
+         }
+     }
++    if (outX || outY) return encodeOffset(object, command, f, outX, outY);
+     return fsr4_anr_encode_frame(&f);
+ }
+ 

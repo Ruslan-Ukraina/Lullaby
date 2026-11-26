@@ -1,0 +1,24 @@
+--- a/hook/anr_metalfx.mm	2026-11-26 02:45:43
++++ b/hook/anr_metalfx.mm	2026-11-26 02:45:43
+@@ -1356,7 +1356,21 @@
+             resetNativeOnce(self, selector, command);
+             return;
+         }
++        // Lullaby (patch 0016): CPU time of ANR's part of a frame, in the hook log every 600 frames.
++        const double cpu0 = CFAbsoluteTimeGetCurrent();
+         int result = replace(self, command);
++        {
++            static std::atomic<unsigned> n{0}; static std::atomic<double> sum{0}, mx{0};
++            const double ms = (CFAbsoluteTimeGetCurrent() - cpu0) * 1000;
++            double s0 = sum.load(); while (!sum.compare_exchange_weak(s0, s0 + ms)) {}
++            double m0 = mx.load(); while (ms > m0 && !mx.compare_exchange_weak(m0, ms)) {}
++            if (n.fetch_add(1) + 1 == 600) {
++                char line[120];
++                snprintf(line, sizeof line, "ANR CPU per frame: mean %.3f ms, max %.2f ms (600 frames)", sum.load() / 600, mx.load());
++                logHook(line, Nil);
++                n = 0; sum = 0; mx = 0;
++            }
++        }
+         AnrOwnerLifetime *life = objc_getAssociatedObject(self, lifetimeKey);
+         if (result == 1) {
+             if (life) life->originalDirty.store(true, std::memory_order_release);

@@ -1,0 +1,105 @@
+diff -ruN a/src/anr/anr_live.mm b/src/anr/anr_live.mm
+--- a/src/anr/anr_live.mm	2026-11-26 16:02:31
++++ b/src/anr/anr_live.mm	2026-11-26 16:02:31
+@@ -186,6 +186,23 @@
+     state.pendingExtras.clear();
+ }
+ 
++// Lullaby (patch 0031): the status file is written off the game's thread (it was opened, written and renamed on it
++// twice a second); here only the text is made.
++static void lby_write_file_async(std::string path, std::string text) {
++    // the block keeps its own copies: a reference parameter would be captured as a reference to the caller's string,
++    // gone by the time the block runs (the status then landed in whatever string reused that memory)
++    static dispatch_queue_t q = dispatch_queue_create("org.lullaby.anr-status", DISPATCH_QUEUE_SERIAL);
++    const std::string target = path, body = text;
++    dispatch_async(q, ^{
++        const std::string &path = target; const std::string &text = body;
++        const std::string temporary = path + ".tmp";
++        if (FILE *f = fopen(temporary.c_str(), "w")) {
++            fwrite(text.data(), 1, text.size(), f);
++            fclose(f);
++            rename(temporary.c_str(), path.c_str());
++        }
++    });
++}
+ void publish() {
+     auto &state = live_state();
+     auto &status = state.status;
+@@ -200,8 +217,8 @@
+     if (lastPublish.time_since_epoch().count() && now - lastPublish < std::chrono::milliseconds(500)) return;
+     lastPublish = now;
+     const std::string path = std::string(root) + "/dist/crossover/fg-status.conf";
+-    const std::string temporary = path + ".tmp";
+-    FILE *f = fopen(temporary.c_str(), "w");
++    char *buf = nullptr; size_t len = 0;
++    FILE *f = open_memstream(&buf, &len);
+     if (!f) return;
+     const char *uiMode = status.uiMode == FSR4_ANR_UI_PRECOMPOSITED ? "precomposited-adaptive" :
+         status.uiMode == FSR4_ANR_UI_OVERLAY ? "premultiplied-overlay" : "none";
+@@ -225,7 +242,8 @@
+             status.encodingName[0] ? status.encodingName : "",
+             status.mppActive);
+     fclose(f);
+-    rename(temporary.c_str(), path.c_str());
++    lby_write_file_async(path, std::string(buf, len));
++    free(buf);
+ }
+ 
+ int reject(const char *why) {
+@@ -255,7 +273,25 @@
+     return [obj isKindOfClass:NSDictionary.class] && [obj[@"schema"] isEqual:@"fsr4_anr_runtime_v2"];
+ }
+ 
++static std::string runtime_path_uncached(uint32_t width, uint32_t height);
++// Lullaby (patch 0031): the runtime's directory is looked up once per size. It ran every frame: two file checks and
++// the manifest parsed as JSON on the game's thread, 78 % of ANR's CPU time per frame on the stand (Rosetta: ~0.6 ms).
+ std::string runtime_path(uint32_t width, uint32_t height) {
++    static std::mutex lock;
++    static std::map<std::pair<std::string, uint64_t>, std::string> known;
++    const char *base = getenv("FSR4_ANR_RUNTIME");
++    const auto key = std::make_pair(std::string(base ? base : ""), (uint64_t(width) << 32) | height);
++    {
++        std::lock_guard<std::mutex> guard(lock);
++        auto it = known.find(key);
++        if (it != known.end()) return it->second;
++    }
++    std::string found = runtime_path_uncached(width, height);
++    std::lock_guard<std::mutex> guard(lock);
++    if (!found.empty()) known[key] = found;   // a missing runtime is looked up again (it may be installed meanwhile)
++    return found;
++}
++static std::string runtime_path_uncached(uint32_t width, uint32_t height) {
+     const char *base = getenv("FSR4_ANR_RUNTIME");
+     if (!base || !*base) return "";
+     NSString *root = [NSString stringWithUTF8String:base];
+diff -ruN a/src/live/fsr4_panel.mm b/src/live/fsr4_panel.mm
+--- a/src/live/fsr4_panel.mm	2026-11-26 16:02:31
++++ b/src/live/fsr4_panel.mm	2026-11-26 16:02:31
+@@ -1,3 +1,4 @@
++#include <dispatch/dispatch.h>
+ // Hook side of the FSR 4 panel: publishes the encoder status for the panel
+ // app (dist/crossover/FSR4 Panel.app, tools/crossover/panel_app.mm) and
+ // launches it once when FSR4_PANEL=1. The app is a separate process with its
+@@ -73,7 +74,9 @@
+                         : !strncmp(st.variant, "fsr412_", 7) ? "4.1.2"
+                         : !strncmp(st.variant, "fsr411_", 7) ? "4.1.1" : "4.0.2";
+     if (!st.active || !st.variant[0]) version = fsr4_live_model_version();
+-    FILE *f = fopen(tmp.c_str(), "w");
++    // Lullaby (patch 0031): the text is made here, the file written off the game's thread
++    char *buf = nullptr; size_t len = 0;
++    FILE *f = open_memstream(&buf, &len);
+     if (!f) return;
+     fprintf(f,
+             "t=%ld\npid=%d\nactive=%d\nreason=%s\nmodel=%s\npreset=%s\nvariant=%s\n"
+@@ -84,5 +87,10 @@
+             (unsigned long long)st.encodes, (unsigned long long)st.replaced, (unsigned long long)st.stubs,
+             st.sharpness, version, fsr4_live_profile_name(profile));
+     fclose(f);
+-    rename(tmp.c_str(), path.c_str());
++    std::string text(buf, len); free(buf);
++    static dispatch_queue_t q = dispatch_queue_create("org.lullaby.fsr4-status", DISPATCH_QUEUE_SERIAL);
++    const std::string p = path, tp = tmp;
++    dispatch_async(q, ^{
++        if (FILE *o = fopen(tp.c_str(), "w")) { fwrite(text.data(), 1, text.size(), o); fclose(o); rename(tp.c_str(), p.c_str()); }
++    });
+ }

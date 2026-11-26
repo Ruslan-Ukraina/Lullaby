@@ -1,0 +1,148 @@
+diff -ruN a/hook/anr_metalfx.mm b/hook/anr_metalfx.mm
+--- a/hook/anr_metalfx.mm	2026-11-26 02:39:55
++++ b/hook/anr_metalfx.mm	2026-11-26 02:39:55
+@@ -630,6 +630,35 @@
+     void *extraRaw = nullptr;
+     double stepSec = 0.0;
+     uint64_t ticket = 0;
++    // Patch 0015 (order=time): D3DMetal presents a pair (interpolated, then real) back to back. A present less than 2 ms
++    // after the game's previous one is the real frame of the pair; any other is an interpolated one and gets its pair's
++    // extra frame. Presents made inside the original present (a nested call) are passed on and not counted.
++    if (fsr4_anr_3x_order_time()) {
++        static thread_local bool inner = false;
++        if (inner) { callOriginal(hasDuration, duration); return; }
++        static double lastGame = 0, lastStep = 0;
++        const double now = CFAbsoluteTimeGetCurrent();
++        const bool realOfPair = lastGame > 0 && now - lastGame < 0.002;
++        lastGame = now;
++        inner = true;
++        if (realOfPair) {
++            g_presentEvents[2].fetch_add(1);
++            callOriginal(lastStep > 0.0, lastStep);
++        } else if (fsr4_anr_take_extra((__bridge void *)dev, &extraRaw, &stepSec, &ticket) && extraRaw) {
++            g_presentEvents[1].fetch_add(1);
++            id<MTLTexture> extraTex = (__bridge_transfer id<MTLTexture>)extraRaw;
++            lastStep = stepSec;
++            callOriginal(stepSec > 0.0, stepSec);
++            inner = false;
++            submitExtraMetal4(dev, q4, self, extraTex, stepSec, ticket);
++            return;
++        } else {
++            g_presentEvents[0].fetch_add(1);
++            callOriginal(hasDuration, duration);
++        }
++        inner = false;
++        return;
++    }
+     const int event = fsr4_anr_on_present_event((__bridge void *)dev, &extraRaw, &stepSec, &ticket);
+     if (event >= 0 && event <= 2) g_presentEvents[event].fetch_add(1);
+     if (event == 1 && extraRaw) {
+@@ -906,8 +935,8 @@
+ // window (3024x1701) before frame generation, so ANR worked on pixels that carry no more detail than the game's; at the
+ // game's size it costs about 40 % less (stand, M4 Pro: 3.3 ms against 5.4 ms). FSR4_ANR_SCALE=auto takes that size from
+ // the game's MetalFX temporal scaler when its shape matches; a number (0.5 .. 1) scales the picture by it.
+-extern "C" volatile uint32_t lby_upscale_out_w, lby_upscale_out_h;
+-extern "C" volatile int lby_upscale_depth_reversed;
++// written by fsr4_metalfx.m (the game's temporal scaler), read here; defined here so ANR builds on its own too
++extern "C" { volatile uint32_t lby_upscale_out_w, lby_upscale_out_h; volatile int lby_upscale_depth_reversed = -1; }
+ static void anrScaledSize(NSUInteger w, NSUInteger h, NSUInteger *gw, NSUInteger *gh) {
+     *gw = w; *gh = h;
+     const char *e = getenv("FSR4_ANR_SCALE");
+diff -ruN a/hook/fsr4_metalfx.m b/hook/fsr4_metalfx.m
+--- a/hook/fsr4_metalfx.m	2026-11-26 02:39:55
++++ b/hook/fsr4_metalfx.m	2026-11-26 02:39:55
+@@ -20,9 +20,9 @@
+ // Lullaby (patch 0006): the output size of the game's last MetalFX temporal scaler, read by ANR to generate frames
+ // at the size the game draws (FSR4_ANR_SCALE=auto) instead of the window's.
+ #include <stdint.h>
+-volatile uint32_t lby_upscale_out_w, lby_upscale_out_h;
++extern volatile uint32_t lby_upscale_out_w, lby_upscale_out_h;   // defined in anr_metalfx.mm
+ // Lullaby (patch 0013): the depth direction the game gives its temporal scaler; -1 until the first frame.
+-volatile int lby_upscale_depth_reversed = -1;
++extern volatile int lby_upscale_depth_reversed;
+ 
+ // A newer hook may be loaded beside an older encoder. Never read a V2-sized
+ // frame through the V1 entry point or silently discard an active subrect.
+diff -ruN a/src/anr/anr_live.h b/src/anr/anr_live.h
+--- a/src/anr/anr_live.h	2026-11-26 02:39:55
++++ b/src/anr/anr_live.h	2026-11-26 02:39:55
+@@ -62,6 +62,12 @@
+ //   2 = real frame following an inserted t=2/3 frame; caller paces it with *outStepSeconds.
+ int fsr4_anr_on_present_event(void *device, void **outExtraTexture, double *outStepSeconds, uint64_t *outTicket);
+ void fsr4_anr_release_extra_ticket(uint64_t ticket, int presented);
++// Lullaby (patch 0015): 3x pairs told apart by time; see anr_live.mm.
++int fsr4_anr_take_extra(void *device, void **outExtraTexture, double *outStepSeconds, uint64_t *outTicket);
++#ifdef __cplusplus
++extern "C"
++#endif
++int fsr4_anr_3x_order_time(void);
+ 
+ static inline const char *fsr4_anr_frame_reason(const Fsr4AnrFrame *f) {
+     if(!f || f->abiVersion!=FSR4_ANR_FG_ABI || f->structSize<sizeof(*f))return "ANR: incompatible FG ABI";
+diff -ruN a/src/anr/anr_live.mm b/src/anr/anr_live.mm
+--- a/src/anr/anr_live.mm	2026-11-26 02:39:55
++++ b/src/anr/anr_live.mm	2026-11-26 02:39:55
+@@ -918,8 +918,10 @@
+ // one (D3DMetal does), so the newest t=2/3 frame belongs to a later pair. With lag N the extra frame of an entry is
+ // handed out only when N newer entries wait behind it. FSR4_ANR_3X_LAG sets it at start; the file
+ // $FSR4_ROOT/dist/crossover/anr3x.conf ("lag=N") is read again about once a second, to compare in a running game.
++static int g_3xOrderTime = -1;   // patch 0015: 1 = pairs told apart by time (see fsr4_anr_take_extra)
+ static int lby_3x_lag() {
+     static int lag = [] { const char *e = getenv("FSR4_ANR_3X_LAG"); return e && *e ? atoi(e) : 0; }();
++    if (g_3xOrderTime < 0) { const char *e = getenv("FSR4_ANR_3X_ORDER"); g_3xOrderTime = e && !strcmp(e, "time") ? 1 : 0; }
+     static double lastCheck = 0; static time_t seen = 0;
+     const double now = CFAbsoluteTimeGetCurrent();
+     if (now - lastCheck > 1.0) {
+@@ -930,12 +932,50 @@
+             struct stat st;
+             if (!stat(path.c_str(), &st) && st.st_mtime != seen) {
+                 seen = st.st_mtime;
+-                if (FILE *f = fopen(path.c_str(), "r")) { int v; if (fscanf(f, "lag=%d", &v) == 1 && v >= 0 && v <= 3) lag = v; fclose(f); }
+-                fprintf(stderr, "[anr-fg] 3x lag %d\n", lag);
++                if (FILE *f = fopen(path.c_str(), "r")) {
++                    char line[64];
++                    while (fgets(line, sizeof line, f)) {
++                        int v;
++                        if (sscanf(line, "lag=%d", &v) == 1 && v >= 0 && v <= 3) lag = v;
++                        if (!strncmp(line, "order=time", 10)) g_3xOrderTime = 1;
++                        if (!strncmp(line, "order=count", 11)) g_3xOrderTime = 0;
++                    }
++                    fclose(f);
++                }
++                fprintf(stderr, "[anr-fg] 3x lag %d, order %s\n", lag, g_3xOrderTime > 0 ? "time" : "count");
+             }
+         }
+     }
+     return lag;
++}
++
++extern "C" int fsr4_anr_3x_order_time() { lby_3x_lag(); return g_3xOrderTime > 0; }
++
++// Patch 0015: the extra frame for a pair the caller has recognised as an interpolated present. The oldest waiting entry
++// is this pair's; more than two waiting means presents were missed, and the surplus oldest ones are dropped so the
++// sequence comes back into step by itself.
++int fsr4_anr_take_extra(void *device, void **outExtraTexture, double *outStepSeconds, uint64_t *outTicket) {
++    if (outExtraTexture) *outExtraTexture = nullptr;
++    if (outStepSeconds) *outStepSeconds = 0.0;
++    if (outTicket) *outTicket = 0;
++    if (fsr4_anr_selected_mode() != 2) return 0;
++    auto &state = live_state();
++    std::lock_guard<std::mutex> lock(state.mutex);
++    prune_stale_extras_locked(state, std::chrono::steady_clock::now());
++    const uintptr_t devKey = (uintptr_t)device;
++    size_t waiting = 0;
++    for (auto &e : state.pendingExtras) if ((!devKey || e.device == devKey) && e.phase == PresentPhase::WaitingInterp) ++waiting;
++    for (auto it = state.pendingExtras.begin(); it != state.pendingExtras.end();) {
++        if ((devKey && it->device != devKey) || it->phase != PresentPhase::WaitingInterp) { ++it; continue; }
++        if (waiting > 2) { release_slot_ticket_locked(state, it->ticket); it = state.pendingExtras.erase(it); --waiting; continue; }
++        if (outExtraTexture) *outExtraTexture = (__bridge_retained void *)it->texture;
++        if (outStepSeconds) *outStepSeconds = it->stepSeconds;
++        if (outTicket) *outTicket = it->ticket;
++        it->texture = nil;
++        state.pendingExtras.erase(it);
++        return 1;
++    }
++    return 0;
+ }
+ 
+ int fsr4_anr_on_present_event(void *device, void **outExtraTexture, double *outStepSeconds, uint64_t *outTicket) {

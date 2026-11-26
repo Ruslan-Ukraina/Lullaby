@@ -1,0 +1,62 @@
+diff -ruN a/hook/anr_metalfx.mm b/hook/anr_metalfx.mm
+--- a/hook/anr_metalfx.mm	2026-11-26 02:14:12
++++ b/hook/anr_metalfx.mm	2026-11-26 02:14:12
+@@ -884,6 +884,7 @@
+ // game's size it costs about 40 % less (stand, M4 Pro: 3.3 ms against 5.4 ms). FSR4_ANR_SCALE=auto takes that size from
+ // the game's MetalFX temporal scaler when its shape matches; a number (0.5 .. 1) scales the picture by it.
+ extern "C" volatile uint32_t lby_upscale_out_w, lby_upscale_out_h;
++extern "C" volatile int lby_upscale_depth_reversed;
+ static void anrScaledSize(NSUInteger w, NSUInteger h, NSUInteger *gw, NSUInteger *gh) {
+     *gw = w; *gh = h;
+     const char *e = getenv("FSR4_ANR_SCALE");
+@@ -1209,7 +1210,29 @@
+     f.aspectRatio = fg.aspectRatio;
+     f.deltaTime = fg.deltaTime;
+     f.reset = fg.shouldResetHistory;
+-    f.depthReversed = fg.isDepthReversed;
++    // Lullaby (patch 0013): the depth direction. macOS 27's private interpolator, like the private temporal scaler
++    // (see fsr4_metalfx.m), keeps `depthReversed` behind a getter the protocol does not name, so `isDepthReversed`
++    // need not tell the truth. ANR treated a reversed depth as forward: near and far swapped at outlines, a halo around
++    // moving characters (RE9 frames: +46 % edge error). FSR4_ANR_DEPTH=auto (Lullaby's default) takes the direction the
++    // game gives its MetalFX temporal scaler, read as FSR 4 reads it; "fg" keeps the interpolator's own.
++    {
++        int own = -1;
++        if ([object respondsToSelector:@selector(isDepthReversed)]) own = fg.isDepthReversed ? 1 : 0;
++        int raw = -1;
++        if ([object respondsToSelector:@selector(depthReversed)])
++            raw = ((BOOL (*)(id, SEL))objc_msgSend)(object, @selector(depthReversed)) ? 1 : 0;
++        const int up = lby_upscale_depth_reversed;
++        const char *mode = getenv("FSR4_ANR_DEPTH");
++        const bool fromUpscaler = mode && !strcmp(mode, "auto") && up >= 0;
++        f.depthReversed = fromUpscaler ? up : raw >= 0 ? raw : own > 0;
++        static std::atomic<bool> told{false};
++        if (!told.exchange(true)) {
++            char line[200];
++            snprintf(line, sizeof line, "ANR depth direction: interpolator isDepthReversed %d, depthReversed %d, upscaler %d -> %d%s",
++                     own, raw, up, (int)f.depthReversed, fromUpscaler ? " (from the upscaler)" : "");
++            logHook(line, Nil);
++        }
++    }
+     if (fg.colorTexture.pixelFormat != fg.outputTexture.pixelFormat) {
+         fsr4_anr_set_inactive("ANR: input/output color formats differ");
+         return 0;
+diff -ruN a/hook/fsr4_metalfx.m b/hook/fsr4_metalfx.m
+--- a/hook/fsr4_metalfx.m	2026-11-26 02:14:12
++++ b/hook/fsr4_metalfx.m	2026-11-26 02:14:12
+@@ -21,6 +21,8 @@
+ // at the size the game draws (FSR4_ANR_SCALE=auto) instead of the window's.
+ #include <stdint.h>
+ volatile uint32_t lby_upscale_out_w, lby_upscale_out_h;
++// Lullaby (patch 0013): the depth direction the game gives its temporal scaler; -1 until the first frame.
++volatile int lby_upscale_depth_reversed = -1;
+ 
+ // A newer hook may be loaded beside an older encoder. Never read a V2-sized
+ // frame through the V1 entry point or silently discard an active subrect.
+@@ -176,6 +178,7 @@
+     else if ([s respondsToSelector:@selector(depthReversed)])
+         reversed = ((BOOL (*)(id, SEL))objc_msgSend)(s, @selector(depthReversed));
+     f->depthReversed = reversed ? 1 : 0;
++    lby_upscale_depth_reversed = reversed ? 1 : 0;   // Lullaby 0013: ANR takes the depth direction from here
+     f->jitteredMV=lifetime->flags[0];f->outputResMV=lifetime->flags[1];
+     f->autoExposure=lifetime->flags[2];v2.inputContentProperties=lifetime->flags[3];
+     v2.geometry.maxInputWidth = (uint32_t)s.inputWidth;

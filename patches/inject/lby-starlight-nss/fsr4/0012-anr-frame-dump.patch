@@ -1,0 +1,97 @@
+--- a/hook/anr_metalfx.mm	2026-11-26 02:14:12
++++ b/hook/anr_metalfx.mm	2026-11-26 02:14:12
+@@ -14,6 +14,7 @@
+ #include <atomic>
+ #include <map>
+ #include <mutex>
++#include <sys/stat.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+@@ -863,6 +864,8 @@
+     id<MTLBuffer> constants;                 // resample rectangles, 4 frames x 3 passes x 32 bytes
+     id<MTL4ArgumentTable> tables[12];
+     unsigned frame;
++    id<MTLBuffer> dumpBuf[2];   // patch 0012: generated frame and this frame's colour, read back for a dump
++    unsigned dumpPending, dumpFrame;
+ }
+ @end
+ @implementation LbyAnrSubrect
+@@ -989,6 +992,44 @@
+     return true;
+ }
+ 
++// Lullaby (patch 0012): frames for looking at ANR's output. Writing "dump=N" into $FSR4_ROOT/dist/crossover/anr-dump.conf
++// copies N frames' generated picture and the game's picture it was made from (both at ANR's size, the texture format
++// as is) into $FSR4_ROOT/dumps/anr-<time>/NNN-gen.raw / NNN-color.raw, with meta.txt. One frame in flight at a time.
++static std::atomic<int> g_dumpLeft{0};
++static std::string g_dumpDir;
++static void lbyDumpCheck() {
++    static double last = 0; static time_t seen = 0;
++    const double now = CFAbsoluteTimeGetCurrent();
++    if (now - last < 1.0) return;
++    last = now;
++    const char *root = getenv("FSR4_ROOT"); if (!root || !*root) return;
++    const std::string path = std::string(root) + "/dist/crossover/anr-dump.conf";
++    struct stat st; if (stat(path.c_str(), &st) || st.st_mtime == seen) return;
++    seen = st.st_mtime;
++    int n = 0; if (FILE *f = fopen(path.c_str(), "r")) { if (fscanf(f, "dump=%d", &n) != 1) n = 0; fclose(f); }
++    if (n <= 0) return;
++    char dir[64]; time_t tt = time(nullptr); strftime(dir, sizeof dir, "anr-%Y%m%d-%H%M%S", localtime(&tt));
++    g_dumpDir = std::string(root) + "/dumps/" + dir;
++    [[NSFileManager defaultManager] createDirectoryAtPath:@(g_dumpDir.c_str()) withIntermediateDirectories:YES attributes:nil error:nil];
++    g_dumpLeft.store(std::min(n, 60));
++    logHook(("ANR dump of " + std::to_string(n) + " frames into " + g_dumpDir).c_str(), Nil);
++}
++static void lbyDumpWrite(LbyAnrSubrect *sr) {   // the copies of a frame at least three frames back are done
++    if (!sr->dumpPending || sr->frame - sr->dumpPending < 3) return;
++    const size_t n = sr->gw * sr->gh * 4;
++    char p[64];
++    snprintf(p, sizeof p, "/%03u-gen.raw", sr->dumpFrame);
++    if (FILE *f = fopen((g_dumpDir + p).c_str(), "wb")) { fwrite(sr->dumpBuf[0].contents, 1, n, f); fclose(f); }
++    snprintf(p, sizeof p, "/%03u-color.raw", sr->dumpFrame);
++    if (FILE *f = fopen((g_dumpDir + p).c_str(), "wb")) { fwrite(sr->dumpBuf[1].contents, 1, n, f); fclose(f); }
++    if (FILE *f = fopen((g_dumpDir + "/meta.txt").c_str(), "a")) {
++        fprintf(f, "frame=%u size=%lux%lu format=%lu\n", sr->dumpFrame, (unsigned long)sr->gw, (unsigned long)sr->gh,
++                (unsigned long)sr->colorFormat);
++        fclose(f);
++    }
++    sr->dumpPending = 0;
++}
++
+ static int encodeOffset(id object, id command, Fsr4AnrFrame f, NSUInteger ox, NSUInteger oy) {
+     id<MTLFXFrameInterpolatorBase> fg = object;
+     id<MTLTexture> color = fg.colorTexture, output = fg.outputTexture, ui = fg.uiTexture;
+@@ -1069,6 +1110,32 @@
+         fsr4_anr_set_inactive("ANR: offset copy-back encoder unavailable");
+         return 0;
+     }
++    lbyDumpCheck();
++    lbyDumpWrite(sr);
++    const bool four = sr->colorFormat == MTLPixelFormatRGB10A2Unorm || sr->colorFormat == MTLPixelFormatBGRA8Unorm
++        || sr->colorFormat == MTLPixelFormatRGBA8Unorm || sr->colorFormat == MTLPixelFormatRGB9E5Float
++        || sr->colorFormat == MTLPixelFormatRG11B10Float;
++    if (metal4 && four && !sr->dumpPending && g_dumpLeft.load() > 0 && sr->residency) {
++        g_dumpLeft.fetch_sub(1);
++        const NSUInteger len = sr->gw * sr->gh * 4;
++        for (int i = 0; i < 2; ++i) if (!sr->dumpBuf[i] || sr->dumpBuf[i].length < len) {
++            sr->dumpBuf[i] = [device newBufferWithLength:len options:MTLResourceStorageModeShared];
++            [sr->residency addAllocation:sr->dumpBuf[i]]; [sr->residency commit];
++        }
++        id<MTL4ComputeCommandEncoder> enc = [(id<MTL4CommandBuffer>)command computeCommandEncoder];
++        if (enc) {
++            [enc barrierAfterQueueStages:MTLStageAll beforeStages:MTLStageBlit visibilityOptions:MTL4VisibilityOptionDevice];
++            [enc waitForFence:gameFence beforeEncoderStages:MTLStageBlit];
++            id<MTLTexture> src[2] = {sr->out, sr->color};
++            for (int i = 0; i < 2; ++i)
++                [enc copyFromTexture:src[i] sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0, 0, 0)
++                          sourceSize:MTLSizeMake(sr->gw, sr->gh, 1) toBuffer:sr->dumpBuf[i] destinationOffset:0
++              destinationBytesPerRow:sr->gw * 4 destinationBytesPerImage:len];
++            [enc updateFence:gameFence afterEncoderStages:MTLStageBlit];
++            [enc endEncoding];
++            sr->dumpPending = sr->frame; sr->dumpFrame = sr->frame;
++        }
++    }
+     return 1;
+ }
+ 

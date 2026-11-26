@@ -1,0 +1,160 @@
+diff -ruN a/hook/fsr4_metalfx.m b/hook/fsr4_metalfx.m
+--- a/hook/fsr4_metalfx.m	2026-11-26 15:23:12
++++ b/hook/fsr4_metalfx.m	2026-11-26 15:23:12
+@@ -217,8 +217,8 @@
+ // and how often it flashes; where it flashes often, FSR 4's output is kept no brighter than the game's current frame
+ // (softened 3x3). It only darkens, only there. FSR4_RAIN=1 (Lullaby: LULLABY_RAIN) or rain=on|off in
+ // $FSR4_ROOT/dist/crossover/fsr4-live.conf (read about once a second). Metal 4 command buffers only.
+-@interface LbyRainState : NSObject { @public id<MTLTexture> base, freq, copy; id<MTLResidencySet> res;
+-    id<MTL4ArgumentTable> t1, t2; id<MTLBuffer> k; NSUInteger rw, rh; } @end
++@interface LbyRainState : NSObject { @public id<MTLTexture> base, freq, fix, view; id<MTLResidencySet> res;
++    id<MTL4ArgumentTable> t1, t2, t3; id<MTLBuffer> k; NSUInteger rw, rh; __weak id<MTLTexture> output; } @end
+ @implementation LbyRainState @end
+ static const void *kRainAssoc = &kRainAssoc;
+ static int lby_rain_on(void) {
+@@ -245,39 +245,57 @@
+     }
+     return live >= 0 ? live : env;
+ }
+-static id<MTLComputePipelineState> g_rainUpdate, g_rainApply; static int g_rainState;   // 0 none, 1 compiling, 2 ready, 3 failed
++static id<MTLComputePipelineState> g_rainUpdate, g_rainApply, g_rainFix; static int g_rainState;   // 0 none, 1 compiling, 2 ready, 3 failed
+ static void lby_rain_compile(id<MTLDevice> dev) {
+     if (g_rainState) return;
+     g_rainState = 1;
+     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+         NSString *src = @"#include <metal_stdlib>\n using namespace metal;\n"
+             "static float lum(float3 c) { c = max(c, 0.0f); return dot(c / (1.0f + c), float3(0.2126f, 0.7152f, 0.0722f)); }\n"
++            "struct K { uint4 k; float2 mvs; float2 pad; };\n"
++            "// base: x usual level, y last frame flashed; freq: x how often it flashes, y how often two frames in a row\n"
++            "// patch 0032: a drop is a lone flash on a still point (RE9 frames: 1 in 10, never twice running); a thin bar\n"
++            "// flickering with the jitter flashes every other frame, a passer-by moves: neither counts\n"
+             "kernel void lby_rain_update(texture2d<float, access::read> col [[texture(0)]], texture2d<float, access::read_write> base [[texture(1)]],\n"
+-            "  texture2d<float, access::read_write> freq [[texture(2)]], constant uint4 &k [[buffer(0)]], uint2 g [[thread_position_in_grid]]) {\n"
+-            "  if (g.x >= k.x || g.y >= k.y) return;\n"
+-            "  const float l = lum(col.read(g).rgb); const float b = base.read(g).x; const bool first = k.z != 0;\n"
+-            "  const bool flash = !first && l - b > 0.35f;\n"
+-            "  freq.write(float4(first ? 0.0f : 0.92f * freq.read(g).x + (flash ? 0.08f : 0.0f)), g);\n"
+-            "  base.write(float4(first ? l : (flash ? b : 0.9f * b + 0.1f * l)), g);\n"
++            "  texture2d<float, access::read_write> freq [[texture(2)]], texture2d<float, access::read> mv [[texture(3)]],\n"
++            "  constant K &p [[buffer(0)]], uint2 g [[thread_position_in_grid]]) {\n"
++            "  if (g.x >= p.k.x || g.y >= p.k.y) return;\n"
++            "  const float l = lum(col.read(g).rgb); const float4 b = base.read(g); const bool first = p.k.z != 0;\n"
++            "  const bool still = length(mv.read(g).xy * p.mvs) < 0.5f;\n"
++            "  // and far brighter than this point usually is (a drop: 10-40x; an edge flickering with the jitter: 2-7x)\n"
++            "  const float hl = l / max(1.0f - l, 1e-3f), hb = b.x / max(1.0f - b.x, 1e-3f);\n"
++            "  const bool flash = !first && still && l - b.x > 0.35f && hl > p.pad.x * max(hb, 0.02f);\n"
++            "  const float4 f = first ? float4(0.0f) : freq.read(g);\n"
++            "  freq.write(float4(0.92f * f.x + (flash ? 0.08f : 0.0f), 0.92f * f.y + (flash && b.y > 0.5f ? 0.08f : 0.0f), 0, 0), g);\n"
++            "  base.write(float4(first ? l : (flash ? b.x : 0.9f * b.x + 0.1f * l), flash ? 1.0f : 0.0f, 0, 0), g);\n"
+             "}\n"
++            "// patch 0032: the 3x3 work at the render size, once per render pixel\n"
++            "kernel void lby_rain_fix(texture2d<float, access::read> col [[texture(0)]], texture2d<float, access::read> freq [[texture(1)]],\n"
++            "  texture2d<float, access::write> fix [[texture(2)]], constant K &p [[buffer(0)]], uint2 g [[thread_position_in_grid]]) {\n"
++            "  if (g.x >= p.k.x || g.y >= p.k.y) return;\n"
++            "  float w = 0.0f; float3 c = 0.0f;\n"
++            "  for (int dy = -1; dy <= 1; ++dy) for (int dx = -1; dx <= 1; ++dx) {\n"
++            "    const uint2 q = uint2(clamp(int2(g) + int2(dx, dy), int2(0), int2(p.k.x - 1, p.k.y - 1)));\n"
++            "    const float4 f = freq.read(q);\n"
++            "    const float wq = f.x < 0.2f ? clamp(f.x * 8.0f, 0.0f, 1.0f) * clamp(1.0f - f.y * 25.0f, 0.0f, 1.0f) : 0.0f;\n"
++            "    w = max(w, wq); c += col.read(q).rgb; }\n"
++            "  fix.write(float4(c / 9.0f, w), g);\n"
++            "}\n"
++            "// output: one read of the fix per pixel; only the pixels on drop lines are read and written\n"
+             "kernel void lby_rain_apply(texture2d<float, access::read> src [[texture(0)]], texture2d<float, access::write> dst [[texture(1)]],\n"
+-            "  texture2d<float, access::read> col [[texture(2)]], texture2d<float, access::read> freq [[texture(3)]], constant uint4 &k [[buffer(0)]],\n"
+-            "  uint2 g [[thread_position_in_grid]]) {\n"
++            "  texture2d<float, access::read> fix [[texture(2)]], constant K &p [[buffer(0)]], uint2 g [[thread_position_in_grid]]) {\n"
+             "  const uint uw = dst.get_width(), uh = dst.get_height(); if (g.x >= uw || g.y >= uh) return;\n"
+-            "  const int2 r = int2((float2(g) + 0.5f) * float2(k.xy) / float2(uw, uh));\n"
+-            "  float f = 0.0f; float3 c = 0.0f;\n"
+-            "  for (int dy = -1; dy <= 1; ++dy) for (int dx = -1; dx <= 1; ++dx) {\n"
+-            "    const uint2 p = uint2(clamp(r + int2(dx, dy), int2(0), int2(k.x - 1, k.y - 1)));\n"
+-            "    f = max(f, freq.read(p).x); c += col.read(p).rgb; }\n"
+-            "  const float4 o = src.read(g); const float w = clamp(f * 8.0f, 0.0f, 1.0f);\n"
+-            "  if (w <= 0.0f) { dst.write(o, g); return; }\n"
+-            "  dst.write(float4(mix(o.rgb, min(o.rgb, c / 9.0f), w), o.a), g);\n"
++            "  const uint2 r = min(uint2((float2(g) + 0.5f) * float2(p.k.xy) / float2(uw, uh)), uint2(p.k.x - 1, p.k.y - 1));\n"
++            "  const float4 fx = fix.read(r); if (fx.a <= 0.0f) return;\n"
++            "  const float4 o = src.read(g);\n"
++            "  dst.write(float4(mix(o.rgb, min(o.rgb, fx.rgb), fx.a), o.a), g);\n"
+             "}\n";
+         NSError *e = nil;
+         id<MTLLibrary> lib = [dev newLibraryWithSource:src options:nil error:&e];
+         id<MTLComputePipelineState> a = lib ? [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"lby_rain_update"] error:&e] : nil;
+         id<MTLComputePipelineState> b = lib ? [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"lby_rain_apply"] error:&e] : nil;
+-        if (a && b) { g_rainUpdate = a; g_rainApply = b; g_rainState = 2; hook_log("rain pass ready"); }
++        id<MTLComputePipelineState> c = lib ? [dev newComputePipelineStateWithFunction:[lib newFunctionWithName:@"lby_rain_fix"] error:&e] : nil;
++        if (a && b && c) { g_rainUpdate = a; g_rainApply = b; g_rainFix = c; g_rainState = 2; hook_log("rain pass ready"); }
+         else { g_rainState = 3; hook_log("rain pass: kernels unavailable (%s)", e ? e.localizedDescription.UTF8String : "?"); }
+     });
+ }
+@@ -301,42 +319,55 @@
+     if (!rw && !rh) { rw = s.inputWidth; rh = s.inputHeight; }
+     LbyRainState *st = objc_getAssociatedObject(scaler, kRainAssoc);
+     bool first = false;
+-    if (!st || st->rw != rw || st->rh != rh || st->copy.pixelFormat != output.pixelFormat || st->copy.width != output.width
+-        || st->copy.height != output.height) {
++    if (!st || st->rw != rw || st->rh != rh) {
+         st = [LbyRainState new]; st->rw = rw; st->rh = rh; first = true;
+-        st->base = lby_rain_tex(dev, MTLPixelFormatR16Float, rw, rh); st->freq = lby_rain_tex(dev, MTLPixelFormatR16Float, rw, rh);
+-        st->copy = lby_rain_tex(dev, output.pixelFormat, output.width, output.height);
++        st->base = lby_rain_tex(dev, MTLPixelFormatRG16Float, rw, rh); st->freq = lby_rain_tex(dev, MTLPixelFormatRG16Float, rw, rh);
++        st->fix = lby_rain_tex(dev, MTLPixelFormatRGBA16Float, rw, rh);
+         st->k = [dev newBufferWithLength:32 options:MTLResourceStorageModeShared];
+         MTL4ArgumentTableDescriptor *td = [MTL4ArgumentTableDescriptor new]; td.maxBufferBindCount = 1; td.maxTextureBindCount = 4;
+         st->t1 = [dev newArgumentTableWithDescriptor:td error:nil]; st->t2 = [dev newArgumentTableWithDescriptor:td error:nil];
++        st->t3 = [dev newArgumentTableWithDescriptor:td error:nil];
+         MTLResidencySetDescriptor *rd = [MTLResidencySetDescriptor new]; rd.label = @"lullaby rain";
+         st->res = [dev newResidencySetWithDescriptor:rd error:nil];
+-        if (!st->base || !st->freq || !st->copy || !st->k || !st->t1 || !st->t2 || !st->res) return;
+-        for (id<MTLAllocation> a in @[st->base, st->freq, st->copy, st->k]) [st->res addAllocation:a];
++        if (!st->base || !st->freq || !st->fix || !st->k || !st->t1 || !st->t2 || !st->t3 || !st->res) return;
++        for (id<MTLAllocation> a in @[st->base, st->freq, st->fix, st->k]) [st->res addAllocation:a];
+         [st->res commit];
+         objc_setAssociatedObject(scaler, kRainAssoc, st, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+         hook_log("rain pass on: %lux%lu -> %lux%lu, output format %lu", (unsigned long)rw, (unsigned long)rh,
+                  (unsigned long)output.width, (unsigned long)output.height, (unsigned long)output.pixelFormat);
+     }
++    if (st->output != output || !st->view) {   // patch 0032: read the output through a view of itself, no copy
++        st->view = [output newTextureViewWithPixelFormat:output.pixelFormat];
++        st->output = output;
++        if (!st->view) return;
++    }
+     uint32_t *k = (uint32_t *)st->k.contents; k[0] = (uint32_t)rw; k[1] = (uint32_t)rh; k[2] = (first || s.reset) ? 1 : 0; k[3] = 0;
++    static float ratio = -1.f;   // C: read once
++    if (ratio < 0) { const char *e = getenv("FSR4_RAIN_RATIO"); ratio = e && *e ? (float)atof(e) : 8.f; }
++    float *kf = (float *)(k + 4); kf[0] = s.motionVectorScaleX; kf[1] = s.motionVectorScaleY; kf[2] = ratio; kf[3] = 0;   // render pixels
+     id<MTL4CommandBuffer> cb = commandBuffer;
+     [cb useResidencySet:st->res];
+     id<MTLFence> fence = lifetime->hasFence ? s.fence : nil;
+     id<MTL4ComputeCommandEncoder> enc = [cb computeCommandEncoder];
+     if (!enc) return;
+-    [enc barrierAfterQueueStages:MTLStageAll beforeStages:MTLStageDispatch | MTLStageBlit visibilityOptions:MTL4VisibilityOptionDevice];
+-    if (fence) [enc waitForFence:fence beforeEncoderStages:MTLStageDispatch | MTLStageBlit];
+-    [enc copyFromTexture:output toTexture:st->copy];
++    [enc barrierAfterQueueStages:MTLStageAll beforeStages:MTLStageDispatch visibilityOptions:MTL4VisibilityOptionDevice];
++    if (fence) [enc waitForFence:fence beforeEncoderStages:MTLStageDispatch];
+     [enc setComputePipelineState:g_rainUpdate];
+     [st->t1 setTexture:color.gpuResourceID atIndex:0]; [st->t1 setTexture:st->base.gpuResourceID atIndex:1];
+-    [st->t1 setTexture:st->freq.gpuResourceID atIndex:2]; [st->t1 setAddress:st->k.gpuAddress atIndex:0];
++    [st->t1 setTexture:st->freq.gpuResourceID atIndex:2]; [st->t1 setTexture:s.motionTexture.gpuResourceID atIndex:3];
++    [st->t1 setAddress:st->k.gpuAddress atIndex:0];
+     [enc setArgumentTable:st->t1];
+     [enc dispatchThreads:MTLSizeMake(rw, rh, 1) threadsPerThreadgroup:MTLSizeMake(16, 16, 1)];
+-    [enc barrierAfterEncoderStages:MTLStageDispatch | MTLStageBlit beforeEncoderStages:MTLStageDispatch visibilityOptions:MTL4VisibilityOptionDevice];
++    [enc barrierAfterEncoderStages:MTLStageDispatch beforeEncoderStages:MTLStageDispatch visibilityOptions:MTL4VisibilityOptionDevice];
++    [enc setComputePipelineState:g_rainFix];
++    [st->t3 setTexture:color.gpuResourceID atIndex:0]; [st->t3 setTexture:st->freq.gpuResourceID atIndex:1];
++    [st->t3 setTexture:st->fix.gpuResourceID atIndex:2]; [st->t3 setAddress:st->k.gpuAddress atIndex:0];
++    [enc setArgumentTable:st->t3];
++    [enc dispatchThreads:MTLSizeMake(rw, rh, 1) threadsPerThreadgroup:MTLSizeMake(16, 16, 1)];
++    [enc barrierAfterEncoderStages:MTLStageDispatch beforeEncoderStages:MTLStageDispatch visibilityOptions:MTL4VisibilityOptionDevice];
+     [enc setComputePipelineState:g_rainApply];
+-    [st->t2 setTexture:st->copy.gpuResourceID atIndex:0]; [st->t2 setTexture:output.gpuResourceID atIndex:1];
+-    [st->t2 setTexture:color.gpuResourceID atIndex:2]; [st->t2 setTexture:st->freq.gpuResourceID atIndex:3];
+-    [st->t2 setAddress:st->k.gpuAddress atIndex:0];
++    [st->t2 setTexture:st->view.gpuResourceID atIndex:0]; [st->t2 setTexture:output.gpuResourceID atIndex:1];
++    [st->t2 setTexture:st->fix.gpuResourceID atIndex:2]; [st->t2 setAddress:st->k.gpuAddress atIndex:0];
+     [enc setArgumentTable:st->t2];
+     [enc dispatchThreads:MTLSizeMake(output.width, output.height, 1) threadsPerThreadgroup:MTLSizeMake(16, 16, 1)];
+     [enc barrierAfterEncoderStages:MTLStageDispatch beforeEncoderStages:MTLStageDispatch | MTLStageBlit visibilityOptions:MTL4VisibilityOptionDevice];

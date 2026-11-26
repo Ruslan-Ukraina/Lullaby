@@ -1,0 +1,207 @@
+diff -ruN a/hook/anr_metalfx.mm b/hook/anr_metalfx.mm
+--- a/hook/anr_metalfx.mm	2026-11-26 12:54:17
++++ b/hook/anr_metalfx.mm	2026-11-26 12:54:17
+@@ -1379,6 +1379,7 @@
+     std::atomic<int> state;                     // 0 not made, 1 making, 2 ready, 3 failed
+     id<MTLTexture> motion;                      // FSR4_MFX_DILATE: the dilated motion
+     id<MTLBuffer> rev; id<MTL4ArgumentTable> dilateTable;
++    id<MTLBuffer> edgeConst; id<MTL4ArgumentTable> edgeTable;   // patch 0025
+     bool havePrev;
+ }
+ @end
+@@ -1391,6 +1392,55 @@
+     static const bool on = [] { const char *e = getenv("FSR4_MFX_DILATE"); return e && e[0] == '1'; }();
+     return on;
+ }
++// Patch 0025 (FSR4_MFX_EDGE=1 or mfxedge=on): where the screen edge brings in what the last frame did not show (the
++// camera turns), MetalFX fills the in-between frame with a shifted copy, a band as wide as the turn. Each pixel of the
++// generated frame whose point was outside the last frame (half its motion back) takes the new real frame's pixel there.
++static bool lbyMfxEdgeWanted() {
++    const int live = fsr4_mfx_live_edge();
++    if (live >= 0) return live > 0;
++    static const bool on = [] { const char *e = getenv("FSR4_MFX_EDGE"); return e && e[0] == '1'; }();
++    return on;
++}
++static id<MTLComputePipelineState> edgePSO(id<MTLDevice> device) {
++    static std::mutex lock; static id<MTLComputePipelineState> pso; static bool pending = false, failed = false;
++    std::lock_guard<std::mutex> guard(lock);
++    if (pso || pending || failed) return pso;
++    pending = true;
++    id<MTLDevice> dev = device;
++    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
++        NSString *src = @"#include <metal_stdlib>\n"
++            "using namespace metal;\n"
++            "struct E { float2 mvScale; float2 margin; float fix, agree, apart, pad; };\n"
++            "static float lum(float3 c) { c = max(c, 0.0f); return dot(c / (1.0f + c), float3(0.2126f, 0.7152f, 0.0722f)); }\n"
++            "kernel void lby_edge(texture2d<float, access::read_write> gen [[texture(0)]], texture2d<float, access::sample> cur [[texture(1)]],\n"
++            "                     texture2d<float, access::sample> mv [[texture(2)]], texture2d<float, access::sample> prev [[texture(3)]],\n"
++            "                     constant E &e [[buffer(0)]],\n"
++            "                     uint2 g [[thread_position_in_grid]]) {\n"
++            "    const float2 size = float2(gen.get_width(), gen.get_height()); if (g.x >= size.x || g.y >= size.y) return;\n"
++            "    constexpr sampler s(coord::normalized, address::clamp_to_edge, filter::nearest);\n"
++            "    const float2 uv = (float2(g) + 0.5f) / size;\n"
++            "    const float2 m = mv.sample(s, uv).xy * e.mvScale / float2(mv.get_width(), mv.get_height());\n"
++            "    const float2 back = uv + 0.5f * m;\n"
++            "    constexpr sampler lin(coord::normalized, address::clamp_to_edge, filter::linear);\n"
++            "    // the new frame where this point is half a frame later (motion points from the new frame to the last)\n"
++            "    const float4 a = cur.sample(lin, uv - 0.5f * m);\n"
++            "    if (any(back < -e.margin) || any(back > 1.0f + e.margin)) { gen.write(a, g); return; }\n"
++            "    if (e.fix <= 0.0f) return;\n"
++            "    // MetalFX far from both frames carried to the middle while those two agree: a tear, not a reveal\n"
++            "    const float4 b = prev.sample(lin, uv + 0.5f * m), o = gen.read(g);\n"
++            "    const float la = lum(a.rgb), lb = lum(b.rgb), lo = lum(o.rgb);\n"
++            "    if (fabs(la - lb) < e.agree && min(fabs(lo - la), fabs(lo - lb)) > e.apart) gen.write(float4(0.5f * (a.rgb + b.rgb), o.a), g);\n"
++            "}\n";
++        NSError *e = nil;
++        id<MTLLibrary> lib = [dev newLibraryWithSource:src options:nil error:&e];
++        id<MTLFunction> fn = [lib newFunctionWithName:@"lby_edge"];
++        id<MTLComputePipelineState> p = fn ? [dev newComputePipelineStateWithFunction:fn error:&e] : nil;
++        std::lock_guard<std::mutex> g2(lock);
++        pso = p; pending = false; failed = p == nil;
++        logHook(p ? "MetalFX FG screen-edge fill on" : "MetalFX FG screen-edge fill: kernel unavailable", Nil);
++    });
++    return nil;
++}
+ static id<MTLComputePipelineState> dilatePSO(id<MTLDevice> device) {
+     static std::mutex lock; static id<MTLComputePipelineState> pso; static bool pending = false, failed = false;
+     std::lock_guard<std::mutex> guard(lock);
+@@ -1465,6 +1515,28 @@
+     static std::atomic<unsigned> n{0};
+     if (n.fetch_add(1) < 4) { char line[200]; snprintf(line, sizeof line, "MetalFX FG at the game's size: %s; the game's own runs", why); logHook(line, Nil); }
+ }
++// Patch 0026: the game's distortion field (RE9 sends one: DLSS-G's lens distortion) shifts the generated frame most at the
++// screen's edges and corners. mfxdistortion=off (live) or FSR4_MFX_DISTORTION=0 leaves it out; its shape is logged once.
++static bool lbyMfxDistortionOn() {
++    const int live = fsr4_mfx_live_distortion();
++    if (live >= 0) return live > 0;
++    static const bool on = [] { const char *e = getenv("FSR4_MFX_DISTORTION"); return !(e && e[0] == '0'); }();
++    return on;
++}
++static void lbyMfxDistortionLog(id object) {
++    static std::atomic<bool> told{false};
++    if (told.exchange(true)) return;
++    if (@available(macOS 27.0, *)) {
++        id<MTLFXFrameInterpolatorBase> fg = object;
++        id<MTLTexture> t = fg.distortionTexture;
++        char line[300];
++        snprintf(line, sizeof line, "MetalFX FG distortion field: %s %lux%lu format %lu, offset %lu,%lu size %lux%lu; output %lux%lu",
++                 t ? "texture" : "none", (unsigned long)t.width, (unsigned long)t.height, (unsigned long)t.pixelFormat,
++                 (unsigned long)fg.distortionOffsetX, (unsigned long)fg.distortionOffsetY, (unsigned long)fg.distortionWidth,
++                 (unsigned long)fg.distortionHeight, (unsigned long)fg.outputWidth, (unsigned long)fg.outputHeight);
++        logHook(line, Nil);
++    }
++}
+ // true when the frame was made here; false: the caller runs the game's interpolator as it is
+ static bool lbyMfxSmallEncode(id object, id command, IMP original) {
+     LbyMfxSmall *m = objc_getAssociatedObject(object, &mfxSmallKey);
+@@ -1583,11 +1655,47 @@
+         s.depthContentOffsetX = fg.depthContentOffsetX; s.depthContentOffsetY = fg.depthContentOffsetY;
+         s.motionContentOffsetX = fg.motionContentOffsetX; s.motionContentOffsetY = fg.motionContentOffsetY;
+         s.outputOffsetX = 0; s.outputOffsetY = 0;
+-        s.distortionTexture = fg.distortionTexture;
++        s.distortionTexture = lbyMfxDistortionOn() ? fg.distortionTexture : nil;
+         s.distortionOffsetX = fg.distortionOffsetX; s.distortionOffsetY = fg.distortionOffsetY;
+         s.distortionWidth = fg.distortionWidth; s.distortionHeight = fg.distortionHeight;
+     }
+     ((void(*)(id, SEL, id))original)(s, @selector(encodeToCommandBuffer:), command);
++    if (lbyMfxEdgeWanted() && m->havePrev && !s.shouldResetHistory) {   // patch 0025
++        id<MTLComputePipelineState> pso = edgePSO(device);
++        if (pso && !m->edgeTable) {
++            m->edgeConst = [device newBufferWithLength:32 options:MTLResourceStorageModeShared];
++            MTL4ArgumentTableDescriptor *td = [MTL4ArgumentTableDescriptor new];
++            td.maxBufferBindCount = 1; td.maxTextureBindCount = 4;
++            m->edgeTable = [device newArgumentTableWithDescriptor:td error:nil];
++            if (m->edgeConst) { [sr->residency addAllocation:m->edgeConst]; [sr->residency commit]; }
++        }
++        // the output texture must allow writes and reads; ours is made shader read/write
++        if (pso && m->edgeTable && m->edgeConst) {
++            float *c = (float *)m->edgeConst.contents;
++            c[0] = fg.motionVectorScaleX; c[1] = fg.motionVectorScaleY; c[2] = 0.002f; c[3] = 0.002f;
++            // the tear fix goes with the edge fill unless FSR4_MFX_FIX=0 (RE9 frames: worst 1 % of pixels 208 -> 201)
++            static const float fixOn = getenv("FSR4_MFX_FIX") && getenv("FSR4_MFX_FIX")[0] == '0' ? 0.f : 1.f;
++            static const float agree = getenv("FSR4_MFX_AGREE") ? (float)atof(getenv("FSR4_MFX_AGREE")) : 0.03f;
++            static const float apart = getenv("FSR4_MFX_APART") ? (float)atof(getenv("FSR4_MFX_APART")) : 0.08f;
++            c[4] = fixOn; c[5] = agree; c[6] = apart; c[7] = 0;
++            id<MTL4ComputeCommandEncoder> enc = [(id<MTL4CommandBuffer>)command computeCommandEncoder];
++            if (enc) {
++                [enc barrierAfterQueueStages:MTLStageAll beforeStages:MTLStageDispatch visibilityOptions:MTL4VisibilityOptionDevice];
++                [enc waitForFence:sr->fence beforeEncoderStages:MTLStageDispatch];
++                [enc setComputePipelineState:pso];
++                [m->edgeTable setTexture:sr->out.gpuResourceID atIndex:0];
++                [m->edgeTable setTexture:cur.gpuResourceID atIndex:1];
++                [m->edgeTable setTexture:fg.motionTexture.gpuResourceID atIndex:2];
++                [m->edgeTable setTexture:prev.gpuResourceID atIndex:3];
++                [m->edgeTable setAddress:m->edgeConst.gpuAddress atIndex:0];
++                [enc setArgumentTable:m->edgeTable];
++                [enc dispatchThreads:MTLSizeMake(gw, gh, 1) threadsPerThreadgroup:MTLSizeMake(16, 16, 1)];
++                [enc barrierAfterEncoderStages:MTLStageDispatch beforeEncoderStages:MTLStageDispatch visibilityOptions:MTL4VisibilityOptionDevice];
++                [enc updateFence:sr->fence afterEncoderStages:MTLStageDispatch];
++                [enc endEncoding];
++            }
++        }
++    }
+     m->havePrev = true;
+     LbyPass back = {sr->out, output, 0, 0, (float)gw, (float)gh, (uint32_t)ox, (uint32_t)oy, (uint32_t)w, (uint32_t)h};
+     if (!lbyPasses(sr, command, true, sr->fence, &back, 1, gameFence, 2)) { lbyMfxFail("resample-back encoder unavailable"); m->state = 3; }
+@@ -1770,7 +1878,16 @@
+                     if (f0.outputTexture) { g_fgOutW.store((uint32_t)f0.outputTexture.width); g_fgOutH.store((uint32_t)f0.outputTexture.height); }
+                     if (f0.colorTexture.device) ensurePresentHooks(f0.colorTexture.device, nil);
+                 }
+-                if (!lbyMfxSmallEncode(self, command, original)) ((void(*)(id, SEL, id))original)(self, selector, command);
++                lbyMfxDistortionLog(self);
++                if (!lbyMfxSmallEncode(self, command, original)) {
++                    id saved = nil;   // patch 0026: the window-size path without the distortion field too, when asked
++                    if (@available(macOS 27.0, *)) {
++                        id<MTLFXFrameInterpolatorBase> f1 = self;
++                        if (!lbyMfxDistortionOn() && f1.distortionTexture) { saved = f1.distortionTexture; f1.distortionTexture = nil; }
++                    }
++                    ((void(*)(id, SEL, id))original)(self, selector, command);
++                    if (saved) if (@available(macOS 27.0, *)) ((id<MTLFXFrameInterpolatorBase>)self).distortionTexture = saved;
++                }
+                 return;
+             }
+             resetNativeOnce(self, selector, command);
+diff -ruN a/src/anr/anr_live.h b/src/anr/anr_live.h
+--- a/src/anr/anr_live.h	2026-11-26 12:54:17
++++ b/src/anr/anr_live.h	2026-11-26 12:54:17
+@@ -85,6 +85,8 @@
+ #endif
+ int fsr4_mfx_live_size(void);     // patch 0024: anr3x.conf mfxsize=game|window, -1 when not given
+ int fsr4_mfx_live_dilate(void);   // patch 0024: anr3x.conf mfxdilate=on|off, -1 when not given
++int fsr4_mfx_live_edge(void);     // patch 0025: anr3x.conf mfxedge=on|off, -1 when not given
++int fsr4_mfx_live_distortion(void);   // patch 0026: anr3x.conf mfxdistortion=on|off, -1 when not given
+ #ifdef __cplusplus
+ }
+ #endif
+diff -ruN a/src/anr/anr_live.mm b/src/anr/anr_live.mm
+--- a/src/anr/anr_live.mm	2026-11-26 12:54:17
++++ b/src/anr/anr_live.mm	2026-11-26 12:54:17
+@@ -925,7 +925,7 @@
+ // handed out only when N newer entries wait behind it. FSR4_ANR_3X_LAG sets it at start; the file
+ // $FSR4_ROOT/dist/crossover/anr3x.conf ("lag=N") is read again about once a second, to compare in a running game.
+ static int g_3xOrderTime = -1;   // patch 0015: 1 = pairs told apart by time (see fsr4_anr_take_extra)
+-static int g_mfxSize = -1, g_mfxDilate = -1;   // patch 0024: live switches (-1: the environment decides)
++static int g_mfxSize = -1, g_mfxDilate = -1, g_mfxEdge = -1, g_mfxDistortion = -1;   // patch 0024: live switches (-1: the environment decides)
+ static int g_mfxCap = -1;   // patch 0022: the same for MetalFX frame generation (off unless asked)
+ static int g_capDuration = -1;   // patch 0021: 1 = game present durations kept below one 120 Hz vsync
+ static int g_3xPaceTime = -1;    // patch 0019: 1 = the three frames go to the screen at exact times
+@@ -960,6 +960,10 @@
+                         if (!strncmp(line, "mfxsize=window", 14)) g_mfxSize = 0;
+                         if (!strncmp(line, "mfxdilate=on", 12)) g_mfxDilate = 1;
+                         if (!strncmp(line, "mfxdilate=off", 13)) g_mfxDilate = 0;
++                        if (!strncmp(line, "mfxedge=on", 10)) g_mfxEdge = 1;
++                        if (!strncmp(line, "mfxedge=off", 11)) g_mfxEdge = 0;
++                        if (!strncmp(line, "mfxdistortion=on", 16)) g_mfxDistortion = 1;
++                        if (!strncmp(line, "mfxdistortion=off", 17)) g_mfxDistortion = 0;
+                         if (!strncmp(line, "mfxcap=off", 10)) g_mfxCap = 0;
+                         if (!strncmp(line, "pace=duration", 13)) g_3xPaceTime = 0;
+                     }
+@@ -979,6 +983,8 @@
+ extern "C" int fsr4_mfx_cap_duration() { lby_3x_lag(); return g_mfxCap > 0; }
+ extern "C" int fsr4_mfx_live_size() { lby_3x_lag(); return g_mfxSize; }
+ extern "C" int fsr4_mfx_live_dilate() { lby_3x_lag(); return g_mfxDilate; }
++extern "C" int fsr4_mfx_live_edge() { lby_3x_lag(); return g_mfxEdge; }
++extern "C" int fsr4_mfx_live_distortion() { lby_3x_lag(); return g_mfxDistortion; }
+ 
+ // Patch 0015: the extra frame for a pair the caller has recognised as an interpolated present. The oldest waiting entry
+ // is this pair's; more than two waiting means presents were missed, and the surplus oldest ones are dropped so the

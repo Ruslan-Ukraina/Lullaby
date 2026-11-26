@@ -1,0 +1,15 @@
+diff -ruN a/hook/anr_metalfx.mm b/hook/anr_metalfx.mm
+--- a/hook/anr_metalfx.mm	2026-11-26 12:56:34
++++ b/hook/anr_metalfx.mm	2026-11-26 12:56:34
+@@ -687,6 +687,11 @@
+     const int presentMode = selectedMode.load(std::memory_order_relaxed);
+     static thread_local int presentDepth = 0;   // patch 0023: a present inside a present (presentAfterMinimumDuration:) counts once
+     if (presentDepth) { callOriginal(hasDuration, duration); return; }
++    // patch 0026: a drawable reaches this hook twice (present and presentAfterMinimumDuration:, not always on one thread):
++    // only its first visit counts and runs the frame-generation logic; the second goes straight through.
++    static char seenKey;
++    if (objc_getAssociatedObject(self, &seenKey)) { callOriginal(hasDuration, duration); return; }
++    objc_setAssociatedObject(self, &seenKey, @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+     struct DepthGuard { DepthGuard() { ++presentDepth; } ~DepthGuard() { --presentDepth; } } depthGuard;
+     if (!g_inExtraPresent && presentMode <= 1) {   // patch 0022: MetalFX frame generation (0) as 2x
+         id<MTLTexture> t2 = [self respondsToSelector:@selector(texture)]

@@ -1,0 +1,66 @@
+--- a/hook/anr_metalfx.mm	2026-11-26 01:07:04
++++ b/hook/anr_metalfx.mm	2026-11-26 01:07:04
+@@ -278,6 +278,47 @@
+     return true;
+ }
+ 
++// Lullaby (patch 0008, diagnostics for 3x): the first extra frames and the present events are described in the hook
++// log, and the extra frame's middle row is read back and its mean logged, to tell an empty frame from one lost on the
++// way to the screen.
++static std::atomic<unsigned> g_extraDiag{0};
++static std::atomic<unsigned long> g_presentEvents[3];
++static void diagExtra(id<MTLTexture> extraTex, id<MTLTexture> dst, bool fbOnly, bool exactCopy, bool offset, MTLOrigin at,
++                      MTLSize pic, double stepSec) {
++    const unsigned n = g_extraDiag.fetch_add(1);
++    if (n >= 3 && n % 600) return;
++    char line[400];
++    snprintf(line, sizeof line, "3x extra #%u: extra %lux%lu fmt %lu -> drawable %lux%lu fmt %lu, framebufferOnly %d, %s, "
++             "offset %d at %lu,%lu picture %lux%lu, step %.2f ms; present events 0/1/2: %lu/%lu/%lu", n,
++             (unsigned long)extraTex.width, (unsigned long)extraTex.height, (unsigned long)extraTex.pixelFormat,
++             (unsigned long)dst.width, (unsigned long)dst.height, (unsigned long)dst.pixelFormat, fbOnly,
++             exactCopy ? "copy" : "draw", offset, (unsigned long)at.x, (unsigned long)at.y, (unsigned long)pic.width,
++             (unsigned long)pic.height, stepSec * 1000, g_presentEvents[0].load(), g_presentEvents[1].load(),
++             g_presentEvents[2].load());
++    logHook(line, Nil);
++    id<MTLCommandQueue> q = [extraTex.device newCommandQueue];
++    const NSUInteger bpp = 8, w = extraTex.width, y = extraTex.height / 2;
++    id<MTLBuffer> b = [extraTex.device newBufferWithLength:w * bpp options:MTLResourceStorageModeShared];
++    id<MTLCommandBuffer> cb = [q commandBuffer];
++    id<MTLBlitCommandEncoder> e = [cb blitCommandEncoder];
++    MTLTextureDescriptor *td = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA16Float width:w height:1 mipmapped:NO];
++    (void)td;
++    if (extraTex.pixelFormat == MTLPixelFormatRGB10A2Unorm || extraTex.pixelFormat == MTLPixelFormatBGRA8Unorm
++        || extraTex.pixelFormat == MTLPixelFormatRGBA8Unorm) {
++        [e copyFromTexture:extraTex sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0, y, 0) sourceSize:MTLSizeMake(w, 1, 1)
++                  toBuffer:b destinationOffset:0 destinationBytesPerRow:w * 4 destinationBytesPerImage:w * 4];
++    }
++    [e endEncoding];
++    const unsigned idx = n;
++    [cb addCompletedHandler:^(id<MTLCommandBuffer>) {
++        const uint32_t *px = (const uint32_t *)b.contents; double s = 0;
++        for (NSUInteger i = 0; i < w; ++i) s += (px[i] & 1023) + ((px[i] >> 10) & 1023) + ((px[i] >> 20) & 1023);
++        char l2[120]; snprintf(l2, sizeof l2, "3x extra #%u middle row mean %.1f of 1023", idx, s / (3.0 * w));
++        logHook(l2, Nil);
++    }];
++    [cb commit];
++}
++
+ static void submitExtraMetal4(id<MTLDevice> device, id<MTL4CommandQueue> queue4, id drawable1,
+                               id<MTLTexture> extraTex, double stepSec, uint64_t ticket) {
+     if (!device || !queue4 || !drawable1 || !extraTex) {
+@@ -321,6 +362,7 @@
+                 const bool exactCopy = !fbOnly && extraTex.pixelFormat == dst.pixelFormat
+                     && ((extraTex.width == dst.width && extraTex.height == dst.height)
+                         || (offset && pic.width == extraTex.width && pic.height == extraTex.height));
++                diagExtra(extraTex, dst, fbOnly, exactCopy, offset, at, pic, stepSec);
+ 
+                 id<MTLRenderPipelineState> pso = exactCopy ? nil : getPresentPSO(device, dst.pixelFormat, res);
+                 if (exactCopy || pso) {
+@@ -548,6 +590,7 @@
+     double stepSec = 0.0;
+     uint64_t ticket = 0;
+     const int event = fsr4_anr_on_present_event((__bridge void *)dev, &extraRaw, &stepSec, &ticket);
++    if (event >= 0 && event <= 2) g_presentEvents[event].fetch_add(1);
+     if (event == 1 && extraRaw) {
+         id<MTLTexture> extraTex = (__bridge_transfer id<MTLTexture>)extraRaw;
+         // Present I_{1/3} with 1/3 pacing, then immediately submit & present I_{2/3}.

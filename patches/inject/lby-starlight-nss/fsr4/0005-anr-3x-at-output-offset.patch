@@ -1,0 +1,129 @@
+--- a/hook/anr_metalfx.mm	2026-11-25 22:53:13
++++ b/hook/anr_metalfx.mm	2026-11-25 22:53:13
+@@ -260,6 +260,17 @@
+     if (layer && [layer respondsToSelector:fbSel]) {
+         return ((BOOL(*)(id, SEL))objc_msgSend)(layer, fbSel) != NO;
+     }
++    return true;
++}
++
++// Lullaby (patch 0005): where the game's picture sits inside the drawable (patch 0004's output offset). The 3x frame
++// ANR makes is the picture's size; it goes to the drawable at this offset, the bars around it kept as they are.
++static std::atomic<uint32_t> g_extraOx{0}, g_extraOy{0}, g_extraW{0}, g_extraH{0};
++static bool extraOffset(id<MTLTexture> extraTex, id<MTLTexture> dst, MTLOrigin *origin) {
++    const uint32_t w = g_extraW.load(), h = g_extraH.load(), ox = g_extraOx.load(), oy = g_extraOy.load();
++    if (!w || extraTex.width != w || extraTex.height != h || (dst.width == w && dst.height == h)) return false;
++    if (ox + w > dst.width || oy + h > dst.height) return false;
++    *origin = MTLOriginMake(ox, oy, 0);
+     return true;
+ }
+ 
+@@ -300,8 +311,10 @@
+             }
+             if (slot) {
+                 const bool fbOnly = layerFramebufferOnly(d2);
++                MTLOrigin at = MTLOriginMake(0, 0, 0);
++                const bool offset = extraOffset(extraTex, dst, &at);
+                 const bool exactCopy = !fbOnly && extraTex.pixelFormat == dst.pixelFormat
+-                    && extraTex.width == dst.width && extraTex.height == dst.height;
++                    && ((extraTex.width == dst.width && extraTex.height == dst.height) || offset);
+ 
+                 id<MTLRenderPipelineState> pso = exactCopy ? nil : getPresentPSO(device, dst.pixelFormat, res);
+                 if (exactCopy || pso) {
+@@ -319,19 +332,25 @@
+                         id<MTL4ComputeCommandEncoder> cenc = [slot->command computeCommandEncoder];
+                         if (cenc) {
+                             [cenc barrierAfterQueueStages:MTLStageAll beforeStages:MTLStageBlit visibilityOptions:MTL4VisibilityOptionDevice];
+-                            [cenc copyFromTexture:extraTex toTexture:dst];
++                            if (offset)
++                                [cenc copyFromTexture:extraTex sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0, 0, 0)
++                                           sourceSize:MTLSizeMake(extraTex.width, extraTex.height, 1) toTexture:dst
++                                     destinationSlice:0 destinationLevel:0 destinationOrigin:at];
++                            else
++                                [cenc copyFromTexture:extraTex toTexture:dst];
+                             [cenc endEncoding];
+                             encoded = true;
+                         }
+                     } else {
+                         MTL4RenderPassDescriptor *rp = [MTL4RenderPassDescriptor new];
+                         rp.colorAttachments[0].texture = dst;
+-                        rp.colorAttachments[0].loadAction = MTLLoadActionDontCare;
++                        rp.colorAttachments[0].loadAction = offset ? MTLLoadActionLoad : MTLLoadActionDontCare;
+                         rp.colorAttachments[0].storeAction = MTLStoreActionStore;
+                         id<MTL4RenderCommandEncoder> renc = [slot->command renderCommandEncoderWithDescriptor:rp];
+                         if (renc) {
+                             [renc barrierAfterQueueStages:MTLStageAll beforeStages:MTLStageFragment visibilityOptions:MTL4VisibilityOptionDevice];
+                             [renc setRenderPipelineState:pso];
++                            if (offset) [renc setViewport:(MTLViewport){(double)at.x, (double)at.y, (double)extraTex.width, (double)extraTex.height, 0.0, 1.0}];
+                             [slot->argTable setTexture:extraTex.gpuResourceID atIndex:0];
+                             [renc setArgumentTable:slot->argTable atStages:MTLRenderStageFragment];
+                             [renc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+@@ -390,8 +409,10 @@
+     }
+     id<MTLTexture> dst = ((id<MTLTexture>(*)(id, SEL))objc_msgSend)(d2, @selector(texture));
+     const bool fbOnly = layerFramebufferOnly(d2);
++    MTLOrigin at = MTLOriginMake(0, 0, 0);
++    const bool offset = extraOffset(extraTex, dst, &at);
+     const bool exactCopy = !fbOnly && extraTex.pixelFormat == dst.pixelFormat
+-        && extraTex.width == dst.width && extraTex.height == dst.height;
++        && ((extraTex.width == dst.width && extraTex.height == dst.height) || offset);
+ 
+     id<MTLRenderPipelineState> pso = nil;
+     if (!exactCopy) {
+@@ -413,18 +434,24 @@
+     if (exactCopy) {
+         id<MTLBlitCommandEncoder> benc = [cb2 blitCommandEncoder];
+         if (benc) {
+-            [benc copyFromTexture:extraTex toTexture:dst];
++            if (offset)
++                [benc copyFromTexture:extraTex sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0, 0, 0)
++                           sourceSize:MTLSizeMake(extraTex.width, extraTex.height, 1) toTexture:dst destinationSlice:0
++                     destinationLevel:0 destinationOrigin:at];
++            else
++                [benc copyFromTexture:extraTex toTexture:dst];
+             [benc endEncoding];
+             encoded = true;
+         }
+     } else {
+         MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
+         rp.colorAttachments[0].texture = dst;
+-        rp.colorAttachments[0].loadAction = MTLLoadActionDontCare;
++        rp.colorAttachments[0].loadAction = offset ? MTLLoadActionLoad : MTLLoadActionDontCare;
+         rp.colorAttachments[0].storeAction = MTLStoreActionStore;
+         id<MTLRenderCommandEncoder> renc = [cb2 renderCommandEncoderWithDescriptor:rp];
+         if (renc) {
+             [renc setRenderPipelineState:pso];
++            if (offset) [renc setViewport:(MTLViewport){(double)at.x, (double)at.y, (double)extraTex.width, (double)extraTex.height, 0.0, 1.0}];
+             [renc setFragmentTexture:extraTex atIndex:0];
+             [renc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+             [renc endEncoding];
+@@ -756,8 +783,8 @@
+ // Lullaby (patch 0004): a game whose frame sits inside a larger texture (letterbox: D3DMetal hands RE9's 3024x1701
+ // picture at y 98 of a 3024x1898 drawable as outputOffset) gets ANR all the same. The picture is copied out of the
+ // game's colour (and UI) into textures of its size, ANR runs on those, and its frame is copied back at the offset.
+-// A fence of our own orders the three steps; the game's fence is waited first and updated last. 2x only: the third
+-// frame of 3x is presented by its own path at the texture's origin, so 3x with an offset stays with MetalFX.
++// A fence of our own orders the three steps; the game's fence is waited first and updated last. The third frame of
++// 3x is placed at the same offset when it is presented (patch 0005).
+ @interface LbyAnrSubrect : NSObject {
+ @public
+     id<MTLTexture> color, ui, out;
+@@ -813,10 +840,6 @@
+ 
+ static int encodeOffset(id object, id command, Fsr4AnrFrame f, NSUInteger ox, NSUInteger oy) {
+     id<MTLFXFrameInterpolatorBase> fg = object;
+-    if (selectedMode.load(std::memory_order_acquire) == 2) {
+-        fsr4_anr_set_inactive("ANR: 3x with an output offset is not supported; keeping MetalFX");
+-        return 0;
+-    }
+     id<MTLTexture> color = fg.colorTexture, output = fg.outputTexture, ui = fg.uiTexture;
+     id<MTLDevice> device = color.device;
+     const NSUInteger w = f.uw, h = f.uh;
+@@ -858,6 +881,7 @@
+         logHook(line, Nil);
+     }
+     if (metal4 && sr->residency) [(id<MTL4CommandBuffer>)command useResidencySet:sr->residency];
++    g_extraW.store((uint32_t)w); g_extraH.store((uint32_t)h); g_extraOx.store((uint32_t)ox); g_extraOy.store((uint32_t)oy);
+     id<MTLFence> gameFence = fg.fence;
+     const MTLSize size = MTLSizeMake(w, h, 1);
+     // 1. the picture out of the game's colour (and UI)
